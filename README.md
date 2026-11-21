@@ -27,7 +27,7 @@ python -m http.server 5500
 # then open http://localhost:5500/
 ```
 
-Sunset Stride's 3D models, photo textures and sounds need the served version (browsers block them from `file://`); the game falls back to simple shapes, procedural textures and synth sound without them.
+Sunset Stride's 3D models, photo textures and sound effects need the served version (browsers block them from `file://`); the game falls back to simple shapes, procedural textures and synth sound effects without them (the music still plays).
 
 To run the checks CI runs (needs Node.js):
 

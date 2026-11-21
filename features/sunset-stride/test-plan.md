@@ -4,18 +4,18 @@
 
 ## Coverage map (AC → test)
 
-| AC   | Test(s)                                                                                                                               | Kind           |
-| ---- | ------------------------------------------------------------------------------------------------------------------------------------- | -------------- |
-| AC1  | grep: no "Neon Rush" in shipped files; `_redirects` has the 301; hub card renders "Sunset Stride"                                     | static + smoke |
-| AC2  | screenshot 390×844 + 1280×720 per obstacle type; mean luminance of the frame ≥ threshold (computed in the probe script)               | probe + visual |
-| AC3  | `__stride.skin.weights.__sum > 0` sampled across states; `skin.spread` arm width < T-pose width while running                         | probe          |
-| AC4  | bone spread changes between two steps while running; slide: `skin.pose.slide ≈ 1`, `skin.scaleUniform === true`, lowest bone ≤ 0.25 m | probe          |
-| AC5  | `__stride.hit()` → dogs `z > 0`, in frustum, nearest gap ≤ 2.2; `step(6000)` clean → gap ≥ 3.5; dogs never at z < 0                   | probe          |
-| AC6  | stumble vs caught; side-scrape bounce; buffered jump on landing; jump cancels slide; close call +10 and gap +                         | probe          |
-| AC7  | save round-trip under new key; legacy import once; corrupt JSON → defaults                                                            | probe          |
-| AC8  | route-abort every `/assets/**` request → game starts, `skin.kind === "primitive"`, `dogs.kind === "primitive"`, zero page errors      | probe          |
-| AC9  | pause on hide/blur, countdown, draw calls ≤ 170 high, `prefers-reduced-motion` → no shake/FOV kick, no WebGL → notice                 | probe + smoke  |
-| AC10 | `npm run smoke`, `npm run check`, `npm run secrets`                                                                                   | CI             |
+| AC   | Test(s)                                                                                                                                                             | Kind           |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- |
+| AC1  | grep: no "Neon Rush" in shipped files; `_redirects` has the 301; hub card renders "Sunset Stride"                                                                   | static + smoke |
+| AC2  | screenshot 390×844 + 1280×720 per obstacle type; mean luminance of the frame ≥ threshold (computed in the probe script)                                             | probe + visual |
+| AC3  | `__stride.skin.weights.__sum ≈ 1` sampled in countdown / run / jump / slide / stumble / caught; `skin.handSpan` well under the T-pose arm span while running        | probe          |
+| AC4  | bone spread changes between two steps while running; slide: `skin.weights.slide ≈ 1`, `skin.scaleUniform === true`, lowest bone ≤ 0.3 m (the code targets ≈ 0.09 m) | probe          |
+| AC5  | `__stride.hit()` → dogs `z > 0`, in frustum, nearest gap ≤ 2.2; `step(6000)` clean → gap ≥ 3.5; dogs never at z < 0                                                 | probe          |
+| AC6  | stumble vs caught; side-scrape bounce; buffered jump on landing; jump cancels slide; close call +10 and gap +                                                       | probe          |
+| AC7  | save round-trip under new key; legacy import once; corrupt JSON → defaults                                                                                          | probe          |
+| AC8  | route-abort every `/assets/**` request → game starts, `skin.kind === "primitive"`, `dogs.kind === "primitive"`, zero page errors                                    | probe          |
+| AC9  | pause on hide/blur, countdown, draw calls ≤ 170 high, `prefers-reduced-motion` → no shake/FOV kick, no WebGL → notice                                               | probe + smoke  |
+| AC10 | `npm run smoke`, `npm run check`, `npm run secrets`                                                                                                                 | CI             |
 
 ## Test cases
 

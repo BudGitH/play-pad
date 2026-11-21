@@ -9,6 +9,7 @@
 // WebGL runs in software (SwiftShader), so this is slow-ish (~1–2 min) but needs no GPU.
 import { chromium } from "@playwright/test";
 import { pathToFileURL } from "node:url";
+import { readFileSync, readdirSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 
 const BASE = process.env.BASE_URL || "http://localhost:5599";
@@ -52,24 +53,13 @@ async function openGame(
 }
 const S = (page, fn, arg) => page.evaluate(fn, arg);
 async function waitModels(page) {
-  await page.waitForFunction(() => window.__stride && window.__stride.world.glbRunner, null, {
-    timeout: 30000,
-  });
   await page.waitForFunction(
-    () =>
-      window.__stride.dogs.list.every((d) => d.kind === "glb") ||
-      window.__stride.dogs.list.length > 0,
+    () => window.__stride && window.__stride.world.glbRunner && window.__stride.world.glbDogs,
     null,
-    { timeout: 30000 },
+    {
+      timeout: 30000,
+    },
   );
-}
-async function startRun(page) {
-  await page.getByRole("button", { name: "Start running" }).click();
-  await page.waitForFunction(() => window.__stride.state.phase === "running", null, {
-    timeout: 30000,
-  });
-  // The rAF loop keeps ticking in real time; software WebGL is slow, so probes freeze it and advance with step().
-  await page.evaluate(() => window.__stride.freeze(true));
 }
 // Keep the run alive and uncluttered while a probe inspects a state.
 const calm = (page) =>
@@ -79,7 +69,67 @@ const calm = (page) =>
     s.three.player.invulnT = 0;
   });
 
+// AC1 (static): the rename is complete in everything that ships. History (docs/, features/) is exempt.
+function staticChecks() {
+  const redirects = readFileSync("_redirects", "utf8");
+  check(
+    "AC1",
+    "_redirects 301s the old URL (bare, slash and nested) to the new game",
+    /\/games\/neon-rush\s+\/games\/sunset-stride\/\s+301/.test(redirects) &&
+      /\/games\/neon-rush\/\*\s+\/games\/sunset-stride\/\s+301/.test(redirects),
+  );
+  const shipped = [
+    "README.md",
+    "LICENSE",
+    "CLAUDE.md",
+    "games.js",
+    "_headers",
+    "index.html",
+    "tests/round-drivers.mjs",
+    "docs/ARCHITECTURE.md",
+    "docs/CONVENTIONS.md",
+  ];
+  const walk = (dir) =>
+    readdirSync(dir).flatMap((f) => {
+      const p = `${dir}/${f}`;
+      return statSync(p).isDirectory() ? walk(p) : [p];
+    });
+  walk("games/sunset-stride")
+    .filter((p) => /\.(html|js|md|txt|css)$/.test(p) && !p.endsWith("three.min.js"))
+    .forEach((p) => shipped.push(p));
+  // The ONLY allowed mentions: the rename notes and the one-time legacy-key import (exact phrases, not "any
+  // line that says legacy"). Everything else, e.g. a stale games/neon-rush/ path, is a failure.
+  const ALLOWED = [
+    /formerly Neon Rush/i,
+    /was Neon Rush/,
+    /ex-Neon Rush/,
+    /Neon Rush → Sunset Stride/,
+    /playpad\.neonRush\.v1/,
+  ];
+  const STALE = /neon[\s-]*rush|neonRush|__neon/i;
+  const real = shipped.filter((p) =>
+    readFileSync(p, "utf8")
+      .split("\n")
+      .some((l) => STALE.test(l) && !ALLOWED.some((a) => a.test(l))),
+  );
+  check(
+    "AC1",
+    "no stale Neon Rush references in shipped files (except documented rename notes)",
+    real.length === 0,
+    real.join(", "),
+  );
+  const reg = readFileSync("games.js", "utf8");
+  check(
+    "AC1",
+    "registry entry is Sunset Stride with the new path and save key",
+    /id: "sunset-stride"/.test(reg) &&
+      /title: "Sunset Stride"/.test(reg) &&
+      /playpad\.sunsetStride\.v1/.test(reg),
+  );
+}
+
 async function main() {
+  staticChecks();
   const browser = await launch();
 
   /* ---- main session: AC1 AC2 AC3 AC4 AC5 AC6 AC9 ---- */
@@ -96,7 +146,27 @@ async function main() {
   const visible = await page.locator("body").innerText();
   check("AC1", "no user-visible 'Neon Rush' on the setup screen", !/neon\s*rush/i.test(visible));
 
-  await startRun(page);
+  // the countdown ("ready" pose) must also never show a bind pose
+  await page.getByRole("button", { name: "Start running" }).click();
+  await page.waitForFunction(() => window.__stride.state.phase === "countdown");
+  const cd = await S(page, () => window.__stride.skin);
+  check(
+    "AC3",
+    "countdown: GLB runner in the ready pose at weight 1 (no bind pose)",
+    cd.kind === "glb" && cd.state === "ready" && Math.abs(cd.weights.__sum - 1) < 0.01,
+    `state=${cd.state} sum=${cd.weights.__sum}`,
+  );
+  await page.waitForFunction(() => window.__stride.state.phase === "running", null, {
+    timeout: 30000,
+  });
+  await page.evaluate(() => window.__stride.freeze(true));
+  const dogKinds = await S(page, () => window.__stride.dogs.list.map((d) => d.kind));
+  check(
+    "AC5",
+    "the pack is the GLB dogs (not the primitive fallback)",
+    dogKinds.length === 3 && dogKinds.every((k) => k === "glb"),
+    dogKinds.join(","),
+  );
   await S(page, () => window.__stride.seed(7));
   await calm(page);
 
@@ -595,7 +665,7 @@ async function main() {
     const errs = [];
     p2.on("pageerror", (e) => errs.push("pageerror: " + e.message));
     await p2.goto(URL);
-    await p2.waitForTimeout(2500);
+    await p2.waitForFunction(() => window.__stride);
     await p2.getByRole("button", { name: "Start running" }).click();
     await p2.waitForFunction(() => window.__stride.state.phase === "running", null, {
       timeout: 30000,
@@ -619,7 +689,7 @@ async function main() {
 
     const fileUrl = pathToFileURL(resolve("games/sunset-stride/index.html")).href;
     const f = await openGame(browser, { url: fileUrl });
-    await f.page.waitForTimeout(2000);
+    await f.page.waitForFunction(() => window.__stride);
     await f.page.getByRole("button", { name: "Start running" }).click();
     await f.page.waitForFunction(
       () => window.__stride && window.__stride.state.phase === "running",
@@ -669,39 +739,66 @@ async function main() {
     await ph.ctx.close();
   }
 
-  /* ---- reduced motion ---- */
+  /* ---- AC9: WebGL missing -> the game explains instead of a blank screen ---- */
   {
-    const rm = await browser.newContext({
-      viewport: { width: 1000, height: 620 },
-      reducedMotion: "reduce",
+    const nogl = await openGame(browser, {
+      init: () => {
+        const real = HTMLCanvasElement.prototype.getContext;
+        HTMLCanvasElement.prototype.getContext = function (type, ...rest) {
+          return /webgl/i.test(type) ? null : real.call(this, type, ...rest);
+        };
+      },
     });
-    const p3 = await rm.newPage();
-    const e3 = [];
-    p3.on("pageerror", (e) => e3.push(e.message));
-    await p3.goto(URL);
-    await p3.waitForTimeout(2500);
-    await p3.getByRole("button", { name: "Start running" }).click();
-    await p3.waitForFunction(() => window.__stride.state.phase === "running", null, {
-      timeout: 30000,
-    });
-    const fovs = await S(p3, () => {
-      const s = window.__stride,
-        out = [];
-      s.setSpeed(24);
-      for (let i = 0; i < 6; i++) {
-        s.step(500);
-        out.push(s.camera.fov);
-      }
-      return out;
-    });
-    const hasKick = Math.max(...fovs) - Math.min(...fovs) > 0.5 && fovs[5] > fovs[0] + 1;
+    await nogl.page.locator("#startBtn").waitFor();
+    await nogl.page.getByRole("button", { name: "Start running" }).click();
+    const shown = await nogl.page.locator("#glFail").isVisible();
     check(
       "AC9",
-      "prefers-reduced-motion: no speed FOV kick, no errors",
-      !hasKick && e3.length === 0,
-      `fov ${fovs.map((f) => f.toFixed(1)).join(",")}`,
+      "no WebGL: Start shows the 'turn on WebGL' notice, no crash",
+      shown && nogl.errors.filter((e) => e.startsWith("pageerror")).length === 0,
+      nogl.errors.slice(0, 2).join(" | "),
     );
-    await rm.close();
+    await nogl.ctx.close();
+  }
+
+  /* ---- reduced motion: normal mode kicks the FOV (control), reduced motion does not ---- */
+  {
+    const fovKick = async (reduced) => {
+      const c = await browser.newContext({
+        viewport: { width: 1000, height: 620 },
+        reducedMotion: reduced ? "reduce" : "no-preference",
+      });
+      const pg = await c.newPage();
+      const errs = [];
+      pg.on("pageerror", (e) => errs.push(e.message));
+      await pg.goto(URL);
+      await pg.getByRole("button", { name: "Start running" }).click();
+      await pg.waitForFunction(() => window.__stride.state.phase === "running", null, {
+        timeout: 30000,
+      });
+      const kick = await S(pg, () => {
+        const s = window.__stride;
+        s.freeze(true);
+        s.clearObstacles();
+        s.setSpeed(24);
+        const f0 = s.camera.fov;
+        for (let i = 0; i < 180; i++) {
+          s.step(16); // one render per step: the FOV eases ~3 % per frame toward the speed kick
+          s.three.player.invulnT = 99;
+        }
+        return s.camera.fov - f0;
+      });
+      await c.close();
+      return { kick, errs };
+    };
+    const normal = await fovKick(false);
+    const reduced = await fovKick(true);
+    check(
+      "AC9",
+      "prefers-reduced-motion: no speed FOV kick (normal mode kicks > 3°, the control)",
+      normal.kick > 3 && reduced.kick < 0.5 && reduced.errs.length === 0,
+      `normal +${normal.kick.toFixed(2)}° reduced +${reduced.kick.toFixed(2)}°`,
+    );
   }
 
   await browser.close();

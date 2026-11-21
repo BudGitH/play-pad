@@ -93,7 +93,7 @@ window.GAMES = [
     title: "Sunset Stride",
     tagline: "A golden-hour jog with the dogs on your heels.",
     description:
-      "Jog through a sunlit town in 3D — swap lanes, hop hurdles, skid under bars and dodge vans while a pack of dogs chases you from behind. Trip once and they catch up; trip twice and you're caught. Coins buy new outfits in the shop.",
+      "Jog through a sunlit town in 3D — swap lanes, hop hurdles, skid under bars and dodge vans while a pack of dogs chases you from behind. Trip once and they catch up; trip again in quick succession and you're caught. Coins buy new outfits in the shop.",
     tags: ["Solo", "3D", "Runner"],
     path: "games/sunset-stride/",
     accent: "#ff8a3d",

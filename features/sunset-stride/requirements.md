@@ -46,7 +46,7 @@ See `design-review.md`.
 2. **World:** low sun, warm haze, blue sky with clouds; asphalt road with lane markings, paved sidewalks, grass verges, street trees and lamps, brick / plaster facades with windows — all from real photo textures (ambientCG CC0) with procedural fallbacks.
 3. **Runner:** a skinned human with a real run cycle, jump, a hand-authored **feet-first slide** pose, a stumble lurch and a caught tumble. Six outfit skins in the shop (3D thumbnails).
 4. **Chasers:** a pack of three dogs **behind the runner**. Clean running keeps them back; a hit makes them lunge to the runner's heels; a second hit while they are close = caught. Staying clean makes them fall back again.
-5. **Obstacles (readable by colour/shape):** hazard-striped **hurdle** and **crates** (jump), overhead **gantry bar** (slide), **van** and **truck** (change lane). Coins, magnet, spring-sneakers, bubble.
+5. **Obstacles — real street set pieces (a town street with road works and a market day):** jump over a **road-works barrier** (cones, sandbags, beacon), a **delivery pallet of produce** or a **market fruit cart**; slide under **scaffolding** (LOW HEADROOM sign) or a **market-stall awning**; go around a **delivery van**, **food truck**, **box truck** or **city bus**. Coins, magnet, spring-sneakers, bubble.
 6. **Mechanics:** input buffering, forgiving side-scrape (bounce back to your lane, never fatal), stumble → recover, close-call bonus that pushes the dogs back, jump-cancel of a slide, fast-fall.
 7. **HUD:** score, coins, mute, quit, dog-proximity meter, power-up chips, toasts. Pause / resume / countdown behaviour unchanged.
 8. **Audio:** chill lo-fi loop (CC0), Kenney SFX, synth bark + bump.

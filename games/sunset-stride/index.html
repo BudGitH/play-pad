@@ -865,11 +865,6 @@
       .skin-act .button {
         min-width: 96px;
       }
-      .skin-act .owned-tag {
-        font-size: 12px;
-        font-weight: 700;
-        color: var(--md-sys-color-on-surface-variant);
-      }
 
       /* ---------- SETUP hero: a sunset strip with the dog pack and a runner silhouette ---------- */
       .hero-strip {
@@ -929,10 +924,6 @@
       }
       .sw.paint {
         background: linear-gradient(135deg, #d9534f, #f0f0f0);
-      }
-      .sw.gold {
-        background: radial-gradient(circle at 35% 35%, #fff4b0, #f2b50f);
-        border-radius: 50%;
       }
 
       /* Dog meter: how close the pack is. Under the HUD pill; fills toward the right as they close in. */
@@ -1026,21 +1017,16 @@
           <div class="label"><span>How to play</span></div>
           <div class="howto">
             <div class="how">
-              <span class="k">← → / swipe</span><span>Change lane — go around vans and trucks</span>
+              <span class="k">← → / swipe</span
+              ><span>Change lane — go around vans, food trucks and buses</span>
             </div>
             <div class="how">
-              <span class="k">↑ / swipe up</span><span>Jump — hop hurdles and crates</span>
+              <span class="k">↑ / swipe up</span
+              ><span>Jump — hop road-works barriers, produce crates and fruit carts</span>
             </div>
             <div class="how">
-              <span class="k">↓ / swipe down</span><span>Slide — skid under the overhead bars</span>
-            </div>
-            <div class="how">
-              <span class="sw hazard" aria-hidden="true"></span
-              ><span>Yellow-and-black = jump over it or slide under it</span>
-            </div>
-            <div class="how">
-              <span class="sw paint" aria-hidden="true"></span
-              ><span>Painted vans &amp; trucks = change lanes</span>
+              <span class="k">↓ / swipe down</span
+              ><span>Slide — skid under scaffolding and market awnings</span>
             </div>
             <div class="how">
               <span class="k">🐕 The pack</span
@@ -1275,7 +1261,7 @@
         var GAP_CALM = 3.8,
           GAP_HIT = 1.7,
           GAP_DANGER = 2.7,
-          GAP_CAUGHT = 0.9;
+          GAP_METER_MIN = 0.9; // the dog meter's full-scale point and the floor of the test hook's setGap (a catch is gap < GAP_DANGER)
         var GAP_RECOVER = 0.35; // m/s the dogs fall back while the runner is clean
         var HURT_IFRAMES = 1.4; // s of invulnerability after a stumble
         var INPUT_BUFFER = 0.14; // s a too-early jump/slide/lane press is remembered
@@ -1343,6 +1329,7 @@
      coins / best score / mute from the pre-rename key (playpad.neonRush.v1) so nobody loses progress. */
         var SaveManager = (function () {
           var KEY = "playpad.sunsetStride.v1";
+          var importedLegacy = false;
           var LEGACY_KEY = "playpad.neonRush.v1";
           function defaults() {
             return {
@@ -1375,6 +1362,7 @@
                   out.coins = sanitizeCount(ld.coins);
                   out.highScore = sanitizeCount(ld.highScore);
                   out.muted = !!ld.muted;
+                  importedLegacy = true;
                 }
                 return out;
               }
@@ -1405,6 +1393,7 @@
               /* private mode: in-memory only */
             }
           }
+          if (importedLegacy) persist(); // the hub's "Best" tile reads this key: write the imported progress now
           return { data: data, persist: persist };
         })();
         var save = SaveManager.data;
@@ -1737,9 +1726,9 @@
             chip.querySelector(".pu-bar").style.transform =
               "scaleX(" + remaining / PU_DURATION + ")"; // transform, not width → no per-frame layout
           },
-          // Dog meter: fills as the pack closes in (gap GAP_CALM → GAP_CAUGHT). Text-free; the aria hint is the toast.
+          // Dog meter: fills as the pack closes in (gap GAP_CALM → GAP_METER_MIN). Text-free; the aria hint is the toast.
           dogMeter: function (gapNow) {
-            var t = clamp((GAP_CALM + 0.2 - gapNow) / (GAP_CALM + 0.2 - GAP_CAUGHT), 0, 1);
+            var t = clamp((GAP_CALM + 0.2 - gapNow) / (GAP_CALM + 0.2 - GAP_METER_MIN), 0, 1);
             $("dogFill").style.transform = "scaleX(" + Math.max(0.06, t).toFixed(3) + ")";
             var m = $("dogMeter");
             m.classList.toggle("danger", gapNow < GAP_DANGER);
@@ -1824,7 +1813,7 @@
         }
         function buySkin(id) {
           var skin = skinById(id);
-          if (!skin || save.unlocked.indexOf(id) >= 0) return;
+          if (save.unlocked.indexOf(id) >= 0) return;
           if (save.coins < skin.price) {
             AudioManager.denied();
             announce("Not enough coins for " + skin.name);
@@ -3168,7 +3157,9 @@
             },
             play: function (state) {
               view.state = state;
+              if (state === "caught") view.caughtT = 0.01;
             },
+            caughtT: 0,
             stumble: function () {
               view.stumbleT = 0.8;
             },
@@ -3190,6 +3181,13 @@
               hips.position.y =
                 0.95 - view.slideW * 0.55 + Math.abs(Math.sin(ph)) * 0.05 * (1 - view.slideW);
               hips.rotation.x = view.slideW * 1.2 + (view.stumbleT > 0 ? 0.5 : 0.12);
+              if (st === "caught") {
+                // topple forward and lie down: no run cycle on a runner who has been caught
+                view.caughtT = Math.min(1, view.caughtT + dt * 1.6);
+                hips.rotation.x = lerp(hips.rotation.x, 1.45, view.caughtT);
+                hips.position.y = lerp(hips.position.y, 0.3, view.caughtT);
+                legL.rotation.x = legR.rotation.x = 0;
+              }
               lean.rotation.x = 0;
             },
             weights: function () {
@@ -3207,6 +3205,7 @@
               view.state = "run";
               view.slideW = 0;
               view.stumbleT = 0;
+              view.caughtT = 0;
             },
           };
           view.setSkin(null, save.equipped);
@@ -3349,9 +3348,6 @@
             });
           }
           var api = {
-            runner: function () {
-              return runnerView;
-            },
             dogs: function () {
               return dogs;
             },
@@ -3509,18 +3505,15 @@
           lane: 1,
           prevLane: 1,
           laneChangeT: 0, // >0 for a moment after a lane change: the window in which a blocker hit is a side-scrape
-          lastChangeAt: -9,
           x: 0,
           y: 0,
           vy: 0,
           onGround: true,
-          coyote: 0,
           sliding: false,
           slideT: 0,
           fastFall: false,
           invulnT: 0,
           airTime: 0.78,
-          landed: false,
           buf: null,
           bufT: 0,
         };
@@ -3596,17 +3589,14 @@
           reset: function () {
             player.lane = player.prevLane = 1;
             player.laneChangeT = 0;
-            player.lastChangeAt = -9;
             player.x = 0;
             player.y = 0;
             player.vy = 0;
             player.onGround = true;
-            player.coyote = 0;
             player.sliding = false;
             player.slideT = 0;
             player.fastFall = false;
             player.invulnT = 0;
-            player.landed = false;
             player.buf = null;
             player.bufT = 0;
             if (runnerView) {
@@ -3635,12 +3625,12 @@
             var v = powerups.sneakers > 0 ? SPRING_JUMP_V : JUMP_V;
             player.vy = v;
             player.onGround = false;
-            player.coyote = 0;
             player.airTime = (2 * v) / GRAVITY;
             if (runnerView) runnerView.play("jump", { restart: true, airTime: player.airTime });
             AudioManager.jump();
           },
-          // Inputs that arrive a hair early (mid-air, mid-slide) are remembered for INPUT_BUFFER seconds.
+          // A jump pressed a hair before landing is remembered for INPUT_BUFFER seconds (an in-air slide is a fast-fall,
+          // which already skids on landing).
           input: function (a) {
             if (phase !== "running" && phase !== "countdown") return;
             if (a === "left" || a === "right") {
@@ -3649,13 +3639,12 @@
                 player.prevLane = player.lane;
                 player.lane = nl;
                 player.laneChangeT = 0.3;
-                player.lastChangeAt = elapsed;
-                markDodges(player.prevLane);
+                markDodges(player.prevLane, player.lane);
               }
               return;
             }
             if (a === "jump") {
-              if (player.onGround || player.coyote > 0) PlayerController.jump();
+              if (player.onGround) PlayerController.jump();
               else {
                 player.buf = "jump";
                 player.bufT = INPUT_BUFFER;
@@ -3671,7 +3660,6 @@
             }
           },
           tick: function (dt) {
-            var wasGround = player.onGround;
             player.invulnT = Math.max(0, player.invulnT - dt);
             player.laneChangeT = Math.max(0, player.laneChangeT - dt);
             player.bufT = Math.max(0, player.bufT - dt);
@@ -3686,7 +3674,6 @@
                 player.y = 0;
                 player.vy = 0;
                 player.onGround = true;
-                player.landed = true;
                 if (runnerView) runnerView.play(player.fastFall ? "slide" : "run");
                 if (player.fastFall) {
                   player.fastFall = false;
@@ -3699,8 +3686,6 @@
                   PlayerController.jump();
                 }
               }
-            } else {
-              player.coyote = wasGround ? 0.08 : Math.max(0, player.coyote - dt);
             }
             player.x += (LANE_X[player.lane] - player.x) * Math.min(1, dt * 14);
             PlayerController.place();
@@ -3929,7 +3914,9 @@
         }
 
         /* ---------- coins (instanced) ---------- */
-        var COIN_MAX = 120;
+        var COIN_MAX = 120,
+          COIN_FX_MAX = 16, // simultaneous collect bursts
+          COIN_FX_LIFE = 0.28; // seconds a burst lives
         var coinMesh = null,
           coinFx = null,
           activeCoins = [],
@@ -3945,7 +3932,7 @@
             emissiveIntensity: 0.45,
           });
           coinMesh = makeInst(cg, coinMat, COIN_MAX);
-          coinFx = makeInst(cg, coinMat, 16);
+          coinFx = makeInst(cg, coinMat, COIN_FX_MAX);
           scene.add(coinMesh);
           scene.add(coinFx);
         }
@@ -3966,7 +3953,7 @@
         }
         function coinCollectFx(x, y, z) {
           coinFxList.push({ x: x, y: y, z: z, t: 0 });
-          if (coinFxList.length > 16) coinFxList.shift();
+          if (coinFxList.length > COIN_FX_MAX) coinFxList.shift();
         }
         function writeCoins(dt, move) {
           if (!coinMesh) return;
@@ -4003,26 +3990,16 @@
               );
             } else hideInst(coinMesh, i);
           }
-          for (i = 0; i < 16; i++) {
+          for (i = 0; i < COIN_FX_MAX; i++) {
             if (i < coinFxList.length) {
               var f = coinFxList[i];
               f.t += dt;
-              var s = Math.max(0, 1 - f.t / 0.28);
-              setInst(
-                coinFx,
-                i,
-                f.x,
-                f.y + f.t * 3,
-                f.z + move * 0,
-                s * 1.2,
-                s * 1.2,
-                s * 1.2,
-                f.t * 14,
-              );
+              var s = Math.max(0, 1 - f.t / COIN_FX_LIFE);
+              setInst(coinFx, i, f.x, f.y + f.t * 3, f.z, s * 1.2, s * 1.2, s * 1.2, f.t * 14);
             } else hideInst(coinFx, i);
           }
           for (i = coinFxList.length - 1; i >= 0; i--)
-            if (coinFxList[i].t > 0.28) coinFxList.splice(i, 1);
+            if (coinFxList[i].t > COIN_FX_LIFE) coinFxList.splice(i, 1);
           coinMesh.instanceMatrix.needsUpdate = true;
           coinFx.instanceMatrix.needsUpdate = true;
         }
@@ -4128,7 +4105,6 @@
           speedMul: 1,
           hits: 0,
           barkT: 0,
-          caught: false,
           lunge: 0,
         };
         var packGroup = null;
@@ -4163,7 +4139,6 @@
             chase.speedMul = 1;
             chase.hits = 0;
             chase.barkT = 0;
-            chase.caught = false;
             chase.lunge = 0;
             for (var i = 0; i < 3; i++) {
               dogPos[i].x = PACK_X[i];
@@ -4183,7 +4158,7 @@
           tick: function (dt) {
             if (phase === "running") {
               chase.gap = Math.min(GAP_CALM, chase.gap + GAP_RECOVER * dt);
-              chase.speedMul = Math.min(1, chase.speedMul + dt / 2.2);
+              chase.speedMul = Math.min(1, chase.speedMul + (dt * (1 - 0.55)) / 2.2); // 0.55 -> 1 over 2.2 s
               chase.barkT -= dt;
               if (chase.gap < GAP_DANGER && chase.barkT <= 0) {
                 chase.barkT = 1.1;
@@ -4221,12 +4196,20 @@
 
         /* ══════════════════════ CollisionEngine ══════════════════════ */
         // Flag the obstacle(s) in the lane just left that were about to hit: passing them is a close call.
-        function markDodges(fromLane) {
+        function laneBlockedSoon(lane) {
+          for (var i = 0; i < activeObstacles.length; i++) {
+            var o = activeObstacles[i],
+              nf = o.z + o.spec.len / 2;
+            if (o.lane === lane && nf > -6.5 && nf < 3) return true;
+          }
+          return false;
+        }
+        function markDodges(fromLane, toLane) {
           for (var i = 0; i < activeObstacles.length; i++) {
             var o = activeObstacles[i];
             if (o.lane !== fromLane || o.passed) continue;
             var nearFace = o.z + o.spec.len / 2; // the face closest to the runner (z grows toward the camera)
-            if (nearFace > -6.5 && nearFace < 0.35) o.nearMiss = true;
+            if (nearFace > -6.5 && nearFace < 0.35 && !laneBlockedSoon(toLane)) o.nearMiss = true;
           }
         }
         // Nearest lane (to the runner) with nothing about to overlap it, or -1.
@@ -4252,10 +4235,10 @@
             for (i = 0; i < activeObstacles.length; i++) {
               o = activeObstacles[i];
               spec = o.spec;
-              var zNear = o.z - spec.len / 2,
-                zFar = o.z + spec.len / 2;
+              var farFace = o.z - spec.len / 2, // z grows toward the camera: the far face is the one away from the runner
+                nearFace = o.z + spec.len / 2;
               var xOverlap = Math.abs(LANE_X[o.lane] - player.x) < spec.halfW + PLAYER_HALF_W;
-              var zOverlap = zFar > -0.35 && zNear < 0.35;
+              var zOverlap = nearFace > -0.35 && farFace < 0.35;
               if (
                 zOverlap &&
                 xOverlap &&
@@ -4266,7 +4249,7 @@
                 onHit(o);
                 if (phase !== "running") return;
               }
-              if (!o.passed && zNear > 0.35) {
+              if (!o.passed && nearFace > 0.35) {
                 o.passed = true;
                 if (o.nearMiss && player.lane !== o.lane) closeCall();
               }
@@ -4430,20 +4413,22 @@
             return 24;
           },
           slalom: function () {
-            var seq = rand() < 0.5 ? [0, 1, 2, 1] : [2, 1, 0, 1];
+            var seq = rand() < 0.5 ? [0, 1, 2, 1] : [2, 1, 0, 1],
+              sp = Math.max(15, speed * 0.85 + 4); // row spacing grows with speed so a lane change stays humanly possible
             seq.forEach(function (free, k) {
-              for (var l = 0; l < 3; l++) if (l !== free) S("van", l, k * 15);
-              coinLine(free, SPAWN_Z - k * 15 + 4, 5, 1.0);
+              for (var l = 0; l < 3; l++) if (l !== free) S("van", l, k * sp);
+              coinLine(free, SPAWN_Z - k * sp + 4, 5, 1.0);
             });
-            return 15 * seq.length;
+            return sp * seq.length;
           },
           combo: function () {
             var l = ri(3);
             S("hurdle", l, 0);
             coinArc(l, SPAWN_Z, 5, 1.1);
-            S("bar", l, 10);
-            coinLine(l, SPAWN_Z - 10 + 2, 4, 1.0, 0.45);
-            return 12;
+            var sp = Math.max(10, speed * 0.85); // hurdle, then the bar one landing + a slide later
+            S("bar", l, sp);
+            coinLine(l, SPAWN_Z - sp + 2, 4, 1.0, 0.45);
+            return sp + 2;
           },
         };
         function planSegment() {
@@ -4583,7 +4568,8 @@
           if (phase !== "countdown" || paused) return;
           $("countdown").classList.remove("active");
           phase = "running";
-          if (runnerView) runnerView.play("run", { restart: true });
+          if (runnerView && player.onGround && !player.sliding)
+            runnerView.play("run", { restart: true });
           announce("Run started. Arrow keys to move, jump and slide.");
         }
         // Tap/key during the 3-2-1 jumps straight into the run (the input itself is consumed).
@@ -4632,7 +4618,13 @@
           announce("Resuming. Get ready.");
           runCountdown(["3", "2", "1", "GO!"], 300);
         }
+        // Retiring keeps what you earned: coins and a new best are banked (a caught run banks in onCaught).
         function quitRun() {
+          if ((phase === "running" || phase === "countdown") && distance > 0) {
+            save.coins += runCoins;
+            if (Math.floor(score) > save.highScore) save.highScore = Math.floor(score);
+            SaveManager.persist();
+          }
           stopRun();
           UIManager.show("setup");
         }
@@ -4647,14 +4639,7 @@
           if (phase !== "running" || paused) return; // guards double-fire + the test hook
           phase = "crashed";
           crashT = 1.5;
-          chase.caught = true;
-          if (!prefersReduced) {
-            shakeT = 0.3;
-            $("flash").classList.add("on");
-            later(function () {
-              $("flash").classList.remove("on");
-            }, 80);
-          }
+          hurtFx(true);
           AudioManager.crash();
           AudioManager.bark();
           if (runnerView) {
@@ -4748,7 +4733,14 @@
             if (runnerView) runnerView.update(dt, { speed01: 0 });
             Chase.tick(dt);
           } else if (phase === "countdown") {
+            // the 3-2-1 after a pause must not spend the stumble i-frames, the lane-change window or the buffer
+            var inv = player.invulnT,
+              lc = player.laneChangeT,
+              bt = player.bufT;
             PlayerController.tick(dt);
+            player.invulnT = inv;
+            player.laneChangeT = lc;
+            player.bufT = bt;
             Chase.tick(dt);
           }
         }
@@ -4924,8 +4916,14 @@
           if (ev.repeat && phase === "countdown") return;
           // RECURRENCE(PLAY-005, count=2): a global keydown handler must not steal keys from a focused
           // control. Bail on buttons so Space/Enter activate #quitBtn/#muteBtn.
-          if (ev.target && ev.target.closest && ev.target.closest("button")) return;
           var k = ev.key;
+          if (
+            ev.target &&
+            ev.target.closest &&
+            ev.target.closest("button") &&
+            (k === " " || k === "Enter")
+          )
+            return;
           var action = null;
           if (k === "ArrowLeft" || k === "a" || k === "A") action = "left";
           else if (k === "ArrowRight" || k === "d" || k === "D") action = "right";
@@ -5022,9 +5020,10 @@
           $("muteBtn").setAttribute("aria-label", save.muted ? "Unmute sound" : "Mute sound");
           $("soundToggle").setAttribute("aria-pressed", String(!save.muted));
         }
-        $("muteBtn").addEventListener("click", function () {
+        $("muteBtn").addEventListener("click", function (ev) {
           AudioManager.setMuted(!save.muted);
           syncMuteUi();
+          if (ev.detail > 0) ev.currentTarget.blur(); // a mouse / touch click must not leave Space toggling mute mid-run
         });
         $("soundToggle").addEventListener("click", function () {
           AudioManager.unlock();
@@ -5166,6 +5165,11 @@
             return {
               tex: TexLib.status(),
               glbRunner: CharacterKit.glbReady(),
+              glbDogs:
+                !!CharacterKit.pendingDogs ||
+                CharacterKit.dogs().every(function (d) {
+                  return d.kind === "glb";
+                }),
               skinTextures: CharacterKit.skinTexLoaded(),
               facades: rows.l.length + rows.r.length,
             };
@@ -5273,7 +5277,7 @@
             speed = Math.min(SPEED_MAX, SPEED_BASE + distance * SPEED_RAMP);
           },
           setGap: function (g) {
-            chase.gap = clamp(g, GAP_CAUGHT, GAP_CALM + 2);
+            chase.gap = clamp(g, GAP_METER_MIN, GAP_CALM + 2);
           },
           grantCoins: function (n) {
             save.coins += n;

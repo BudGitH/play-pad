@@ -1936,18 +1936,20 @@
           var px = 0,
             lit = ["#ff2d95", "#22e5ff", "#ffb35a", "#7b3ff2"];
           while (px < W) {
-            var bw = 22 + ((Math.random() * 46) | 0),
-              bh = 40 + ((Math.random() * 120) | 0);
-            if (Math.random() < 0.12) bh += 70; // the odd tall tower
+            var bw = 14 + ((Math.random() * 30) | 0),
+              bh = 26 + ((Math.random() * 78) | 0);
+            if (Math.random() < 0.1) bh += 60; // the odd tall tower
             x.fillStyle = "#120a2e";
             [0, -W].forEach(function (off) {
               x.fillRect(px + off, H - bh, bw, bh);
               if (bh > 150) x.fillRect(px + off + bw / 2 - 1, H - bh - 18, 2, 18); // antenna
             });
-            for (var k = 0; k < bw * bh * 0.03; k++) {
+            for (var k = 0; k < bw * bh * 0.012; k++) {
               x.fillStyle = lit[(Math.random() * 4) | 0];
+              x.globalAlpha = 0.45;
               x.fillRect(px + 2 + ((Math.random() * (bw - 4)) | 0), H - bh + 4 + ((Math.random() * (bh - 6)) | 0), 2, 2);
             }
+            x.globalAlpha = 1;
             px += bw + ((Math.random() * 6) | 0);
           }
           return colorTex(c, false);
@@ -2062,10 +2064,10 @@
           dirLight.shadow.bias = -0.0004;
           scene.add(dirLight);
           scene.add(dirLight.target);
-          var rimA = new THREE.DirectionalLight(0xff2d95, 0.45);
+          var rimA = new THREE.DirectionalLight(0xff2d95, 0.38);
           rimA.position.set(-6, 2.5, -12);
           scene.add(rimA);
-          var rimB = new THREE.DirectionalLight(0x22e5ff, 0.36);
+          var rimB = new THREE.DirectionalLight(0x22e5ff, 0.3);
           rimB.position.set(6, 2.5, -12);
           scene.add(rimB);
 
@@ -2908,36 +2910,7 @@
           var jacket = stdMat(0x531a63, NEON.magenta, 0.45, true);
           var pants = stdMat(0x1c1030, 0, 0, true);
           var skin = stdMat(0xe0b08c, 0, 0, false);
-          // Hoverboard: rounded deck + two glowing mag-rings + an underglow plane.
-          var board = new THREE.Group();
-          var deck = new THREE.Mesh(
-            new THREE.CapsuleGeometry(0.16, 0.7, 3, 10),
-            stdMat(0x20112e, NEON.purple, 0.5, true),
-          );
-          deck.rotation.z = Math.PI / 2;
-          deck.scale.set(1, 1, 0.5);
-          deck.position.y = 0.2;
-          [-0.32, 0.32].forEach(function (zx) {
-            var mag = new THREE.Mesh(
-              new THREE.TorusGeometry(0.11, 0.035, 8, 16),
-              stdMat(NEON.cyan, NEON.cyan, 1.5),
-            );
-            mag.rotation.y = Math.PI / 2;
-            mag.position.set(zx, 0.09, 0);
-            board.add(mag);
-          });
-          var glow = new THREE.Mesh(
-            new THREE.PlaneGeometry(1.0, 0.4),
-            new THREE.MeshBasicMaterial({
-              color: NEON.purple,
-              transparent: true,
-              opacity: 0.5,
-              depthWrite: false,
-            }),
-          );
-          glow.rotation.x = -Math.PI / 2;
-          glow.position.y = 0.02;
-          board.add(deck, glow);
+          var board = buildHoverboardPrim();
           var torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.23, 0.4, 4, 10), jacket);
           torso.position.y = 1.02;
           torso.rotation.x = 0.12; // slight forward stance
@@ -2967,7 +2940,25 @@
           g.userData.parts = { armL: armL, armR: armR, board: board, sway: true, armBaseZ: 0.5 };
           return g;
         }
-        var SKIN_BUILDERS = { urban: buildUrban, neonbot: buildNeonBot, skater: buildSkater };
+        // neon fresnel rim on the fallback skins too (same recipe as the GLB skins)
+        function rimify(g, hex, str) {
+          g.traverse(function (o) {
+            if (o.isMesh && o.material && o.material.isMeshStandardMaterial)
+              applyRim(o.material, hex, str);
+          });
+          return g;
+        }
+        var SKIN_BUILDERS = {
+          urban: function () {
+            return rimify(buildUrban(), NEON.cyan, 0.9);
+          },
+          neonbot: function () {
+            return rimify(buildNeonBot(), NEON.magenta, 0.8);
+          },
+          skater: function () {
+            return rimify(buildSkater(), NEON.magenta, 0.7);
+          },
+        };
 
         /* ══════════════════════ PlayerController ══════════════════════ */
         var playerGroup = null,
@@ -2983,8 +2974,33 @@
           sliding: false,
           slideT: 0,
           invulnT: 0,
+          airTime: 1.15, // predicted airtime of the current jump (drives the Bot's Jump clip fit)
+          landed: false,
         };
+        var blob = null; // always-on blob shadow decal (grounds the runner even where real shadows are off)
         if (renderer) {
+          var blobC = mkCanvas(64, 64),
+            blobX = blobC.getContext("2d");
+          var blobG = blobX.createRadialGradient(32, 32, 0, 32, 32, 32);
+          blobG.addColorStop(0, "rgba(0,0,0,0.9)");
+          blobG.addColorStop(0.55, "rgba(0,0,0,0.45)");
+          blobG.addColorStop(1, "rgba(0,0,0,0)");
+          blobX.fillStyle = blobG;
+          blobX.fillRect(0, 0, 64, 64);
+          var blobGeo = new THREE.PlaneGeometry(1, 1);
+          blobGeo.rotateX(-Math.PI / 2);
+          blob = new THREE.Mesh(
+            blobGeo,
+            new THREE.MeshBasicMaterial({
+              map: new THREE.CanvasTexture(blobC),
+              transparent: true,
+              opacity: 0.55,
+              depthWrite: false,
+              fog: false,
+            }),
+          );
+          blob.renderOrder = 3;
+          scene.add(blob);
           playerGroup = new THREE.Group();
           playerGroup.position.set(0, 0, 0);
           scene.add(playerGroup);
@@ -3037,29 +3053,123 @@
         /* ══════════════════════ GLTF character models ══════════════════════
      Real CC0 animated characters (assets/CREDITS.md) loaded async with THREE.GLTFLoader.
      The primitive builders above stay as the INSTANT + FAILURE fallback: applySkin() uses
-     a model once its download resolves, else the primitive — start is never blocked. */
+     a model once its download resolves, else the primitive — start is never blocked.
+
+     Per-skin ANIMATION TABLE (PLAY-006): every state -> {clip, timeScale, once}. LoopOnce clips clamp
+     on their last frame. `as:` aliases a state onto another state's action (Star Rider rides the
+     board on its idle pose; the Bot slides on its run). The procedural POSE layer (a `pose` group
+     between wrap and rig, pivoting at the feet) adds the crouch / landing squash / board spin so
+     the visuals always match the gameplay hitbox (SLIDE_H 0.72 m). */
+        function hueRemapTexture(tex) {
+          // Rogue atlas: greens (hue 75-170) -> deep magenta-violet so the back view isn't a green blob.
+          try {
+            var img = tex.image,
+              w = img.width,
+              h = img.height;
+            var c = mkCanvas(w, h),
+              x = c.getContext("2d");
+            x.drawImage(img, 0, 0);
+            var d = x.getImageData(0, 0, w, h),
+              px = d.data;
+            for (var i = 0; i < px.length; i += 4) {
+              var r = px[i] / 255,
+                g = px[i + 1] / 255,
+                b = px[i + 2] / 255;
+              var mx = Math.max(r, g, b),
+                mn = Math.min(r, g, b),
+                l = (mx + mn) / 2,
+                dl = mx - mn;
+              if (dl < 0.08) continue;
+              var s = l > 0.5 ? dl / (2 - mx - mn) : dl / (mx + mn);
+              var hh;
+              if (mx === r) hh = ((g - b) / dl + (g < b ? 6 : 0)) * 60;
+              else if (mx === g) hh = ((b - r) / dl + 2) * 60;
+              else hh = ((r - g) / dl + 4) * 60;
+              if (hh < 75 || hh > 170 || s < 0.15) continue;
+              hh = 318 / 360;
+              s *= 0.9;
+              l *= 0.8;
+              var q = l < 0.5 ? l * (1 + s) : l + s - l * s,
+                p = 2 * l - q;
+              var hue2rgb = function (t) {
+                if (t < 0) t += 1;
+                if (t > 1) t -= 1;
+                if (t < 1 / 6) return p + (q - p) * 6 * t;
+                if (t < 1 / 2) return q;
+                if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+                return p;
+              };
+              px[i] = hue2rgb(hh + 1 / 3) * 255;
+              px[i + 1] = hue2rgb(hh) * 255;
+              px[i + 2] = hue2rgb(hh - 1 / 3) * 255;
+            }
+            x.putImageData(d, 0, 0);
+            var t = new THREE.CanvasTexture(c);
+            t.flipY = false; // GLB textures are flipY=false
+            t.encoding = THREE.sRGBEncoding;
+            t.wrapS = tex.wrapS;
+            t.wrapT = tex.wrapT;
+            t.anisotropy = maxAniso;
+            return t;
+          } catch (e) {
+            return tex; // canvas read failed: keep the original atlas
+          }
+        }
+        var _remapCache = null;
         var MODEL_CFG = {
           urban: {
             file: "Rogue_Hooded",
             height: 1.85,
             yaw: Math.PI,
             lift: 0,
-            clips: { idle: "Idle", run: "Running_A", jump: "Jump_Idle", slide: "Dodge_Forward" },
+            headTop: 0.85,
+            rim: [NEON.cyan, 0.9],
+            crouch: { sx: 1.1, sy: 0.6, sz: 1.1, pitch: -0.4 },
+            fx: function (m) {
+              if (m.map) {
+                _remapCache = _remapCache || hueRemapTexture(m.map);
+                m.map = _remapCache;
+              }
+              m.roughness = 0.7;
+              m.metalness = 0;
+            },
+            clips: {
+              idle: { n: "Idle" },
+              run: { n: "Running_A", tie: true },
+              jumpStart: { n: "Jump_Start", ts: 1.5, once: true },
+              air: { n: "Jump_Idle" },
+              land: { n: "Jump_Land", ts: 1.6, once: true },
+              slide: { n: "Dodge_Forward", ts: 0.65, once: true },
+              crash: { n: "Death_A", ts: 1.1, once: true },
+            },
           },
-          // Quaternius Astronaut (CC0): sci-fi armored suit on the mag-board. No jump clip —
-          // the state machine falls back to "run" mid-air; Roll doubles as a tucked slide.
+          // Quaternius Astronaut (CC0): armoured suit riding the mag-board. No running on the board:
+          // the idle pose IS the ride (root pitch + board bob), a board 360 spin on every jump.
           skater: {
             file: "Astronaut",
             height: 1.9,
             yaw: Math.PI,
-            board: true,
             lift: 0.28,
-            glowMats: /SciFi_Light/i,
+            board: true,
+            ridePitch: -0.1,
+            spin: true,
+            headTop: 0.31,
+            rim: [NEON.magenta, 0.7],
+            crouch: { sx: 1.08, sy: 0.66, sz: 1.08, pitch: -0.35 },
+            fx: function (m, nm) {
+              if (/SciFi_Light_Accent/i.test(nm)) {
+                m.emissive.set(NEON.cyan);
+                m.emissiveIntensity = 1.4;
+              }
+            },
             clips: {
-              idle: "CharacterArmature|Idle_Neutral",
-              run: "CharacterArmature|Run",
-              jump: null,
-              slide: "CharacterArmature|Roll",
+              idle: { n: "CharacterArmature|Idle_Neutral" },
+              run: { as: "idle" },
+              jumpStart: { as: "idle" },
+              air: { as: "idle" },
+              land: { as: "idle" },
+              slide: { as: "idle" },
+              crash: { n: "CharacterArmature|Death", once: true },
             },
           },
           neonbot: {
@@ -3067,44 +3177,90 @@
             height: 1.95,
             yaw: Math.PI,
             lift: 0,
-            emissiveBoost: true,
-            clips: { idle: "Idle", run: "Running", jump: "Jump", slide: null },
+            headTop: 0.6,
+            rim: [NEON.magenta, 0.8],
+            crouch: { sx: 1.12, sy: 0.62, sz: 1.12, pitch: -0.55 },
+            fx: function (m, nm) {
+              if (nm === "Main") {
+                m.color.set(0xd9e2f2);
+                m.metalness = 0.6;
+                m.roughness = 0.3;
+              } else if (nm === "Grey") {
+                m.color.set(0x2a2f48);
+              } else if (nm === "Black") {
+                m.emissive.set(NEON.cyan);
+                m.emissiveIntensity = 0.9;
+              }
+            },
+            clips: {
+              idle: { n: "Idle" },
+              run: { n: "Running", tie: true },
+              jumpStart: { n: "Jump", once: true, fit: true },
+              air: { as: "jumpStart" },
+              land: { as: "run" },
+              slide: { as: "run" },
+              crash: { n: "Death", once: true },
+            },
           },
         };
         var gltfRaw = {},
           gltfCache = {};
         var gltfLoader = typeof THREE.GLTFLoader !== "undefined" ? new THREE.GLTFLoader() : null;
+        var CLIP_STATES = ["idle", "run", "jumpStart", "air", "land", "slide", "crash"];
+        var LAND_T = 0.3; // how long the landing pose holds before blending back to run
+        var WEAPON_RX = /crossbow|sword|shield|knife|throwable|dagger|_axe|staff|quiver|badge/i;
+        function easeOut2(t) {
+          return 1 - (1 - t) * (1 - t);
+        }
+        function easeOut3(t) {
+          var u = 1 - t;
+          return 1 - u * u * u;
+        }
 
+        // Hoverboard (Star Rider + primitive fallback): flat deck along the travel axis, magenta edge
+        // strips, cyan mag-rings underneath and a soft additive underglow on the road.
         function buildHoverboardPrim() {
           var board = new THREE.Group();
           var deck = new THREE.Mesh(
-            new THREE.CapsuleGeometry(0.16, 0.7, 3, 10),
-            stdMat(0x20112e, NEON.purple, 0.5, true),
+            new THREE.CapsuleGeometry(0.22, 0.95, 4, 12),
+            stdMat(0x1c1236, NEON.purple, 0.35),
           );
-          deck.rotation.z = Math.PI / 2;
-          deck.scale.set(1, 1, 0.55);
-          deck.position.y = 0.14;
-          [-0.34, 0.34].forEach(function (zx) {
-            var mag = new THREE.Mesh(
-              new THREE.TorusGeometry(0.11, 0.035, 8, 16),
-              stdMat(NEON.cyan, NEON.cyan, 1.5),
+          deck.rotation.x = Math.PI / 2;
+          deck.scale.set(1, 1, 0.3);
+          deck.position.y = 0.21;
+          board.add(deck);
+          [-0.2, 0.2].forEach(function (xx) {
+            var edge = new THREE.Mesh(
+              new THREE.BoxGeometry(0.035, 0.035, 1.05),
+              new THREE.MeshBasicMaterial({ color: NEON.magenta }),
             );
-            mag.rotation.y = Math.PI / 2;
-            mag.position.set(zx, 0.07, 0);
+            edge.position.set(xx, 0.2, 0);
+            board.add(edge);
+          });
+          [-0.4, 0.4].forEach(function (zz) {
+            var mag = new THREE.Mesh(
+              new THREE.TorusGeometry(0.12, 0.03, 8, 18),
+              new THREE.MeshBasicMaterial({ color: NEON.cyan }),
+            );
+            mag.rotation.x = Math.PI / 2;
+            mag.position.set(0, 0.12, zz);
             board.add(mag);
           });
           var glow = new THREE.Mesh(
-            new THREE.PlaneGeometry(1.1, 0.44),
+            new THREE.PlaneGeometry(1.5, 2.1),
             new THREE.MeshBasicMaterial({
+              map: makeSpriteTexture(),
               color: NEON.purple,
               transparent: true,
-              opacity: 0.5,
+              opacity: 0.85,
+              blending: THREE.AdditiveBlending,
               depthWrite: false,
             }),
           );
           glow.rotation.x = -Math.PI / 2;
-          glow.position.y = 0.015;
-          board.add(deck, glow);
+          glow.position.y = 0.02;
+          board.add(glow);
+          board.userData.glow = glow;
           return board;
         }
 
@@ -3114,101 +3270,215 @@
           if (!raw) return null;
           var cfg = MODEL_CFG[id];
           var wrap = new THREE.Group();
+          var pose = new THREE.Group(); // crouch / squash pivot at the feet (+ board lift)
           var root = raw.scene;
-          // normalize: scale to target height, face away from camera, sit on the ground (+ optional lift onto a board)
+          // normalize: scale to target height, face away from camera, sit on the ground
           var box = new THREE.Box3().setFromObject(root),
             size = new THREE.Vector3();
           box.getSize(size);
           root.scale.setScalar(cfg.height / (size.y || 1));
           root.rotation.y = cfg.yaw || 0;
           box.setFromObject(root);
-          root.position.y = -box.min.y + (cfg.lift || 0);
+          root.position.y = -box.min.y;
+          pose.position.y = cfg.lift || 0;
+          var mats = {},
+            bones = [],
+            head = null;
           root.traverse(function (o) {
+            if (o.isBone) {
+              bones.push(o);
+              if (!head && /^head(_\d+)?$/i.test(o.name || "")) head = o;
+            }
             // Hide the held weapons/shields the KayKit rigs ship with — this is a runner, not a brawler.
-            if (
-              /crossbow|sword|shield|knife|throwable|dagger|_axe|staff|quiver|badge/i.test(
-                o.name || "",
-              )
-            ) {
+            if (WEAPON_RX.test(o.name || "")) {
               o.visible = false;
               return;
             }
             if (o.isMesh) {
               o.castShadow = true;
               o.frustumCulled = false;
-              if (cfg.emissiveBoost && o.material && o.material.emissive) {
-                o.material.emissive = new THREE.Color(NEON.cyan);
-                o.material.emissiveIntensity = 0.3;
+              var src = o.material;
+              if (!mats[src.uuid]) {
+                // per-skin clone: tint/emissive/rim never leak into the city or the cruiser
+                var m = src.clone();
+                m.envMapIntensity = 0.35;
+                if (cfg.fx) cfg.fx(m, src.name || "");
+                applyRim(m, cfg.rim[0], cfg.rim[1]);
+                mats[src.uuid] = m;
               }
-              // targeted neon glow: only the materials the config names (visor/accent strips)
-              if (
-                cfg.glowMats &&
-                o.material &&
-                o.material.emissive &&
-                cfg.glowMats.test(o.material.name || "")
-              ) {
-                o.material.emissive = new THREE.Color(NEON.cyan);
-                o.material.emissiveIntensity = 0.9;
-              }
+              o.material = mats[src.uuid];
             }
           });
-          wrap.add(root);
-          if (cfg.board) wrap.add(buildHoverboardPrim());
-          var mixer = new THREE.AnimationMixer(root),
-            actions = {};
-          ["idle", "run", "jump", "slide"].forEach(function (st) {
-            var nm = cfg.clips[st];
-            if (!nm) return;
-            var clip = THREE.AnimationClip.findByName(raw.animations, nm);
-            if (clip) actions[st] = mixer.clipAction(clip);
-          });
-          if (actions.slide) {
-            actions.slide.setLoop(THREE.LoopOnce, 1);
-            actions.slide.clampWhenFinished = true;
+          pose.add(root);
+          wrap.add(pose);
+          var board = null;
+          if (cfg.board) {
+            board = buildHoverboardPrim();
+            wrap.add(board);
           }
+          var mixer = new THREE.AnimationMixer(root),
+            info = {};
+          CLIP_STATES.forEach(function (st) {
+            var spec = cfg.clips[st] || { as: "run" };
+            if (spec.as) {
+              info[st] = info[spec.as];
+              return;
+            }
+            var clip = THREE.AnimationClip.findByName(raw.animations, spec.n);
+            if (!clip) {
+              info[st] = info.run || info.idle;
+              return;
+            }
+            var act = mixer.clipAction(clip);
+            if (spec.once) {
+              act.setLoop(THREE.LoopOnce, 1);
+              act.clampWhenFinished = true;
+            } else {
+              act.setLoop(THREE.LoopRepeat, Infinity);
+            }
+            info[st] = {
+              action: act,
+              ts: spec.ts || 1,
+              once: !!spec.once,
+              fit: !!spec.fit,
+              tie: !!spec.tie,
+              dur: clip.duration,
+              name: clip.name,
+            };
+          });
+          var uniq = [];
+          CLIP_STATES.forEach(function (st) {
+            if (info[st] && uniq.indexOf(info[st]) < 0) uniq.push(info[st]);
+          });
           var ctrl = {
             mixer: mixer,
-            actions: actions,
+            info: info,
+            uniq: uniq,
+            bones: bones,
+            head: head,
+            pose: pose,
+            board: board,
+            cfg: cfg,
             current: null,
             currentAction: null,
-            set: function (st) {
+            airT: 0,
+            landT: 0,
+            wasAir: false,
+            cr: 0,
+            sq: 0,
+            spinYaw: 0,
+            clock: 0,
+            // Crossfade. Re-arm the incoming action (three.js sets enabled=false when a fadeOut
+            // completes; without this a faded-out action never returns -> bind pose / T-pose).
+            set: function (st, airTime) {
               if (st === this.current) return;
-              // missing clips resolve to run/idle; tracking the RESOLVED action (not the state
-              // name) avoids re-fading an action that stays active across the state change
-              var next = this.actions[st] || this.actions.run || this.actions.idle;
-              if (!next) return;
-              var prev = this.currentAction;
-              if (st === "slide") next.reset();
+              var inf = info[st] || info.run || info.idle;
+              var next = inf.action,
+                prev = this.currentAction;
               if (next !== prev) {
-                // Re-arm: three.js sets enabled=false when a fadeOut completes, so an action
-                // faded out during a long slide/jump won't come back on fadeIn().play() alone
-                // (_updateWeight early-returns on !enabled) → skeleton falls to bind pose (T-pose).
+                var fade = st === "crash" ? 0.08 : this.current === "land" && st === "run" ? 0.15 : 0.12;
+                if (inf.once) next.reset(); // restart one-shots from t=0 (also clears a clamped end state)
                 next.enabled = true;
                 next.paused = false;
-                next.setEffectiveWeight(1).fadeIn(0.12).play();
-                if (prev) prev.fadeOut(0.12);
+                next.setEffectiveWeight(1);
+                next.setEffectiveTimeScale(
+                  inf.fit ? inf.dur / Math.max(0.45, airTime || 1.15) : inf.ts,
+                );
+                next.fadeIn(fade).play();
+                if (prev) {
+                  prev.setEffectiveWeight(prev.getEffectiveWeight()); // continue from where it is: no weight pop
+                  prev.fadeOut(fade);
+                }
               }
               this.current = st;
               this.currentAction = next;
             },
-            update: function (dt, running, onGround, sliding, spd) {
-              this.mixer.update(dt);
-              var st =
-                sliding && this.actions.slide
-                  ? "slide"
-                  : !onGround
-                    ? "jump"
-                    : running
-                      ? "run"
-                      : "idle";
-              this.set(st);
-              // Speed-tie the run clip always: for a model without a jump clip the run action is
-              // the airborne fallback, so gating this on `running` snapped its leg cycle to 1x on jump.
-              if (this.actions.run) this.actions.run.timeScale = clamp(spd / 11, 0.9, 2.4);
+            // Full reset: a cached skin returns with stale action state (a clamped LoopOnce death/
+            // slide, half-faded run weights) and stale pose transforms -> would show a T-pose / death pose.
+            reset: function () {
+              mixer.stopAllAction();
+              uniq.forEach(function (u) {
+                u.action.reset().setEffectiveWeight(0);
+              });
+              this.current = null;
+              this.currentAction = null;
+              this.airT = this.landT = this.cr = this.sq = this.spinYaw = this.clock = 0;
+              this.wasAir = false;
+              pose.scale.set(1, 1, 1);
+              pose.rotation.set(0, 0, 0);
+              pose.position.set(0, cfg.lift || 0, 0);
+              if (board) board.position.y = 0;
+              this.set("idle");
+              // set() fades idle in from weight 0, so update(0) alone would evaluate it at 0 (bind/T-pose)
+              // for one frame — force full weight now so the very first rendered frame is already posed.
+              if (this.currentAction) this.currentAction.setEffectiveWeight(1);
+              mixer.update(0);
+            },
+            update: function (dt, c) {
+              mixer.update(dt);
+              this.clock += dt;
+              if (!c.onGround) {
+                if (!this.wasAir) this.airT = 0;
+                this.airT += dt;
+              } else if (this.wasAir) {
+                this.landT = LAND_T;
+                this.sq = 1; // landing squash
+                this.airT = 0;
+              }
+              this.wasAir = !c.onGround;
+              if (this.landT > 0) this.landT -= dt;
+              var st;
+              if (c.crashed) st = "crash";
+              else if (c.sliding && c.onGround) st = "slide";
+              else if (!c.onGround) {
+                var js = info.jumpStart,
+                  jsDur = js.fit ? c.airTime || 1.15 : js.dur / js.ts;
+                st = this.airT < jsDur ? "jumpStart" : "air";
+              } else if (this.landT > 0) st = "land";
+              else st = c.running ? "run" : "idle";
+              this.set(st, c.airTime);
+              var rn = info.run;
+              if (rn.tie && this.currentAction === rn.action)
+                rn.action.timeScale = clamp(0.85 + (c.spd - 11) * 0.045, 0.9, 1.7);
+              // ---- procedural pose layer ----
+              var crTarget = st === "slide" ? 1 : 0;
+              this.cr += (crTarget - this.cr) * Math.min(1, dt / (crTarget ? 0.04 : 0.06));
+              var e = easeOut2(clamp(this.cr, 0, 1)),
+                pc = cfg.crouch;
+              if (this.sq > 0.001) this.sq -= this.sq * Math.min(1, dt * 18);
+              else this.sq = 0;
+              var sq = this.sq;
+              pose.scale.set(
+                (1 + (pc.sx - 1) * e) * (1 + 0.1 * sq),
+                (1 + (pc.sy - 1) * e) * (1 - 0.14 * sq),
+                (1 + (pc.sz - 1) * e) * (1 + 0.1 * sq),
+              );
+              var ride = cfg.ridePitch && c.onGround && st !== "crash" ? cfg.ridePitch * (1 - e) : 0;
+              pose.rotation.x = pc.pitch * e + ride;
+              var bob = cfg.board && c.onGround && st !== "crash" ? 0.03 * Math.sin(this.clock * 37.7) : 0;
+              pose.position.y = (cfg.lift || 0) + bob;
+              if (board) board.position.y = bob;
+              // board 360: spin the whole wrap about Y over the first 0.55 s of air (easeOutCubic)
+              this.spinYaw =
+                cfg.spin && !c.onGround && st !== "crash"
+                  ? easeOut3(clamp(this.airT / 0.55, 0, 1)) * Math.PI * 2
+                  : 0;
+            },
+            // test probe: effective weight of every running action, keyed by clip name
+            weights: function () {
+              var out = {},
+                sum = 0;
+              uniq.forEach(function (u) {
+                var w = u.action.isRunning() ? u.action.getEffectiveWeight() : 0;
+                out[u.name] = +w.toFixed(3);
+                sum += w;
+              });
+              out.__sum = +sum.toFixed(3);
+              return out;
             },
           };
           wrap.userData.gltf = ctrl;
-          wrap.userData.hasSlideClip = !!actions.slide;
+          wrap.userData.pose = pose;
           gltfCache[id] = { wrap: wrap, ctrl: ctrl };
           return gltfCache[id];
         }
@@ -3238,27 +3508,16 @@
           var g = buildGltfSkin(save.equipped);
           if (g) {
             skinRoot = g.wrap;
-            // Full mixer reset: a cached skin returns with stale action state (a clamped
-            // LoopOnce slide, half-faded run weights) that otherwise leaves it in a T-pose.
-            g.ctrl.mixer.stopAllAction();
-            Object.keys(g.ctrl.actions).forEach(function (k) {
-              g.ctrl.actions[k].reset().setEffectiveWeight(0);
-            });
-            g.ctrl.current = null;
-            g.ctrl.currentAction = null;
-            g.ctrl.set("idle");
-            // set() fades idle in from weight 0, so update(0) alone would evaluate it at 0 (bind/T-pose)
-            // for one frame — force full weight now so the very first rendered frame is already posed.
-            if (g.ctrl.currentAction) g.ctrl.currentAction.setEffectiveWeight(1);
-            g.ctrl.mixer.update(0);
+            g.ctrl.reset();
           } else {
-            skinRoot = SKIN_BUILDERS[save.equipped] ? SKIN_BUILDERS[save.equipped]() : buildUrban();
+            skinRoot = SKIN_BUILDERS[save.equipped] ? SKIN_BUILDERS[save.equipped]() : SKIN_BUILDERS.urban();
             skinRoot.traverse(function (o) {
               o.castShadow = true;
             });
+            skinRoot.userData.baseYaw = Math.PI; // the primitives are modelled facing +z; run AWAY from the camera
           }
           skinRoot.position.set(0, 0, 0);
-          skinRoot.rotation.set(0, 0, 0);
+          skinRoot.rotation.set(0, skinRoot.userData.baseYaw || 0, 0);
           skinRoot.scale.set(1, 1, 1);
           playerGroup.add(skinRoot);
         }
@@ -3267,9 +3526,9 @@
         preloadCity();
         preloadPatrol();
 
-        // Per-frame character motion: a leg/arm run cycle (grounded), a tuck in the air, a
-        // hover bob for the bot, and a balance sway for the skater. Reads userData.parts so
-        // each skin animates only the joints it has. No allocation.
+        // Per-frame character motion for the PRIMITIVE fallback: a leg/arm run cycle (grounded), a tuck
+        // in the air, a hover bob for the bot, and a balance sway for the skater. Reads userData.parts
+        // so each skin animates only the joints it has. No allocation.
         function animateSkin(dt, leanTarget) {
           var parts = skinRoot && skinRoot.userData.parts;
           if (!parts) return;
@@ -3312,20 +3571,27 @@
             player.sliding = false;
             player.slideT = 0;
             player.invulnT = 0;
+            player.airTime = 1.15;
+            player.landed = false;
             if (playerGroup) {
               playerGroup.position.set(0, 0, 0);
               playerGroup.rotation.set(0, 0, 0);
             }
             if (skinRoot) {
               skinRoot.scale.set(1, 1, 1);
-              skinRoot.rotation.set(0, 0, 0);
+              skinRoot.rotation.set(0, skinRoot.userData.baseYaw || 0, 0);
+              skinRoot.position.set(0, 0, 0);
+              skinRoot.visible = true;
               var pr = skinRoot.userData.parts;
               if (pr) {
                 ["legL", "legR", "armL", "armR"].forEach(function (k) {
                   if (pr[k] && !pr.sway) pr[k].rotation.x = 0;
                 });
               }
+              var gl = skinRoot.userData.gltf;
+              if (gl) gl.reset(); // retry #2/#3 must not inherit a clamped death pose
             }
+            if (blob) blob.visible = true;
           },
           input: function (action) {
             if (phase !== "running") return;
@@ -3337,6 +3603,7 @@
               nearMissArm = 0.5;
             } else if (action === "jump" && player.onGround) {
               player.vy = powerups.sneakers > 0 ? SNEAKER_JUMP_V : JUMP_V;
+              player.airTime = (2 * player.vy) / GRAVITY;
               player.onGround = false;
               player.sliding = false;
               player.slideT = 0;
@@ -3363,6 +3630,7 @@
                 player.y = 0;
                 player.vy = 0;
                 player.onGround = true;
+                player.landed = true;
               }
             }
             // slide timer
@@ -3379,33 +3647,78 @@
               playerGroup.position.y = player.y;
               if (skinRoot) {
                 var gltf = skinRoot.userData.gltf;
-                var hasSlide = skinRoot.userData.hasSlideClip;
-                // squash-crouch only for skins WITHOUT a real slide clip (primitives + the robot)
-                var squash = player.sliding && !hasSlide;
-                var sc = squash ? 0.5 : 1;
-                skinRoot.scale.y += (sc - skinRoot.scale.y) * Math.min(1, dt * 16);
-                skinRoot.rotation.x = squash ? -0.5 : player.onGround ? 0 : gltf ? 0 : -0.18;
-                // lean into the turn while the lane lerp is still catching up
+                var baseYaw = skinRoot.userData.baseYaw || 0;
+                // lean into the turn while the lane lerp is still catching up (roll + a little yaw)
                 var leanTarget = clamp((LANE_X[player.lane] - player.x) * 0.5, -0.4, 0.4);
                 skinRoot.rotation.z += (-leanTarget - skinRoot.rotation.z) * Math.min(1, dt * 10);
-                // run bob for primitives only (GLB clips carry their own bob)
-                skinRoot.position.y =
-                  !gltf && player.onGround && !player.sliding
-                    ? Math.abs(Math.sin(distance * 2.2)) * 0.06
-                    : 0;
-                if (gltf)
-                  gltf.update(
-                    dt,
-                    player.onGround && !player.sliding,
-                    player.onGround,
-                    player.sliding,
-                    speed,
-                  );
-                else animateSkin(dt, leanTarget);
+                if (gltf) {
+                  gltf.update(dt, {
+                    onGround: player.onGround,
+                    sliding: player.sliding,
+                    running: player.onGround && !player.sliding,
+                    spd: speed,
+                    airTime: player.airTime,
+                    crashed: false,
+                  });
+                  skinRoot.rotation.y = baseYaw + clamp(-leanTarget * 0.5, -0.2, 0.2) + gltf.spinYaw;
+                  skinRoot.position.y = 0;
+                } else {
+                  // primitives: squash-crouch + run bob (the GLB clips carry their own)
+                  var squash = player.sliding;
+                  var sc = squash ? 0.5 : 1;
+                  skinRoot.scale.y += (sc - skinRoot.scale.y) * Math.min(1, dt * 16);
+                  skinRoot.rotation.x = squash ? -0.5 : player.onGround ? 0 : -0.18;
+                  skinRoot.rotation.y = baseYaw + clamp(-leanTarget * 0.5, -0.2, 0.2);
+                  skinRoot.position.y =
+                    player.onGround && !player.sliding ? Math.abs(Math.sin(distance * 2.2)) * 0.06 : 0;
+                  animateSkin(dt, leanTarget);
+                }
                 // invulnerability flicker after a hoverboard save
                 skinRoot.visible =
                   player.invulnT > 0 ? Math.floor(player.invulnT * 12) % 2 === 0 : true;
               }
+              // blob shadow: always on (low tier has no real shadows) — shrinks/fades with height
+              if (blob) {
+                var bs = 1.1 * (1 - clamp(player.y * 0.12, 0, 0.5));
+                blob.position.set(player.x, 0.03, playerGroup.position.z);
+                blob.scale.set(bs, 1, bs);
+                blob.material.opacity = 0.55 * (1 - clamp(player.y * 0.18, 0, 0.6));
+              }
+            }
+            player.landed = false;
+          },
+          // Crash beat: the death clip plays (no pinwheel), a short knock-back toward the camera,
+          // gravity settles the body; the rig always stays in frame. Primitives tumble briefly (capped).
+          crashTick: function (dt, age) {
+            if (!playerGroup || !skinRoot) return;
+            if (!player.onGround) {
+              player.vy -= GRAVITY * dt;
+              player.y = Math.max(0, player.y + player.vy * dt);
+              if (player.y <= 0) {
+                player.onGround = true;
+                player.vy = 0;
+              }
+            }
+            playerGroup.position.y = player.y;
+            playerGroup.position.z = 1.4 * easeOut2(clamp(age / 0.25, 0, 1));
+            var gltf = skinRoot.userData.gltf;
+            if (gltf) {
+              gltf.update(dt, {
+                onGround: player.onGround,
+                sliding: false,
+                running: false,
+                spd: speed,
+                airTime: player.airTime,
+                crashed: true,
+              });
+              skinRoot.rotation.y = skinRoot.userData.baseYaw || 0;
+            } else {
+              skinRoot.rotation.x = -1.2 * easeOut2(clamp(age / 0.35, 0, 1));
+            }
+            skinRoot.rotation.z += (0 - skinRoot.rotation.z) * Math.min(1, dt * 10);
+            if (blob) {
+              blob.position.set(player.x, 0.03, playerGroup.position.z);
+              blob.material.opacity = 0.55;
             }
           },
           height: function () {
@@ -4250,12 +4563,7 @@
             AudioManager.musicTick(dt, speed);
           } else if (phase === "crashed") {
             crashT -= dt;
-            if (playerGroup && skinRoot) {
-              skinRoot.rotation.x -= dt * 7; // tumble
-              playerGroup.position.z += dt * 5; // thrown back toward the camera
-              playerGroup.position.y = Math.max(0, playerGroup.position.y - dt * 2);
-              if (skinRoot.userData.gltf) skinRoot.userData.gltf.mixer.update(dt); // keep the rig posed mid-tumble, not frozen
-            }
+            PlayerController.crashTick(dt, 0.9 - crashT);
             droneTick(dt);
           } else if (phase === "countdown") {
             PlayerController.tick(dt);

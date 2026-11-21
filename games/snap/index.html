@@ -2106,6 +2106,54 @@
           }
         }
 
+        function buildPlayerButtonContent(p) {
+          var content = el("span", "pbtn-content");
+          var sc = el("span", "score");
+          sc.textContent = "0";
+          var meta = el("span", "pmeta");
+          var lb = el("span", "plabel");
+          lb.textContent = p.name;
+          var sym = el("span", "psym sym");
+          sym.textContent = p.glyph;
+          sym.setAttribute("aria-hidden", "true");
+          var kb = el("span", "pkey");
+          kb.textContent = p.keyGlyph;
+          kb.setAttribute("aria-hidden", "true");
+          meta.appendChild(lb);
+          meta.appendChild(sym);
+          meta.appendChild(kb);
+          content.appendChild(sc);
+          content.appendChild(meta);
+          p.scoreEl = sc;
+          return content;
+        }
+
+        function buildPlayerButton(p) {
+          var b = el("button", "pbtn pbtn--" + p.placement);
+          b.style.background = p.hex;
+          b.setAttribute("data-state", "default");
+          b.setAttribute("aria-label", p.name + " — Snap button (key " + p.keyGlyph + ")");
+          b.appendChild(buildPlayerButtonContent(p));
+          // pointerdown (not click) so the slap registers on first contact; passive:false to preventDefault.
+          b.addEventListener(
+            "pointerdown",
+            function (ev) {
+              ev.preventDefault();
+              handlePlayerInput(p.idx, "touch");
+            },
+            { passive: false },
+          );
+          // Keyboard activation of a focused button (Enter/Space) arrives as a click with detail 0;
+          // real pointer clicks (detail >= 1) were already handled on pointerdown.
+          b.addEventListener("click", function (ev) {
+            if (ev.detail === 0) handlePlayerInput(p.idx, "key");
+          });
+          b.addEventListener("contextmenu", function (ev) {
+            ev.preventDefault();
+          });
+          return b;
+        }
+
         function buildPlayerButtons() {
           var stage = $("stage");
           var old = stage.querySelectorAll(".pbtn");
@@ -2113,48 +2161,8 @@
             stage.removeChild(old[k]);
           }
           players.forEach(function (p) {
-            var b = el("button", "pbtn pbtn--" + p.placement);
-            b.style.background = p.hex;
-            b.setAttribute("data-state", "default");
-            b.setAttribute("aria-label", p.name + " — Snap button (key " + p.keyGlyph + ")");
-            var content = el("span", "pbtn-content");
-            var sc = el("span", "score");
-            sc.textContent = "0";
-            var meta = el("span", "pmeta");
-            var lb = el("span", "plabel");
-            lb.textContent = p.name;
-            var sym = el("span", "psym sym");
-            sym.textContent = p.glyph;
-            sym.setAttribute("aria-hidden", "true");
-            var kb = el("span", "pkey");
-            kb.textContent = p.keyGlyph;
-            kb.setAttribute("aria-hidden", "true");
-            meta.appendChild(lb);
-            meta.appendChild(sym);
-            meta.appendChild(kb);
-            content.appendChild(sc);
-            content.appendChild(meta);
-            b.appendChild(content);
-            // pointerdown (not click) so the slap registers on first contact; passive:false to preventDefault.
-            b.addEventListener(
-              "pointerdown",
-              function (ev) {
-                ev.preventDefault();
-                handlePlayerInput(p.idx, "touch");
-              },
-              { passive: false },
-            );
-            // Keyboard activation of a focused button (Enter/Space) arrives as a click with detail 0;
-            // real pointer clicks (detail >= 1) were already handled on pointerdown.
-            b.addEventListener("click", function (ev) {
-              if (ev.detail === 0) handlePlayerInput(p.idx, "key");
-            });
-            b.addEventListener("contextmenu", function (ev) {
-              ev.preventDefault();
-            });
-            stage.appendChild(b);
-            p.btnEl = b;
-            p.scoreEl = sc;
+            p.btnEl = buildPlayerButton(p);
+            stage.appendChild(p.btnEl);
           });
         }
 
@@ -2652,28 +2660,8 @@
           var winners = sorted.filter(function (p) {
             return p.score === top;
           });
-          var tie = winners.length > 1 && top > 0;
 
-          if (top === 0) {
-            $("winTitle").textContent = "No snaps landed";
-            $("winSub").textContent = "Cards too quick? Run it back.";
-          } else if (tie) {
-            $("winTitle").textContent = "It's a tie!";
-            $("winSub").textContent =
-              winners
-                .map(function (p) {
-                  return p.name;
-                })
-                .join(" & ") +
-              " — " +
-              top +
-              (top === 1 ? " pair" : " pairs") +
-              " each";
-          } else {
-            $("winTitle").textContent = sorted[0].name + " wins!";
-            $("winSub").textContent = top + (top === 1 ? " pair" : " pairs");
-          }
-
+          renderHeadline(winners, top);
           renderRankList(sorted, top);
           renderResultNotes(sorted);
           announce(
@@ -2689,6 +2677,28 @@
                 return p.hex;
               }),
             );
+          }
+        }
+
+        function renderHeadline(winners, top) {
+          var pairs = top + (top === 1 ? " pair" : " pairs");
+          if (top === 0) {
+            $("winTitle").textContent = "No snaps landed";
+            $("winSub").textContent = "Cards too quick? Run it back.";
+          } else if (winners.length > 1) {
+            $("winTitle").textContent = "It's a tie!";
+            $("winSub").textContent =
+              winners
+                .map(function (p) {
+                  return p.name;
+                })
+                .join(" & ") +
+              " — " +
+              pairs +
+              " each";
+          } else {
+            $("winTitle").textContent = winners[0].name + " wins!";
+            $("winSub").textContent = pairs;
           }
         }
 

@@ -3237,17 +3237,17 @@
         // The claw opens over the bay and the prize falls (an ease-in tween) into the hole; it is BANKED the
         // moment it enters — synchronously, inside the state machine — never behind a cancellable timer.
         function updateRelease(now, t) {
-          if (!carried) return;
           var fallMs = RELEASE_MS * 0.86;
-          var k = clamp(t / fallMs, 0, 1);
-          var dist = lay.holeY - carried.relY0;
-          carried.dropY = dist * k * k;
-          carried.x = lay.chuteCx;
-          if (carried2) {
-            carried2.dropY = (lay.holeY - carried2.relY0) * k * k;
-            carried2.x = lay.chuteCx + (carried2.relX0 - carried.relX0);
+          if (carried) {
+            var k = clamp(t / fallMs, 0, 1);
+            carried.dropY = (lay.holeY - carried.relY0) * k * k;
+            carried.x = lay.chuteCx;
+            if (carried2) {
+              carried2.dropY = (lay.holeY - carried2.relY0) * k * k;
+              carried2.x = lay.chuteCx + (carried2.relX0 - carried.relX0);
+            }
+            if (t >= fallMs) bankCarried(now);
           }
-          if (t >= fallMs) bankCarried(now);
           if (t >= RELEASE_MS) {
             phase = Phase.IDLE;
             phaseStartTs = now;

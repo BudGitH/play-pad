@@ -319,6 +319,11 @@
         width: 100%;
         margin-top: 12px;
       }
+      /* base.css dims aria-disabled buttons with opacity, which would also dim the focus ring on the "Equipped"
+         button where focus is parked after Buy / Equip: keep the focused one at full strength. */
+      .button[aria-disabled="true"]:focus-visible {
+        opacity: 1;
+      }
 
       /* ---------- GAME STAGE ---------- */
       #stage {
@@ -346,7 +351,7 @@
         gap: 8px;
         padding: 4px 6px 4px 14px;
         border-radius: var(--md-sys-shape-corner-full);
-        background: rgba(34, 24, 16, 0.6);
+        background: rgba(34, 24, 16, 0.72);
         color: #fff;
         border: 1px solid rgba(255, 255, 255, 0.28);
         box-shadow: 0 3px 12px rgba(40, 20, 0, 0.28);
@@ -996,7 +1001,7 @@
   </head>
   <body>
     <!-- ========== SETUP ========== -->
-    <section id="setup" class="screen active">
+    <section id="setup" role="main" class="screen active">
       <div class="setup-inner">
         <a class="back-link state-layer" href="../../index.html" aria-label="Back to PlayPad">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -1039,6 +1044,16 @@
         </div>
 
         <div class="block">
+          <div class="toggle-row">
+            <div>
+              <div class="t-label">Sound</div>
+              <div class="t-sub">Chill lo-fi, soft SFX and the odd bark behind you</div>
+            </div>
+            <button class="switch" id="soundToggle" aria-pressed="true" aria-label="Sound"></button>
+          </div>
+        </div>
+
+        <div class="block">
           <div class="label"><span>How to play</span></div>
           <div class="howto">
             <div class="how">
@@ -1069,16 +1084,6 @@
           </div>
         </div>
 
-        <div class="block">
-          <div class="toggle-row">
-            <div>
-              <div class="t-label">Sound</div>
-              <div class="t-sub">Chill lo-fi, soft SFX and the odd bark behind you</div>
-            </div>
-            <button class="switch" id="soundToggle" aria-pressed="true" aria-label="Sound"></button>
-          </div>
-        </div>
-
         <div class="start-bar">
           <button class="start-btn state-layer" id="startBtn">Start running</button>
         </div>
@@ -1090,7 +1095,7 @@
           <span class="kb">P pauses · M mutes · </span>your coins and best score are saved on this
           device.
         </p>
-        <p class="start-note" style="opacity: 0.7; font-size: 11px; margin-top: 6px">
+        <p class="start-note" style="opacity: 0.85; font-size: 11px; margin-top: 6px">
           Characters &amp; dogs by Quaternius · textures by ambientCG · music by omfgdude (loop edit
           by qubodup) — all CC0; sound effects are synthesised in code
         </p>
@@ -1098,7 +1103,7 @@
     </section>
 
     <!-- ========== GAME ========== -->
-    <section id="game" class="screen">
+    <section id="game" role="main" class="screen">
       <div id="stage">
         <canvas
           id="glCanvas"
@@ -1108,7 +1113,9 @@
         <div id="hud">
           <span id="hudScore">0</span>
           <span id="hudCoins">🪙 0</span>
-          <button id="muteBtn" aria-pressed="false" aria-label="Mute sound">🔊</button>
+          <button id="muteBtn" aria-pressed="false" aria-label="Mute sound" title="Mute sound (M)">
+            🔊
+          </button>
           <button id="quitBtn" aria-label="Quit game">✕</button>
         </div>
         <div id="dogMeter" aria-hidden="true">
@@ -1134,7 +1141,7 @@
         <div id="pause" role="dialog" aria-modal="true" aria-labelledby="pauseTitle">
           <div>
             <h2 id="pauseTitle" class="headline-small">Paused</h2>
-            <p>Tap anywhere to resume</p>
+            <p>Tap anywhere (or press Space) to resume</p>
             <div class="pause-actions">
               <button class="button button--filled state-layer" id="resumeBtn">Resume</button>
               <button class="button state-layer pause-quit" id="pauseQuitBtn">Quit</button>
@@ -1160,7 +1167,7 @@
     <p id="srStatus" class="visually-hidden" role="status" aria-live="polite"></p>
 
     <!-- ========== RESULTS ========== -->
-    <section id="results" class="screen">
+    <section id="results" role="main" class="screen">
       <div class="res-inner">
         <div class="res-head">
           <div class="crown">🐕</div>
@@ -1216,7 +1223,7 @@
     </section>
 
     <!-- ========== SHOP ========== -->
-    <section id="shop" class="screen">
+    <section id="shop" role="main" class="screen">
       <div class="shop-inner">
         <button
           class="back-link state-layer"
@@ -1995,6 +2002,9 @@
             t.classList.add("show");
             later(function () {
               t.classList.remove("show");
+              later(function () {
+                if (!t.classList.contains("show")) t.textContent = ""; // no stale text in browse mode
+              }, 400);
             }, 1500);
           },
           hud: function () {
@@ -6749,6 +6759,7 @@
             ev.preventDefault();
             AudioManager.setMuted(!save.muted); // same path as the HUD button (a desktop player's hands stay on the keys)
             syncMuteUi();
+            announce(save.muted ? "Sound off" : "Sound on");
             return;
           }
           if (paused) return pauseKey(ev);

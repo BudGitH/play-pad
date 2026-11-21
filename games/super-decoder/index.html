@@ -8,7 +8,12 @@
     <title>Super Decoder — PlayPad</title>
 
     <link rel="icon" href="../../icons/favicon.svg" type="image/svg+xml" />
-    <meta name="theme-color" content="#08080c" />
+    <meta name="theme-color" content="#fff8f7" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#08080c" media="(prefers-color-scheme: dark)" />
+
+    <!-- Applies the player's saved light/dark choice (set on the hub) before first paint.
+         Classic script, no defer: it must run before the stylesheets below paint. -->
+    <script src="../../scripts/theme.js"></script>
 
     <!-- Shared PlayPad design system -->
     <link rel="stylesheet" href="../../styles/tokens.css" />
@@ -40,6 +45,8 @@
        inspectable in one place and recolour-able theme-by-theme. */
       :root {
         --sd-accent: var(--md-sys-color-primary);
+        /* Ink for the shape glyph drawn ON a peg (see .pegSym for the measured contrast). */
+        --sd-ink-on-peg: #0b0b0f;
         /* Board sizing (D2): rows are sized from the viewport HEIGHT so all 10 fit without a board
          scroll in portrait and on desktop. 250px is the budget for the HUD + legend + deck chrome;
          10.6 = 10 rows + the active row's extra height + gaps. The 100vh line is the fallback for
@@ -656,15 +663,15 @@
         display: grid;
         place-items: center;
       }
-      /* Colour-blind shape glyph — white with a dark halo so it reads on every palette colour
-       (light or dark). Sits inside the peg / palette button / banner peg. */
+      /* Colour-blind shape glyph. Dark ink, NOT white: white measured 1.2-1.9:1 on the yellow, mint,
+       cyan, lime and pastel pegs (faint in the light theme). --sd-ink-on-peg clears >= 4.96:1 on all
+       18 palette colours (6 colours x 3 themes), well past the 3:1 non-text floor, and the glyph
+       sits ON the peg so it is identical in light and dark themes. Re-measure if a palette changes.
+       Sits inside the peg / palette button / banner peg. */
       .pegSym {
         font-size: clamp(14px, 3.8vw, 20px);
         line-height: 1;
-        color: #fff;
-        text-shadow:
-          0 0 2px rgba(0, 0, 0, 0.9),
-          0 1px 1px rgba(0, 0, 0, 0.55);
+        color: var(--sd-ink-on-peg);
         pointer-events: none;
         -webkit-user-select: none;
         user-select: none;
@@ -1267,7 +1274,7 @@
         <div id="hud">
           <span id="hudCode">Code 1 / 3</span>
           <span class="sep"></span>
-          <span id="hudAttempts">Tries <b>10</b></span>
+          <span id="hudAttempts" role="img" aria-label="10 tries left">Left <b>10</b></span>
           <span class="sep"></span>
           <span id="hudScore">Score <b>0</b></span>
           <span class="sep"></span>
@@ -1971,7 +1978,13 @@
 
         function updateHud() {
           $("hudCode").textContent = "Code " + (session.codeIndex + 1) + " / " + session.totalCodes;
-          $("hudAttempts").innerHTML = "Tries <b>" + code.attemptsLeft + "</b>";
+          // The number is tries REMAINING, so the label says "Left" (it used to say "Tries", which
+          // read as tries used). The aria-label spells it out for screen readers.
+          $("hudAttempts").innerHTML = "Left <b>" + code.attemptsLeft + "</b>";
+          $("hudAttempts").setAttribute(
+            "aria-label",
+            code.attemptsLeft + (code.attemptsLeft === 1 ? " try left" : " tries left"),
+          );
           $("hudScore").innerHTML = "Score <b>" + session.totalScore + "</b>";
           // D14: a streak of 2+ reads "🔥 ×N" in the tertiary accent; a short pulse when it grows.
           var st = $("hudStreak");

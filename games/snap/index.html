@@ -8,7 +8,12 @@
     <title>Snap — PlayPad</title>
 
     <link rel="icon" href="../../icons/favicon.svg" type="image/svg+xml" />
-    <meta name="theme-color" content="#08080c" />
+    <meta name="theme-color" content="#fff8f7" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#08080c" media="(prefers-color-scheme: dark)" />
+
+    <!-- Applies the player's saved light/dark choice (set on the hub) before first paint.
+         Classic script, no defer: it must run before the stylesheets below paint. -->
+    <script src="../../scripts/theme.js"></script>
 
     <!-- Shared PlayPad design system -->
     <link rel="stylesheet" href="../../styles/tokens.css" />
@@ -1630,12 +1635,14 @@
         var QUIT_CONFIRM_MS = 2000;
         var CONFETTI_COUNT = 36;
         var CONFETTI_CLEAR_MS = 1900; // 1.4 s fall + up to 0.35 s stagger + margin
+        // Deck symbols must NEVER equal a player avatar in ANIMALS (a kid reads a 🦊 card as "Red's card").
+        // When adding a symbol, check it against ANIMALS above and against the rest of its deck.
         var THEMES = [
           {
             id: "nature",
             name: "Nature",
             back: { emoji: "🌿" },
-            symbols: ["🦊", "🐸", "🦋", "🐢", "🍄", "🌻", "🐝", "🌵", "🐙", "🦉", "🐌", "🌶️"],
+            symbols: ["🦔", "🍀", "🦋", "🐢", "🍄", "🌻", "🐝", "🌵", "🐙", "🦉", "🐌", "🌶️"],
           },
           {
             id: "princess",

@@ -33,6 +33,8 @@
 # Static assets — cache for a day (still revalidated by ETag)
 /styles/*
   Cache-Control: public, max-age=86400
+/scripts/*
+  Cache-Control: public, max-age=86400
 /icons/*
   Cache-Control: public, max-age=86400
 /games.js

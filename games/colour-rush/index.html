@@ -8,7 +8,12 @@
     <title>Colour Rush — PlayPad</title>
 
     <link rel="icon" href="../../icons/favicon.svg" type="image/svg+xml" />
-    <meta name="theme-color" content="#08080c" />
+    <meta name="theme-color" content="#fff8f7" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#08080c" media="(prefers-color-scheme: dark)" />
+
+    <!-- Applies the player's saved light/dark choice (set on the hub) before first paint.
+         Classic script, no defer: it must run before the stylesheets below paint. -->
+    <script src="../../scripts/theme.js"></script>
 
     <!-- Shared PlayPad design system -->
     <link rel="stylesheet" href="../../styles/tokens.css" />
@@ -637,6 +642,35 @@
         transition: transform var(--md-sys-motion-duration-short3)
           var(--md-sys-motion-easing-emphasized);
       }
+      /* Shared screen on a laptop / TV: the chips and clock are read from across the table, so scale
+         them ~1.4x (36 -> 50px chips, 16 -> 22px clock). 4 chips + clock stay on one row at 1366px
+         (their right edge sits at about 670px). measureArea() re-reads #topbar's height, so the play area follows. */
+      @media (min-width: 1024px) {
+        #topbar {
+          gap: 18px;
+        }
+        #sessClock {
+          font-size: 22px;
+          min-width: 60px;
+        }
+        #scoreChips {
+          gap: 12px;
+        }
+        .chipscore {
+          gap: 8px;
+          height: 50px;
+          padding: 0 17px 0 13px;
+        }
+        .chipscore .av {
+          font-size: 25px;
+        }
+        .chipscore .sh {
+          font-size: 20px;
+        }
+        .chipscore .nv {
+          font-size: 28px;
+        }
+      }
       /* 48px hit target (WCAG 2.5.8) with a 36px visual circle drawn behind the ✕ */
       #quitBtn {
         flex: none;
@@ -1154,7 +1188,7 @@
         // The heart carries a U+FE0E variation selector so it renders as text, not an emoji.
         var SHAPES = ["●", "▲", "■", "◆", "★", "✚", "♥︎", "✿"];
         // Player identity = animal + colour. Seat i starts as AVATARS[i]; tap to cycle.
-        var AVATARS = ["🦊", "🐸", "🐼", "🐯", "🐵", "🐰", "🐶", "🐱", "🦁", "🐧", "🐙", "🦄"];
+        var AVATARS = ["🦊", "🐸", "🐼", "🐯", "🦁", "🐶", "🐱", "🐰", "🐨", "🐵", "🐧", "🐻"];
         var DURATIONS = [
           { s: 30, l: "0:30" },
           { s: 60, l: "1:00" },

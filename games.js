@@ -76,7 +76,7 @@ window.GAMES = [
     title: "Super Decoder",
     tagline: "Crack the secret colour code.",
     description:
-      "Crack a hidden 4-colour code in up to 10 guesses. Black peg = right colour, right spot. White peg = right colour, wrong spot. Solve a streak before your luck runs out.",
+      "Crack a hidden 4-colour code in up to 10 guesses. Solid dot = right spot, ring = right colour but wrong spot. Solve a streak before your luck runs out.",
     tags: ["Solo", "Logic", "Code-breaking"],
     path: "games/super-decoder/",
     accent: "#30d158",
@@ -96,7 +96,7 @@ window.GAMES = [
     icon: "🏃",
     players: "1",
     status: "live",
-    added: "2026-11-10",
+    added: "2026-07-12",
     best: { key: "playpad.neonRush.v1", field: "highScore", label: "Best" },
   },
 ];

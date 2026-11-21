@@ -9,7 +9,7 @@
 
 ## ⏭️ Next (ready, not started)
 
-- **Tooling follow-ups (Standard tier):** clear the `no-unused-vars` warnings in legacy games, then make the rule an error; a minimal automated smoke test (Playwright: hub loads + each game opens without console errors).
+- **Tooling follow-ups (Standard tier):** clear the `no-unused-vars` warnings in legacy games, then make the rule an error. _(Smoke test shipped 2026-11-21: `npm run smoke`, CI job `smoke`.)_ Next: extend the smoke test to start a round in each game.
 
 - One-tap **"Quick play"** from a card → straight into a default round, skipping setup for the common case.
 - Manual **light/dark toggle** (overrides the system theme).

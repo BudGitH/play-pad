@@ -21,7 +21,7 @@
 > Phase 4 QA **runs** these to validate (not just read code). Fill them once the app exists; leave `TBD` until then — QA falls back to static review and never blocks on a missing command.
 
 - **Run the app:** open `index.html` in a browser (or `npx serve .` / VS Code Live Server for a localhost)
-- **Run tests:** `TBD` (no test tooling at Prototype tier; QA is the in-workflow panel)
+- **Run tests:** `npm run smoke` (Playwright smoke test: hub + every live game load with no page/console errors or broken requests). One-time: `npx playwright install chromium`. A new game is covered automatically once it's `live` in `games.js`.
 - **Lint / format:** `npm run lint` (ESLint) · `npm run format` (Prettier, gated) · `npm run secrets` (secret scan) · all: `npm run check`. One-time: `npm install` (dev tooling only — the site has no runtime deps).
 - **Type check:** N/A (vanilla JS)
 - **Hooks:** `git config core.hooksPath .githooks` once per clone (secret scan + lint on commit)

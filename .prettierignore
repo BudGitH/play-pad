@@ -7,3 +7,5 @@ docs/.brain-backup/
 *.glb
 *.ogg
 package-lock.json
+test-results/
+playwright-report/

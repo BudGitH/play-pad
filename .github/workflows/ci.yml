@@ -34,3 +34,22 @@ jobs:
         run: npm run check
       - name: Dependency audit (CODE_QUALITY.md #24)
         run: npm audit --audit-level=high
+
+  smoke:
+    # Opens the hub and every live game in headless Chromium; fails on any
+    # page error, console error or broken same-origin request (tests/smoke.spec.mjs).
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Smoke test
+        run: npm run smoke

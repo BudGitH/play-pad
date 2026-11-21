@@ -30,3 +30,6 @@
 /CONTRIBUTING.md   /  302
 /CODE_OF_CONDUCT.md /  302
 /SECURITY.md       /  302
+/tests             /  302
+/tests/*           /  302
+/playwright.config.mjs /  302

@@ -80,7 +80,7 @@ After any meaningful change, **before you finish**:
 - **Hub / catalog:** `index.html` (renders from the registry) · `games.js` (`window.GAMES` — add a game here).
 - **Design system:** `styles/tokens.css` (MD3 tokens, light+dark) · `styles/base.css` (components, the rail).
 - **Games:** `games/<slug>/index.html` — today `games/colour-rush/`, `games/snap/`, `games/claw-catch/` (solo, Canvas), `games/super-decoder/` (solo, DOM logic), `games/neon-rush/` (solo, 3D Three.js — vendored `three.min.js` r147 + `GLTFLoader.js` + CC0 `assets/` (GLB characters, synthwave music, SFX) + a game-local `CLAUDE.md`; first game to persist to localStorage and first with vendored assets). (Reference-only, never shipped: `Old prototype/`.)
-- **Brand / deploy:** `icons/` · `manifest.webmanifest` · `_headers` · Cloudflare Pages Git integration (auto-deploys `main`); `tools/build-dist.ps1` → `dist/` for manual uploads only.
+- **Brand / deploy:** `icons/` · `manifest.webmanifest` · `_headers` · Cloudflare Pages Git integration (auto-deploys `main`; previews off).
 - **Tooling / CI:** `package.json` (dev-only) · `eslint.config.mjs` · `.prettierrc.json` · `tools/secret-scan.mjs` · `.githooks/pre-commit` · `.github/workflows/ci.yml` · `.github/` templates.
 - **The full map:** `docs/ARCHITECTURE.md` (structure, data model, flows, modules).
 
@@ -93,6 +93,6 @@ After any meaningful change, **before you finish**:
 The canonical commands live in `docs/CONVENTIONS.md` → _Dev commands_ (Phase 4 QA runs them). Quick reference:
 
 - **Run the app:** open `index.html` directly, or `python -m http.server 5500` → http://localhost:5500/ (preview config: `.claude/launch.json` → `playpad`).
-- **Deploy:** merge to `main` → Cloudflare Pages deploys automatically. Manual fallback: `git pull`, then `tools\build-dist.ps1` → upload `dist/`.
+- **Deploy:** merge to `main` → Cloudflare Pages deploys automatically (the only deploy path).
 - **Test:** no automated test harness yet — QA is the in-workflow multi-lens panel (`docs/WORKFLOW.md`).
 - **Lint / checks:** `npm install` once, then `npm run check` (lint + format) and `npm run secrets`. CI runs these on every PR.

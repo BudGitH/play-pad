@@ -1,5 +1,5 @@
 # Cloudflare Pages — HTTP headers for PlayPad
-# This file must sit at the ROOT of the uploaded folder (dist/_headers).
+# This file must sit at the ROOT of the deployed site (the repo root).
 # Docs: https://developers.cloudflare.com/pages/configuration/headers/
 
 /*

@@ -38,14 +38,14 @@ Personas from `docs/PRODUCT-PANEL.md` already used by the five games (Sofa Co-op
 
 ## Scope split (who owns which files)
 
-| Area          | Files                                                    | Spec                       |
-| ------------- | -------------------------------------------------------- | -------------------------- |
-| Hub + shared  | `index.html`, `games.js`, `styles/*`, `icons/`           | `design-hub.md`            |
-| Colour Rush   | `games/colour-rush/`                                     | `design-party-games.md`    |
-| Snap          | `games/snap/`                                            | `design-party-games.md`    |
-| Super Decoder | `games/super-decoder/`                                   | `design-super-decoder.md`  |
-| Claw Catch    | `games/claw-catch/`                                      | `design-claw-catch.md`     |
-| Neon Rush     | `games/neon-rush/`                                       | `design-neon-rush.md`      |
+| Area          | Files                                          | Spec                      |
+| ------------- | ---------------------------------------------- | ------------------------- |
+| Hub + shared  | `index.html`, `games.js`, `styles/*`, `icons/` | `design-hub.md`           |
+| Colour Rush   | `games/colour-rush/`                           | `design-party-games.md`   |
+| Snap          | `games/snap/`                                  | `design-party-games.md`   |
+| Super Decoder | `games/super-decoder/`                         | `design-super-decoder.md` |
+| Claw Catch    | `games/claw-catch/`                            | `design-claw-catch.md`    |
+| Neon Rush     | `games/neon-rush/`                             | `design-neon-rush.md`     |
 
 ## Acceptance criteria
 

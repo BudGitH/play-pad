@@ -11,28 +11,28 @@
 
 ### 1a. Bugs and display quirks (evidence)
 
-| #   | Finding | Viewport / steps | Evidence |
-| --- | ------- | ---------------- | -------- |
-| B1  | **Rotation and resize break the pile.** `layout()` rescales `prizeR` and the tray, but each prize keeps its old `x` and `rad`. After portrait → landscape, 9 oversized prizes stand in a tower on the left (y up to 73px, past the rail), cover the HUD and claw, and leave the right two-thirds of the tray empty. | 390×844 → start → rotate to 844×390 | `rotate-844.png`; bin ys `[146,216,…,73,81]` |
-| B2  | **"Floating prize" (the reported 1280×720 bug) is the refill.** `makePrize(x,false)` spawns the new prize out of nothing at `railY+rad+12` (y≈110) at a random x, sometimes right through the claw cable, and it falls for ~0.55s. It has no source, no sound and no landing cue, so a still frame shows a prize hanging in mid-air. | 1280×720, any round, every `refillMs` | `play-1280x720-0.png` (turtle under the rail); trace: y 113→384 over 520ms |
-| B3  | **HUD covers the rail and trolley** on short stages (`railY = max(40, H*.11)` ignores the 56px HUD pill). | 844×390 (stage 272px); the HUD's bottom edge also touches the rail at 360×740 | `round-844x390.png` |
-| B4  | **The claw passes through prizes.** `lDrop` is a fixed depth, so the prongs sink into the heap and are drawn over the capsules. Nothing in the pile reacts to the claw. | any | `play-1280x720-2.png` |
-| B5  | **Enter on a focused DROP button does nothing.** It only binds `pointerdown`, so the phase stays `idle`. Space works only because a global handler catches it. | keyboard, Tab to DROP, Enter | probe: `phaseAfterEnterOnGrab: idle` |
-| B6  | **Light-mode deck clashes with the cabinet.** The deck uses `surface-container`, which renders as a pale pink panel under a dark arcade cabinet. The two halves look like separate apps. | any viewport with the light OS theme | all `round-*` |
-| B7  | **HUD and feedback text wrap at 360px.** "Score / 0" breaks onto two lines and the feedback chip is 4 lines tall. | 360×740 | `round-360x740.png` |
-| B8  | **The round keeps running in the background.** The clock is wall-time (`sessionEndTs`), so switching apps on a phone costs time or ends the round. | phone app switch | code: `loop()` |
-| B9  | **Teardown is not in `show()`.** It lives in `endGame` and `stopToSetup`, which breaks the LEARNINGS rule (PLAY-002 rev2). Any new exit path can leave the RAF loop, countdown or key panel running. | code review | `show()` ~L1144 |
-| B10 | **`__claw.forcePrizeUnderTip` builds a prize with no `rad` or `vx`.** The physics then produces `NaN`, so deterministic catch tests silently corrupt the pile. | test helper | code ~L2506 |
+| #   | Finding                                                                                                                                                                                                                                                                                                                              | Viewport / steps                                                              | Evidence                                                                   |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| B1  | **Rotation and resize break the pile.** `layout()` rescales `prizeR` and the tray, but each prize keeps its old `x` and `rad`. After portrait → landscape, 9 oversized prizes stand in a tower on the left (y up to 73px, past the rail), cover the HUD and claw, and leave the right two-thirds of the tray empty.                  | 390×844 → start → rotate to 844×390                                           | `rotate-844.png`; bin ys `[146,216,…,73,81]`                               |
+| B2  | **"Floating prize" (the reported 1280×720 bug) is the refill.** `makePrize(x,false)` spawns the new prize out of nothing at `railY+rad+12` (y≈110) at a random x, sometimes right through the claw cable, and it falls for ~0.55s. It has no source, no sound and no landing cue, so a still frame shows a prize hanging in mid-air. | 1280×720, any round, every `refillMs`                                         | `play-1280x720-0.png` (turtle under the rail); trace: y 113→384 over 520ms |
+| B3  | **HUD covers the rail and trolley** on short stages (`railY = max(40, H*.11)` ignores the 56px HUD pill).                                                                                                                                                                                                                            | 844×390 (stage 272px); the HUD's bottom edge also touches the rail at 360×740 | `round-844x390.png`                                                        |
+| B4  | **The claw passes through prizes.** `lDrop` is a fixed depth, so the prongs sink into the heap and are drawn over the capsules. Nothing in the pile reacts to the claw.                                                                                                                                                              | any                                                                           | `play-1280x720-2.png`                                                      |
+| B5  | **Enter on a focused DROP button does nothing.** It only binds `pointerdown`, so the phase stays `idle`. Space works only because a global handler catches it.                                                                                                                                                                       | keyboard, Tab to DROP, Enter                                                  | probe: `phaseAfterEnterOnGrab: idle`                                       |
+| B6  | **Light-mode deck clashes with the cabinet.** The deck uses `surface-container`, which renders as a pale pink panel under a dark arcade cabinet. The two halves look like separate apps.                                                                                                                                             | any viewport with the light OS theme                                          | all `round-*`                                                              |
+| B7  | **HUD and feedback text wrap at 360px.** "Score / 0" breaks onto two lines and the feedback chip is 4 lines tall.                                                                                                                                                                                                                    | 360×740                                                                       | `round-360x740.png`                                                        |
+| B8  | **The round keeps running in the background.** The clock is wall-time (`sessionEndTs`), so switching apps on a phone costs time or ends the round.                                                                                                                                                                                   | phone app switch                                                              | code: `loop()`                                                             |
+| B9  | **Teardown is not in `show()`.** It lives in `endGame` and `stopToSetup`, which breaks the LEARNINGS rule (PLAY-002 rev2). Any new exit path can leave the RAF loop, countdown or key panel running.                                                                                                                                 | code review                                                                   | `show()` ~L1144                                                            |
+| B10 | **`__claw.forcePrizeUnderTip` builds a prize with no `rad` or `vx`.** The physics then produces `NaN`, so deterministic catch tests silently corrupt the pile.                                                                                                                                                                       | test helper                                                                   | code ~L2506                                                                |
 
 No console or page errors and no horizontal overflow at 360×740, 390×844, 844×390, 768×1024 or 1366×800.
 
 ### 1b. Measured play (bot aims perfectly at the topmost prize, 56s rounds)
 
-| Run              | Drops | Caught | Score | Lost mid-carry |
-| ---------------- | ----- | ------ | ----- | -------------- |
-| 1280×720 Normal  | 14    | 11     | 17    | 2 of 13 grabs  |
-| 390×844 Tricky   | 21    | 8      | 14    | **5 of 13 grabs (38%)** |
-| 1366×800 Chill   | 12    | 9      | 19    | 0              |
+| Run             | Drops | Caught | Score | Lost mid-carry          |
+| --------------- | ----- | ------ | ----- | ----------------------- |
+| 1280×720 Normal | 14    | 11     | 17    | 2 of 13 grabs           |
+| 390×844 Tricky  | 21    | 8      | 14    | **5 of 13 grabs (38%)** |
+| 1366×800 Chill  | 12    | 9      | 19    | 0                       |
 
 Even with perfect aim, Tricky loses 38% of successful grabs to a random `dropChance` that the player cannot influence. On wide desktops a round allows only about 12 drops, because the trolley moves at a fixed 540px/s across a 1200px rail and every catch ends at the far-left chute.
 
@@ -71,7 +71,7 @@ Even with perfect aim, Tricky loses 38% of successful grabs to a random `dropCha
   4. **Prize pile** (P1-2).
   5. **Glass:** two thin diagonal reflection streaks (alpha ≤ .07), clipped to the region **above** the pile top. LEARNINGS rev3 warns that translucent paint over prizes washes them out.
   6. **Frame:** a 10–14px bezel in `--claw-frame` with a 2px `--claw-frame-hi` inner highlight and rounded corners (`--md-sys-shape-corner-lg`).
-  7. **Front lip:** an opaque ledge that covers the bottom ~0.35·prizeR of the pile, so the prizes sit *inside* the machine.
+  7. **Front lip:** an opaque ledge that covers the bottom ~0.35·prizeR of the pile, so the prizes sit _inside_ the machine.
 - **P1-2 A heaped prize mountain.**
   - Prize radius: `prizeR = clamp(min(cabW*0.05, stageH*0.07), 20, 44)`.
   - Cap: `binCap` = `capacityRows × perRow`, where `perRow = floor(trayW / (2*prizeR*0.92))` and `capacityRows` is 2.6 on Chill, 2.3 on Normal and 2.0 on Tricky. Clamp the result to 12–36. Expected: about 18 at 360×740 and 30–34 at 1366×800.
@@ -102,6 +102,7 @@ Even with perfect aim, Tricky loses 38% of successful grabs to a random `dropCha
   - On Tricky, show only the line; hide the ring.
   - The toast hint becomes "Green ring = best grab!" for the first 2 drops of a session.
 - **P2-2 Skill-based grip (replaces the flat dice rolls).** `prox = 1 - |dx|/grabRadius`. Expose all of it as a pure `catchOdds(prize, prox, diff)` function:
+
   - `grab = (0.40 + 0.60·prox) · grip[r] · gripMul`, capped at 0.97.
   - `slip = slipChance · (1 - prox)`.
   - `midDrop = r === 1 ? 0 : dropChance · (1.15 - prox)`, so a centred common prize never drops mid-carry.
@@ -115,6 +116,7 @@ Even with perfect aim, Tricky loses 38% of successful grabs to a random `dropCha
     | Tricky     | 0.80            | 0.86      | .10          | .24          |
 
   - Target end-to-end success (grab × no slip × no mid-drop), for a common prize at the sweet spot: Chill ≥ 90%, Normal ≥ 80%, Tricky ≥ 60%. For a rare prize at `prox` 0.4 on Normal: about 30–40%.
+
 - **P2-3 Streak multiplier.**
   - Each consecutive banked catch adds 1 to `streak`. An empty grab, a slip or a mid-drop resets it to 0.
   - Multiplier: ×1 normally, **×2 from the 3rd** consecutive catch, **×3 from the 6th**. It applies to base points.

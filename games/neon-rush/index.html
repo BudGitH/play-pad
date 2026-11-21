@@ -3949,9 +3949,7 @@
             // z where the bottom view ray meets the ground (live fov incl. the speed kick); nearer than this is
             // below the frame. 0.85 m margin covers the hood/limb thickness beyond the bone positions.
             var zLimit =
-              camBase.z -
-              camBase.y / Math.tan(camBase.pitch + (camera.fov * Math.PI) / 360) -
-              0.85;
+              camBase.z - camBase.y / Math.tan(camBase.pitch + (camera.fov * Math.PI) / 360) - 0.85;
             var need = 0;
             if (gltf) {
               playerGroup.updateMatrixWorld(true);

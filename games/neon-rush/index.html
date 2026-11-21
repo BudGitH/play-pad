@@ -2337,7 +2337,8 @@
         /* ---------- roadside row: lit facades, roofline trims, neon signs ---------- */
         var ROW_N = 14,
           ROW_START = 24,
-          ROW_DROP = 26;
+          ROW_DROP = 26,
+          FACADE_BASE = 0.1; // facades start 10 cm above y=0, i.e. 2 cm below the pavement top (no hover gap)
         var rowTail = [0, 0]; // far edge (z) of the last building per side [left, right]
         var roadside = []; // active entries (neon boxes until the KayKit GLBs arrive, then the GLB clones)
         var boxRow = [],
@@ -2435,7 +2436,7 @@
         }
         function placeEntry(e) {
           if (!e.obj) return;
-          if (e.kind === "box") e.obj.position.set(e.side * (FACADE_X + e.d / 2), e.h / 2, e.z);
+          if (e.kind === "box") e.obj.position.set(e.side * (FACADE_X + e.d / 2), FACADE_BASE + e.h / 2, e.z);
           else e.obj.position.set(e.ox, e.oy, e.z + e.oz);
         }
         function layoutRow(row) {
@@ -2451,7 +2452,7 @@
           }
         }
         function writeEntry(i, e) {
-          setInst(trimInst, i, e.side * (FACADE_X - 0.04), e.h + 0.03, e.z, 0.16, 0.12, e.w * 0.98, 0);
+          setInst(trimInst, i, e.side * (FACADE_X - 0.04), FACADE_BASE + e.h + 0.03, e.z, 0.16, 0.12, e.w * 0.98, 0);
           if (e.sign >= 0) {
             var sx = e.side * (FACADE_X - 0.5),
               sz = e.z + e.signZ,
@@ -2602,7 +2603,7 @@
             e.h = box.max.y - box.min.y;
             // inner (road-facing) edge sits exactly on the facade line; origin offsets keep that on recycle
             e.ox = side < 0 ? -FACADE_X - box.max.x + inst.position.x : FACADE_X - box.min.x + inst.position.x;
-            e.oy = -box.min.y + inst.position.y;
+            e.oy = FACADE_BASE - box.min.y + inst.position.y;
             e.oz = inst.position.z - (box.min.z + box.max.z) / 2;
             if (i % 5 < 2) e.sign = glbSigns++;
             scene.add(inst);
@@ -3061,7 +3062,7 @@
      between wrap and rig, pivoting at the feet) adds the crouch / landing squash / board spin so
      the visuals always match the gameplay hitbox (SLIDE_H 0.72 m). */
         function hueRemapTexture(tex) {
-          // Rogue atlas: greens (hue 75-170) -> deep magenta-violet so the back view isn't a green blob.
+          // Rogue atlas: greens + teals (hue 75-186) -> deep magenta-violet so the back view isn't a green blob.
           try {
             var img = tex.image,
               w = img.width,
@@ -3085,7 +3086,7 @@
               if (mx === r) hh = ((g - b) / dl + (g < b ? 6 : 0)) * 60;
               else if (mx === g) hh = ((b - r) / dl + 2) * 60;
               else hh = ((r - g) / dl + 4) * 60;
-              if (hh < 75 || hh > 170 || s < 0.15) continue;
+              if (hh < 75 || hh > 186 || s < 0.15) continue;
               hh = 318 / 360;
               s *= 0.9;
               l *= 0.8;
@@ -4295,7 +4296,7 @@
           dBody.userData.prim = true;
           dDome.userData.prim = true;
           droneGroup.add(dBody, dDome, droneLightA, droneLightB);
-          droneGroup.position.set(0, 2.4, 11);
+          droneGroup.position.set(0, 9.2, 10);
           scene.add(droneGroup);
 
           // Hover-jet exhaust particles (replaces the flat underglow plane). Pooled, WORLD-space so
@@ -4358,18 +4359,25 @@
             "assets/models/city/car_police.glb",
             function (g) {
               var car = g.scene;
+              var carMat = null;
               car.traverse(function (o) {
                 if (/wheel/i.test(o.name || "")) o.visible = false; // it hovers
-                if (o.isMesh && o.material && o.material.emissive) {
-                  o.material.emissive = new THREE.Color(0xbfc8ff);
-                  o.material.emissiveMap = o.material.map;
-                  o.material.emissiveIntensity = 0.35; // same self-lit night treatment as the buildings
+                if (o.isMesh && o.material) {
+                  // night-graded clone (like the facades) — no blanket self-glow; shares the city atlas
+                  if (!carMat) {
+                    carMat = o.material.clone();
+                    if (cityAtlas) carMat.map = cityAtlas;
+                    carMat.color.multiplyScalar(0.8).lerp(new THREE.Color(0x4a5090), 0.2);
+                    carMat.envMapIntensity = 0.6;
+                  }
+                  o.material = carMat;
+                  o.frustumCulled = false;
                 }
               });
               var box = new THREE.Box3().setFromObject(car),
                 size = new THREE.Vector3();
               box.getSize(size);
-              var s = 2.6 / (Math.max(size.x, size.z) || 1); // ~2.6 units long
+              var s = 2.2 / (Math.max(size.x, size.z) || 1); // ~2.2 units long
               car.scale.setScalar(s);
               car.rotation.y = Math.PI; // nose toward the player
               box.setFromObject(car);
@@ -4391,13 +4399,18 @@
             },
           );
         }
+        // The cruiser swoops in from ABOVE-BEHIND the camera and hovers near the top of the frame at max
+        // tension — it never sits on the camera->runner line (which hid the oncoming obstacles in the
+        // runner's own lane). Positions are camera-relative so every aspect ratio frames it the same way.
         function droneTick(dt) {
           droneTension = Math.max(0, droneTension - dt * 0.055); // clean running lets it fall back
           if (renderer) {
-            var targetZ = 6.4 - droneTension * 4.0; // far 6.4 (small, hovering behind) → close 2.4 (right on your tail)
-            droneGroup.position.z += (targetZ - droneGroup.position.z) * Math.min(1, dt * 2);
-            droneGroup.position.x += (player.x - droneGroup.position.x) * Math.min(1, dt * 3);
-            droneGroup.position.y = 2.3 + Math.sin(elapsed * 2.4) * 0.18;
+            var k = easeOut2(clamp(droneTension, 0, 1));
+            var tz = camBase.z + 1.8 + (-3.8 - 1.8) * k,
+              ty = camBase.y + 4.8 + (0.7 - 4.8) * k;
+            droneGroup.position.z += (tz - droneGroup.position.z) * Math.min(1, dt * 2);
+            droneGroup.position.x += (player.x * 0.7 - droneGroup.position.x) * Math.min(1, dt * 3);
+            droneGroup.position.y += (ty + Math.sin(elapsed * 2.4) * 0.12 - droneGroup.position.y) * Math.min(1, dt * 3);
             var flash = Math.floor(elapsed * 6) % 2 === 0;
             droneLightA.material.color.setHex(flash ? 0xff3040 : 0x550a10);
             droneLightB.material.color.setHex(flash ? 0x102055 : 0x3070ff);
@@ -4436,7 +4449,7 @@
           ObstacleSpawner.reset();
           worldReset();
           if (renderer) {
-            droneGroup.position.set(0, 2.4, 6.4);
+            droneGroup.position.set(0, camBase.y + 4.8, camBase.z + 1.8);
           }
           AudioManager.musicReset();
           UIManager.hud();
@@ -4773,6 +4786,10 @@
      Deterministic drivers for the QA panel — see features/neon-rush/test-plan.md.
      step(ms) advances the fixed-step sim without rAF (headless-preview-safe). */
         window.__neon = {
+          // raw handles for QA scripts (scene graph walks, projections, draw-call info)
+          get three() {
+            return { scene: scene, camera: camera, renderer: renderer, player: player, quality: quality };
+          },
           get state() {
             return {
               phase: phase,
@@ -4807,21 +4824,102 @@
             var weap = [];
             if (skinRoot)
               skinRoot.traverse(function (o) {
-                if (
-                  /crossbow|sword|shield|knife|throwable|dagger|_axe|staff|quiver|badge/i.test(
-                    o.name || "",
-                  ) &&
-                  o.visible
-                )
-                  weap.push(o.name);
+                if (WEAPON_RX.test(o.name || "") && o.visible) weap.push(o.name);
               });
-            return {
+            var out = {
               kind: g ? "gltf" : "primitive",
               anim: g ? g.current : null,
               mixerTime: g ? +g.mixer.time.toFixed(2) : null,
               loaded: Object.keys(gltfRaw),
               visibleWeapons: weap,
             };
+            if (g) {
+              // Per-action truth (never trust `anim`: the state name advances even with zero actions playing)
+              skinRoot.updateMatrixWorld(true);
+              out.weights = g.weights();
+              out.clips = {};
+              CLIP_STATES.forEach(function (st) {
+                out.clips[st] = g.info[st] ? g.info[st].name : null;
+              });
+              var v = new THREE.Vector3(),
+                mn = new THREE.Vector3(1e9, 1e9, 1e9),
+                mx = new THREE.Vector3(-1e9, -1e9, -1e9);
+              g.bones.forEach(function (bn) {
+                bn.getWorldPosition(v);
+                mn.min(v);
+                mx.max(v);
+              });
+              out.spread = { x: +(mx.x - mn.x).toFixed(3), y: +(mx.y - mn.y).toFixed(3), z: +(mx.z - mn.z).toFixed(3) };
+              if (g.head) {
+                g.head.getWorldPosition(v);
+                out.headY = +v.y.toFixed(3);
+                out.topY = +(v.y + g.cfg.headTop * g.pose.scale.y).toFixed(3);
+              }
+              out.pose = {
+                sx: +g.pose.scale.x.toFixed(3),
+                sy: +g.pose.scale.y.toFixed(3),
+                pitch: +g.pose.rotation.x.toFixed(3),
+              };
+              out.spinYaw = +g.spinYaw.toFixed(3);
+            }
+            return out;
+          },
+          get render() {
+            var i = renderer ? renderer.info : null;
+            return i ? { drawCalls: i.render.calls, triangles: i.render.triangles } : null;
+          },
+          get quality() {
+            return { tier: quality.tier, dpr: quality.dpr, shadows: quality.shadows, avgMs: +quality.avgMs.toFixed(2), auto: quality.auto };
+          },
+          setQuality: function (t) {
+            applyQuality(t, true);
+            if (renderer) renderer.render(scene, camera);
+          },
+          get camera() {
+            if (!camera) return null;
+            camera.updateMatrixWorld();
+            var v = new THREE.Vector3();
+            var vis = function (x, z) {
+              v.set(x, 1.0, z).project(camera);
+              return Math.abs(v.x) <= 1 && v.z > -1 && v.z < 1;
+            };
+            var lane = function (i, z) {
+              return vis(LANE_X[i] - 1.2, z) && vis(LANE_X[i] + 1.2, z);
+            };
+            return {
+              fov: +camera.fov.toFixed(2),
+              aspect: +camera.aspect.toFixed(3),
+              y: +camera.position.y.toFixed(3),
+              z: +camera.position.z.toFixed(3),
+              laneVisible: [0, 1, 2].map(function (i) {
+                return lane(i, -12);
+              }),
+              laneVisibleNear: [0, 1, 2].map(function (i) {
+                return lane(i, 0);
+              }),
+            };
+          },
+          scene: {
+            // max |box.min.y - pavement| over every roadside building + count of boxes beyond the ground extents
+            groundGap: function () {
+              var b = new THREE.Box3(),
+                maxGap = 0,
+                outside = 0,
+                n = 0;
+              roadside.forEach(function (e) {
+                if (!e.obj) return;
+                e.obj.updateMatrixWorld(true);
+                b.setFromObject(e.obj);
+                maxGap = Math.max(maxGap, Math.abs(b.min.y - 0.12));
+                if (Math.abs(b.min.x) > 80 || Math.abs(b.max.x) > 80 || b.min.z < -250) outside++;
+                n++;
+              });
+              towers.forEach(function (t) {
+                if (Math.abs(t.x) + t.w / 2 > 80) outside++;
+                n++;
+              });
+              return { maxGap: +maxGap.toFixed(3), outside: outside, count: n, cityMode: cityMode };
+            },
           },
           forceRun: function () {
             UIManager.show("game");

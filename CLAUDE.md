@@ -56,6 +56,7 @@ After any meaningful change, **before you finish**:
 - **Append to `docs/DECISIONS.md`** any non-obvious choice: `what · why · alternatives rejected`.
 - **Update `docs/findings-ledger.md`**: increment recurrence counts for repeat findings and apply escalation (**2× = ticket, 3× = tech-debt priority, 4× = STOP-SHIP**).
 - **Update `docs/IDEAS.md`**: move shipped ideas out; add the non-blocking value/satisfaction feedback from the persona panel as future improvements.
+- **Check `_redirects` for new dev files.** Cloudflare deploys the whole repo root, so any new top-level file or folder, or any non-game file inside `games/<slug>/` (notes, configs, docs), is publicly served on the live site. When a change adds one, **ask the user** whether to add it to `_redirects` (redirect to `/`). Never block what the site needs (pages, scripts, styles, icons, game assets) or the licence and credit files.
 
 > **RULE:** every brain doc is an **OVERVIEW**. Link to detail; never inline large code or dumps. If a file bloats, consolidate it.
 

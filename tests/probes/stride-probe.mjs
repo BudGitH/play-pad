@@ -1106,7 +1106,9 @@ async function main() {
   /* ---- AC12 audio lifecycle (independent review): nothing plays under Pause, a muted start can be unmuted
          mid-run (wind comes back), footfall cues are locked to the run clip's foot plants ---- */
   {
-    const au = await openGame(browser, {
+    // own browser: 360 rendered steps would stall the software-GL queue for the next page (see LEARNINGS)
+    const auBrowser = await launch();
+    const au = await openGame(auBrowser, {
       viewport: { width: 1000, height: 620 },
       init: () =>
         localStorage.setItem(
@@ -1206,6 +1208,7 @@ async function main() {
       JSON.stringify({ steps: offs.length, worstMs: Math.round(worst) }),
     );
     await au.ctx.close();
+    await auBrowser.close();
   }
 
   /* ---- AC9: WebGL missing -> the game explains instead of a blank screen ---- */

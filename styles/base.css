@@ -1,13 +1,3 @@
-/* ============================================================================
-   PlayPad — base styles & MD3 components
-   ----------------------------------------------------------------------------
-   Reset, typography utilities, and the shared component vocabulary (card, chip,
-   button, state layers, focus, the horizontal game rail). Spacing/shape/colour
-   come from tokens.css; the only literals are a few off-grid component paddings
-   (6/12px) and 1px hairlines, kept intentionally.
-   ========================================================================== */
-
-/* ---- Reset -------------------------------------------------------------- */
 *,
 *::before,
 *::after {

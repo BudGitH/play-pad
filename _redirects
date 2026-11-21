@@ -8,3 +8,8 @@
 /docs/*            /  302
 /package.json      /  302
 /package-lock.json /  302
+/CLAUDE.md         /  302
+/features          /  302
+/features/*        /  302
+/tools             /  302
+/tools/*           /  302

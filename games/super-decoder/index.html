@@ -8,18 +8,26 @@
     <title>Super Decoder — PlayPad</title>
 
     <link rel="icon" href="../../icons/favicon.svg" type="image/svg+xml" />
-    <meta name="theme-color" content="#08080c" />
+    <meta name="theme-color" content="#fff8f7" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#08080c" media="(prefers-color-scheme: dark)" />
+
+    <!-- Applies the player's saved light/dark choice (set on the hub) before first paint.
+         Classic script, no defer: it must run before the stylesheets below paint. -->
+    <script src="../../scripts/theme.js"></script>
 
     <!-- Shared PlayPad design system -->
     <link rel="stylesheet" href="../../styles/tokens.css" />
     <link rel="stylesheet" href="../../styles/base.css" />
 
     <!--
-    Super Decoder — a solo Mastermind-style code-breaking game (PlayPad game #4, PLAY-004).
+    Super Decoder — a solo Mastermind-style code-breaking game (PlayPad game #4, PLAY-004; revamped
+    in PLAY-006 per features/playpad-revamp/design-super-decoder.md).
     Self-contained, build-free. The player cracks a hidden 4-peg colour code in up to 10 guesses,
-    with classic two-pass feedback pegs (black = right colour + position, white = right colour
-    only). Difficulty = SESSION LENGTH: Easy 3 codes, Normal 5, Hard 8. Theme picks the 6-colour
-    palette. Score rewards solving in fewer guesses + a streak bonus.
+    with classic two-pass feedback pegs (solid dot = right colour + position, ring = right colour
+    only — told apart by SHAPE so it works in light, dark and for colour-blind players; the CSS
+    classes stay .fb.black / .fb.white). Difficulty = SESSION LENGTH: Quick 1 code, Easy 3,
+    Normal 5, Hard 8. Theme picks the 6-colour palette. Score rewards solving in fewer guesses + a
+    streak bonus; the best score per difficulty is saved fail-soft in localStorage.
 
     Why DOM (not Canvas like Claw Catch): the board is static between turns and benefits from
     native focus rings, tab order, aria-live, and CSS transitions for free. No per-frame loop
@@ -37,10 +45,36 @@
        inspectable in one place and recolour-able theme-by-theme. */
       :root {
         --sd-accent: var(--md-sys-color-primary);
-        --sd-row-h: clamp(46px, 8vw, 64px);
-        --sd-slot: clamp(34px, 7vw, 48px);
-        --sd-fb: clamp(10px, 2vw, 13px);
-        --sd-palette-h: clamp(64px, 12vw, 84px);
+        /* Ink for the shape glyph drawn ON a peg (see .pegSym for the measured contrast). */
+        --sd-ink-on-peg: #0b0b0f;
+        /* Board sizing (D2): rows are sized from the viewport HEIGHT so all 10 fit without a board
+         scroll in portrait and on desktop. 250px is the budget for the HUD + legend + deck chrome;
+         10.6 = 10 rows + the active row's extra height + gaps. The 100vh line is the fallback for
+         browsers without dynamic viewport units. */
+        --sd-row-h: 44px;
+        --sd-slot: min(44px, calc(var(--sd-row-h) - 11px));
+        --sd-slot-active: 48px;
+        --sd-fb: clamp(12px, 3.4vw, 15px);
+        --sd-btn: clamp(48px, 13vw, 60px);
+        --sd-pad-x: clamp(10px, 4vw, 24px);
+      }
+      @supports (height: 100vh) {
+        :root {
+          --sd-row-h: clamp(
+            40px,
+            calc((100vh - 250px - env(safe-area-inset-top) - env(safe-area-inset-bottom)) / 10.6),
+            60px
+          );
+        }
+      }
+      @supports (height: 100dvh) {
+        :root {
+          --sd-row-h: clamp(
+            40px,
+            calc((100dvh - 250px - env(safe-area-inset-top) - env(safe-area-inset-bottom)) / 10.6),
+            60px
+          );
+        }
       }
 
       /* ---- App shell (full-screen immersive game) — reused from Claw Catch ---- */
@@ -81,10 +115,12 @@
         background: var(--md-sys-color-surface);
       }
 
+      /* Back to hub (48px tall hit area, WCAG 2.5.8) */
       .back-link {
         display: inline-flex;
         align-items: center;
         gap: 6px;
+        min-height: 48px;
         color: var(--md-sys-color-on-surface-variant);
         padding: 8px 12px 8px 4px;
         margin: 0 0 6px -4px;
@@ -110,7 +146,7 @@
       }
       .tagline {
         color: var(--md-sys-color-on-surface-variant);
-        margin: 0 0 26px;
+        margin: 0 0 18px;
         max-width: 48ch;
       }
       .tagline em {
@@ -120,7 +156,7 @@
       }
 
       .block {
-        margin-bottom: 26px;
+        margin-bottom: 20px;
       }
       .block > .label {
         display: flex;
@@ -148,7 +184,8 @@
         position: relative;
         flex: 1 1 0;
         min-width: 62px;
-        padding: 14px 8px;
+        min-height: 48px;
+        padding: 12px 6px;
         border-radius: var(--md-sys-shape-corner-md);
         background: var(--md-sys-color-surface-container);
         border: 1.5px solid var(--md-sys-color-outline-variant);
@@ -196,7 +233,8 @@
         flex-direction: column;
         align-items: center;
         gap: 8px;
-        padding: 14px 8px 12px;
+        min-height: 48px;
+        padding: 12px 8px 10px;
         border-radius: var(--md-sys-shape-corner-lg);
         background: var(--md-sys-color-surface-container);
         border: 1.5px solid var(--md-sys-color-outline-variant);
@@ -206,13 +244,11 @@
           border-color var(--md-sys-motion-duration-short3),
           background var(--md-sys-motion-duration-short3);
       }
+      /* D11: a compact 3×2 dot strip (was a 3:4 tile) so Start fits above the fold on a phone. */
       .theme-card .preview {
-        width: 100%;
-        max-width: 88px;
-        aspect-ratio: 3 / 4;
         border-radius: var(--md-sys-shape-corner-md);
         display: grid;
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(3, 18px);
         gap: 6px;
         padding: 8px;
         box-shadow: var(--md-sys-elevation-level1);
@@ -220,7 +256,8 @@
       }
       .theme-card .preview span {
         display: block;
-        aspect-ratio: 1;
+        width: 18px;
+        height: 18px;
         border-radius: 50%;
         box-shadow:
           inset 0 -2px 4px rgba(0, 0, 0, 0.25),
@@ -273,6 +310,12 @@
         transition:
           background var(--md-sys-motion-duration-short3),
           border-color var(--md-sys-motion-duration-short3);
+      }
+      /* Extends the hit area to 62x56 (>= 48px, WCAG 2.5.8) without changing the 52x32 visual. */
+      .switch::before {
+        content: "";
+        position: absolute;
+        inset: -12px -7px;
       }
       .switch::after {
         content: "";
@@ -334,7 +377,7 @@
       }
 
       /* ============================================================
-        GAME — board + palette deck
+        GAME — HUD + legend + board + palette deck
        ============================================================ */
       #stage {
         position: relative;
@@ -350,9 +393,9 @@
         position: relative;
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: 4px;
         margin: max(8px, env(safe-area-inset-top)) auto 4px;
-        padding: 4px 6px 4px 14px;
+        padding: 4px 4px 4px 12px;
         border-radius: var(--md-sys-shape-corner-full);
         background: var(--md-sys-color-surface-container-high);
         color: var(--md-sys-color-on-surface);
@@ -378,11 +421,39 @@
         font-weight: 800;
         opacity: 1;
       }
+      /* D14: a streak of 2+ reads "🔥 ×N" in the tertiary accent; a one-shot pulse on increment. */
+      #hudStreak.hot {
+        color: var(--md-sys-color-tertiary);
+        opacity: 1;
+        font-weight: 800;
+      }
+      #hudStreak.pulse {
+        animation: streakPulse 150ms var(--md-sys-motion-easing-emphasized);
+      }
+      @keyframes streakPulse {
+        0%,
+        100% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.3);
+        }
+      }
       #hud .sep {
         width: 1px;
         height: 14px;
         background: var(--md-sys-color-outline-variant);
-        margin: 0 2px;
+        margin: 0 1px;
+      }
+      /* Keep each stat on one line wherever there is room (score and streak grow with play); on a
+       very narrow screen let the text wrap rather than push the quit button off-screen. */
+      @media (min-width: 350px) {
+        #hudCode,
+        #hudAttempts,
+        #hudScore,
+        #hudStreak {
+          white-space: nowrap;
+        }
       }
 
       /* 48px hit targets (WCAG 2.5.8) with a 36px visual circle — copied verbatim from Claw Catch
@@ -415,71 +486,65 @@
         outline-offset: 2px;
       }
 
-      /* Banner (between codes) — shows the secret + outcome before the next code begins. */
-      #banner {
-        position: absolute;
-        left: 50%;
-        top: 56px;
-        transform: translateX(-50%);
-        max-width: calc(100% - 24px);
-        padding: 12px 16px;
-        border-radius: var(--md-sys-shape-corner-lg);
-        background: var(--md-sys-color-surface-container-highest);
-        border: 1.5px solid var(--md-sys-color-outline-variant);
-        color: var(--md-sys-color-on-surface);
-        box-shadow: var(--md-sys-elevation-level2);
-        z-index: 50;
-        display: none;
-        text-align: center;
+      /* The board pane = legend + scrollable board. It is the positioning context for the reveal
+       card and the "Code N of M" flash, so both are centred over the board in every layout. */
+      #boardPane {
+        position: relative;
+        flex: 1 1 auto;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
       }
-      #banner.show {
-        display: block;
-      }
-      #banner.win {
-        border-color: var(--md-sys-color-primary);
-        background: var(--md-sys-color-secondary-container);
-        color: var(--md-sys-color-on-secondary-container);
-      }
-      #banner.lose {
-        border-color: var(--md-sys-color-outline);
-      }
-      #banner .bTitle {
-        font-weight: 800;
-        font-size: 15px;
-        margin-bottom: 6px;
-      }
-      #banner .bCode {
-        display: inline-flex;
-        gap: 8px;
+      /* D1: a persistent one-line key for the feedback pegs (drawn with the same shapes as the
+       board so it can't drift from them). */
+      #legend {
+        flex: none;
+        height: 20px;
+        margin: 0;
+        display: flex;
         align-items: center;
         justify-content: center;
+        gap: 8px;
+        color: var(--md-sys-color-on-surface-variant);
+        font-size: var(--md-sys-typescale-label-small-size);
+        font-weight: var(--md-sys-typescale-label-small-weight);
+        letter-spacing: 0.02em;
       }
-      #banner .bPeg {
-        width: 22px;
-        height: 22px;
+      #legend .lgItem {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+      }
+      .lgDot {
+        display: inline-block;
+        flex: none;
+        width: 10px;
+        height: 10px;
         border-radius: 50%;
-        display: grid;
-        place-items: center;
-        box-shadow:
-          inset 0 -3px 5px rgba(0, 0, 0, 0.3),
-          inset 0 2px 3px rgba(255, 255, 255, 0.4);
+      }
+      .lgDot.exact {
+        background: var(--md-sys-color-on-surface);
+      }
+      .lgDot.ring {
+        border: 2px solid var(--md-sys-color-on-surface);
       }
 
-      /* The scrollable board — fills the space between HUD and deck. Rows render top to bottom;
-       row 1 (the first guess) is at the TOP, row 10 (last attempt) at the BOTTOM closest to
-       the palette. The active row auto-scrolls into view. */
+      /* The board — fills the space between the legend and the deck. Row 1 (the first guess) is at
+       the TOP, row 10 at the BOTTOM closest to the palette. Rows are sized from the viewport height
+       (--sd-row-h) so all ten are visible without scrolling in portrait and on desktop; only the
+       short landscape layout scrolls, and the active row scrolls into view there. */
       #boardWrap {
         flex: 1 1 auto;
         min-height: 0;
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
-        padding: 4px clamp(10px, 4vw, 24px) 10px;
+        padding: 4px var(--sd-pad-x) 10px;
         scroll-behavior: smooth;
       }
       .board {
         display: flex;
         flex-direction: column;
-        gap: 6px;
+        gap: 4px;
         max-width: 460px;
         margin: 0 auto;
       }
@@ -488,7 +553,7 @@
         grid-template-columns: 24px 1fr auto;
         align-items: center;
         gap: 10px;
-        padding: 6px 8px;
+        padding: 4px 8px;
         border-radius: var(--md-sys-shape-corner-md);
         border: 1.5px solid transparent;
         background: var(--md-sys-color-surface-container-low);
@@ -502,9 +567,42 @@
         opacity: 0.55;
       }
       .row.active {
+        min-height: calc(var(--sd-row-h) + 8px);
         background: var(--md-sys-color-surface-container-high);
         border-color: var(--md-sys-color-primary);
         box-shadow: 0 0 0 4px color-mix(in srgb, var(--md-sys-color-primary) 16%, transparent);
+      }
+      /* D13: the solved row glows in the primary colour (pegs bounce in sequence, below); a failed
+       code's last row just takes a firmer outline — no motion. */
+      .row.solved {
+        border-color: var(--md-sys-color-primary);
+        box-shadow:
+          0 0 0 4px color-mix(in srgb, var(--md-sys-color-primary) 26%, transparent),
+          0 0 18px color-mix(in srgb, var(--md-sys-color-primary) 38%, transparent);
+      }
+      .row.failed {
+        border-color: var(--md-sys-color-outline);
+      }
+      .row.solved .peg {
+        animation: pegBounce 220ms var(--md-sys-motion-easing-emphasized);
+      }
+      .row.solved .slot:nth-child(2) .peg {
+        animation-delay: 60ms;
+      }
+      .row.solved .slot:nth-child(3) .peg {
+        animation-delay: 120ms;
+      }
+      .row.solved .slot:nth-child(4) .peg {
+        animation-delay: 180ms;
+      }
+      @keyframes pegBounce {
+        0%,
+        100% {
+          transform: translateY(0) scale(1);
+        }
+        45% {
+          transform: translateY(-9px) scale(1.12);
+        }
       }
       .row .rowNum {
         font-size: 11px;
@@ -534,6 +632,11 @@
           transform var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-emphasized),
           border-color var(--md-sys-motion-duration-short3),
           background var(--md-sys-motion-duration-short3);
+      }
+      /* F7: the active row's slots are a real 48px tap target (history/empty slots stay compact). */
+      .row.active .slot {
+        width: var(--sd-slot-active);
+        height: var(--sd-slot-active);
       }
       .slot:disabled {
         cursor: default;
@@ -568,15 +671,15 @@
         display: grid;
         place-items: center;
       }
-      /* Colour-blind shape glyph — white with a dark halo so it reads on every palette colour
-       (light or dark). Sits inside the peg / palette button / banner peg. */
+      /* Colour-blind shape glyph. Dark ink, NOT white: white measured 1.2-1.9:1 on the yellow, mint,
+       cyan, lime and pastel pegs (faint in the light theme). --sd-ink-on-peg clears >= 4.96:1 on all
+       18 palette colours (6 colours x 3 themes), well past the 3:1 non-text floor, and the glyph
+       sits ON the peg so it is identical in light and dark themes. Re-measure if a palette changes.
+       Sits inside the peg / palette button / banner peg. */
       .pegSym {
         font-size: clamp(14px, 3.8vw, 20px);
         line-height: 1;
-        color: #fff;
-        text-shadow:
-          0 0 2px rgba(0, 0, 0, 0.9),
-          0 1px 1px rgba(0, 0, 0, 0.55);
+        color: var(--sd-ink-on-peg);
         pointer-events: none;
         -webkit-user-select: none;
         user-select: none;
@@ -585,7 +688,7 @@
         font-size: clamp(20px, 6vw, 30px);
       }
       #banner .bPeg .pegSym {
-        font-size: 12px;
+        font-size: 16px;
       }
       .peg.drop {
         animation: pegDrop 180ms var(--md-sys-motion-easing-emphasized);
@@ -607,19 +710,25 @@
 
       /* Feedback peg cluster — a stable 2×2 grid of mini dots. Order is blacks → whites → greys
        (never the same order as the guess), so it cannot leak position info (AC-8). Mini-pegs
-       start as `.fb.hidden`; submitGuess() reveals them one-by-one via setTimeout. */
+       start hidden; submitGuess() reveals them one-by-one via setTimeout.
+       D1: the three states differ by SHAPE, not by black-vs-white, so they stay distinct in light
+       and dark mode and for colour-blind players:
+         .fb.black  = exact           → solid dot
+         .fb.white  = colour only     → hollow ring
+         (neither)  = miss            → small faint pip
+       The class names stay black/white — AC-8 and the tests key off them. */
       .feedback {
         display: grid;
         grid-template-columns: repeat(2, 1fr);
-        gap: 3px;
-        width: calc(var(--sd-fb) * 2 + 3px);
+        gap: 4px;
+        width: calc(var(--sd-fb) * 2 + 4px);
       }
       .fb {
         width: var(--sd-fb);
         height: var(--sd-fb);
         border-radius: 50%;
-        background: var(--md-sys-color-surface-container-highest);
-        border: 1.5px solid var(--md-sys-color-outline-variant);
+        background: transparent;
+        border: 0;
         transform: scale(0.4);
         opacity: 0;
         transition:
@@ -632,35 +741,47 @@
       }
       .fb.black {
         background: var(--md-sys-color-on-surface);
-        border-color: var(--md-sys-color-on-surface);
       }
       .fb.white {
-        background: #ffffff;
-        border-color: var(--md-sys-color-outline);
+        background: transparent;
+        border: 2.5px solid var(--md-sys-color-on-surface);
+      }
+      .fb:not(.black):not(.white) {
+        background: var(--md-sys-color-outline-variant);
+        transform: scale(0.4);
       }
 
       /* ---------- DECK (palette + clear + submit) ---------- */
+      /* D2: the deck content is capped to the board's 460px column; the palette buttons are a
+       fixed 48–60px size instead of growing with the viewport width. */
       #deck {
         flex: none;
         display: grid;
-        grid-template-columns: auto 1fr auto;
-        align-items: center;
-        gap: clamp(8px, 2vw, 14px);
-        padding: 10px clamp(10px, 4vw, 24px) calc(10px + env(safe-area-inset-bottom));
+        gap: 8px;
+        padding: 8px max(var(--sd-pad-x), calc((100% - 460px) / 2))
+          calc(8px + env(safe-area-inset-bottom));
         background: var(--md-sys-color-surface-container);
         border-top: 1px solid var(--md-sys-color-outline-variant);
       }
       #palette {
-        grid-column: 1 / -1;
         display: grid;
-        grid-template-columns: repeat(6, 1fr);
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+        justify-items: center;
         gap: clamp(6px, 1.6vw, 10px);
         width: 100%;
+        transition: opacity var(--md-sys-motion-duration-short3);
+      }
+      /* D7: dimmed + inert while a code's result banner is open (not during the short feedback
+       reveal, to avoid a flicker every guess). */
+      #palette.locked {
+        opacity: 0.45;
+        pointer-events: none;
       }
       .colorBtn {
         position: relative;
-        aspect-ratio: 1;
-        min-height: 48px;
+        width: var(--sd-btn);
+        height: var(--sd-btn);
+        justify-self: center;
         border: 0;
         padding: 0;
         border-radius: 50%;
@@ -690,11 +811,10 @@
           var(--md-sys-elevation-level1);
       }
       #actions {
-        grid-column: 1 / -1;
         display: grid;
         grid-template-columns: auto 1fr;
         gap: clamp(8px, 2vw, 14px);
-        margin-top: 8px;
+        width: 100%;
       }
       .actionBtn {
         min-height: 48px;
@@ -716,6 +836,11 @@
         outline: 3px solid var(--md-sys-color-primary);
         outline-offset: 2px;
       }
+      /* D7: Clear and Submit are both disabled while a guess resolves / a banner is open. */
+      .actionBtn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
       #clearBtn {
         background: var(--md-sys-color-surface-container-highest);
         color: var(--md-sys-color-on-surface);
@@ -730,50 +855,258 @@
         background: var(--md-sys-color-surface-container-highest);
         color: var(--md-sys-color-on-surface-variant);
         box-shadow: none;
-        cursor: not-allowed;
       }
 
-      /* ---------- COUNTDOWN (reused look from Claw Catch) ---------- */
-      #countdown {
+      /* ---------- REVEAL CARD (between codes) — D12 ----------
+       A centred card over the board pane: the secret flips in peg by peg, then a score line and a
+       48px "Next code" button. Skippable (tap card / button / Enter / Space); otherwise it
+       auto-advances after BANNER_MS. The overlay itself is click-through; only the card is live. */
+      #banner {
         position: absolute;
         inset: 0;
-        z-index: 60;
+        z-index: 50;
         display: none;
         align-items: center;
         justify-content: center;
-        background: color-mix(in srgb, var(--md-sys-color-surface) 60%, transparent);
+        pointer-events: none;
+        background: color-mix(in srgb, var(--md-sys-color-surface) 40%, transparent);
+      }
+      #banner.show {
+        display: flex;
+      }
+      #banner .bCard {
+        pointer-events: auto;
+        width: min(340px, calc(100% - 32px));
+        padding: 18px 16px 16px;
+        border-radius: var(--md-sys-shape-corner-xl);
+        background: var(--md-sys-color-surface-container-highest);
+        border: 1.5px solid var(--md-sys-color-outline-variant);
+        color: var(--md-sys-color-on-surface);
+        box-shadow: var(--md-sys-elevation-level3);
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+        animation: cardIn 200ms var(--md-sys-motion-easing-emphasized);
+      }
+      @keyframes cardIn {
+        from {
+          opacity: 0;
+          transform: translateY(8px) scale(0.94);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+      #banner.win .bCard {
+        border-color: var(--md-sys-color-primary);
+        background: var(--md-sys-color-secondary-container);
+        color: var(--md-sys-color-on-secondary-container);
+      }
+      #banner.lose .bCard {
+        border-color: var(--md-sys-color-outline);
+      }
+      #banner .bTitle {
+        font-size: var(--md-sys-typescale-title-large-size);
+        line-height: 1.2;
+        font-weight: 800;
+      }
+      #banner .bCode {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        justify-content: center;
+        perspective: 480px;
+      }
+      #banner .bPeg {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        box-shadow:
+          inset 0 -3px 5px rgba(0, 0, 0, 0.3),
+          inset 0 2px 3px rgba(255, 255, 255, 0.4);
+        animation: pegFlip 180ms var(--md-sys-motion-easing-emphasized) both;
+        animation-delay: calc(var(--i, 0) * 90ms);
+      }
+      @keyframes pegFlip {
+        from {
+          opacity: 0;
+          transform: rotateY(90deg);
+        }
+        to {
+          opacity: 1;
+          transform: rotateY(0deg);
+        }
+      }
+      #banner .bLine {
+        font-size: 14px;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+      }
+      #banner .bNext {
+        min-height: 48px;
+        margin-top: 4px;
+        padding: 0 24px;
+        font-size: 16px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      #banner .bNext:focus-visible {
+        outline: 3px solid var(--md-sys-color-on-surface);
+        outline-offset: 3px;
+      }
+
+      /* ---------- "Code N of M" flash (D9) — the old blocking 3-2-1-GO, reused as a short,
+       non-blocking cue. Click-through, so the player can start placing pegs immediately. ---------- */
+      #countdown {
+        position: absolute;
+        inset: 0;
+        z-index: 40;
+        display: none;
+        align-items: center;
+        justify-content: center;
         pointer-events: none;
       }
       #countdown.active {
         display: flex;
       }
       #countdown .cnum {
-        font-size: 30vmin;
+        padding: 10px 24px;
+        border-radius: var(--md-sys-shape-corner-full);
+        background: var(--md-sys-color-surface-container-highest);
+        border: 1.5px solid var(--md-sys-color-outline-variant);
+        color: var(--md-sys-color-on-surface);
+        box-shadow: var(--md-sys-elevation-level2);
+        font-size: 20px;
         font-weight: 800;
-        line-height: 1;
-        background: var(--brand-gradient);
-        -webkit-background-clip: text;
-        background-clip: text;
-        color: transparent;
+        letter-spacing: 0.01em;
+        animation: codeFlash 700ms var(--md-sys-motion-easing-standard) both;
       }
-      #countdown .cnum.go {
-        font-size: 18vmin;
-        letter-spacing: 0.04em;
-      }
-      .cnum.beat {
-        animation: beat 0.7s var(--md-sys-motion-easing-emphasized);
-      }
-      @keyframes beat {
+      @keyframes codeFlash {
         0% {
-          transform: scale(0.4);
           opacity: 0;
+          transform: translateY(6px) scale(0.96);
         }
-        30% {
+        16% {
           opacity: 1;
+          transform: none;
+        }
+        78% {
+          opacity: 1;
+          transform: none;
         }
         100% {
-          transform: scale(1.25);
           opacity: 0;
+          transform: none;
+        }
+      }
+
+      /* ---------- LANDSCAPE PHONE (D3) ----------
+       Two panes: the board (with its legend) fills the left, full height; the HUD, the palette
+       (3×2, 52px buttons) and Clear/Submit stack on the right. The board may scroll here and the
+       active row scrolls into view. */
+      @media (orientation: landscape) and (max-height: 540px) {
+        :root {
+          --sd-row-h: 35px;
+          --sd-slot: 28px;
+          --sd-slot-active: 44px;
+          --sd-fb: 12px;
+          --sd-btn: 52px;
+        }
+        #stage {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) minmax(280px, 34%);
+          grid-template-rows: auto minmax(0, 1fr);
+        }
+        #boardPane {
+          grid-column: 1;
+          grid-row: 1 / span 2;
+          padding-left: env(safe-area-inset-left);
+          border-right: 1px solid var(--md-sys-color-outline-variant);
+        }
+        /* The HUD becomes a compact two-line card: the code counter on top, the three stats
+         beneath, the quit button spanning both lines on the right. */
+        #hud {
+          grid-column: 2;
+          grid-row: 1;
+          margin: max(8px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) 4px 10px;
+          max-width: none;
+          display: grid;
+          grid-template-columns: repeat(3, auto) 1fr 48px;
+          grid-template-rows: auto auto;
+          column-gap: 14px;
+          row-gap: 2px;
+          justify-items: start;
+          border-radius: var(--md-sys-shape-corner-xl);
+          padding: 4px 4px 4px 16px;
+        }
+        #hud .sep {
+          display: none;
+        }
+        #hudCode {
+          grid-column: 1 / 4;
+          grid-row: 1;
+        }
+        #hudAttempts {
+          grid-column: 1;
+          grid-row: 2;
+        }
+        #hudScore {
+          grid-column: 2;
+          grid-row: 2;
+        }
+        #hudStreak {
+          grid-column: 3;
+          grid-row: 2;
+        }
+        #quitBtn {
+          grid-column: 5;
+          grid-row: 1 / span 2;
+        }
+        #deck {
+          grid-column: 2;
+          grid-row: 2;
+          align-content: center;
+          padding: 8px max(14px, env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom))
+            14px;
+          background: transparent;
+          border-top: 0;
+        }
+        #palette {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 10px;
+        }
+        .row {
+          padding: 2px 8px;
+        }
+        .row.active {
+          min-height: 48px;
+        }
+        /* Results on a short landscape phone: tighten so the stats and both buttons fit above the
+         fold (the screen still scrolls if a device is shorter still). */
+        .res-inner {
+          padding-top: max(14px, env(safe-area-inset-top));
+          padding-bottom: 20px;
+        }
+        .res-inner .crown {
+          font-size: 30px;
+        }
+        .res-inner .sub {
+          margin-bottom: 14px;
+        }
+        .newBest {
+          margin-bottom: 10px;
+        }
+        .stat {
+          padding: 10px 8px;
+        }
+        .stat-grid {
+          margin-bottom: 14px;
         }
       }
 
@@ -790,10 +1123,31 @@
       .res-inner h2 {
         margin: 6px 0 4px;
       }
+      .res-inner h2:focus {
+        outline: none; /* a heading, not a control — focus is moved here only to anchor AT/keyboard */
+      }
       .res-inner .sub {
         color: var(--md-sys-color-on-surface-variant);
         font-size: 14px;
         margin: 0 0 26px;
+      }
+      /* D15: a tonal "New best!" chip above the stat grid when this session beat the saved best. */
+      .newBest {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        min-height: 32px;
+        padding: 0 14px;
+        margin: 0 0 14px;
+        border-radius: var(--md-sys-shape-corner-full);
+        background: var(--md-sys-color-secondary-container);
+        color: var(--md-sys-color-on-secondary-container);
+        font-size: 14px;
+        font-weight: 800;
+        letter-spacing: 0.01em;
+      }
+      .newBest[hidden] {
+        display: none;
       }
       .stat-grid {
         display: grid;
@@ -838,27 +1192,33 @@
         margin-top: 18px;
       }
 
-      /* Reduced-motion: suppress decorative pulse / drop / beat. Functional timing is driven by
-       JS setTimeouts (LEARNINGS row 3) so play remains paced even under reduce. */
+      /* Reduced-motion: suppress every decorative animation (pulse / drop / bounce / flip / flash).
+       Functional timing is driven by JS setTimeouts (LEARNINGS row 3), so play stays paced and the
+       feedback pegs still reveal one by one. */
       @media (prefers-reduced-motion: reduce) {
-        .peg.drop {
+        .peg.drop,
+        .row.solved .peg,
+        #hudStreak.pulse,
+        #banner .bCard,
+        #banner .bPeg {
           animation: none;
         }
         .row.active .slot.activeSlot {
           animation: none;
           box-shadow: 0 0 0 3px color-mix(in srgb, var(--md-sys-color-primary) 30%, transparent);
         }
-        .cnum.beat {
-          animation: none;
-        }
         .fb {
           transition: opacity 80ms linear;
+        }
+        .fb.black,
+        .fb.white {
           transform: none;
         }
         .sel-chip,
         .theme-card,
         .colorBtn,
         .actionBtn,
+        #palette,
         .switch::after {
           transition: none;
         }
@@ -883,8 +1243,8 @@
         </a>
         <div class="brand"><h1 class="display-small brand-wordmark">Super Decoder</h1></div>
         <p class="tagline body-medium">
-          Crack a hidden 4-colour code in <em>up to 10 guesses</em>. Black peg = right colour, right
-          spot. White peg = right colour, wrong spot. Codes may repeat a colour.
+          Crack a hidden 4-colour code in <em>up to 10 guesses</em>. <em>●</em> solid = right
+          colour, right spot. <em>○</em> ring = right colour, wrong spot. Codes can repeat a colour.
         </p>
 
         <div class="block">
@@ -903,7 +1263,7 @@
           <div class="toggle-row">
             <div>
               <div class="t-label">Sound</div>
-              <div class="t-sub">Peg drops, feedback ticks, a chime on a solve</div>
+              <div class="t-sub">Peg ticks and a solve chime</div>
             </div>
             <button class="switch" id="soundToggle" aria-pressed="true" aria-label="Sound"></button>
           </div>
@@ -911,8 +1271,7 @@
 
         <button class="start-btn state-layer" id="startBtn">Start</button>
         <p class="start-note" id="startNote">
-          One player · tap a slot, then a colour · ⌫ clears the row · SUBMIT when all four are
-          placed.
+          Tap a slot, then a colour · keys 1–6 place · ←/→ move · Enter submits
         </p>
       </div>
     </section>
@@ -923,16 +1282,41 @@
         <div id="hud">
           <span id="hudCode">Code 1 / 3</span>
           <span class="sep"></span>
-          <span id="hudAttempts">Tries <b>10</b></span>
+          <span id="hudAttempts" role="img" aria-label="10 tries left">Left <b>10</b></span>
           <span class="sep"></span>
           <span id="hudScore">Score <b>0</b></span>
           <span class="sep"></span>
-          <span id="hudStreak">Streak <b>0</b></span>
+          <span id="hudStreak" role="img" aria-label="Streak 0">Streak <b>0</b></span>
           <button id="quitBtn" aria-label="Quit game">✕</button>
         </div>
 
-        <div id="boardWrap">
-          <div class="board" id="board" role="grid" aria-label="Guess board"></div>
+        <div id="boardPane">
+          <p id="legend">
+            <span class="lgItem"
+              ><span class="lgDot exact" aria-hidden="true"></span>right spot</span
+            >
+            <span aria-hidden="true">·</span>
+            <span class="lgItem"
+              ><span class="lgDot ring" aria-hidden="true"></span>wrong spot</span
+            >
+          </p>
+          <div id="boardWrap">
+            <div class="board" id="board" role="list" aria-label="Guess board"></div>
+          </div>
+
+          <!-- Reveal card shown between codes (D12). Click-through overlay; only the card is live. -->
+          <div id="banner" role="group" aria-label="Code result">
+            <div class="bCard" id="bannerCard">
+              <div class="bTitle" id="bannerTitle"></div>
+              <div class="bCode" id="bannerCode" role="img"></div>
+              <div class="bLine" id="bannerLine"></div>
+              <button class="button button--filled bNext" id="bannerNext" type="button">
+                <span id="bannerNextLabel">Next code</span><span aria-hidden="true">&nbsp;▸</span>
+              </button>
+            </div>
+          </div>
+          <!-- Non-blocking "Code N of M" flash (D9); decorative — the HUD + srStatus carry it. -->
+          <div id="countdown" aria-hidden="true"><div class="cnum" id="cnum"></div></div>
         </div>
 
         <div id="deck">
@@ -944,12 +1328,6 @@
             </button>
           </div>
         </div>
-
-        <div id="banner" role="status" aria-live="polite">
-          <div class="bTitle" id="bannerTitle"></div>
-          <div class="bCode" id="bannerCode"></div>
-        </div>
-        <div id="countdown"><div class="cnum" id="cnum">3</div></div>
       </div>
     </section>
 
@@ -960,8 +1338,9 @@
     <section id="results" class="screen">
       <div class="res-inner">
         <div class="crown">🔐</div>
-        <h2 id="resTitle" class="headline-small">Session over</h2>
+        <h2 id="resTitle" class="headline-small" tabindex="-1">Session over</h2>
         <p class="sub" id="resSub"></p>
+        <div class="newBest" id="resNewBest" hidden>★ New best!</div>
         <div class="stat-grid">
           <div class="stat hero">
             <div class="big" id="statScore">0</div>
@@ -973,13 +1352,11 @@
           </div>
           <div class="stat">
             <div class="big" id="statBest">—</div>
-            <div class="cap">Best solve</div>
+            <div class="cap">Best score</div>
           </div>
         </div>
         <div class="res-actions">
-          <button class="button button--outlined state-layer" id="changeBtn">
-            Change settings
-          </button>
+          <button class="button button--outlined state-layer" id="changeBtn">Settings</button>
           <button class="button button--filled state-layer" id="againBtn">Play again</button>
         </div>
         <div class="res-foot">
@@ -1030,13 +1407,16 @@
           },
         ];
 
-        // Difficulty = SESSION LENGTH (per the user's brief). Per-code rules stay constant.
+        // Difficulty = SESSION LENGTH (per the user's brief). Per-code rules stay constant. `id` keys
+        // the saved best score (D15). "Quick" (one code) suits a short sitting (D10); Easy stays the
+        // default.
         var DIFFICULTIES = [
-          { l: "Easy", sub: "3 codes", totalCodes: 3 },
-          { l: "Normal", sub: "5 codes", totalCodes: 5 },
-          { l: "Hard", sub: "8 codes", totalCodes: 8 },
+          { id: "quick", l: "Quick", sub: "1 code", totalCodes: 1 },
+          { id: "easy", l: "Easy", sub: "3 codes", totalCodes: 3 },
+          { id: "normal", l: "Normal", sub: "5 codes", totalCodes: 5 },
+          { id: "hard", l: "Hard", sub: "8 codes", totalCodes: 8 },
         ];
-        var DEFAULT_DIFFICULTY_INDEX = 0;
+        var DEFAULT_DIFFICULTY_INDEX = 1;
 
         // Constant per-code rules (AC-4).
         var PEG_COUNT = 4; // pegs in the secret + each guess
@@ -1053,13 +1433,12 @@
         var DIGIT_KEY_RE = /^[1-6]$/;
 
         // Animation cadence — JS-driven (LEARNINGS row 3 / rev2 row 9) so reduce-motion still paces it.
-        var COUNTDOWN_SEQUENCE = ["3", "2", "1", "GO"];
-        var COUNTDOWN_DIGIT_MS = 600;
+        // There is no start-of-session countdown any more (D9): a turn-based puzzle needs no "3-2-1".
         var FEEDBACK_STAGGER_MS = 140; // gap between revealing successive feedback pegs
         var POST_FEEDBACK_MS = 220; // tiny hold after last peg before activating next row
-        var POST_RESULT_HOLD_MS = 700; // hold after solve/fail before showing the banner
-        var BANNER_MS = 1700; // banner display before next code (or results)
-        var NEXT_CODE_TICK_MS = 500; // short tick countdown between codes
+        var POST_RESULT_HOLD_MS = 700; // hold after solve/fail (the solved-row celebration) before the card
+        var BANNER_MS = 2400; // reveal card auto-advances after this; the player can skip sooner
+        var CODE_FLASH_MS = 700; // length of the non-blocking "Code N of M" cue
 
         // Scoring (AC-11): solved-in-1 = 100, down to 10 on guess 10; streak bonus = streak * 5.
         function pointsForSolve(attemptsUsed) {
@@ -1090,6 +1469,7 @@
           totalScore: 0,
           streak: 0,
           bestAttempts: null,
+          difficultyId: "easy",
         };
         var code = {
           secret: [],
@@ -1100,6 +1480,13 @@
         };
         var phase = Phase.IDLE;
 
+        // Reveal-card state (D12). `bannerOpen` + `phase === BETWEEN` together gate the one
+        // idempotent advance, so a skip tap racing the auto-advance timer can't skip a code.
+        var bannerOpen = false;
+        var bannerTimer = null;
+        var lastStreakShown = 0; // so the HUD pulses only when the streak actually grows
+        var sessionResult = null; // { prevBest, isNewBest, best } — committed once, at the last code
+
         // Every scheduled setTimeout id lives here so the show() chokepoint can clear them on quit /
         // session-end (LEARNINGS rev2 row 13 — every cross-screen teardown lives inside show()).
         var pendingTimeouts = [];
@@ -1109,9 +1496,12 @@
 
         // Audio (best-effort; failures swallowed by design).
         var audioCtx = null;
-        var reduceMotion = !!(
-          window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches
-        );
+        // Read live (not cached) so a mid-session OS change is honoured.
+        function prefersReduced() {
+          return !!(
+            window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches
+          );
+        }
 
         // ============================================================
         //  HELPERS
@@ -1130,6 +1520,70 @@
         function announce(msg) {
           $("srStatus").textContent = msg;
         }
+
+        // ============================================================
+        //  SAVE — best score per difficulty (D15) + bestOverall for the hub
+        // ============================================================
+        // The ONLY gateway to localStorage (same pattern as Neon Rush's SaveManager, LEARNINGS rows 43
+        // and 45): one versioned key, every access in try/catch, fail-soft to defaults. Private mode,
+        // blocked storage or a corrupt/hand-edited value must never crash the game — we just keep the
+        // best in memory for the session. localStorage is untrusted input: copy only the allow-listed
+        // difficulty ids, sanitise each number, never merge/spread the parsed object.
+        // `bestOverall` is a top-level number = the highest best across difficulties. The hub reads it
+        // through games.js (`best: { field: "bestOverall" }`) because it can't read the per-difficulty
+        // map. If a save has none (written before it existed), it is derived from `best` on load.
+        var SaveManager = (function () {
+          var KEY = "playpad.superDecoder.v1";
+          var IDS = ["quick", "easy", "normal", "hard"];
+          function defaults() {
+            return { v: 1, best: { quick: 0, easy: 0, normal: 0, hard: 0 }, bestOverall: 0 };
+          }
+          function sanitizeScore(x) {
+            var n = Math.floor(Number(x));
+            return Number.isFinite(n) ? clamp(n, 0, 1e6) : 0;
+          }
+          function maxBest(best) {
+            var m = 0;
+            for (var i = 0; i < IDS.length; i++) m = Math.max(m, best[IDS[i]]);
+            return m;
+          }
+          var needsRewrite = false; // saved before `bestOverall` existed (or it was edited): fix it once
+          function load() {
+            var out = defaults();
+            try {
+              var raw = localStorage.getItem(KEY);
+              if (!raw) return out;
+              var d = JSON.parse(raw);
+              if (!d || typeof d !== "object" || d.v !== 1) return out;
+              if (!d.best || typeof d.best !== "object") return out;
+              for (var i = 0; i < IDS.length; i++) {
+                if (Object.prototype.hasOwnProperty.call(d.best, IDS[i]))
+                  out.best[IDS[i]] = sanitizeScore(d.best[IDS[i]]);
+              }
+              out.bestOverall = Math.max(sanitizeScore(d.bestOverall), maxBest(out.best));
+              needsRewrite = out.bestOverall !== d.bestOverall;
+              return out;
+            } catch (e) {
+              return defaults();
+            }
+          }
+          var data = load();
+          // Call after changing data.best, before persist(): keeps bestOverall in step, synchronously.
+          function refreshOverall() {
+            data.bestOverall = maxBest(data.best);
+          }
+          function persist() {
+            try {
+              localStorage.setItem(KEY, JSON.stringify(data));
+            } catch (e) {
+              /* private mode / quota: in-memory only */
+            }
+          }
+          // Existing players get their hub badge without having to bank a new best first.
+          if (needsRewrite && data.bestOverall > 0) persist();
+          return { data: data, persist: persist, refreshOverall: refreshOverall };
+        })();
+        var save = SaveManager.data;
         function curTheme() {
           return THEMES[themeIndex];
         }
@@ -1172,15 +1626,22 @@
         }
 
         // THE chokepoint. Every screen change goes through here, so every cross-screen cleanup
-        // belongs here too (LEARNINGS rev2 row 13). Cancels stagger timers, hides the countdown
-        // overlay and the banner, and resets transient phase state — no caller can forget.
+        // belongs here too (LEARNINGS rev2 row 13). Cancels every timer (feedback stagger, banner
+        // auto-advance, code flash), hides the flash and the reveal card, drops the palette lock,
+        // the solved/failed row marks and the streak pulse, and resets transient phase state — no
+        // caller can forget.
         function show(s) {
           ["setup", "game", "results"].forEach(function (x) {
             $(x).classList.toggle("active", x === s);
           });
           clearAllPending();
+          bannerTimer = null; // its timer was just cleared with the rest
           $("countdown").classList.remove("active");
-          $("banner").classList.remove("show", "win", "lose");
+          hideBanner();
+          $("palette").classList.remove("locked");
+          $("hudStreak").classList.remove("pulse");
+          var marked = $("board").querySelectorAll(".row.solved, .row.failed");
+          for (var m = 0; m < marked.length; m++) marked[m].classList.remove("solved", "failed");
           if (s !== "game") {
             // Leaving the game screen — reset the in-flight code so any return enters a clean state.
             phase = s === "results" ? Phase.DONE : Phase.IDLE;
@@ -1273,9 +1734,6 @@
         function soundTick() {
           beep(520, 0.07, "sine", 0.12);
         }
-        function soundGo() {
-          beep(880, 0.16, "sine", 0.2);
-        }
 
         // ============================================================
         //  SETUP RENDERERS
@@ -1363,7 +1821,7 @@
           board.innerHTML = "";
           for (var r = 0; r < ATTEMPTS_MAX; r++) {
             var row = el("div", "row");
-            row.setAttribute("role", "row");
+            row.setAttribute("role", "listitem");
             row.setAttribute("data-row", String(r));
             var num = el("div", "rowNum");
             num.textContent = String(r + 1);
@@ -1382,7 +1840,9 @@
             row.appendChild(slots);
 
             var fb = el("div", "feedback");
-            fb.setAttribute("aria-label", "Feedback for row " + (r + 1));
+            // Hidden from AT until the row resolves; describeRow() then exposes it as an image with
+            // the counts (D8) — an unresolved row has nothing to say.
+            fb.setAttribute("aria-hidden", "true");
             for (var f = 0; f < PEG_COUNT; f++) {
               var dot = el("div", "fb");
               fb.appendChild(dot);
@@ -1431,6 +1891,32 @@
           paintGuessPegs(r, entry.guess, rowIdx);
           var fbs = r.querySelectorAll(".fb");
           paintFeedbackCluster(fbs, entry.black, entry.white, /*reveal*/ true);
+          describeRow(rowIdx);
+        }
+
+        // D8: once a row has resolved, give it a spoken summary — the guess in colour names plus the
+        // feedback counts — and expose its peg cluster as an image carrying the same counts, so a
+        // screen-reader user can inspect any past row (the dots themselves are only shapes).
+        function feedbackWords(entry) {
+          return entry.black + " exact, " + entry.white + " colour only";
+        }
+        function describeRow(rowIdx) {
+          var r = rowEl(rowIdx);
+          var entry = code.rows[rowIdx];
+          if (!r || !entry) return;
+          var names = entry.guess
+            .map(function (c) {
+              return curTheme().names[c];
+            })
+            .join(", ");
+          r.setAttribute(
+            "aria-label",
+            "Guess " + (rowIdx + 1) + ": " + names + " — " + feedbackWords(entry),
+          );
+          var fbEl = r.querySelector(".feedback");
+          fbEl.removeAttribute("aria-hidden");
+          fbEl.setAttribute("role", "img");
+          fbEl.setAttribute("aria-label", "Row " + (rowIdx + 1) + ": " + feedbackWords(entry));
         }
 
         // Paint a 2×2 feedback cluster from counts. Order is stable: blacks → whites → greys,
@@ -1445,10 +1931,35 @@
           }
         }
 
+        // One interactive slot of the active row: its peg (with the drop-in on a fresh fill), the
+        // active highlight and its spoken label.
+        function paintActiveSlot(slot, i, rowIdx) {
+          var v = code.current[i];
+          var label = "Row " + (rowIdx + 1) + " slot " + (i + 1) + ": ";
+          slot.disabled = false;
+          slot.tabIndex = 0;
+          slot.innerHTML = "";
+          slot.classList.toggle("activeSlot", i === code.activeSlot);
+          if (v === null || v === undefined) {
+            slot.setAttribute("aria-label", label + "empty");
+            return;
+          }
+          var peg = makePeg(v);
+          if (slot.dataset.justFilled === "1") {
+            peg.classList.add("drop");
+            delete slot.dataset.justFilled;
+          }
+          slot.appendChild(peg);
+          slot.setAttribute("aria-label", label + curTheme().names[v] + " (tap to clear)");
+        }
+
         // The currently active row reflects code.current; called on every place/clear.
         function refreshActiveRow() {
           var rowIdx = code.rows.length;
           if (rowIdx >= ATTEMPTS_MAX) return;
+          // A fresh active row restores the controls that submit/the reveal card locked (D7).
+          $("palette").classList.remove("locked");
+          $("clearBtn").disabled = false;
           // Mark all rows correctly: history above, active = rowIdx, empty below.
           for (var r = 0; r < ATTEMPTS_MAX; r++) {
             var rEl = rowEl(r);
@@ -1460,43 +1971,16 @@
           // Active-row slots become interactive.
           var active = rowEl(rowIdx);
           var slots = active.querySelectorAll(".slot");
-          for (var i = 0; i < PEG_COUNT; i++) {
-            var slot = slots[i];
-            var v = code.current[i];
-            slot.disabled = false;
-            slot.tabIndex = 0;
-            slot.innerHTML = "";
-            slot.classList.toggle("activeSlot", i === code.activeSlot);
-            if (v !== null && v !== undefined) {
-              var peg = makePeg(v);
-              if (slot.dataset.justFilled === "1") {
-                peg.classList.add("drop");
-                delete slot.dataset.justFilled;
-              }
-              slot.appendChild(peg);
-              slot.setAttribute(
-                "aria-label",
-                "Row " +
-                  (rowIdx + 1) +
-                  " slot " +
-                  (i + 1) +
-                  ": " +
-                  curTheme().names[v] +
-                  " (tap to clear)",
-              );
-            } else {
-              slot.setAttribute(
-                "aria-label",
-                "Row " + (rowIdx + 1) + " slot " + (i + 1) + ": empty",
-              );
-            }
-          }
+          for (var i = 0; i < PEG_COUNT; i++) paintActiveSlot(slots[i], i, rowIdx);
           $("submitBtn").disabled = code.current.some(function (x) {
             return x === null || x === undefined;
           });
           // Scroll the active row into view (board container scrolls).
           if (active.scrollIntoView)
-            active.scrollIntoView({ block: "nearest", behavior: reduceMotion ? "auto" : "smooth" });
+            active.scrollIntoView({
+              block: "nearest",
+              behavior: prefersReduced() ? "auto" : "smooth",
+            });
         }
 
         // Render the colour palette buttons for the current theme.
@@ -1519,9 +2003,26 @@
 
         function updateHud() {
           $("hudCode").textContent = "Code " + (session.codeIndex + 1) + " / " + session.totalCodes;
-          $("hudAttempts").innerHTML = "Tries <b>" + code.attemptsLeft + "</b>";
+          // The number is tries REMAINING, so the label says "Left" (it used to say "Tries", which
+          // read as tries used). The aria-label spells it out for screen readers.
+          $("hudAttempts").innerHTML = "Left <b>" + code.attemptsLeft + "</b>";
+          $("hudAttempts").setAttribute(
+            "aria-label",
+            code.attemptsLeft + (code.attemptsLeft === 1 ? " try left" : " tries left"),
+          );
           $("hudScore").innerHTML = "Score <b>" + session.totalScore + "</b>";
-          $("hudStreak").innerHTML = "Streak <b>" + session.streak + "</b>";
+          // D14: a streak of 2+ reads "🔥 ×N" in the tertiary accent; a short pulse when it grows.
+          var st = $("hudStreak");
+          var n = session.streak;
+          st.innerHTML = n >= 2 ? "🔥 ×<b>" + n + "</b>" : "Streak <b>" + n + "</b>";
+          st.classList.toggle("hot", n >= 2);
+          st.setAttribute("aria-label", "Streak " + n);
+          if (n > lastStreakShown && !prefersReduced()) {
+            st.classList.remove("pulse");
+            void st.offsetWidth; // restart the one-shot animation
+            st.classList.add("pulse");
+          }
+          lastStreakShown = n;
         }
 
         // ============================================================
@@ -1558,6 +2059,52 @@
             if (code.current[idx] === null || code.current[idx] === undefined) return idx;
           }
           return -1;
+        }
+
+        // ---------- focus + locking helpers (D5, D7) ----------
+        function activeSlotEl() {
+          var r = rowEl(code.rows.length);
+          return r ? r.querySelectorAll(".slot")[code.activeSlot] || null : null;
+        }
+        // Move keyboard focus onto the active slot (no page scroll — the board scrolls itself).
+        function focusActiveSlot() {
+          var slotEl = activeSlotEl();
+          if (slotEl && !slotEl.disabled) slotEl.focus({ preventScroll: true });
+        }
+        // D5: whenever a row (re)becomes active, give focus back to its active slot — but only if it
+        // was lost (body, the now-spent Submit button, a disabled/hidden element, the closed reveal
+        // card). Never steal it from the palette or the quit button.
+        function restoreFocus() {
+          var a = document.activeElement;
+          var lost =
+            !a ||
+            a === document.body ||
+            a === document.documentElement ||
+            a.id === "submitBtn" ||
+            a.disabled ||
+            (a.closest && a.closest("#banner")) ||
+            !a.getClientRects().length;
+          if (lost) focusActiveSlot();
+        }
+        // The slot index of `elm` if it is a slot of the ACTIVE row, else -1.
+        function activeRowSlotIndex(elm) {
+          if (!elm || !elm.classList || !elm.classList.contains("slot")) return -1;
+          if (+elm.getAttribute("data-row") !== code.rows.length) return -1;
+          return +elm.getAttribute("data-slot");
+        }
+        // Move the active-slot highlight without re-rendering the row (used when focus moves).
+        function markActiveSlot() {
+          var r = rowEl(code.rows.length);
+          if (!r) return;
+          var slots = r.querySelectorAll(".slot");
+          for (var i = 0; i < slots.length; i++)
+            slots[i].classList.toggle("activeSlot", i === code.activeSlot);
+        }
+        // D7: while a guess resolves and while the reveal card is open, Clear and Submit are inert
+        // (and look it). refreshActiveRow() restores them when the next row goes live.
+        function lockControls() {
+          $("submitBtn").disabled = true;
+          $("clearBtn").disabled = true;
         }
 
         // Tap a filled slot → clear it and make it active. Disambiguates from "tap empty slot to
@@ -1632,6 +2179,7 @@
           )
             return;
           phase = Phase.SUBMITTING;
+          lockControls();
           var guess = code.current.slice();
           var fb = scoreGuess(code.secret, guess);
           var rowIdx = code.rows.length;
@@ -1650,8 +2198,21 @@
           r.classList.add("history");
           paintGuessPegs(r, guess, rowIdx);
           var fbs = r.querySelectorAll(".fb");
-          // Pre-set the classes (black/white/grey) but keep them hidden; reveal one by one.
+          // Pre-set the classes (exact/colour-only/miss) but keep them hidden; reveal one by one.
           paintFeedbackCluster(fbs, fb.black, fb.white, /*reveal*/ false);
+          revealFeedbackPegs(fbs);
+
+          // After the last peg + a tiny hold, branch.
+          later(
+            function () {
+              afterReveal(rowIdx, fb);
+            },
+            FEEDBACK_STAGGER_MS * PEG_COUNT + POST_FEEDBACK_MS,
+          );
+        }
+
+        // Reveal the four feedback dots one at a time (JS timers, so reduced-motion keeps the pace).
+        function revealFeedbackPegs(fbs) {
           for (var p = 0; p < PEG_COUNT; p++) {
             (function (idx) {
               later(
@@ -1665,42 +2226,40 @@
               );
             })(p);
           }
+        }
 
-          // After the last peg + a tiny hold, branch.
-          later(
-            function () {
-              var solved = fb.black === PEG_COUNT;
-              var outOfAttempts = code.attemptsLeft <= 0;
-              if (solved) {
-                resolveCode(true, rowIdx + 1);
-              } else if (outOfAttempts) {
-                resolveCode(false, rowIdx + 1);
-              } else {
-                // Next attempt — reactivate next row.
-                phase = Phase.PLACING;
-                refreshActiveRow();
-                announce(
-                  "Row " +
-                    (rowIdx + 1) +
-                    ": " +
-                    fb.black +
-                    " black, " +
-                    fb.white +
-                    " white. Tries remaining: " +
-                    code.attemptsLeft +
-                    ".",
-                );
-              }
-            },
-            FEEDBACK_STAGGER_MS * PEG_COUNT + POST_FEEDBACK_MS,
-          );
+        // The reveal is done: expose the row to AT, then solve / fail the code or open the next row.
+        function afterReveal(rowIdx, fb) {
+          describeRow(rowIdx);
+          if (fb.black === PEG_COUNT) {
+            resolveCode(true, rowIdx + 1);
+          } else if (code.attemptsLeft <= 0) {
+            resolveCode(false, rowIdx + 1);
+          } else {
+            // Next attempt — reactivate the next row and put focus back on its active slot (D5).
+            phase = Phase.PLACING;
+            refreshActiveRow();
+            restoreFocus();
+            announce(
+              "Row " +
+                (rowIdx + 1) +
+                ": " +
+                feedbackWords(code.rows[rowIdx]) +
+                ". " +
+                code.attemptsLeft +
+                (code.attemptsLeft === 1 ? " try left." : " tries left."),
+            );
+          }
         }
 
         // ============================================================
-        //  RESOLVE A CODE — score, banner, advance
+        //  RESOLVE A CODE — score, reveal card, advance
         // ============================================================
         function resolveCode(solved, attemptsUsed) {
           phase = Phase.BETWEEN;
+          lockControls();
+          $("palette").classList.add("locked"); // dimmed + inert for the reveal card (D7)
+          var prevStreak = session.streak;
           var gained = 0;
           if (solved) {
             gained = pointsForSolve(attemptsUsed) + session.streak * STREAK_BONUS;
@@ -1726,59 +2285,119 @@
             soundFailCode();
             announce("Code failed. The code was " + secretWords() + ". Streak reset.");
           }
+          // D13: celebrate the solved row (glow + bouncing pegs); a failed code's last row just gets
+          // a firmer outline. Both are cleared by show() / the next board render.
+          var rEl = rowEl(attemptsUsed - 1);
+          if (rEl) rEl.classList.add(solved ? "solved" : "failed");
           updateHud();
+          // Bank the best score at the TERMINAL event of the session (the last code), not behind
+          // the cosmetic timer below — quitting during the card must not lose a finished run
+          // (LEARNINGS row 45).
+          if (session.codeIndex + 1 >= session.totalCodes) commitSessionBest();
 
           later(function () {
-            showBanner(solved, gained);
-            later(function () {
-              hideBanner();
-              session.codeIndex += 1;
-              if (session.codeIndex >= session.totalCodes) {
-                endSession();
-              } else {
-                beginNextCode();
-              }
-            }, BANNER_MS);
+            showBanner(solved, gained, attemptsUsed, prevStreak);
           }, POST_RESULT_HOLD_MS);
         }
 
-        function showBanner(solved, gained) {
+        function showBanner(solved, gained, attemptsUsed, prevStreak) {
           var b = $("banner");
-          b.classList.add("show");
-          b.classList.add(solved ? "win" : "lose");
-          var title = solved ? "Solved! +" + gained + " pts" : "Failed — the code was:";
-          if (solved && gained > pointsForSolve(code.rows.length)) {
-            title = "Solved! +" + gained + " pts (streak bonus)";
+          b.classList.remove("win", "lose");
+          b.classList.add("show", solved ? "win" : "lose");
+          var lastCode = session.codeIndex + 1 >= session.totalCodes;
+          $("bannerTitle").textContent = solved ? "Code cracked!" : "Out of tries";
+          var line;
+          if (solved) {
+            line = "Solved in " + attemptsUsed + " · +" + gained + " pts";
+            if (session.streak >= 2) line += " · streak ×" + session.streak;
+          } else {
+            line = "That was the code" + (prevStreak > 0 ? " · streak reset" : "");
           }
-          $("bannerTitle").textContent = title;
+          $("bannerLine").textContent = line;
+          $("bannerNextLabel").textContent = lastCode ? "See results" : "Next code";
           var bc = $("bannerCode");
           bc.innerHTML = "";
           // The peg row is decorative (the spoken text comes via announce()); label it so AT inspecting
-          // the banner still gets the code in words rather than four unlabelled dots.
+          // the card still gets the code in words rather than four unlabelled dots.
           bc.setAttribute("aria-label", "The code was " + secretWords());
           var t = curTheme();
-          code.secret.forEach(function (c) {
+          code.secret.forEach(function (c, i) {
             var dot = el("div", "bPeg");
             dot.style.background = t.colors[c];
+            dot.style.setProperty("--i", String(i)); // 90ms flip-in stagger (CSS animation-delay)
             var sym = el("span", "pegSym");
             sym.textContent = SYMBOLS[c];
             dot.appendChild(sym);
             bc.appendChild(dot);
           });
+          bannerOpen = true;
+          bannerTimer = later(advanceFromBanner, BANNER_MS);
+          // Keyboard users land on the one button that matters; Enter/Space activate it natively.
+          $("bannerNext").focus({ preventScroll: true });
         }
         function hideBanner() {
-          var b = $("banner");
-          b.classList.remove("show", "win", "lose");
+          bannerOpen = false;
+          $("banner").classList.remove("show", "win", "lose");
         }
 
+        // The ONE way out of the reveal card. Idempotent: it runs exactly once per code even when a
+        // skip tap, Enter/Space and the auto-advance timer all arrive together. It claims the
+        // transition first (phase → IDLE), then cancels the pending timer, so a second caller sees
+        // phase !== BETWEEN and returns (otherwise codeIndex would jump by 2 and skip a code).
+        function advanceFromBanner() {
+          if (phase !== Phase.BETWEEN || !bannerOpen) return;
+          phase = Phase.IDLE;
+          if (bannerTimer !== null) {
+            clearTimeout(bannerTimer);
+            var i = pendingTimeouts.indexOf(bannerTimer);
+            if (i >= 0) pendingTimeouts.splice(i, 1);
+            bannerTimer = null;
+          }
+          hideBanner();
+          session.codeIndex += 1;
+          if (session.codeIndex >= session.totalCodes) endSession();
+          else beginNextCode();
+        }
+
+        // Next code: no tick delay any more (D9) — the new board is live immediately, with a short
+        // non-blocking "Code N of M" cue and focus back on the first slot.
         function beginNextCode() {
-          // A short tick countdown so the player has a beat between codes.
-          later(function () {
-            newCode();
-            phase = Phase.PLACING;
-            refreshActiveRow();
-          }, NEXT_CODE_TICK_MS);
+          newCode();
+          phase = Phase.PLACING;
+          refreshActiveRow();
           soundTick();
+          flashCode();
+          restoreFocus();
+        }
+
+        // The "Code N of M" cue (reuses #countdown): a 700ms click-through pill. Skipped for a
+        // one-code session (nothing to count) and under reduced motion (it is a pure flourish).
+        function flashCode() {
+          var label = "Code " + (session.codeIndex + 1) + " of " + session.totalCodes;
+          if (session.totalCodes > 1) announce(label + ".");
+          if (session.totalCodes < 2 || prefersReduced()) return;
+          var c = $("countdown");
+          $("cnum").textContent = label;
+          c.classList.remove("active");
+          void c.offsetWidth; // restart the CSS animation
+          c.classList.add("active");
+          later(function () {
+            c.classList.remove("active");
+          }, CODE_FLASH_MS);
+        }
+
+        // Best score per difficulty (D15). Runs once per session, at the last code's terminal event.
+        function commitSessionBest() {
+          if (sessionResult) return;
+          var id = session.difficultyId;
+          var prev = save.best[id] || 0;
+          var isNew = session.totalScore > prev;
+          if (isNew) {
+            save.best[id] = session.totalScore;
+            SaveManager.refreshOverall();
+            SaveManager.persist();
+          }
+          sessionResult = { prevBest: prev, isNewBest: isNew, best: save.best[id] || 0 };
         }
 
         // ============================================================
@@ -1806,64 +2425,51 @@
         }
 
         function startSession() {
-          session.totalCodes = DIFFICULTIES[difficultyIndex].totalCodes;
+          var diff = DIFFICULTIES[difficultyIndex];
+          session.totalCodes = diff.totalCodes;
+          session.difficultyId = diff.id;
           session.codeIndex = 0;
           session.solved = 0;
           session.totalScore = 0;
           session.streak = 0;
           session.bestAttempts = null;
+          lastStreakShown = 0;
+          sessionResult = null;
 
           show("game");
           renderPalette();
           newCode();
-          beginCountdown();
+          // No 3-2-1-GO (D9): the board is live the instant Start is tapped.
+          phase = Phase.PLACING;
+          refreshActiveRow();
+          flashCode();
+          restoreFocus();
         }
 
-        // ---------- countdown overlay (reused look from Claw Catch) ----------
-        function beginCountdown() {
-          var step = 0;
-          $("countdown").classList.add("active");
-          renderCountdownDigit(COUNTDOWN_SEQUENCE[0]);
-          soundTick();
-          function tick() {
-            step++;
-            if (step < COUNTDOWN_SEQUENCE.length) {
-              var val = COUNTDOWN_SEQUENCE[step];
-              renderCountdownDigit(val);
-              val === "GO" ? soundGo() : soundTick();
-              later(tick, COUNTDOWN_DIGIT_MS);
-            } else {
-              $("countdown").classList.remove("active");
-              phase = Phase.PLACING;
-              refreshActiveRow();
-            }
-          }
-          later(tick, COUNTDOWN_DIGIT_MS);
-        }
-        function renderCountdownDigit(val) {
-          var cn = $("cnum");
-          cn.textContent = val;
-          cn.className = "cnum" + (val === "GO" ? " go" : "");
-          void cn.offsetWidth;
-          cn.classList.add("beat");
+        function pluralTries(n) {
+          return n + (n === 1 ? " try" : " tries");
         }
 
         function endSession() {
           phase = Phase.DONE;
           soundSessionEnd();
+          commitSessionBest(); // normally already banked at the last code; idempotent safety net
+          var bestSolve =
+            session.bestAttempts === null
+              ? ""
+              : " Best solve: " + pluralTries(session.bestAttempts) + ".";
           $("statScore").textContent = String(session.totalScore);
           $("statSolved").textContent = session.solved + " / " + session.totalCodes;
-          $("statBest").textContent =
-            session.bestAttempts === null
-              ? "—"
-              : session.bestAttempts + (session.bestAttempts === 1 ? " try" : " tries");
+          // D15: the third stat is the saved best for THIS difficulty ("best solve" moved to the sub).
+          $("statBest").textContent = sessionResult.best > 0 ? String(sessionResult.best) : "—";
+          $("resNewBest").hidden = !sessionResult.isNewBest;
           if (session.solved === session.totalCodes && session.totalCodes > 0) {
             $("resTitle").textContent = "Perfect session!";
-            $("resSub").textContent = "Every code cracked. Score " + session.totalScore + ".";
+            $("resSub").textContent =
+              "Every code cracked for " + session.totalScore + " points." + bestSolve;
           } else if (session.solved === 0) {
             $("resTitle").textContent = "No solves";
-            $("resSub").textContent =
-              "Try Easy (3 codes) — the codes can repeat a colour, so use the white pegs as your clue.";
+            $("resSub").textContent = "The codes can repeat a colour — use the rings as your clue.";
           } else {
             $("resTitle").textContent = "Session over";
             $("resSub").textContent =
@@ -1873,10 +2479,18 @@
               session.totalCodes +
               " for " +
               session.totalScore +
-              " points.";
+              " points." +
+              bestSolve;
           }
-          announce($("resTitle").textContent + ". " + $("resSub").textContent);
+          announce(
+            $("resTitle").textContent +
+              ". " +
+              $("resSub").textContent +
+              (sessionResult.isNewBest ? " New best score!" : ""),
+          );
           show("results");
+          // Keyboard/AT users land on the heading (not a button — a held Enter must not restart).
+          $("resTitle").focus({ preventScroll: true });
         }
 
         function quitToSetup() {
@@ -1890,33 +2504,73 @@
         $("clearBtn").addEventListener("click", clearCurrentRow);
         $("submitBtn").addEventListener("click", submitGuess);
         $("quitBtn").addEventListener("click", quitToSetup);
+        // Tap anywhere on the reveal card (or its button, or Enter/Space on the focused button —
+        // those arrive here as a native click) to move on early.
+        $("bannerCard").addEventListener("click", advanceFromBanner);
+        // Tabbing/clicking onto a slot of the active row makes it THE active slot, so the highlight,
+        // the number keys and Backspace all agree with where focus is (F6).
+        $("board").addEventListener("focusin", function (ev) {
+          if (phase !== Phase.PLACING) return;
+          var idx = activeRowSlotIndex(ev.target);
+          if (idx < 0 || idx === code.activeSlot) return;
+          code.activeSlot = idx;
+          markActiveSlot();
+        });
 
-        // Keyboard shortcuts — number keys 1-6 place colours into the active slot; Backspace clears
-        // the active slot; Enter submits. Only active during PLACING.
+        function clearActiveSlot(key) {
+          var s = code.activeSlot;
+          if (code.current[s] !== null && code.current[s] !== undefined) {
+            code.current[s] = null;
+            refreshActiveRow();
+            soundClear();
+          } else if (key === "Backspace") {
+            // Backspace on an empty slot steps back to the previous one.
+            code.activeSlot = (s - 1 + PEG_COUNT) % PEG_COUNT;
+            refreshActiveRow();
+          }
+        }
+
+        // Keyboard shortcuts, only while PLACING:
+        //   1–6 place a colour · ←/→ move the active slot · Backspace/Delete clear · Enter submits.
+        // D4: Enter/Backspace/Delete/arrows are board shortcuts ONLY when focus is on the page, a
+        // slot of the active row (or, for Enter, the Submit button). On any other control (Quit,
+        // Clear, a palette colour) we return WITHOUT preventDefault so the browser's native Enter/
+        // Space activation works — previously a global preventDefault swallowed Enter there (F4).
+        // D6: with a slot focused, a number key targets THAT slot and focus follows the new active
+        // slot.
         window.addEventListener("keydown", function (ev) {
           if (phase !== Phase.PLACING) return;
+          if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
+          var focused = document.activeElement;
+          var slotIdx = activeRowSlotIndex(focused);
+          var onPage =
+            !focused || focused === document.body || focused === document.documentElement;
+          var onBoard = onPage || slotIdx >= 0;
+
           if (ev.key && DIGIT_KEY_RE.test(ev.key)) {
-            placeColor(parseInt(ev.key, 10) - 1);
+            if (!ev.repeat) {
+              if (slotIdx >= 0) code.activeSlot = slotIdx;
+              placeColor(parseInt(ev.key, 10) - 1);
+              if (slotIdx >= 0) focusActiveSlot();
+            }
             ev.preventDefault();
             return;
           }
-          if (ev.code === "Backspace") {
-            // Clear the active slot only (not the whole row).
-            var s = code.activeSlot;
-            if (code.current[s] !== null && code.current[s] !== undefined) {
-              code.current[s] = null;
-              refreshActiveRow();
-              soundClear();
-            } else {
-              // step back to previous slot
-              code.activeSlot = (s - 1 + PEG_COUNT) % PEG_COUNT;
-              refreshActiveRow();
-            }
+          if (!onBoard && !(ev.key === "Enter" && focused.id === "submitBtn")) return;
+
+          if (ev.key === "Backspace" || ev.key === "Delete") {
+            if (slotIdx >= 0) code.activeSlot = slotIdx;
+            clearActiveSlot(ev.key);
+            if (slotIdx >= 0) focusActiveSlot();
             ev.preventDefault();
-          } else if (ev.code === "Enter") {
-            if (!$("submitBtn").disabled) {
-              submitGuess();
-            }
+          } else if (ev.key === "ArrowLeft" || ev.key === "ArrowRight") {
+            var from = slotIdx >= 0 ? slotIdx : code.activeSlot;
+            code.activeSlot = (from + (ev.key === "ArrowLeft" ? -1 : 1) + PEG_COUNT) % PEG_COUNT;
+            refreshActiveRow();
+            focusActiveSlot();
+            ev.preventDefault();
+          } else if (ev.key === "Enter") {
+            if (!ev.repeat && !$("submitBtn").disabled) submitGuess();
             ev.preventDefault();
           }
         });
@@ -1976,6 +2630,12 @@
           get pendingTimeouts() {
             return pendingTimeouts.slice();
           },
+          get bannerOpen() {
+            return bannerOpen;
+          },
+          get savedBest() {
+            return JSON.parse(JSON.stringify(save.best));
+          },
           get lastBeep() {
             return _lastBeep;
           },
@@ -1989,6 +2649,8 @@
             return true;
           },
           clearActive: clearCurrentRow,
+          // Same single entry point the reveal card's button/tap/timer use (idempotent).
+          skipBanner: advanceFromBanner,
           submit: function () {
             submitGuess();
           },

@@ -6,6 +6,8 @@
 **Ticket:** PLAY-001
 **Created:** 2026-06-21
 
+> **Superseded in part by PLAY-006 (see `features/playpad-revamp/test-plan.md`, 2026-11-21).** T-rail and T-rail-arrows no longer apply (the rail was removed); the hub's current checks live in `tests/smoke.spec.mjs` (four viewports, filter chips, theme toggle, reduced motion, every game opens).
+
 ---
 
 ## Coverage map (AC → test)

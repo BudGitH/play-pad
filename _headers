@@ -21,6 +21,22 @@
   Cache-Control: public, max-age=0, must-revalidate
 /games/colour-rush/index.html
   Cache-Control: public, max-age=0, must-revalidate
+/games/snap/
+  Cache-Control: public, max-age=0, must-revalidate
+/games/snap/index.html
+  Cache-Control: public, max-age=0, must-revalidate
+/games/claw-catch/
+  Cache-Control: public, max-age=0, must-revalidate
+/games/claw-catch/index.html
+  Cache-Control: public, max-age=0, must-revalidate
+/games/super-decoder/
+  Cache-Control: public, max-age=0, must-revalidate
+/games/super-decoder/index.html
+  Cache-Control: public, max-age=0, must-revalidate
+/games/neon-rush/
+  Cache-Control: public, max-age=0, must-revalidate
+/games/neon-rush/index.html
+  Cache-Control: public, max-age=0, must-revalidate
 
 # Vendored Three.js (version-pinned r147) + GLTFLoader + CC0 assets — safe to cache long
 /games/neon-rush/three.min.js
@@ -30,13 +46,21 @@
 /games/neon-rush/assets/*
   Cache-Control: public, max-age=604800
 
-# Static assets — cache for a day (still revalidated by ETag)
+# Shared CSS / JS and the registry — always revalidate. Filenames are NOT hashed, and these ship
+# in lock-step with index.html and every game page (new tokens, new registry fields). A plain
+# max-age would let a returning visitor get the NEW html with the OLD cached CSS/JS until it
+# expires (PLAY-006 AR-01). Revalidation is cheap: the ETag turns an unchanged file into a 304.
 /styles/*
-  Cache-Control: public, max-age=86400
+  Cache-Control: public, max-age=0, must-revalidate
+/scripts/*
+  Cache-Control: public, max-age=0, must-revalidate
+/games.js
+  Cache-Control: public, max-age=0, must-revalidate
+
+# Brand icons — rarely change, and a stale icon is cosmetic only, so a day is fine.
+# max-age here is NOT revalidated: the browser will not even ask the server until it expires.
 /icons/*
   Cache-Control: public, max-age=86400
-/games.js
-  Cache-Control: public, max-age=3600
 
 # Web app manifest — correct type + cache
 /manifest.webmanifest

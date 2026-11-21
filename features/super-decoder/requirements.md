@@ -8,6 +8,8 @@
 **Created:** 2026-06-27
 **Feature tier:** Prototype _(matches the project tier)_
 
+> **Superseded in part by PLAY-006 (see `features/playpad-revamp/`, `design-super-decoder.md`, 2026-11-21).** History below is kept as written. Stale: the feedback pegs (lines about black-filled / white-outline pegs, AC-8 look; now solid dot / ring / faint pip, classes `.fb.black` / `.fb.white` and the blacks, whites, greys order are unchanged); the start `3-2-1-GO` and the "Code 2 of 3" countdown (flow steps 3 and 8; now no start countdown, a 700 ms "Code N of M" pill reusing `#countdown`, and a skippable reveal card), AC-14 (the teardown now concerns that pill); no storage / "Persistent high scores" out of scope (a best score per difficulty is now saved in `playpad.superDecoder.v1`, with a **Quick** 1-code length and `bestOverall` for the hub). AC-7 (`scoreGuess`) is unchanged.
+
 ---
 
 ## What & why

@@ -8,18 +8,24 @@
     <title>Snap — PlayPad</title>
 
     <link rel="icon" href="../../icons/favicon.svg" type="image/svg+xml" />
-    <meta name="theme-color" content="#08080c" />
+    <meta name="theme-color" content="#fff8f7" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#08080c" media="(prefers-color-scheme: dark)" />
+
+    <!-- Applies the player's saved light/dark choice (set on the hub) before first paint.
+         Classic script, no defer: it must run before the stylesheets below paint. -->
+    <script src="../../scripts/theme.js"></script>
 
     <!-- Shared PlayPad design system -->
     <link rel="stylesheet" href="../../styles/tokens.css" />
     <link rel="stylesheet" href="../../styles/base.css" />
 
     <!--
-    Snap — a themed card-matching reaction game (PlayPad game #2, PLAY-002).
+    Snap — a themed card-matching reaction game (PlayPad game #2, PLAY-002; party-games revamp PLAY-006).
     Self-contained, build-free, mirrors games/colour-rush/index.html. 2–4 players around one
     shared screen: each round two cards flip up at once; on a MATCH the fastest player to tap
     their edge button scores +1; on a NON-match a tapping player loses 1 (floored at 0) and is
-    locked out for the round. Most pairs wins. Pace + card faces are user-chosen at setup.
+    locked out for the round (Gentle mode: locked out, no point lost). Most pairs wins. Pace +
+    card faces are user-chosen at setup. Spec: features/playpad-revamp/design-party-games.md.
     Standards: docs/CODE_QUALITY.md at the relaxed Prototype level (docs/CONVENTIONS.md PLAY-001).
   -->
     <style>
@@ -28,6 +34,9 @@
         --snap-theme-nature-back: linear-gradient(160deg, #1f7a3f, #0d3b21);
         --snap-theme-princess-back: linear-gradient(160deg, #c84f9e, #5e1a55);
         --snap-theme-supers-back: linear-gradient(160deg, #2b46c8, #10183f);
+        /* Text + glyphs drawn ON a player colour. Black clears AA (>= 5.7:1) on all eight palette
+         colours; white failed on Yellow/Cyan/Green/Orange. Keep in sync with games/colour-rush. */
+        --ink-on-player: #0b0b0f;
       }
 
       /* ---- App shell (full-screen immersive game) — reused from Colour Rush ---- */
@@ -63,10 +72,12 @@
         background: var(--md-sys-color-surface);
       }
 
+      /* Back to hub (48px tall hit area, WCAG 2.5.8) */
       .back-link {
         display: inline-flex;
         align-items: center;
         gap: 6px;
+        min-height: 48px;
         color: var(--md-sys-color-on-surface-variant);
         padding: 8px 12px 8px 4px;
         margin: 0 0 6px -4px;
@@ -78,11 +89,21 @@
         color: var(--md-sys-color-on-surface);
       }
 
+      /* Colour-blind shape glyph (LEARNINGS PLAY-004): ink-on-player, never the only signal. */
+      .sym {
+        color: var(--ink-on-player);
+        font-weight: 800;
+        line-height: 1;
+        pointer-events: none;
+        -webkit-user-select: none;
+        user-select: none;
+      }
+
       /* ---------- SETUP ---------- */
       .setup-inner {
         max-width: 560px;
         margin: 0 auto;
-        padding: max(20px, env(safe-area-inset-top)) 22px 48px;
+        padding: max(20px, env(safe-area-inset-top)) 22px 0;
       }
       .brand {
         margin: 2px 0 6px;
@@ -106,8 +127,10 @@
       }
       .block > .label {
         display: flex;
+        flex-wrap: wrap;
         justify-content: space-between;
         align-items: baseline;
+        gap: 2px 12px;
         text-transform: uppercase;
         color: var(--md-sys-color-on-surface-variant);
         margin: 0 2px 12px;
@@ -120,6 +143,36 @@
         letter-spacing: 0;
         font-weight: 500;
       }
+      .hint-line {
+        margin: 10px 2px 0;
+        font-size: var(--md-sys-typescale-body-small-size);
+        line-height: var(--md-sys-typescale-body-small-line);
+        color: var(--md-sys-color-on-surface-variant);
+      }
+      /* Quiet "playing solo?" pointer to the solo games — always shown, never competes with Start. */
+      .solo-hint {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        column-gap: 8px;
+        margin: 8px 2px 0;
+        font-size: var(--md-sys-typescale-body-small-size);
+        line-height: var(--md-sys-typescale-body-small-line);
+        color: var(--md-sys-color-on-surface-variant);
+      }
+      .solo-links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0 12px;
+      }
+      .solo-hint a {
+        display: inline-flex;
+        align-items: center;
+        min-height: 48px;
+        padding: 0 4px;
+        color: var(--md-sys-color-primary);
+        font-weight: 600;
+      }
 
       /* Selection chips (player count / duration / intensity) — reused */
       .chips {
@@ -131,6 +184,7 @@
         position: relative;
         flex: 1 1 0;
         min-width: 62px;
+        min-height: 48px;
         padding: 14px 8px;
         border-radius: var(--md-sys-shape-corner-md);
         background: var(--md-sys-color-surface-container);
@@ -216,29 +270,43 @@
         outline-offset: 2px;
       }
 
-      /* Player colour rows — reused from Colour Rush, plus a key-glyph badge */
+      /* Player rows: avatar (tap to change animal) + colour name + keyboard key + colour swatches */
       .player-row {
         background: var(--md-sys-color-surface-container);
         border: 1.5px solid var(--md-sys-color-outline-variant);
         border-radius: var(--md-sys-shape-corner-lg);
-        padding: 14px 14px 16px;
+        padding: 12px 14px 16px;
         margin-bottom: 12px;
       }
       .player-head {
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 12px;
         margin-bottom: 12px;
       }
-      .player-dot {
-        width: 14px;
-        height: 14px;
+      .avatar-btn {
+        flex: none;
+        width: 48px;
+        height: 48px;
         border-radius: 50%;
-        background: var(--md-sys-color-outline-variant);
-        box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.12);
+        border: 3px solid var(--pc, var(--md-sys-color-outline-variant));
+        background: var(--md-sys-color-surface-container-highest);
+        font-size: 26px;
+        line-height: 1;
+        display: grid;
+        place-items: center;
+        transition: transform var(--md-sys-motion-duration-short3)
+          var(--md-sys-motion-easing-emphasized);
+      }
+      .avatar-btn:active {
+        transform: scale(0.92);
+      }
+      .avatar-btn:focus-visible {
+        outline: 3px solid var(--md-sys-color-primary);
+        outline-offset: 2px;
       }
       .player-name {
-        font-size: 15px;
+        font-size: 16px;
         font-weight: 700;
         flex: 1;
       }
@@ -246,9 +314,11 @@
         color: var(--md-sys-color-on-surface-variant);
         font-weight: 500;
       }
+      /* Keyboard hint — only meaningful (and shown) on devices with a real keyboard + mouse. */
       .key-badge {
+        display: none;
         flex: none;
-        font-size: 11px;
+        font-size: 12px;
         font-weight: 700;
         color: var(--md-sys-color-on-surface-variant);
         background: var(--md-sys-color-surface-container-highest);
@@ -256,23 +326,50 @@
         border-radius: var(--md-sys-shape-corner-full);
         padding: 3px 9px;
       }
+      @media (hover: hover) and (pointer: fine) {
+        .key-badge {
+          display: inline-block;
+        }
+      }
       .swatches {
         display: flex;
         gap: 10px;
         flex-wrap: wrap;
       }
+      /* 48x48 (design-system floor). The colour lives on ::before so a TAKEN swatch can fade the
+       colour without fading the owner's avatar that sits on top of it. */
       .swatch {
-        width: 42px;
-        height: 42px;
+        width: 48px;
+        height: 48px;
         border-radius: var(--md-sys-shape-corner-md);
         border: 0;
+        background: transparent;
         position: relative;
+        display: grid;
+        place-items: center;
         outline: 2.5px solid transparent;
         outline-offset: 2px;
         transition:
           transform var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-emphasized),
-          outline-color var(--md-sys-motion-duration-short3),
-          opacity var(--md-sys-motion-duration-short3);
+          outline-color var(--md-sys-motion-duration-short3);
+      }
+      .swatch::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        background: var(--sw);
+      }
+      .swatch .sym,
+      .swatch .sw-av {
+        position: relative;
+      }
+      .swatch .sym {
+        font-size: 22px;
+      }
+      .swatch .sw-av {
+        font-size: 24px;
+        line-height: 1;
       }
       .swatch:active {
         transform: scale(0.9);
@@ -281,19 +378,30 @@
         outline-color: var(--md-sys-color-on-surface);
       }
       .swatch[disabled] {
-        opacity: 0.18;
+        cursor: not-allowed;
       }
+      .swatch[disabled]:active {
+        transform: none;
+      }
+      .swatch[disabled]::before {
+        opacity: 0.35;
+      }
+      /* "Chosen" tick sits in the corner so it never fights the shape glyph in the middle. */
       .swatch[aria-pressed="true"]::after {
-        content: "";
+        content: "✓";
         position: absolute;
-        inset: 0;
-        margin: auto;
-        width: 13px;
-        height: 7px;
-        border-left: 3px solid #fff;
-        border-bottom: 3px solid #fff;
-        transform: rotate(-45deg) translate(1px, -2px);
-        filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.6));
+        top: -7px;
+        right: -7px;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        background: var(--md-sys-color-on-surface);
+        color: var(--md-sys-color-surface);
+        font-size: 12px;
+        font-weight: 800;
+        line-height: 1;
       }
       /* Keyboard focus ring must beat the element-level outline (LEARNINGS: a11y/focus). */
       .swatch:focus-visible {
@@ -301,15 +409,20 @@
         outline-offset: 2px;
       }
 
-      /* Sound toggle (MD3 switch) — reused */
+      /* Toggle rows (MD3 switch) — reused; the whole row is the tap target, the switch is the control. */
       .toggle-row {
         display: flex;
         align-items: center;
         justify-content: space-between;
+        gap: 12px;
         background: var(--md-sys-color-surface-container);
         border: 1.5px solid var(--md-sys-color-outline-variant);
         border-radius: var(--md-sys-shape-corner-md);
         padding: 14px 16px;
+        cursor: pointer;
+      }
+      .toggle-row + .toggle-row {
+        margin-top: 10px;
       }
       .toggle-row .t-label {
         font-size: 15px;
@@ -331,6 +444,12 @@
         transition:
           background var(--md-sys-motion-duration-short3),
           border-color var(--md-sys-motion-duration-short3);
+      }
+      /* Extends the hit area to 62x56 (>= 48px, WCAG 2.5.8) without changing the 52x32 visual. */
+      .switch::before {
+        content: "";
+        position: absolute;
+        inset: -12px -7px;
       }
       .switch::after {
         content: "";
@@ -361,13 +480,25 @@
         background: var(--md-sys-color-on-primary);
         transform: translateX(20px);
       }
+      .switch:focus-visible {
+        outline: 3px solid var(--md-sys-color-primary);
+        outline-offset: 2px;
+      }
 
-      /* Start button — reused */
+      /* Sticky Start bar — Start must never be two screens down on a phone. */
+      .start-bar {
+        position: sticky;
+        bottom: 0;
+        z-index: 5;
+        margin: 0 -22px;
+        padding: 12px 22px max(12px, env(safe-area-inset-bottom));
+        background: linear-gradient(transparent, var(--md-sys-color-surface) 30%);
+      }
       .start-btn {
         width: 100%;
-        padding: 18px;
+        min-height: 56px;
+        padding: 16px;
         border: 0;
-        margin-top: 8px;
         border-radius: var(--md-sys-shape-corner-full);
         font-size: 18px;
         font-weight: 700;
@@ -391,8 +522,20 @@
         text-align: center;
         color: var(--md-sys-color-on-surface-variant);
         font-size: 12.5px;
-        margin-top: 12px;
-        line-height: 1.5;
+        margin: 8px 0 0;
+        line-height: 1.4;
+      }
+      @media (max-height: 500px) {
+        .start-bar {
+          padding-top: 8px;
+        }
+        .start-btn {
+          min-height: 48px;
+          padding: 10px;
+        }
+        .start-note {
+          display: none;
+        }
       }
 
       /* ---------- GAME STAGE (dark roundtable so cards & colours pop) ---------- */
@@ -407,13 +550,19 @@
         --edge-h: clamp(84px, 18vh, 180px);
         --edge-w: clamp(72px, 16vw, 160px);
       }
+      /* Short (landscape) screens: slimmer top/bottom buttons give the cards room. Still well above 48px. */
+      @media (max-height: 500px) {
+        #stage {
+          --edge-h: clamp(64px, 20vh, 96px);
+        }
+      }
 
       /* Player tap buttons — large edge-anchored slap targets (well above the 48px floor). */
       .pbtn {
         position: absolute;
         border: 0;
         padding: 6px;
-        color: #fff;
+        color: var(--ink-on-player);
         border-radius: var(--md-sys-shape-corner-xl);
         display: grid;
         place-items: center;
@@ -427,9 +576,13 @@
           box-shadow var(--md-sys-motion-duration-short2);
       }
       .pbtn-content {
-        display: grid;
-        place-items: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
         gap: 2px;
+        max-width: 100%;
+        text-align: center;
       }
       .pbtn .score {
         font-size: clamp(26px, 7vmin, 52px);
@@ -439,15 +592,50 @@
         transition: transform var(--md-sys-motion-duration-short3)
           var(--md-sys-motion-easing-emphasized);
       }
-      .pbtn .plabel {
-        font-size: clamp(10px, 2vmin, 14px);
-        font-weight: 700;
-        opacity: 0.92;
+      .pmeta {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
       }
+      .pbtn .plabel {
+        font-size: clamp(12px, 2.4vmin, 16px);
+        font-weight: 700;
+        white-space: nowrap;
+      }
+      .pbtn .psym {
+        font-size: clamp(14px, 2.8vmin, 20px);
+      }
+      /* Keycap — only on devices with a real keyboard + mouse; touch players don't need it. */
       .pbtn .pkey {
-        font-size: 10px;
-        opacity: 0.82;
-        letter-spacing: 0.04em;
+        display: none;
+      }
+      @media (hover: hover) and (pointer: fine) {
+        .pbtn .pkey {
+          display: inline-grid;
+          place-items: center;
+          min-width: 32px;
+          height: 32px;
+          padding: 0 6px;
+          box-sizing: border-box;
+          border: 2px solid currentColor;
+          border-radius: 8px;
+          font-size: 18px;
+          font-weight: 700;
+          line-height: 1;
+        }
+      }
+      /* Win line shown IN the winner's own (rotated) button so they read it facing them. */
+      .pbtn.has-flash .pmeta {
+        display: none;
+      }
+      .pbtn .pflash {
+        font-size: clamp(12px, 2.6vmin, 18px);
+        font-weight: 800;
+        line-height: 1.15;
+      }
+      .pbtn .pflash b {
+        font-variant-numeric: tabular-nums;
       }
       .pbtn:active {
         transform: scale(0.97);
@@ -466,7 +654,8 @@
         content: "";
       }
 
-      /* Placement: only the inner content rotates so the box (and its press/shake/pop) stays sane. */
+      /* Placement: only the inner content rotates so the box (and its press/shake/pop) stays sane.
+       Buttons are 8px from every neighbour (16px offsets) so a corner slap can't hit the wrong one. */
       .pbtn--top,
       .pbtn--bottom {
         left: 8px;
@@ -483,7 +672,7 @@
       .pbtn--topright {
         top: 8px;
         height: var(--edge-h);
-        width: calc(50% - 12px);
+        width: calc(50% - 16px);
       }
       .pbtn--topleft {
         left: 8px;
@@ -493,9 +682,10 @@
       }
       .pbtn--left,
       .pbtn--right {
-        top: calc(var(--edge-h) + 8px);
-        bottom: calc(var(--edge-h) + 8px);
+        top: calc(var(--edge-h) + 16px);
+        bottom: calc(var(--edge-h) + 16px);
         width: var(--edge-w);
+        container-type: size;
       }
       .pbtn--left {
         left: 8px;
@@ -508,16 +698,26 @@
       .pbtn--topright .pbtn-content {
         transform: rotate(180deg);
       }
+      /* Side seats read the long way: lay the content out at (button height x button width), THEN
+       rotate it, so a long "🐯 Yellow" never wraps inside a 72px-wide strip. */
+      .pbtn--left .pbtn-content,
+      .pbtn--right .pbtn-content {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 100cqh;
+        height: 100cqw;
+      }
       .pbtn--left .pbtn-content {
-        transform: rotate(90deg);
+        transform: translate(-50%, -50%) rotate(90deg);
       }
       .pbtn--right .pbtn-content {
-        transform: rotate(-90deg);
+        transform: translate(-50%, -50%) rotate(-90deg);
       }
 
       /* Per-button feedback states (colour is never the only signal — paired with motion + icon). */
       .pbtn[data-state="wrong"] {
-        filter: grayscale(0.6) brightness(0.7);
+        filter: grayscale(0.5);
         box-shadow:
           0 0 0 4px var(--md-sys-color-error),
           var(--md-sys-elevation-level2);
@@ -526,16 +726,25 @@
       .pbtn[data-state="wrong"]::after {
         content: "🚫";
       }
+      /* Gentle mode: same lock-out, but a neutral cue — no shake, no grey-out, no penalty ring. */
+      .pbtn[data-state="oops"] {
+        opacity: 0.8;
+      }
+      .pbtn[data-state="oops"]::after {
+        content: "🙈";
+      }
+      /* Inner black ring + outer white ring so the "scored" outline reads on Yellow/Cyan too. */
       .pbtn[data-state="scored"] {
         box-shadow:
-          0 0 0 4px #fff,
+          0 0 0 3px #000,
+          0 0 0 7px #fff,
           var(--md-sys-elevation-level3);
         animation: pbtn-win var(--md-sys-motion-duration-long1)
           var(--md-sys-motion-easing-emphasized);
       }
       .pbtn[data-state="scored"]::after {
         content: "✓";
-        color: #fff;
+        color: var(--ink-on-player);
         font-weight: 900;
       }
       .pbtn.nudge {
@@ -546,7 +755,9 @@
           transform: scale(1);
         }
         35% {
-          transform: scale(1.06);
+          transform: scale(
+            1.03
+          ); /* 3%: a bigger pop would cross the 8px gap into a neighbouring button */
         }
         100% {
           transform: scale(1);
@@ -565,13 +776,15 @@
         }
       }
 
-      /* Centre cards — inset so they clear the edge buttons in every layout. */
+      /* Centre column = HUD / cards / toast in a grid, so nothing can ever overlap (SN-F1). The box is
+       inset to clear the edge buttons in every layout; it ignores pointer events (taps go to the
+       buttons) except for the HUD. */
       #center {
         position: absolute;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: clamp(12px, 4vmin, 36px);
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr) auto;
+        justify-items: center;
+        gap: 8px;
         pointer-events: none;
       }
       .stage--p2 #center,
@@ -581,11 +794,60 @@
       .stage--p4 #center {
         inset: calc(var(--edge-h) + 16px) calc(var(--edge-w) + 16px);
       }
+      /* The cards box is a size container, so the cards are sized from the REAL free box (never from
+       vmin guesses). Side by side by default; in a tall, narrow box (4 players on a phone) the pair
+       stacks instead, which gives each card ~45% more width. */
+      .cards-box {
+        container-type: size;
+        width: 100%;
+        min-height: 0;
+      }
+      .cards {
+        --gap: clamp(12px, 4vmin, 36px);
+        position: relative;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: var(--gap);
+      }
       .card-slot {
-        width: clamp(72px, 24vmin, 200px);
+        width: clamp(72px, 24vmin, 200px); /* fallback where container units are unsupported */
+        width: min(calc((100cqw - var(--gap)) / 2), calc(100cqh * 0.75));
+        max-width: 220px;
         aspect-ratio: 3 / 4;
         perspective: 1000px;
         flex: 0 0 auto;
+      }
+      @container (max-aspect-ratio: 3/4) {
+        .cards {
+          flex-direction: column;
+        }
+        .card-slot {
+          width: min(100cqw, calc((100cqh - var(--gap)) / 2 * 0.75));
+        }
+      }
+      /* "Shuffling" cue between rounds: a 2px wobble on the SLOT (not .card3d, so it never fights the
+       rotateY flip). Pure decoration — static under reduced motion. */
+      .cards.shuffling .card-slot {
+        animation: snap-wobble 140ms linear infinite alternate;
+      }
+      .cards.shuffling .card-slot:nth-child(2) {
+        animation-direction: alternate-reverse;
+      }
+      @keyframes snap-wobble {
+        from {
+          transform: translateX(-2px);
+        }
+        to {
+          transform: translateX(2px);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .cards.shuffling .card-slot {
+          animation: none;
+        }
       }
 
       .card3d {
@@ -656,13 +918,40 @@
         box-shadow: inset 0 0 0 4px var(--win-colour, var(--md-sys-color-primary));
       }
 
-      /* HUD pill (clock · round · quit) — floats just under the top button, centred. */
-      #hud {
+      /* "SNAP!" win moment — over the cards, turned to face the winner's seat (--rot). The BASE style is
+       the final state, so under reduced motion (animation collapsed) it simply appears, static. */
+      .snap-word {
         position: absolute;
         left: 50%;
-        top: calc(var(--edge-h) + 16px);
-        transform: translateX(-50%);
+        top: 50%;
+        z-index: 20;
+        pointer-events: none;
+        white-space: nowrap;
+        font-size: clamp(40px, 14vmin, 96px);
+        font-weight: 900;
+        line-height: 1;
+        letter-spacing: 0.02em;
+        background: var(--brand-gradient);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        filter: drop-shadow(0 2px 0 #000) drop-shadow(0 4px 12px rgba(0, 0, 0, 0.7));
+        transform: translate(-50%, -50%) rotate(var(--rot, 0deg));
+        animation: snap-pop var(--md-sys-motion-duration-medium1)
+          var(--md-sys-motion-easing-emphasized);
+      }
+      @keyframes snap-pop {
+        from {
+          transform: translate(-50%, -50%) rotate(var(--rot, 0deg)) scale(0.6);
+          opacity: 0;
+        }
+      }
+
+      /* HUD pill (clock · round · quit) — first row of the centre grid, so it can't cover the cards. */
+      #hud {
+        position: relative;
         z-index: 30;
+        pointer-events: auto;
         display: flex;
         align-items: center;
         gap: 8px;
@@ -704,15 +993,36 @@
         background: rgba(255, 255, 255, 0.16);
         z-index: -1;
       }
+      /* Two-tap quit: the first tap turns the ✕ into a "Quit?" pill for 2 s (the ✕ sits where hands
+       reach across, so one stray tap must not wipe a round). */
+      #quitBtn:focus-visible {
+        outline: 3px solid #fff;
+        outline-offset: 1px;
+      }
+      #quitBtn.confirm {
+        width: auto;
+        min-width: 48px;
+        padding: 0 16px;
+        border-radius: var(--md-sys-shape-corner-full);
+        background: var(--md-sys-color-error-container);
+        color: var(--md-sys-color-on-error-container);
+        font-size: 14px;
+        font-weight: 700;
+      }
+      #quitBtn.confirm::before {
+        display: none;
+      }
 
-      /* Outcome toast — opacity toggled by JS (NOT a fade-out animation) so it shows under reduced motion. */
+      /* Outcome toast — last row of the centre grid (reserved height, so the cards never jump).
+       Opacity toggled by JS (NOT a fade-out animation) so it shows under reduced motion. */
       #toast {
-        position: absolute;
-        left: 50%;
-        top: calc(var(--edge-h) + 54px);
-        transform: translateX(-50%);
+        position: relative;
         z-index: 31;
-        padding: 6px 16px;
+        min-height: 32px;
+        box-sizing: border-box;
+        display: grid;
+        place-items: center;
+        padding: 4px 16px;
         border-radius: var(--md-sys-shape-corner-full);
         background: rgba(0, 0, 0, 0.55);
         color: #fff;
@@ -724,6 +1034,19 @@
       }
       #toast.show {
         opacity: 1;
+      }
+      @media (max-height: 500px) {
+        #center {
+          gap: 4px;
+        }
+        #hud {
+          padding: 0 4px 0 14px;
+        }
+        #toast {
+          min-height: 28px;
+          padding: 2px 14px;
+          font-size: 14px;
+        }
       }
 
       #progress {
@@ -756,7 +1079,7 @@
       }
       @keyframes flashfade {
         0% {
-          opacity: 0.42;
+          opacity: 0.55;
         }
         100% {
           opacity: 0;
@@ -807,6 +1130,73 @@
         }
       }
 
+      /* Pause overlay — a real button, so a tap OR Enter/Space resumes. Sits above the countdown. */
+      #pause {
+        position: absolute;
+        inset: 0;
+        z-index: 80;
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        width: 100%;
+        margin: 0;
+        padding: 24px;
+        border: 0;
+        background: rgba(0, 0, 0, 0.82);
+        color: #fff;
+        font: inherit;
+        text-align: center;
+      }
+      #pause.active {
+        display: flex;
+      }
+      #pause .p-title {
+        font-size: clamp(28px, 8vmin, 48px);
+        font-weight: 800;
+      }
+      #pause .p-sub {
+        font-size: 16px;
+        opacity: 0.9;
+      }
+      #pause:focus-visible {
+        outline: 3px solid #fff;
+        outline-offset: -10px;
+      }
+      /* Quit from the paused state: the HUD ✕ sits under this overlay. A sibling (not a child) of the
+         #pause button, so tapping it never resumes. Same two-tap confirm as the ✕. */
+      #pauseQuit {
+        display: none;
+        position: absolute;
+        z-index: 81;
+        left: 50%;
+        top: calc(50% + 72px); /* just under the centred "Paused / Tap to resume" text */
+        transform: translateX(-50%);
+        min-height: 48px;
+        padding: 0 24px;
+        border: 1.5px solid rgba(255, 255, 255, 0.6);
+        border-radius: var(--md-sys-shape-corner-full);
+        background: rgba(0, 0, 0, 0.4);
+        color: #fff;
+        font: inherit;
+        font-size: 16px;
+        font-weight: 700;
+        white-space: nowrap;
+      }
+      #pause.active + #pauseQuit {
+        display: block;
+      }
+      #pauseQuit.confirm {
+        border-color: transparent;
+        background: var(--md-sys-color-error-container);
+        color: var(--md-sys-color-on-error-container);
+      }
+      #pauseQuit:focus-visible {
+        outline: 3px solid #fff;
+        outline-offset: 2px;
+      }
+
       /* ---------- RESULTS — reused from Colour Rush ---------- */
       .res-inner {
         max-width: 520px;
@@ -855,22 +1245,33 @@
         height: 34px;
         border-radius: var(--md-sys-shape-corner-sm);
         flex: none;
+        display: grid;
+        place-items: center;
+      }
+      .rank .swt .sym {
+        font-size: 18px;
       }
       .rank .rname {
         flex: 1;
         font-size: 16px;
         font-weight: 700;
       }
-      .rank .rname small {
-        display: block;
-        font-weight: 500;
-        color: var(--md-sys-color-on-surface-variant);
-        font-size: 12px;
-      }
       .rank .rscore {
         font-size: 24px;
         font-weight: 800;
         font-variant-numeric: tabular-nums;
+      }
+      .fastest,
+      .greattry {
+        margin: 8px 0 0;
+        font-size: 14px;
+      }
+      .fastest {
+        font-weight: 700;
+        color: var(--md-sys-color-on-surface);
+      }
+      .greattry {
+        color: var(--md-sys-color-on-surface-variant);
       }
       .res-actions {
         display: flex;
@@ -879,9 +1280,111 @@
       }
       .res-actions .button {
         flex: 1;
+        white-space: nowrap;
       }
       .res-foot {
         margin-top: 18px;
+      }
+      /* Phones: stack the actions so neither label wraps — Play again (filled) first. */
+      @media (max-width: 419px) {
+        .res-actions {
+          flex-direction: column;
+        }
+        .res-actions .button {
+          flex: none;
+          width: 100%;
+        }
+      }
+      /* Landscape: two columns (title + actions | rank list) so Play again is never below the fold. */
+      @media (max-height: 500px) and (orientation: landscape) {
+        .res-inner {
+          max-width: 760px;
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+          grid-template-rows: auto auto auto auto auto 1fr;
+          grid-template-areas:
+            "crown board"
+            "title board"
+            "sub board"
+            "extras board"
+            "actions board"
+            "foot board";
+          column-gap: 24px;
+          align-content: start;
+          padding: max(12px, env(safe-area-inset-top)) 22px 16px;
+        }
+        .res-inner .crown {
+          grid-area: crown;
+          font-size: 32px;
+        }
+        .res-inner h2 {
+          grid-area: title;
+          margin: 2px 0;
+        }
+        .res-inner .sub {
+          grid-area: sub;
+          margin: 0 0 6px;
+        }
+        #rankList {
+          grid-area: board;
+          align-self: start;
+        }
+        .res-extras {
+          grid-area: extras;
+        }
+        .res-actions {
+          grid-area: actions;
+          margin-top: 12px;
+        }
+        .res-foot {
+          grid-area: foot;
+          margin-top: 6px;
+        }
+        .rank {
+          padding: 8px 12px;
+          margin-bottom: 8px;
+          gap: 12px;
+        }
+        .rank .swt {
+          width: 30px;
+          height: 30px;
+        }
+        .rank .rscore {
+          font-size: 22px;
+        }
+      }
+
+      /* Results confetti: a fixed layer of 36 <i> pieces, removed by a JS timer (never animationend).
+       Not rendered at all under reduced motion — the 🏆 carries the moment. */
+      #confetti {
+        position: absolute;
+        inset: 0;
+        z-index: 70;
+        overflow: hidden;
+        pointer-events: none;
+      }
+      #confetti i {
+        position: absolute;
+        top: -24px;
+        width: 9px;
+        height: 15px;
+        border-radius: 2px;
+        background: var(--c);
+        box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25);
+        animation: confetti-fall 1.4s cubic-bezier(0.3, 0.1, 0.5, 1) var(--d, 0s) both;
+      }
+      @keyframes confetti-fall {
+        from {
+          transform: translate3d(0, 0, 0) rotate(0deg);
+        }
+        to {
+          transform: translate3d(var(--dx, 0px), 105vh, 0) rotate(var(--rot, 360deg));
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #confetti {
+          display: none;
+        }
       }
     </style>
   </head>
@@ -916,11 +1419,19 @@
         <div class="block">
           <div class="label"><span>Players</span></div>
           <div class="chips" id="playerChips"></div>
+          <p class="solo-hint">
+            <span>Playing solo? Try</span>
+            <span class="solo-links">
+              <a href="../colour-rush/index.html">Colour Rush →</a>
+              <a href="../super-decoder/index.html">Super Decoder →</a>
+            </span>
+          </p>
         </div>
 
         <div class="block" id="colourBlock">
           <div class="label">
-            <span>Pick colours</span><span class="hint">one each, all different</span>
+            <span>Pick animals &amp; colours</span
+            ><span class="hint">tap the animal to change</span>
           </div>
           <div id="playerRows"></div>
         </div>
@@ -935,48 +1446,74 @@
             <span>Intensity</span><span class="hint">how fast cards flip &amp; clear</span>
           </div>
           <div class="chips" id="intensityChips"></div>
+          <p class="hint-line">Chill suits little ones</p>
         </div>
 
         <div class="block">
-          <div class="toggle-row">
+          <div class="toggle-row" id="gentleRow">
             <div>
-              <div class="t-label">Sound</div>
-              <div class="t-sub">A snap chime, a buzzer for wrong taps</div>
+              <div class="t-label">Gentle mode</div>
+              <div class="t-sub">Wrong taps don't lose points</div>
             </div>
-            <button class="switch" id="soundToggle" aria-pressed="true" aria-label="Sound"></button>
+            <button
+              class="switch"
+              id="gentleToggle"
+              aria-pressed="false"
+              aria-label="Gentle mode — wrong taps don't lose points"
+            ></button>
+          </div>
+          <div class="toggle-row" id="soundRow">
+            <div>
+              <div class="t-label">Sound &amp; buzz</div>
+              <div class="t-sub">A snap chime, a buzzer for wrong taps, a buzz on phones</div>
+            </div>
+            <button
+              class="switch"
+              id="soundToggle"
+              aria-pressed="true"
+              aria-label="Sound and buzz"
+            ></button>
           </div>
         </div>
 
-        <button class="start-btn state-layer" id="startBtn" disabled>Start</button>
-        <p class="start-note" id="startNote">Pick a colour for every player to start.</p>
+        <div class="start-bar">
+          <button class="start-btn state-layer" id="startBtn">Start</button>
+          <p class="start-note" id="startNote">Gather round — everyone gets their own button.</p>
+        </div>
       </div>
     </section>
 
     <!-- ========== GAME ========== -->
     <section id="game" class="screen">
-      <div id="stage" class="stage stage--p4">
+      <div id="stage" class="stage stage--p2" data-phase="idle">
         <div id="center">
-          <div class="card-slot">
-            <div id="cardLeft" class="card3d" data-face="back">
-              <div class="card-face card-back"><span class="emoji"></span></div>
-              <div class="card-face card-front"><span class="emoji" id="cardLeftEmoji"></span></div>
-            </div>
+          <div id="hud">
+            <span id="sessClock">1:00</span>
+            <span id="roundLabel">Round 1</span>
+            <button id="quitBtn" aria-label="Quit game">✕</button>
           </div>
-          <div class="card-slot">
-            <div id="cardRight" class="card3d" data-face="back">
-              <div class="card-face card-back"><span class="emoji"></span></div>
-              <div class="card-face card-front">
-                <span class="emoji" id="cardRightEmoji"></span>
+          <div class="cards-box">
+            <div class="cards" id="cards">
+              <div class="card-slot">
+                <div id="cardLeft" class="card3d" data-face="back">
+                  <div class="card-face card-back"><span class="emoji"></span></div>
+                  <div class="card-face card-front">
+                    <span class="emoji" id="cardLeftEmoji"></span>
+                  </div>
+                </div>
+              </div>
+              <div class="card-slot">
+                <div id="cardRight" class="card3d" data-face="back">
+                  <div class="card-face card-back"><span class="emoji"></span></div>
+                  <div class="card-face card-front">
+                    <span class="emoji" id="cardRightEmoji"></span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
+          <div id="toast" aria-hidden="true"></div>
         </div>
-        <div id="hud">
-          <span id="sessClock">0:00</span>
-          <span id="roundLabel">Round 1</span>
-          <button id="quitBtn" aria-label="Quit game">✕</button>
-        </div>
-        <div id="toast" aria-hidden="true"></div>
         <div id="progress"><div id="progressFill"></div></div>
         <!-- player buttons injected here at startGame() -->
       </div>
@@ -984,6 +1521,16 @@
     </section>
 
     <div id="countdown"><div class="cnum" id="cnum">3</div></div>
+
+    <!-- Paused (tab hidden / app switched). A button, so a tap or Enter/Space resumes via a 3-2-1. -->
+    <button id="pause" type="button" aria-label="Paused — tap to resume">
+      <span class="p-title">Paused</span>
+      <span class="p-sub">Tap to resume</span>
+    </button>
+    <button id="pauseQuit" type="button">Quit</button>
+
+    <!-- Results confetti layer (pieces are added/removed by JS; never rendered under reduced motion). -->
+    <div id="confetti" aria-hidden="true"></div>
 
     <!-- Screen-reader-only live region: the simultaneous multi-player slap race is an inherently
      shared-screen interaction with no per-player AT equivalent (as in Colour Rush); this
@@ -997,11 +1544,15 @@
         <h2 id="winTitle" class="headline-small">Winner</h2>
         <p class="sub" id="winSub"></p>
         <div id="rankList"></div>
+        <div class="res-extras">
+          <p class="fastest" id="fastest" hidden></p>
+          <p class="greattry" id="greatTry" hidden></p>
+        </div>
         <div class="res-actions">
+          <button class="button button--filled state-layer" id="againBtn">Play again</button>
           <button class="button button--outlined state-layer" id="changeBtn">
             Change settings
           </button>
-          <button class="button button--filled state-layer" id="againBtn">Play again</button>
         </div>
         <div class="res-foot">
           <a class="back-link state-layer" href="../../index.html" aria-label="Back to PlayPad">
@@ -1027,6 +1578,8 @@
         // ============================================================
         //  CONFIG
         // ============================================================
+        // PALETTE + SHAPES + ANIMALS: keep in sync with games/colour-rush (party-games spec).
+        // Pink is a LIGHT pink (#FF9BD2): the old #FF375F was almost identical to Red.
         var PALETTE = [
           { name: "Red", hex: "#FF453A" },
           { name: "Blue", hex: "#0A84FF" },
@@ -1034,8 +1587,26 @@
           { name: "Yellow", hex: "#FFD60A" },
           { name: "Orange", hex: "#FF9F0A" },
           { name: "Purple", hex: "#BF5AF2" },
-          { name: "Pink", hex: "#FF375F" },
+          { name: "Pink", hex: "#FF9BD2" },
           { name: "Cyan", hex: "#64D2FF" },
+        ];
+        // One colour-blind shape glyph per palette colour, indexed like PALETTE. The heart carries a
+        // text-presentation selector (U+FE0E) so it never turns into a colour emoji.
+        var SHAPES = ["●", "▲", "■", "◆", "★", "✚", "♥︎", "✿"];
+        // Player identity = animal + colour ("🦊 Red"), never "Player 1". Seats start as 🦊 🐸 🐼 🐯.
+        var ANIMALS = [
+          { e: "🦊", n: "fox" },
+          { e: "🐸", n: "frog" },
+          { e: "🐼", n: "panda" },
+          { e: "🐯", n: "tiger" },
+          { e: "🦁", n: "lion" },
+          { e: "🐶", n: "dog" },
+          { e: "🐱", n: "cat" },
+          { e: "🐰", n: "rabbit" },
+          { e: "🐨", n: "koala" },
+          { e: "🐵", n: "monkey" },
+          { e: "🐧", n: "penguin" },
+          { e: "🐻", n: "bear" },
         ];
         var DURATIONS = [
           { s: 30, l: "0:30" },
@@ -1044,31 +1615,75 @@
           { s: 120, l: "2:00" },
         ];
 
-        // Intensity → countdown speed, how long cards stay up (reveal window), and the gap between rounds.
+        // Intensity → countdown speed (round 1 + resume only), how long cards stay up (reveal window), the
+        // face-down gap between rounds, and the random "shuffle" wait before the flip (unpredictable).
         var INTENSITIES = [
-          { l: "Chill", countdownDigitMs: 700, revealWindowMs: 2200, interRoundMs: 1100 },
-          { l: "Normal", countdownDigitMs: 550, revealWindowMs: 1600, interRoundMs: 850 },
-          { l: "Fast", countdownDigitMs: 450, revealWindowMs: 1150, interRoundMs: 650 },
-          { l: "Frantic", countdownDigitMs: 350, revealWindowMs: 800, interRoundMs: 450 },
+          {
+            l: "Chill",
+            countdownDigitMs: 700,
+            revealWindowMs: 2200,
+            interRoundMs: 1100,
+            shuffleMinMs: 300,
+            shuffleMaxMs: 1100,
+          },
+          {
+            l: "Normal",
+            countdownDigitMs: 550,
+            revealWindowMs: 1600,
+            interRoundMs: 850,
+            shuffleMinMs: 300,
+            shuffleMaxMs: 1100,
+          },
+          {
+            l: "Fast",
+            countdownDigitMs: 450,
+            revealWindowMs: 1150,
+            interRoundMs: 650,
+            shuffleMinMs: 300,
+            shuffleMaxMs: 1100,
+          },
+          {
+            l: "Frantic",
+            countdownDigitMs: 350,
+            revealWindowMs: 800,
+            interRoundMs: 450,
+            shuffleMinMs: 200,
+            shuffleMaxMs: 600,
+          },
         ];
         var DEFAULT_INTENSITY_INDEX = 1; // Normal
         var RESOLVE_HOLD_MS = 650; // fixed "see who won" settle — NOT intensity-scaled
         var MATCH_PROBABILITY = 0.4; // ~40% of rounds are a snap
         var COUNTDOWN_SEQUENCE = ["3", "2", "1", "GO"];
         var CARD_BACK_MOTIF = "✦"; // fixed geometric sparkle on every card back — never a face symbol
-        var DEFAULT_KEYS = ["KeyG", "KeyH", "KeyF", "KeyJ"]; // auto-assigned per player; shown on the button
+        // Outer keys per seat so 2–4 people on one laptop don't share a hand: A / L (home row), Q / P (top row).
+        var DEFAULT_KEYS = ["KeyA", "KeyL", "KeyQ", "KeyP"];
         var SEAT_LAYOUT = {
           // playerIndex → edge placement (P1 always bottom)
           2: ["bottom", "top"],
           3: ["bottom", "topleft", "topright"],
           4: ["bottom", "top", "left", "right"],
         };
+        // Degrees to turn the "SNAP!" word so it faces the winner's seat.
+        var SEAT_ROTATION = {
+          bottom: 0,
+          top: 180,
+          topleft: 180,
+          topright: 180,
+          left: 90,
+          right: -90,
+        };
+        var QUIT_CONFIRM_MS = 2000;
+        var CONFETTI_COUNT = 36;
+        var CONFETTI_CLEAR_MS = 1900; // 1.4 s fall + up to 0.35 s stagger + margin
+        // Deck symbols must NEVER equal a player avatar in ANIMALS (a kid reads a 🦊 card as "Red's card").
+        // When adding a symbol, check it against ANIMALS above and against the rest of its deck.
         var THEMES = [
           {
             id: "nature",
             name: "Nature",
             back: { emoji: "🌿" },
-            symbols: ["🦊", "🐸", "🦋", "🐢", "🍄", "🌻", "🐝", "🌵", "🐙", "🦉", "🐌", "🌶️"],
+            symbols: ["🦔", "🍀", "🦋", "🐢", "🍄", "🌻", "🐝", "🌵", "🐙", "🦉", "🐌", "🌶️"],
           },
           {
             id: "princess",
@@ -1084,7 +1699,9 @@
           },
         ];
 
-        // Round phases (named strings so devtools shows meaning, not magic numbers).
+        // Round phases (named strings so devtools shows meaning, not magic numbers). The current one is
+        // mirrored to #stage[data-phase] for debugging / tests.
+        //   COUNTDOWN (round 1 + after a pause) → REVEAL → RESOLVED_* → INTER_ROUND → SHUFFLE → REVEAL …
         var RoundState = {
           IDLE: "idle",
           COUNTDOWN: "countdown",
@@ -1092,29 +1709,38 @@
           RESOLVED_MATCH: "resolved_match",
           RESOLVED_TIMEOUT: "resolved_timeout",
           INTER_ROUND: "inter_round",
+          SHUFFLE: "shuffle",
+          PAUSED: "paused",
           GAME_OVER: "game_over",
         };
 
         // ============================================================
         //  STATE
         // ============================================================
-        // setup
+        // setup — seats are indices into PALETTE / ANIMALS; defaults are pre-picked so Start works on load.
         var themeIndex = 0;
-        var numPlayers = 4;
-        var selections = [null, null, null, null];
+        var numPlayers = 2;
+        var colourOf = [0, 1, 2, 3]; // Red / Blue / Green / Yellow by seat
+        var animalOf = [0, 1, 2, 3]; // 🦊 🐸 🐼 🐯 by seat
         var durationSec = 60;
         var intensityIndex = DEFAULT_INTENSITY_INDEX;
         var soundOn = true;
+        var gentleMode = false;
 
         // game
-        var players = []; // {idx,name,hex,key,keyGlyph,placement,score,btnEl,scoreEl}
+        var players = []; // {idx,name,hex,glyph,key,keyGlyph,placement,score,btnEl,scoreEl}
         var keyToPlayer = {}; // KeyboardEvent.code → playerIndex (built at startGame)
         var running = false;
+        var paused = false;
         var roundState = RoundState.IDLE;
-        var sessionStartTs = 0,
-          sessionEndTs = 0,
+        var sessionEndTs = 0,
           phaseDeadlineTs = 0,
-          countdownStepDeadlineTs = 0;
+          countdownStepDeadlineTs = 0,
+          revealTs = 0;
+        // While non-null the session clock is HELD at this many ms (3-2-1 before round 1, and after a
+        // pause); sessionEndTs is pushed forward each frame so it only starts running at GO.
+        var clockHeldMs = null;
+        var pausedRemainMs = 0;
         var countdownIndex = 0,
           roundNumber = 0,
           rafId = null;
@@ -1125,13 +1751,16 @@
         var roundResolved = false,
           lockedOut = [false, false, false, false],
           keyHeld = {};
+        var fastest = null; // {ms, name} — quickest winning snap this game
+        var quitArmed = false,
+          quitTimer = null,
+          confettiTimer = null;
         var countdownDigitMs = 550,
           revealWindowMs = 1600,
-          interRoundMs = 850; // copied from the chosen preset
+          interRoundMs = 850,
+          shuffleMinMs = 300,
+          shuffleMaxMs = 1100; // copied from the chosen preset
         var audioCtx = null;
-        var reduceMotion = !!(
-          window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches
-        );
 
         // ============================================================
         //  HELPERS (reused from Colour Rush)
@@ -1144,20 +1773,45 @@
           if (cls) e.className = cls;
           return e;
         }
-        function colourName(hex) {
-          for (var i = 0; i < PALETTE.length; i++) {
-            if (PALETTE[i].hex.toUpperCase() === String(hex).toUpperCase()) return PALETTE[i].name;
-          }
-          return "";
+        function prefersReduced() {
+          return !!(
+            window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches
+          );
         }
-        // Single chokepoint for every screen change — also clears the 3-2-1 overlay so it can NEVER
-        // survive into setup/results (the session can end mid-countdown). startGame() calls show("game")
-        // before beginCountdown(), so the countdown still re-arms correctly afterwards.
+        function setPhase(state) {
+          roundState = state;
+          $("stage").setAttribute("data-phase", state);
+        }
+        function stopLoop() {
+          running = false;
+          if (rafId) cancelAnimationFrame(rafId);
+          rafId = null;
+        }
+        // Everything transient that must NEVER survive a screen change: the 3-2-1 overlay, the pause
+        // overlay, the quit-confirm pill, SNAP!/win-line decoration, the wobble and confetti.
+        function teardownTransients() {
+          $("countdown").classList.remove("active");
+          $("pause").classList.remove("active");
+          paused = false;
+          clockHeldMs = null;
+          keyHeld = {};
+          disarmQuit();
+          clearDecor();
+          clearTimeout(confettiTimer);
+          $("confetti").textContent = "";
+        }
+        // Single chokepoint for every screen change (LEARNINGS: "UI teardown"). Every exit path —
+        // quit, game over, Change settings, Play again — goes through here, so none can forget a cleanup.
+        // startGame() calls show("game") before beginCountdown(), so the countdown re-arms afterwards.
         function show(s) {
           ["setup", "game", "results"].forEach(function (x) {
             $(x).classList.toggle("active", x === s);
           });
-          $("countdown").classList.remove("active");
+          teardownTransients();
+          if (s !== "game") {
+            stopLoop();
+            setPhase(s === "results" ? RoundState.GAME_OVER : RoundState.IDLE);
+          }
         }
         function keyGlyphFor(code) {
           return code.indexOf("Key") === 0 ? code.slice(3) : code;
@@ -1165,8 +1819,14 @@
         function announce(msg) {
           $("srStatus").textContent = msg;
         }
+        function seatName(slot) {
+          return ANIMALS[animalOf[slot]].e + " " + PALETTE[colourOf[slot]].name;
+        }
+        function secondsText(ms) {
+          return (ms / 1000).toFixed(2);
+        }
 
-        // ---------- audio ----------
+        // ---------- audio + haptics ----------
         function initAudio() {
           if (audioCtx) return;
           try {
@@ -1194,6 +1854,16 @@
             /* a single missed beep must never interrupt gameplay */
           }
         }
+        // Haptics: Android/Chromium only (iOS has no navigator.vibrate — a silent no-op there). Shares the
+        // "Sound & buzz" toggle.
+        function vibe(pattern) {
+          if (!soundOn || !navigator.vibrate) return;
+          try {
+            navigator.vibrate(pattern);
+          } catch (e) {
+            /* haptics are a nicety — never let them throw into the game */
+          }
+        }
         function toneTick() {
           beep(520, 0.07, "sine", 0.13);
         }
@@ -1208,6 +1878,13 @@
         }
         function tonePenalty() {
           beep(150, 0.22, "square", 0.16);
+        }
+        // Gentle mode's wrong-tap cue: two soft falling notes instead of the square-wave buzzer.
+        function toneGentle() {
+          beep(440, 0.08, "sine", 0.1);
+          setTimeout(function () {
+            beep(330, 0.1, "sine", 0.08);
+          }, 80);
         }
         function toneMissed() {
           beep(300, 0.16, "sine", 0.1);
@@ -1273,54 +1950,123 @@
             },
             function (it) {
               numPlayers = it.n;
-              for (var i = numPlayers; i < 4; i++) {
-                selections[i] = null;
-              }
+              normaliseSeats();
               renderPlayerChips();
               renderPlayerRows();
-              refreshStart();
             },
           );
         }
 
-        function renderPlayerRows() {
+        function firstFree(count, used) {
+          for (var k = 0; k < count; k++) {
+            if (!used[k]) return k;
+          }
+          return 0;
+        }
+        // Keep the ACTIVE seats' colours and animals unique (a newly added seat's default may clash with a
+        // pick made while it was hidden). Defaults stay pre-selected, so Start never needs a pick first.
+        function normaliseSeats() {
+          var usedC = {},
+            usedA = {};
+          for (var i = 0; i < numPlayers; i++) {
+            if (usedC[colourOf[i]]) colourOf[i] = firstFree(PALETTE.length, usedC);
+            usedC[colourOf[i]] = true;
+            if (usedA[animalOf[i]]) animalOf[i] = firstFree(ANIMALS.length, usedA);
+            usedA[animalOf[i]] = true;
+          }
+        }
+        function seatOfColour(ci) {
+          for (var i = 0; i < numPlayers; i++) {
+            if (colourOf[i] === ci) return i;
+          }
+          return -1;
+        }
+        function cycleAnimal(slot) {
+          var used = {};
+          for (var i = 0; i < numPlayers; i++) {
+            if (i !== slot) used[animalOf[i]] = true;
+          }
+          var next = animalOf[slot];
+          for (var step = 0; step < ANIMALS.length; step++) {
+            next = (next + 1) % ANIMALS.length;
+            if (!used[next]) break;
+          }
+          animalOf[slot] = next;
+        }
+
+        function buildSwatch(slot, ci) {
+          var c = PALETTE[ci];
+          var b = el("button", "swatch");
+          b.style.setProperty("--sw", c.hex);
+          b.setAttribute("data-focus", "s" + slot + "-" + ci);
+          var owner = seatOfColour(ci);
+          var taken = owner !== -1 && owner !== slot;
+          var mine = colourOf[slot] === ci;
+          b.setAttribute("aria-pressed", mine ? "true" : "false");
+          var face = el("span", taken ? "sw-av" : "sym");
+          face.setAttribute("aria-hidden", "true");
+          if (taken) {
+            // A taken swatch is faded AND wears its owner's animal, so it can't read as a free choice.
+            face.textContent = ANIMALS[animalOf[owner]].e;
+            b.setAttribute("disabled", "");
+            b.setAttribute("aria-label", c.name + " — taken by " + ANIMALS[animalOf[owner]].e);
+          } else {
+            face.textContent = SHAPES[ci];
+            b.setAttribute("aria-label", c.name);
+            b.addEventListener("click", function () {
+              if (mine) return; // a seat always keeps a colour
+              colourOf[slot] = ci;
+              renderPlayerRows("s" + slot + "-" + ci);
+            });
+          }
+          b.appendChild(face);
+          return b;
+        }
+
+        function buildPlayerRow(slot) {
+          var animal = ANIMALS[animalOf[slot]];
+          var row = el("div", "player-row");
+          var head = el("div", "player-head");
+
+          var av = el("button", "avatar-btn");
+          av.style.setProperty("--pc", PALETTE[colourOf[slot]].hex);
+          av.textContent = animal.e;
+          av.setAttribute("data-focus", "a" + slot);
+          av.setAttribute("aria-label", "Animal: " + animal.n + ". Tap to change.");
+          av.addEventListener("click", function () {
+            cycleAnimal(slot);
+            renderPlayerRows("a" + slot);
+          });
+
+          var name = el("div", "player-name");
+          name.textContent = PALETTE[colourOf[slot]].name;
+          var pick = el("span", "pick");
+          pick.textContent = " · " + animal.n;
+          name.appendChild(pick);
+
+          var keyBadge = el("div", "key-badge");
+          keyBadge.textContent = "⌨ " + keyGlyphFor(DEFAULT_KEYS[slot]);
+
+          head.appendChild(av);
+          head.appendChild(name);
+          head.appendChild(keyBadge);
+          row.appendChild(head);
+
+          var sw = el("div", "swatches");
+          for (var ci = 0; ci < PALETTE.length; ci++) sw.appendChild(buildSwatch(slot, ci));
+          row.appendChild(sw);
+          return row;
+        }
+
+        // focusKey re-focuses the control that was just used (the rows are rebuilt, which would otherwise
+        // drop keyboard focus to <body>).
+        function renderPlayerRows(focusKey) {
           var wrap = $("playerRows");
           wrap.innerHTML = "";
-          for (var i = 0; i < numPlayers; i++) {
-            (function (slot) {
-              var row = el("div", "player-row");
-              var head = el("div", "player-head");
-              var dot = el("div", "player-dot");
-              if (selections[slot]) dot.style.background = selections[slot];
-              var name = el("div", "player-name");
-              var pname = selections[slot] ? colourName(selections[slot]) : "tap a colour";
-              name.innerHTML =
-                "Player " + (slot + 1) + ' <span class="pick">· ' + pname + "</span>";
-              var keyBadge = el("div", "key-badge");
-              keyBadge.textContent = "⌨ " + keyGlyphFor(DEFAULT_KEYS[slot]);
-              head.appendChild(dot);
-              head.appendChild(name);
-              head.appendChild(keyBadge);
-              row.appendChild(head);
-              var sw = el("div", "swatches");
-              PALETTE.forEach(function (c) {
-                var b = el("button", "swatch");
-                b.style.background = c.hex;
-                var takenByOther = selections.indexOf(c.hex) !== -1 && selections[slot] !== c.hex;
-                if (takenByOther) b.setAttribute("disabled", "");
-                b.setAttribute("aria-pressed", selections[slot] === c.hex ? "true" : "false");
-                b.setAttribute("aria-label", c.name);
-                b.addEventListener("click", function () {
-                  if (takenByOther) return;
-                  selections[slot] = selections[slot] === c.hex ? null : c.hex;
-                  renderPlayerRows();
-                  refreshStart();
-                });
-                sw.appendChild(b);
-              });
-              row.appendChild(sw);
-              wrap.appendChild(row);
-            })(i);
+          for (var i = 0; i < numPlayers; i++) wrap.appendChild(buildPlayerRow(i));
+          if (focusKey) {
+            var n = wrap.querySelector('[data-focus="' + focusKey + '"]');
+            if (n) n.focus();
           }
         }
 
@@ -1356,27 +2102,27 @@
           );
         }
 
-        function chosenCount() {
-          var c = 0;
-          for (var i = 0; i < numPlayers; i++) {
-            if (selections[i]) c++;
-          }
-          return c;
+        // A switch row: the whole row is a tap target (the switch alone is only 52x32), the switch stays
+        // the keyboard/AT control.
+        function bindToggle(rowId, switchId, onChange) {
+          var sw = $(switchId);
+          sw.addEventListener("click", function () {
+            var on = sw.getAttribute("aria-pressed") !== "true";
+            sw.setAttribute("aria-pressed", on ? "true" : "false");
+            onChange(on);
+          });
+          $(rowId).addEventListener("click", function (ev) {
+            if (ev.target !== sw) sw.click();
+          });
         }
-        function refreshStart() {
-          var ready = chosenCount() === numPlayers;
-          $("startBtn").disabled = !ready;
-          $("startNote").textContent = ready
-            ? "Gather round one screen — each player sits at their own edge button."
-            : "Pick a colour for every player to start.";
-        }
-
-        $("soundToggle").addEventListener("click", function () {
-          soundOn = !soundOn;
-          this.setAttribute("aria-pressed", soundOn ? "true" : "false");
+        bindToggle("soundRow", "soundToggle", function (on) {
+          soundOn = on;
         });
+        bindToggle("gentleRow", "gentleToggle", function (on) {
+          gentleMode = on;
+        });
+
         $("startBtn").addEventListener("click", function () {
-          if ($("startBtn").disabled) return;
           initAudio();
           if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
           startGame();
@@ -1393,8 +2139,10 @@
             var code = DEFAULT_KEYS[i];
             players.push({
               idx: i,
-              name: "Player " + (i + 1),
-              hex: selections[i],
+              name: seatName(i),
+              hex: PALETTE[colourOf[i]].hex,
+              colourName: PALETTE[colourOf[i]].name,
+              glyph: SHAPES[colourOf[i]],
               key: code,
               keyGlyph: keyGlyphFor(code),
               placement: layout[i],
@@ -1406,6 +2154,54 @@
           }
         }
 
+        function buildPlayerButtonContent(p) {
+          var content = el("span", "pbtn-content");
+          var sc = el("span", "score");
+          sc.textContent = "0";
+          var meta = el("span", "pmeta");
+          var lb = el("span", "plabel");
+          lb.textContent = p.name;
+          var sym = el("span", "psym sym");
+          sym.textContent = p.glyph;
+          sym.setAttribute("aria-hidden", "true");
+          var kb = el("span", "pkey");
+          kb.textContent = p.keyGlyph;
+          kb.setAttribute("aria-hidden", "true");
+          meta.appendChild(lb);
+          meta.appendChild(sym);
+          meta.appendChild(kb);
+          content.appendChild(sc);
+          content.appendChild(meta);
+          p.scoreEl = sc;
+          return content;
+        }
+
+        function buildPlayerButton(p) {
+          var b = el("button", "pbtn pbtn--" + p.placement);
+          b.style.background = p.hex;
+          b.setAttribute("data-state", "default");
+          b.setAttribute("aria-label", p.name + " — Snap button (key " + p.keyGlyph + ")");
+          b.appendChild(buildPlayerButtonContent(p));
+          // pointerdown (not click) so the slap registers on first contact; passive:false to preventDefault.
+          b.addEventListener(
+            "pointerdown",
+            function (ev) {
+              ev.preventDefault();
+              handlePlayerInput(p.idx, "touch");
+            },
+            { passive: false },
+          );
+          // Keyboard activation of a focused button (Enter/Space) arrives as a click with detail 0;
+          // real pointer clicks (detail >= 1) were already handled on pointerdown.
+          b.addEventListener("click", function (ev) {
+            if (ev.detail === 0) handlePlayerInput(p.idx, "key");
+          });
+          b.addEventListener("contextmenu", function (ev) {
+            ev.preventDefault();
+          });
+          return b;
+        }
+
         function buildPlayerButtons() {
           var stage = $("stage");
           var old = stage.querySelectorAll(".pbtn");
@@ -1413,39 +2209,8 @@
             stage.removeChild(old[k]);
           }
           players.forEach(function (p) {
-            var b = el("button", "pbtn pbtn--" + p.placement);
-            b.style.background = p.hex;
-            b.setAttribute("data-state", "default");
-            b.setAttribute(
-              "aria-label",
-              p.name + " — " + colourName(p.hex) + " — Snap button (key " + p.keyGlyph + ")",
-            );
-            var content = el("span", "pbtn-content");
-            var sc = el("span", "score");
-            sc.textContent = "0";
-            var lb = el("span", "plabel");
-            lb.textContent = p.name;
-            var kb = el("span", "pkey");
-            kb.textContent = "⌨ " + p.keyGlyph;
-            content.appendChild(sc);
-            content.appendChild(lb);
-            content.appendChild(kb);
-            b.appendChild(content);
-            // pointerdown (not click) so the slap registers on first contact; passive:false to preventDefault.
-            b.addEventListener(
-              "pointerdown",
-              function (ev) {
-                ev.preventDefault();
-                handlePlayerInput(p.idx, "touch");
-              },
-              { passive: false },
-            );
-            b.addEventListener("contextmenu", function (ev) {
-              ev.preventDefault();
-            });
-            stage.appendChild(b);
-            p.btnEl = b;
-            p.scoreEl = sc;
+            p.btnEl = buildPlayerButton(p);
+            stage.appendChild(p.btnEl);
           });
         }
 
@@ -1464,6 +2229,7 @@
         }
 
         function startGame() {
+          stopLoop(); // never two RAF loops, however often Play again is hit
           buildPlayers();
           buildPlayerButtons();
 
@@ -1472,6 +2238,8 @@
           countdownDigitMs = it.countdownDigitMs;
           revealWindowMs = it.revealWindowMs;
           interRoundMs = it.interRoundMs;
+          shuffleMinMs = it.shuffleMinMs;
+          shuffleMaxMs = it.shuffleMaxMs;
 
           show("game");
           $("stage").className = "stage stage--p" + numPlayers;
@@ -1479,13 +2247,16 @@
           flipCardsFaceDown();
           clearCardHighlights();
           clearToast();
-          $("progressFill").style.transform = "scaleX(1)";
+          $("roundLabel").textContent = "Round 1";
 
           roundNumber = 0;
+          fastest = null;
           running = true;
           var now = performance.now();
-          sessionStartTs = now;
-          sessionEndTs = now + durationSec * 1000;
+          // The session clock is HELD at the full duration through the 3-2-1 and starts at GO.
+          clockHeldMs = durationSec * 1000;
+          sessionEndTs = now + clockHeldMs;
+          paintClock(clockHeldMs);
           beginCountdown(now);
           rafId = requestAnimationFrame(loop);
         }
@@ -1496,6 +2267,7 @@
         function loop() {
           if (!running) return;
           var now = performance.now();
+          if (clockHeldMs !== null) sessionEndTs = now + clockHeldMs; // clock held until GO
 
           // Session guard FIRST — the 0:00 clock means game-over, aborting any in-flight round.
           if (now >= sessionEndTs) {
@@ -1523,27 +2295,35 @@
               if (now >= phaseDeadlineTs) enterInterRound(now);
               break;
             case RoundState.INTER_ROUND:
-              if (now >= phaseDeadlineTs) beginCountdown(now);
+              if (now >= phaseDeadlineTs) enterShuffle(now);
+              break;
+            case RoundState.SHUFFLE:
+              if (now >= phaseDeadlineTs) enterReveal(now);
               break;
           }
           rafId = requestAnimationFrame(loop);
         }
 
-        function updateSessionHud(now) {
-          var remain = Math.max(0, sessionEndTs - now);
+        function paintClock(remain) {
           var totalS = Math.ceil(remain / 1000);
           var mm = Math.floor(totalS / 60),
             ss = totalS % 60;
           $("sessClock").textContent = mm + ":" + (ss < 10 ? "0" : "") + ss;
           $("progressFill").style.transform = "scaleX(" + remain / (durationSec * 1000) + ")";
         }
+        function updateSessionHud(now) {
+          paintClock(Math.max(0, sessionEndTs - now));
+        }
 
+        // The 3-2-1-GO: used ONCE per game (round 1) and after a pause. Later rounds have no countdown —
+        // they go INTER_ROUND → SHUFFLE → REVEAL, so the flip can't be predicted.
         function beginCountdown(now) {
-          roundState = RoundState.COUNTDOWN;
+          setPhase(RoundState.COUNTDOWN);
           countdownIndex = 0;
           flipCardsFaceDown();
           clearCardHighlights();
           clearToast();
+          clearDecor();
           $("countdown").classList.add("active");
           renderCountdownDigit(COUNTDOWN_SEQUENCE[0]);
           toneTick();
@@ -1569,14 +2349,22 @@
         }
         function enterReveal(now) {
           $("countdown").classList.remove("active");
+          if (clockHeldMs !== null) {
+            // GO: the session clock starts running now.
+            sessionEndTs = now + clockHeldMs;
+            clockHeldMs = null;
+          }
+          $("cards").classList.remove("shuffling");
           generateRound();
           resetRoundTapState();
+          clearToast();
           flipCardsFaceUp();
-          roundState = RoundState.REVEAL;
+          revealTs = now; // reaction times are measured from here (NOT from ev.timeStamp)
+          setPhase(RoundState.REVEAL);
           phaseDeadlineTs = now + revealWindowMs;
         }
         function enterResolvedTimeout(now) {
-          roundState = RoundState.RESOLVED_TIMEOUT;
+          setPhase(RoundState.RESOLVED_TIMEOUT);
           if (currentRoundIsMatch) {
             toneMissed();
             showToast("Missed!");
@@ -1588,11 +2376,70 @@
           phaseDeadlineTs = now + RESOLVE_HOLD_MS;
         }
         function enterInterRound(now) {
-          roundState = RoundState.INTER_ROUND;
+          setPhase(RoundState.INTER_ROUND);
+          clearDecor();
+          clearToast();
+          resetRoundTapState(); // last round's ✓ / 🚫 / 🙈 cues end with its "see who won" hold
           flipCardsFaceDown();
           clearCardHighlights();
           phaseDeadlineTs = now + interRoundMs;
         }
+        // The random pre-flip wait. Math.random() is the only input (never a frame time or a previous
+        // delay), so nobody can time the flip; taps during it are early-tap nudges with no penalty.
+        function enterShuffle(now) {
+          setPhase(RoundState.SHUFFLE);
+          $("cards").classList.add("shuffling");
+          // Chain from the face-down deadline (not the frame that noticed it) so frame slop can't stretch the gap.
+          var base = now - phaseDeadlineTs < 50 ? phaseDeadlineTs : now;
+          phaseDeadlineTs = base + shuffleMinMs + Math.random() * (shuffleMaxMs - shuffleMinMs);
+        }
+
+        // ---------- pause (tab hidden / app switched) ----------
+        // An unfinished round is abandoned: a phone call must not burn the clock or end the round unseen.
+        // Resume re-runs a 3-2-1 (clock still held) and then starts a fresh round.
+        function pauseGame() {
+          if (!running || paused) return;
+          paused = true;
+          if (rafId) cancelAnimationFrame(rafId);
+          rafId = null;
+          var now = performance.now();
+          pausedRemainMs = clockHeldMs !== null ? clockHeldMs : Math.max(0, sessionEndTs - now);
+          clockHeldMs = pausedRemainMs;
+          if (roundState === RoundState.REVEAL && !roundResolved) {
+            roundNumber = Math.max(0, roundNumber - 1); // that round never finished — don't skip a number
+          }
+          setPhase(RoundState.PAUSED);
+          keyHeld = {};
+          disarmQuit();
+          clearDecor();
+          clearToast();
+          flipCardsFaceDown();
+          clearCardHighlights();
+          resetRoundTapState();
+          $("countdown").classList.remove("active");
+          paintClock(pausedRemainMs);
+          $("pause").classList.add("active");
+          $("pause").focus({ focusVisible: false }); // Enter/Space resumes; no ring for touch players
+          announce("Paused. Tap to resume.");
+        }
+        function resumeGame() {
+          if (!paused) return;
+          paused = false;
+          disarmQuit();
+          $("pause").classList.remove("active");
+          var now = performance.now();
+          sessionEndTs = now + pausedRemainMs; // clockHeldMs keeps it frozen through the 3-2-1
+          beginCountdown(now);
+          rafId = requestAnimationFrame(loop);
+          announce("Resuming.");
+        }
+        document.addEventListener("visibilitychange", function () {
+          if (document.hidden || document.visibilityState === "hidden") {
+            keyHeld = {}; // a keyup can't arrive while hidden — don't leave a key "held" (see blur below)
+            pauseGame();
+          }
+        });
+        $("pause").addEventListener("click", resumeGame);
 
         // ---------- round content ----------
         function generateRound() {
@@ -1652,38 +2499,71 @@
         // ============================================================
         // The FIRST valid tap on a match flips roundResolved synchronously; JS is single-threaded and the
         // browser dispatches pointer/key events one at a time, so the device's own input ordering decides
-        // the winner (same atomic-claim trick as Colour Rush's d.__done).
-        function handlePlayerInput(i, source) {
+        // the winner (same atomic-claim trick as Colour Rush's d.__done). Only a tap while the cards are
+        // FACE UP (REVEAL) can score or cost a point; a tap during the countdown, the face-down gap or
+        // the random shuffle wait is a no-penalty nudge — so the unpredictable flip can't be gamed.
+        function handlePlayerInput(i) {
           if (roundState !== RoundState.REVEAL) {
-            if (roundState === RoundState.COUNTDOWN) flashTooEarly(i); // feedback only, never a penalty
+            if (
+              roundState === RoundState.COUNTDOWN ||
+              roundState === RoundState.INTER_ROUND ||
+              roundState === RoundState.SHUFFLE
+            ) {
+              flashTooEarly(i); // feedback only, never a penalty
+            }
             return;
           }
           if (roundResolved) return; // a match is already claimed this round
           if (lockedOut[i]) return; // this player already mis-tapped this round
 
           if (currentRoundIsMatch) {
-            roundResolved = true;
-            awardPoint(i, +1);
-            players[i].btnEl.setAttribute("data-state", "scored");
-            toneWin();
-            triggerFlash(players[i].hex);
-            glowCardsMatch(players[i].hex);
-            showToast(players[i].name + " snapped!");
-            announce(
-              players[i].name +
-                " snapped — " +
-                players[i].score +
-                (players[i].score === 1 ? " pair." : " pairs."),
-            );
-            roundState = RoundState.RESOLVED_MATCH;
-            phaseDeadlineTs = performance.now() + RESOLVE_HOLD_MS;
+            winRound(i);
+          } else {
+            wrongTap(i);
+            // The round stays in REVEAL: a fast wrong tap must not end it for honest players.
+          }
+        }
+
+        function winRound(i) {
+          var p = players[i];
+          roundResolved = true;
+          var ms = Math.max(0, performance.now() - revealTs);
+          awardPoint(i, +1);
+          if (!fastest || ms < fastest.ms) fastest = { ms: ms, name: p.name };
+          p.btnEl.setAttribute("data-state", "scored");
+          showWinLine(p, ms);
+          showSnapWord(p);
+          toneWin();
+          vibe(30);
+          triggerFlash(p.hex);
+          glowCardsMatch(p.hex);
+          showToast(p.name + " snapped!");
+          announce(
+            p.name +
+              " snapped in " +
+              secondsText(ms) +
+              " seconds — " +
+              p.score +
+              (p.score === 1 ? " pair." : " pairs."),
+          );
+          setPhase(RoundState.RESOLVED_MATCH);
+          phaseDeadlineTs = performance.now() + RESOLVE_HOLD_MS;
+        }
+
+        function wrongTap(i) {
+          var p = players[i];
+          lockedOut[i] = true; // locked out for the rest of the round either way (fairness)
+          if (gentleMode) {
+            p.btnEl.setAttribute("data-state", "oops");
+            toneGentle();
+            vibe(20);
+            announce(p.name + " tapped too soon — these don't match. No points lost.");
           } else {
             awardPoint(i, -1);
-            lockedOut[i] = true;
-            players[i].btnEl.setAttribute("data-state", "wrong");
+            p.btnEl.setAttribute("data-state", "wrong");
             tonePenalty();
-            announce(players[i].name + " tapped too soon — these don't match.");
-            // The round stays in REVEAL: a fast wrong tap must not end it for honest players.
+            vibe([25, 40, 25]);
+            announce(p.name + " tapped too soon — these don't match.");
           }
         }
 
@@ -1699,7 +2579,8 @@
           roundResolved = false;
           for (var i = 0; i < numPlayers; i++) {
             lockedOut[i] = false;
-            if (players[i].btnEl) players[i].btnEl.setAttribute("data-state", "default");
+            if (players[i] && players[i].btnEl)
+              players[i].btnEl.setAttribute("data-state", "default");
           }
         }
 
@@ -1726,10 +2607,56 @@
           $("toast").classList.remove("show");
         }
 
+        // ---------- win-moment decoration (all removed by a timer AND by show()/the next phase) ----------
+        // "🦊 Red snapped! 0.42s" inside the winner's own button, rotated with its content so the scorer
+        // reads it facing them. The centre toast stays as the shared-screen cue.
+        function showWinLine(p, ms) {
+          var line = el("span", "pflash");
+          line.textContent = p.name + " snapped! ";
+          var t = el("b");
+          t.textContent = secondsText(ms) + "s";
+          line.appendChild(t);
+          p.btnEl.querySelector(".pbtn-content").appendChild(line);
+          p.btnEl.classList.add("has-flash");
+          setTimeout(function () {
+            removeWinLine(p.btnEl);
+          }, RESOLVE_HOLD_MS);
+        }
+        function removeWinLine(btn) {
+          btn.classList.remove("has-flash");
+          var lines = btn.querySelectorAll(".pflash");
+          for (var i = 0; i < lines.length; i++) lines[i].parentNode.removeChild(lines[i]);
+        }
+        // Big "SNAP!" over the cards, turned to face the winner's seat.
+        function showSnapWord(p) {
+          var w = el("div", "snap-word");
+          w.textContent = "SNAP!";
+          w.setAttribute("aria-hidden", "true");
+          w.style.setProperty("--rot", SEAT_ROTATION[p.placement] + "deg");
+          $("cards").appendChild(w);
+          setTimeout(function () {
+            if (w.parentNode) w.parentNode.removeChild(w);
+          }, RESOLVE_HOLD_MS);
+        }
+        function clearDecor() {
+          var words = document.querySelectorAll(".snap-word");
+          for (var i = 0; i < words.length; i++) words[i].parentNode.removeChild(words[i]);
+          for (var k = 0; k < players.length; k++) {
+            if (players[k].btnEl) removeWinLine(players[k].btnEl);
+          }
+          $("cards").classList.remove("shuffling");
+        }
+
         // ---------- keyboard input (parity with touch) ----------
         window.addEventListener("keydown", function (ev) {
           if (!running) return;
           if (ev.repeat || keyHeld[ev.code]) return; // ignore auto-repeat / held keys
+          if (ev.code === "Escape" || ev.key === "Escape") {
+            keyHeld[ev.code] = true;
+            ev.preventDefault(); // also while paused: Esc arms / confirms the Quit button on the pause card
+            quitArmed ? quitToSetup() : armQuit();
+            return;
+          }
           var pi = keyToPlayer[ev.code];
           if (pi === undefined) return;
           keyHeld[ev.code] = true;
@@ -1739,33 +2666,55 @@
         window.addEventListener("keyup", function (ev) {
           if (keyHeld[ev.code]) keyHeld[ev.code] = false;
         });
+        // The keyup of a key released while the window is unfocused (alt-tab, browser chrome, an OS
+        // dialog) is never delivered. Without this reset the seat's NEXT real press would be swallowed
+        // by the held-key guard above (PLAY-006 AR-03).
+        window.addEventListener("blur", function () {
+          keyHeld = {};
+        });
 
         // ============================================================
-        //  END / RESULTS
+        //  QUIT (two taps) / END / RESULTS
         // ============================================================
+        // Paints the HUD ✕ and the pause-card Quit together; whichever is on screen shows the state.
+        function paintQuit(armed) {
+          var b = $("quitBtn");
+          b.classList.toggle("confirm", armed);
+          b.textContent = armed ? "Quit?" : "✕";
+          b.setAttribute("aria-label", armed ? "Quit? Tap again to confirm" : "Quit game");
+          var pq = $("pauseQuit");
+          pq.classList.toggle("confirm", armed);
+          pq.textContent = armed ? "Quit? Tap again" : "Quit";
+        }
+        function armQuit() {
+          quitArmed = true;
+          paintQuit(true);
+          clearTimeout(quitTimer);
+          quitTimer = setTimeout(disarmQuit, QUIT_CONFIRM_MS);
+          announce("Quit? Tap again to confirm.");
+        }
+        function disarmQuit() {
+          clearTimeout(quitTimer);
+          quitTimer = null;
+          quitArmed = false;
+          paintQuit(false);
+        }
+        // show("setup") tears everything down (loop, overlays, decoration) — no per-path cleanup here.
+        function quitToSetup() {
+          show("setup");
+        }
+        $("quitBtn").addEventListener("click", function () {
+          quitArmed ? quitToSetup() : armQuit();
+        });
+        $("pauseQuit").addEventListener("click", function () {
+          quitArmed ? quitToSetup() : armQuit();
+        });
+
         function endGame() {
-          running = false;
-          if (rafId) cancelAnimationFrame(rafId);
-          rafId = null;
-          roundState = RoundState.GAME_OVER;
-          // The 3-2-1 overlay is a top-level element (above all screens); the session can end mid-countdown,
-          // so hide it here or it lingers as a "GO" over the results screen.
-          $("countdown").classList.remove("active");
+          paintClock(0); // force the final 0:00 to paint before the screen changes (LEARNINGS PLAY-003)
+          vibe(60);
           showResults();
         }
-
-        $("quitBtn").addEventListener("click", function () {
-          running = false;
-          if (rafId) cancelAnimationFrame(rafId);
-          rafId = null;
-          roundState = RoundState.IDLE;
-          keyHeld = {};
-          flipCardsFaceDown();
-          clearCardHighlights();
-          clearToast();
-          $("countdown").classList.remove("active"); // quitting mid-countdown must clear the overlay too
-          show("setup");
-        });
 
         function showResults() {
           var sorted = players.slice().sort(function (a, b) {
@@ -1775,12 +2724,32 @@
           var winners = sorted.filter(function (p) {
             return p.score === top;
           });
-          var tie = winners.length > 1 && top > 0;
 
+          renderHeadline(winners, top);
+          renderRankList(sorted, top);
+          renderResultNotes(sorted);
+          announce(
+            $("winTitle").textContent +
+              ". " +
+              $("winSub").textContent +
+              ($("fastest").hidden ? "" : " " + $("fastest").textContent),
+          );
+          show("results");
+          if (top > 0 && !prefersReduced()) {
+            launchConfetti(
+              winners.map(function (p) {
+                return p.hex;
+              }),
+            );
+          }
+        }
+
+        function renderHeadline(winners, top) {
+          var pairs = top + (top === 1 ? " pair" : " pairs");
           if (top === 0) {
             $("winTitle").textContent = "No snaps landed";
             $("winSub").textContent = "Cards too quick? Run it back.";
-          } else if (tie) {
+          } else if (winners.length > 1) {
             $("winTitle").textContent = "It's a tie!";
             $("winSub").textContent =
               winners
@@ -1789,14 +2758,15 @@
                 })
                 .join(" & ") +
               " — " +
-              top +
-              (top === 1 ? " pair" : " pairs") +
+              pairs +
               " each";
           } else {
-            $("winTitle").textContent = sorted[0].name + " wins";
-            $("winSub").textContent = top + (top === 1 ? " pair" : " pairs");
+            $("winTitle").textContent = winners[0].name + " wins!";
+            $("winSub").textContent = pairs;
           }
+        }
 
+        function renderRankList(sorted, top) {
           var list = $("rankList");
           list.innerHTML = "";
           var pos = 0,
@@ -1814,8 +2784,12 @@
             ps.textContent = pos;
             var swt = el("div", "swt");
             swt.style.background = p.hex;
+            var gl = el("span", "sym");
+            gl.textContent = p.glyph;
+            gl.setAttribute("aria-hidden", "true");
+            swt.appendChild(gl);
             var nm = el("div", "rname");
-            nm.innerHTML = p.name + "<small>" + colourName(p.hex) + "</small>";
+            nm.textContent = p.name;
             var sc = el("div", "rscore");
             sc.textContent = p.score;
             row.appendChild(ps);
@@ -1824,8 +2798,49 @@
             row.appendChild(sc);
             list.appendChild(row);
           });
-          announce($("winTitle").textContent + ". " + $("winSub").textContent);
-          show("results");
+        }
+
+        // "⚡ Fastest snap" and a kind "Great try" for anyone who finished on 0.
+        function renderResultNotes(sorted) {
+          var f = $("fastest");
+          if (fastest) {
+            f.textContent =
+              "⚡ Fastest snap: " + fastest.name + " — " + secondsText(fastest.ms) + " s";
+            f.hidden = false;
+          } else {
+            f.textContent = "";
+            f.hidden = true;
+          }
+          var zeros = sorted
+            .filter(function (p) {
+              return p.score === 0;
+            })
+            .map(function (p) {
+              return p.name;
+            });
+          var g = $("greatTry");
+          g.textContent = zeros.length ? "Great try, " + zeros.join(" & ") + "!" : "";
+          g.hidden = zeros.length === 0;
+        }
+
+        // 36 absolutely-positioned pieces, a 1.4 s CSS fall, removed by a JS timer. Never rendered under
+        // reduced motion (the caller checks; the CSS also hides the layer).
+        function launchConfetti(colours) {
+          var layer = $("confetti");
+          layer.textContent = "";
+          for (var i = 0; i < CONFETTI_COUNT; i++) {
+            var c = el("i");
+            c.style.left = Math.random() * 100 + "%";
+            c.style.setProperty("--c", colours[i % colours.length]);
+            c.style.setProperty("--dx", Math.round(Math.random() * 160 - 80) + "px");
+            c.style.setProperty("--rot", Math.round(Math.random() * 720 - 360) + "deg");
+            c.style.setProperty("--d", (Math.random() * 0.35).toFixed(2) + "s");
+            layer.appendChild(c);
+          }
+          clearTimeout(confettiTimer);
+          confettiTimer = setTimeout(function () {
+            layer.textContent = "";
+          }, CONFETTI_CLEAR_MS);
         }
 
         $("againBtn").addEventListener("click", function () {
@@ -1851,7 +2866,6 @@
         renderPlayerRows();
         renderDurationChips();
         renderIntensityChips();
-        refreshStart();
       })();
     </script>
   </body>

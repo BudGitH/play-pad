@@ -1,0 +1,887 @@
+<!doctype html>
+<!--
+  PLAY-006 hub mockup (design reference only — NOT shipped; features/* is
+  redirected to / by _redirects). Links the real shared tokens/base so the
+  mockup shows the true palette; the NEW tokens + hub components it proposes
+  are inline below and specified in design-hub.md.
+-->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>PlayPad — hub mockup (PLAY-006)</title>
+    <meta name="theme-color" content="#fff8f7" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#08080c" media="(prefers-color-scheme: dark)" />
+    <link rel="stylesheet" href="../../styles/tokens.css" />
+    <link rel="stylesheet" href="../../styles/base.css" />
+    <script>
+      /* == proposed scripts/theme.js (runs in <head>, before paint) == */
+      (function () {
+        try {
+          var t = localStorage.getItem("playpad.theme");
+          if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+        } catch (e) {
+          /* storage blocked: follow the system */
+        }
+      })();
+    </script>
+    <style>
+      /* ===== proposed tokens.css additions ===== */
+      :root {
+        --pp-layout-max: 1200px;
+        --pp-gutter: clamp(16px, 4vw, 32px);
+        --pp-card-media-height: 120px;
+        --pp-list-tile: 80px;
+        --pp-hit-min: 48px;
+        --pp-stagger-step: 40ms;
+      }
+      /* Manual theme override. tokens.css keeps the light block under the media
+         query, guarded with :not([data-theme="dark"]), and ADDS this copy. */
+      :root[data-theme="dark"] {
+        color-scheme: dark;
+        --md-sys-color-primary: #ff6b85;
+        --md-sys-color-on-primary: #5a0017;
+        --md-sys-color-primary-container: #7d1530;
+        --md-sys-color-on-primary-container: #ffd9df;
+        --md-sys-color-secondary-container: #5d3a40;
+        --md-sys-color-on-secondary-container: #ffd9df;
+        --md-sys-color-tertiary: #f4c26b;
+        --md-sys-color-tertiary-container: #5a4300;
+        --md-sys-color-on-tertiary-container: #ffe08a;
+        --md-sys-color-surface: #08080c;
+        --md-sys-color-surface-container-low: #111118;
+        --md-sys-color-surface-container: #15151c;
+        --md-sys-color-surface-container-high: #1d1d27;
+        --md-sys-color-surface-container-highest: #292935;
+        --md-sys-color-on-surface: #f4f4f7;
+        --md-sys-color-on-surface-variant: #c5c5d0;
+        --md-sys-color-outline: #908f99;
+        --md-sys-color-outline-variant: #44444e;
+      }
+      :root[data-theme="light"] {
+        color-scheme: light;
+        --md-sys-color-primary: #b5103a;
+        --md-sys-color-on-primary: #ffffff;
+        --md-sys-color-primary-container: #ffd9df;
+        --md-sys-color-on-primary-container: #3e0014;
+        --md-sys-color-secondary-container: #ffd9df;
+        --md-sys-color-on-secondary-container: #2b151a;
+        --md-sys-color-tertiary: #7a5900;
+        --md-sys-color-tertiary-container: #ffe08a;
+        --md-sys-color-on-tertiary-container: #261a00;
+        --md-sys-color-surface: #fff8f7;
+        --md-sys-color-surface-container-low: #fff0f1;
+        --md-sys-color-surface-container: #fceaec;
+        --md-sys-color-surface-container-high: #f6e4e6;
+        --md-sys-color-surface-container-highest: #f0dee1;
+        --md-sys-color-on-surface: #201a1b;
+        --md-sys-color-on-surface-variant: #524345;
+        --md-sys-color-outline: #847375;
+        --md-sys-color-outline-variant: #d7c1c4;
+      }
+
+      /* ===== hub layout ===== */
+      body {
+        display: flex;
+        flex-direction: column;
+      }
+      .wrap {
+        width: 100%;
+        max-width: var(--pp-layout-max);
+        margin: 0 auto;
+        padding-inline: max(var(--pp-gutter), env(safe-area-inset-left))
+          max(var(--pp-gutter), env(safe-area-inset-right));
+      }
+      .skip-link {
+        position: absolute;
+        left: var(--md-sys-spacing-md);
+        top: -100px;
+        z-index: 50;
+      }
+      .skip-link:focus {
+        top: var(--md-sys-spacing-sm);
+      }
+      .app-bar {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        background: var(--md-sys-color-surface);
+        padding-top: env(safe-area-inset-top);
+      }
+      .app-bar--scrolled {
+        box-shadow: var(--md-sys-elevation-level2);
+      }
+      .app-bar .wrap {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-height: 64px;
+      }
+      .app-bar__logo {
+        width: 36px;
+        height: 36px;
+        border-radius: 9px;
+      }
+      .app-bar__spacer {
+        flex: 1;
+      }
+      main {
+        flex: 1;
+      }
+      .intro {
+        padding-block: var(--md-sys-spacing-sm) var(--md-sys-spacing-md);
+      }
+      .intro p {
+        margin-top: var(--md-sys-spacing-xs);
+      }
+
+      /* ---- featured hero ---- */
+      .hero-card {
+        display: grid;
+        grid-template-columns: 96px 1fr;
+        gap: var(--md-sys-spacing-md);
+        padding: var(--md-sys-spacing-md);
+        border-radius: var(--md-sys-shape-corner-xl);
+        background: var(--md-sys-color-surface-container-high);
+        box-shadow: var(--md-sys-elevation-level1);
+      }
+      .hero-card__media {
+        width: 96px;
+        height: 96px;
+        border-radius: var(--md-sys-shape-corner-lg);
+        display: grid;
+        place-items: center;
+        background: radial-gradient(circle at 78% 20%, rgba(255, 255, 255, 0.3), transparent 45%),
+          radial-gradient(circle at 18% 86%, rgba(0, 0, 0, 0.28), transparent 50%),
+          var(--card-accent);
+      }
+      .hero-card__icon {
+        font-size: 56px;
+        line-height: 1;
+        filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.38));
+      }
+      .hero-card__eyebrow {
+        color: var(--md-sys-color-primary);
+        text-transform: uppercase;
+      }
+      .hero-card__title {
+        margin: 2px 0 4px;
+      }
+      .hero-card__desc--long {
+        display: none;
+      }
+      .hero-card__badges {
+        display: none;
+      }
+      .hero-card__actions {
+        grid-column: 1 / -1;
+        display: flex;
+        gap: var(--md-sys-spacing-sm);
+      }
+      .hero-card__actions .button {
+        white-space: nowrap;
+      }
+      .hero-card__actions .button--filled {
+        flex: 1;
+      }
+
+      /* ---- filter chips ---- */
+      .section-head {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
+        padding-top: var(--md-sys-spacing-lg);
+      }
+      .filters {
+        display: flex;
+        gap: var(--md-sys-spacing-sm);
+        flex-wrap: wrap;
+        padding-block: 12px var(--md-sys-spacing-md);
+      }
+      .chip-filter {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        height: 40px;
+        padding: 0 var(--md-sys-spacing-md);
+        border-radius: var(--md-sys-shape-corner-sm);
+        border: 1px solid var(--md-sys-color-outline);
+        background: transparent;
+        color: var(--md-sys-color-on-surface-variant);
+        font-size: var(--md-sys-typescale-label-large-size);
+        font-weight: var(--md-sys-typescale-label-large-weight);
+        isolation: isolate;
+      }
+      .chip-filter::after {
+        content: "";
+        position: absolute;
+        inset: -4px 0;
+      }
+      .chip-filter svg {
+        display: none;
+      }
+      .chip-filter[aria-pressed="true"] {
+        background: var(--md-sys-color-secondary-container);
+        color: var(--md-sys-color-on-secondary-container);
+        border-color: transparent;
+        padding-left: 10px;
+      }
+      .chip-filter[aria-pressed="true"] svg {
+        display: block;
+      }
+      .chip-filter__count {
+        opacity: 0.8;
+        font-weight: 500;
+      }
+
+      /* ---- game grid / list ---- */
+      .game-grid {
+        list-style: none;
+        margin: 0;
+        padding: 0 0 var(--md-sys-spacing-xl);
+        display: grid;
+        gap: 12px;
+        grid-template-columns: 1fr;
+      }
+      .game-grid > li {
+        display: flex;
+      }
+      .game-card {
+        flex: 1;
+        display: grid;
+        grid-template-columns: var(--pp-list-tile) 1fr auto;
+        align-items: center;
+        gap: var(--md-sys-spacing-md);
+        min-height: 104px;
+        padding: 12px;
+        overflow: hidden;
+      }
+      .game-card__media {
+        width: var(--pp-list-tile);
+        height: var(--pp-list-tile);
+        border-radius: var(--md-sys-shape-corner-md);
+        display: grid;
+        place-items: center;
+        background: radial-gradient(circle at 78% 20%, rgba(255, 255, 255, 0.28), transparent 45%),
+          radial-gradient(circle at 18% 86%, rgba(0, 0, 0, 0.28), transparent 50%),
+          var(--card-accent);
+        position: relative;
+        z-index: 1;
+      }
+      .game-card__icon {
+        font-size: 44px;
+        line-height: 1;
+        filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.38));
+        transition: transform var(--md-sys-motion-duration-short4)
+          var(--md-sys-motion-easing-emphasized);
+      }
+      .game-card__body {
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        position: relative;
+        z-index: 1;
+      }
+      .game-card__title {
+        font-size: 18px;
+        font-weight: 700;
+        line-height: 1.3;
+      }
+      .game-card__tagline {
+        overflow: hidden;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        line-clamp: 2;
+        -webkit-box-orient: vertical;
+      }
+      .game-card__meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 2px;
+      }
+      .game-card__play {
+        position: relative;
+        z-index: 1;
+        display: grid;
+        place-items: center;
+        width: 40px;
+        height: 40px;
+        border-radius: var(--md-sys-shape-corner-full);
+        background: var(--md-sys-color-primary-container);
+        color: var(--md-sys-color-on-primary-container);
+      }
+      .game-card__play-label {
+        display: none;
+      }
+      .game-card:hover .game-card__icon {
+        transform: scale(1.12) rotate(-6deg);
+      }
+      .card--interactive:hover {
+        transform: translateY(-4px);
+      }
+      .card--interactive:active {
+        transform: scale(0.97);
+      }
+
+      /* badges */
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        height: 24px;
+        padding: 0 8px;
+        border-radius: var(--md-sys-shape-corner-xs);
+        font-size: var(--md-sys-typescale-label-medium-size);
+        font-weight: var(--md-sys-typescale-label-medium-weight);
+        letter-spacing: var(--md-sys-typescale-label-medium-tracking);
+        background: var(--md-sys-color-surface-container-highest);
+        color: var(--md-sys-color-on-surface-variant);
+        white-space: nowrap;
+      }
+      .badge--best {
+        background: var(--md-sys-color-tertiary-container);
+        color: var(--md-sys-color-on-tertiary-container);
+      }
+      .badge--new {
+        background: var(--md-sys-color-primary);
+        color: var(--md-sys-color-on-primary);
+      }
+
+      .empty {
+        padding: var(--md-sys-spacing-xl) 0;
+        text-align: center;
+      }
+
+      footer .wrap {
+        padding-block: var(--md-sys-spacing-lg)
+          calc(var(--md-sys-spacing-lg) + env(safe-area-inset-bottom));
+        color: var(--md-sys-color-on-surface-variant);
+        border-top: 1px solid var(--md-sys-color-outline-variant);
+      }
+      footer a {
+        color: var(--md-sys-color-primary);
+        text-decoration: underline;
+      }
+
+      /* ---- medium: 600–839 → 2-column vertical cards ---- */
+      @media (min-width: 600px) {
+        .game-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: var(--md-sys-spacing-md);
+        }
+        .game-card {
+          grid-template-columns: 1fr;
+          grid-template-rows: auto 1fr;
+          align-items: stretch;
+          padding: 0;
+          gap: 0;
+        }
+        .game-card__media {
+          width: auto;
+          height: var(--pp-card-media-height);
+          border-radius: 0;
+        }
+        .game-card__icon {
+          font-size: 72px;
+        }
+        .game-card__body {
+          padding: var(--md-sys-spacing-md) var(--md-sys-spacing-md) 0;
+          gap: 6px;
+        }
+        .game-card__title {
+          font-size: var(--md-sys-typescale-title-large-size);
+        }
+        .game-card__tagline {
+        }
+        .game-card__play {
+          justify-self: end;
+          align-self: end;
+          margin: 12px var(--md-sys-spacing-md) var(--md-sys-spacing-md);
+          width: auto;
+          height: 40px;
+          padding: 0 var(--md-sys-spacing-md) 0 12px;
+          display: inline-flex;
+          gap: 6px;
+          font-size: var(--md-sys-typescale-label-large-size);
+          font-weight: 700;
+        }
+        .game-card__play-label {
+          display: inline;
+        }
+        .hero-card {
+          grid-template-columns: 200px 1fr;
+          gap: var(--md-sys-spacing-lg);
+          padding: var(--md-sys-spacing-lg);
+        }
+        .hero-card__media {
+          width: 200px;
+          height: 168px;
+          grid-row: span 2;
+        }
+        .hero-card__icon {
+          font-size: 96px;
+        }
+        .hero-card__actions {
+          grid-column: 2;
+        }
+        .hero-card__actions .button--filled {
+          flex: 0 0 auto;
+        }
+      }
+      /* ---- expanded: ≥ 840 → 3-column grid, rich hero ---- */
+      @media (min-width: 840px) {
+        .game-grid {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 20px;
+        }
+        .intro {
+          padding-block: var(--md-sys-spacing-lg) var(--md-sys-spacing-lg);
+        }
+        .hero-card {
+          grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+          padding: 0;
+          overflow: hidden;
+          gap: 0;
+        }
+        .hero-card__media {
+          width: auto;
+          height: auto;
+          min-height: 184px;
+          border-radius: 0;
+        }
+        .hero-card__icon {
+          font-size: 104px;
+        }
+        .hero-card__body {
+          padding: var(--md-sys-spacing-lg) var(--md-sys-spacing-xl) 0;
+        }
+        .hero-card__desc--short {
+          display: none;
+        }
+        .hero-card__desc--long {
+          display: block;
+          max-width: 52ch;
+        }
+        .hero-card__badges {
+          display: flex;
+          gap: 6px;
+          margin-top: 12px;
+        }
+        .hero-card__actions {
+          padding: var(--md-sys-spacing-md) var(--md-sys-spacing-xl) var(--md-sys-spacing-lg);
+        }
+      }
+
+      /* ---- motion (only when the user allows it) ---- */
+      @media (prefers-reduced-motion: no-preference) {
+        .reveal {
+          animation: pp-rise var(--md-sys-motion-duration-medium2)
+            var(--md-sys-motion-easing-emphasized-decelerate) both;
+          animation-delay: calc(var(--i, 0) * var(--pp-stagger-step));
+        }
+        .hero-card__icon {
+          animation: pp-pop var(--md-sys-motion-duration-long1)
+            var(--md-sys-motion-easing-emphasized) 120ms both;
+        }
+      }
+      @keyframes pp-rise {
+        from {
+          opacity: 0;
+          transform: translateY(12px);
+        }
+      }
+      @keyframes pp-pop {
+        0% {
+          transform: scale(0.6) rotate(-8deg);
+          opacity: 0;
+        }
+        70% {
+          transform: scale(1.06) rotate(2deg);
+          opacity: 1;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <a class="skip-link button button--filled" href="#games">Skip to games</a>
+    <header class="app-bar" id="appBar">
+      <div class="wrap">
+        <img class="app-bar__logo" src="../../icons/favicon.svg" alt="" width="36" height="36" />
+        <span class="title-large brand-wordmark">PlayPad</span>
+        <span class="app-bar__spacer"></span>
+        <button
+          class="icon-button state-layer"
+          id="themeBtn"
+          type="button"
+          aria-label="Switch to light theme"
+        >
+          <svg id="themeIcon" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"></svg>
+        </button>
+      </div>
+    </header>
+
+    <main id="main">
+      <div class="wrap">
+        <section class="intro reveal" style="--i: 0">
+          <h1 class="display-small">Press play.</h1>
+          <p class="body-large text-muted">Quick mini-games. No install, no signup.</p>
+        </section>
+
+        <section
+          class="hero-card reveal"
+          style="--i: 1"
+          aria-labelledby="heroTitle"
+          id="hero"
+        ></section>
+
+        <section aria-labelledby="gamesHeading" id="games" tabindex="-1">
+          <div class="section-head">
+            <h2 class="headline-small" id="gamesHeading">All games</h2>
+            <span class="visually-hidden" id="gamesCount" aria-live="polite"></span>
+          </div>
+          <div class="filters" role="group" aria-label="Filter games" id="filters"></div>
+          <ul class="game-grid" id="grid" role="list"></ul>
+        </section>
+      </div>
+    </main>
+
+    <footer class="body-small">
+      <div class="wrap">
+        PlayPad · built with
+        <a href="https://m3.material.io" target="_blank" rel="noopener">Material Design 3</a>. New
+        games land here regularly.
+      </div>
+    </footer>
+
+    <script>
+      (function () {
+        "use strict";
+        /* Inline copy of games.js WITH the proposed optional fields (tagline, best, added). */
+        var GAMES = [
+          {
+            id: "colour-rush",
+            title: "Colour Rush",
+            tagline: "Tap your colour before it vanishes.",
+            description:
+              "Coloured dots scatter across the screen — tap your own colour before it vanishes. Quickest, most selective hands win.",
+            tags: ["Multiplayer", "Reflex", "Local"],
+            path: "#",
+            accent: "#ff375f",
+            icon: "🎯",
+            players: "2–4",
+            status: "live",
+          },
+          {
+            id: "snap",
+            title: "Snap",
+            tagline: "Spot the match — slap first!",
+            description:
+              "Two cards flip face-up. If they match, slap your button before anyone else. Sharpest eyes and fastest hands win.",
+            tags: ["Multiplayer", "Reflex", "Local"],
+            path: "#",
+            accent: "#bf5af2",
+            icon: "🃏",
+            players: "2–4",
+            status: "live",
+          },
+          {
+            id: "claw-catch",
+            title: "Claw Catch",
+            tagline: "Swing, drop and snag the rare prize.",
+            description:
+              "Steer the claw, time its swing, and drop to snag themed prizes from the bin.",
+            tags: ["Solo", "Arcade", "Skill"],
+            path: "#",
+            accent: "#64d2ff",
+            icon: "🕹️",
+            players: "1",
+            status: "live",
+          },
+          {
+            id: "super-decoder",
+            title: "Super Decoder",
+            tagline: "Crack the secret colour code.",
+            description: "Crack a hidden 4-colour code in up to 10 guesses.",
+            tags: ["Solo", "Logic", "Code-breaking"],
+            path: "#",
+            accent: "#30d158",
+            icon: "🔐",
+            players: "1",
+            status: "live",
+          },
+          {
+            id: "neon-rush",
+            title: "Neon Rush",
+            tagline: "Dash and dodge through a neon city.",
+            description:
+              "Sprint through a neon city in 3D — swap lanes, jump barriers and slide under them, dodge trains, grab coins, and outrun the patrol drone.",
+            tags: ["Solo", "3D", "Runner"],
+            path: "#",
+            accent: "#ff2d95",
+            icon: "🏃",
+            players: "1",
+            status: "live",
+            added: "2026-11-10",
+            best: { key: "playpad.neonRush.v1", field: "highScore", label: "Best" },
+          },
+        ];
+        var FILTERS = [
+          { id: "all", label: "All" },
+          { id: "solo", label: "Solo" },
+          { id: "together", label: "Play together" },
+        ];
+        var HUB_KEY = "playpad.hub.v1";
+        var NEW_DAYS = 30;
+        var CHECK =
+          '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z" fill="currentColor"/></svg>';
+        var PLAY =
+          '<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>';
+
+        function esc(s) {
+          return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+            return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+          });
+        }
+        function store(k, v) {
+          try {
+            if (v === undefined) return JSON.parse(localStorage.getItem(k));
+            localStorage.setItem(k, JSON.stringify(v));
+          } catch (e) {
+            return null;
+          }
+        }
+        var live = GAMES.filter(function (g) {
+          return g.status !== "soon";
+        });
+        var hub = store(HUB_KEY) || {};
+        if (!hub || hub.v !== 1) hub = { v: 1, last: null, played: {}, filter: "all" };
+        var byId = function (id) {
+          return live.filter(function (g) {
+            return g.id === id;
+          })[0];
+        };
+
+        function isSolo(g) {
+          return String(g.players || "").trim() === "1";
+        }
+        function modeLabel(g) {
+          return isSolo(g) ? "Solo" : (g.players || "") + " players";
+        }
+        function inFilter(g, f) {
+          return f === "all" || (f === "solo") === isSolo(g);
+        }
+        function bestOf(g) {
+          if (!g.best) return null;
+          var d = store(g.best.key);
+          var n = d && Math.floor(Number(d[g.best.field]));
+          return Number.isFinite(n) && n > 0 ? Math.min(n, 1e9) : null;
+        }
+        function isNew(g) {
+          if (!g.added || hub.played[g.id] || bestOf(g)) return false;
+          var t = Date.parse(g.added);
+          return Number.isFinite(t) && Date.now() - t < NEW_DAYS * 864e5;
+        }
+        function badges(g) {
+          var out = [];
+          if (isNew(g)) out.push('<span class="badge badge--new">New</span>');
+          out.push('<span class="badge">' + esc(modeLabel(g)) + "</span>");
+          var b = bestOf(g);
+          if (b)
+            out.push(
+              '<span class="badge badge--best">🏆 ' +
+                esc(g.best.label || "Best") +
+                " " +
+                b.toLocaleString() +
+                "</span>",
+            );
+          return out.join("");
+        }
+        function remember(id) {
+          hub.last = id;
+          hub.played[id] = Date.now();
+          store(HUB_KEY, hub);
+        }
+
+        // ---- featured hero ----
+        function dayIndex() {
+          return Math.floor(Date.now() / 864e5);
+        }
+        function renderHero() {
+          var last = byId(hub.last);
+          var g = last || live[dayIndex() % live.length];
+          var el = document.getElementById("hero");
+          el.innerHTML =
+            '<div class="hero-card__media" style="--card-accent:' +
+            esc(g.accent) +
+            '"><span class="hero-card__icon" aria-hidden="true">' +
+            esc(g.icon) +
+            "</span></div>" +
+            '<div class="hero-card__body">' +
+            '<p class="hero-card__eyebrow label-medium">' +
+            (last ? "Jump back in" : "Game of the day") +
+            "</p>" +
+            '<h2 class="hero-card__title headline-small" id="heroTitle">' +
+            esc(g.title) +
+            "</h2>" +
+            '<p class="hero-card__desc--short body-medium text-muted">' +
+            esc(g.tagline || g.description) +
+            "</p>" +
+            '<p class="hero-card__desc--long body-large text-muted">' +
+            esc(g.description) +
+            "</p>" +
+            '<div class="hero-card__badges">' +
+            badges(g) +
+            "</div></div>" +
+            '<div class="hero-card__actions">' +
+            '<a class="button button--filled state-layer" href="' +
+            esc(g.path) +
+            '" data-id="' +
+            esc(g.id) +
+            '" aria-label="Play ' +
+            esc(g.title) +
+            ' now"><span>' +
+            PLAY +
+            "</span><span>Play now</span></a>" +
+            '<button class="button button--tonal state-layer" type="button" id="surprise"><span aria-hidden="true">🎲</span><span>Surprise me</span></button></div>';
+        }
+
+        // ---- filters + grid ----
+        function renderFilters() {
+          document.getElementById("filters").innerHTML = FILTERS.map(function (f) {
+            var n = live.filter(function (g) {
+              return inFilter(g, f.id);
+            }).length;
+            return (
+              '<button type="button" class="chip-filter state-layer" data-filter="' +
+              f.id +
+              '" aria-pressed="' +
+              (hub.filter === f.id) +
+              '">' +
+              CHECK +
+              "<span>" +
+              f.label +
+              '</span><span class="chip-filter__count">' +
+              n +
+              "</span></button>"
+            );
+          }).join("");
+        }
+        function cardHTML(g, i) {
+          var id = "g-" + esc(g.id);
+          return (
+            '<li class="reveal" style="--i:' +
+            (i + 2) +
+            '"><a class="card card--interactive state-layer game-card" href="' +
+            esc(g.path) +
+            '" data-id="' +
+            esc(g.id) +
+            '" aria-label="Play ' +
+            esc(g.title) +
+            '" aria-describedby="' +
+            id +
+            '-d">' +
+            '<span class="game-card__media" style="--card-accent:' +
+            esc(g.accent) +
+            '"><span class="game-card__icon" aria-hidden="true">' +
+            esc(g.icon) +
+            "</span></span>" +
+            '<span class="game-card__body"><span class="game-card__title">' +
+            esc(g.title) +
+            "</span>" +
+            '<span id="' +
+            id +
+            '-d"><span class="game-card__tagline body-medium text-muted" style="display:block">' +
+            esc(g.tagline || g.description) +
+            '</span><span class="game-card__meta">' +
+            badges(g) +
+            "</span></span></span>" +
+            '<span class="game-card__play" aria-hidden="true">' +
+            PLAY +
+            '<span class="game-card__play-label">Play</span></span></a></li>'
+          );
+        }
+        function renderGrid() {
+          var list = live.filter(function (g) {
+            return inFilter(g, hub.filter);
+          });
+          var grid = document.getElementById("grid");
+          grid.innerHTML = list.length
+            ? list.map(cardHTML).join("")
+            : '<li class="empty body-large text-muted">No games here yet — try “All”.</li>';
+          var name = { all: "", solo: " solo", together: " play-together" }[hub.filter] || "";
+          document.getElementById("gamesCount").textContent =
+            "Showing " + list.length + name + (list.length === 1 ? " game" : " games");
+        }
+
+        document.addEventListener("click", function (e) {
+          var f = e.target.closest("[data-filter]");
+          if (f) {
+            hub.filter = f.getAttribute("data-filter");
+            store(HUB_KEY, hub);
+            renderFilters();
+            renderGrid();
+            return;
+          }
+          var a = e.target.closest("a[data-id]");
+          if (a) remember(a.getAttribute("data-id"));
+          if (e.target.closest("#surprise")) {
+            var pool = live.filter(function (g) {
+              return g.id !== hub.last;
+            });
+            var g = pool[Math.floor(Math.random() * pool.length)];
+            remember(g.id);
+            location.assign(g.path);
+          }
+        });
+
+        // ---- theme toggle ----
+        var SUN =
+          '<path d="M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10zM11 1h2v3h-2zm0 19h2v3h-2zM1 11h3v2H1zm19 0h3v2h-3zM4.2 5.6l1.4-1.4 2.1 2.1-1.4 1.4zm12.1 12.1 1.4-1.4 2.1 2.1-1.4 1.4zM4.2 18.4l2.1-2.1 1.4 1.4-2.1 2.1zM16.3 6.3l2.1-2.1 1.4 1.4-2.1 2.1z" fill="currentColor"/>';
+        var MOON =
+          '<path d="M12.3 2a9.9 9.9 0 1 0 9.7 12.2A7.5 7.5 0 0 1 12.3 2z" fill="currentColor"/>';
+        var mq = matchMedia("(prefers-color-scheme: light)");
+        function current() {
+          return document.documentElement.dataset.theme || (mq.matches ? "light" : "dark");
+        }
+        function paintThemeBtn() {
+          var next = current() === "dark" ? "light" : "dark";
+          document.getElementById("themeIcon").innerHTML = next === "light" ? SUN : MOON;
+          document
+            .getElementById("themeBtn")
+            .setAttribute("aria-label", "Switch to " + next + " theme");
+          document.querySelectorAll('meta[name="theme-color"]').forEach(function (m) {
+            m.setAttribute("content", current() === "light" ? "#fff8f7" : "#08080c");
+          });
+        }
+        document.getElementById("themeBtn").addEventListener("click", function () {
+          var next = current() === "dark" ? "light" : "dark";
+          document.documentElement.dataset.theme = next;
+          try {
+            localStorage.setItem("playpad.theme", next);
+          } catch (e) {
+            /* storage blocked — theme still applies for this visit */
+          }
+          paintThemeBtn();
+        });
+        mq.addEventListener("change", paintThemeBtn);
+
+        window.addEventListener(
+          "scroll",
+          function () {
+            document.getElementById("appBar").classList.toggle("app-bar--scrolled", scrollY > 4);
+          },
+          { passive: true },
+        );
+
+        renderHero();
+        renderFilters();
+        renderGrid();
+        paintThemeBtn();
+      })();
+    </script>
+  </body>
+</html>

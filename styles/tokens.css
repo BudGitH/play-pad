@@ -9,12 +9,17 @@
    surface). Dark is the default (:root); light overrides the SAME role names
    under prefers-color-scheme: light, so components never branch on theme.
 
+   Manual override (PLAY-006): scripts/theme.js sets <html data-theme="light|dark">
+   from the player's saved choice. [data-theme] beats the system preference in
+   both directions. Pages that never set data-theme behave exactly as before.
+
    Reference distilled in our own words from Material Design 3
    (https://m3.material.io). No copied text or brand assets.
    ========================================================================== */
 
-:root {
-  /* ---- Color roles · DARK (default) -------------------------------------- */
+:root,
+:root[data-theme="dark"] {
+  /* ---- Color roles · DARK (default; also the explicit data-theme="dark") ------ */
 
   /* Primary — the brand pink, lightened to clear AA on dark surfaces */
   --md-sys-color-primary: #ff6b85;
@@ -201,12 +206,24 @@
   --md-sys-state-pressed-opacity: 0.1;
   --md-sys-state-dragged-opacity: 0.16;
 
+  /* ---- Hub layout (PLAY-006; theme-independent) --------------------------- */
+  --pp-layout-max: 1200px; /* content column: app bar, main and footer share it */
+  --pp-gutter: clamp(16px, 4vw, 32px); /* side padding; combine with the safe-area insets */
+  --pp-card-media-height: 120px; /* vertical game card: accent band */
+  --pp-list-tile: 80px; /* compact list card: emoji tile */
+  --pp-hit-min: 48px; /* minimum tap target */
+  --pp-stagger-step: 40ms; /* entrance stagger between items */
+
   color-scheme: dark;
 }
 
-/* ---- Color roles · LIGHT (system override) ------------------------------ */
+/* ---- Color roles · LIGHT --------------------------------------------------
+   Two copies of the SAME values (a media query cannot be combined with an
+   attribute selector in plain CSS) — keep them in sync:
+   1) system light, unless the player explicitly chose dark;
+   2) the player explicitly chose light (works under a dark system too). */
 @media (prefers-color-scheme: light) {
-  :root {
+  :root:not([data-theme="dark"]) {
     --md-sys-color-primary: #b5103a;
     --md-sys-color-on-primary: #ffffff;
     --md-sys-color-primary-container: #ffd9df;
@@ -248,4 +265,47 @@
 
     color-scheme: light;
   }
+}
+
+:root[data-theme="light"] {
+  --md-sys-color-primary: #b5103a;
+  --md-sys-color-on-primary: #ffffff;
+  --md-sys-color-primary-container: #ffd9df;
+  --md-sys-color-on-primary-container: #3e0014;
+
+  --md-sys-color-secondary: #74565b;
+  --md-sys-color-on-secondary: #ffffff;
+  --md-sys-color-secondary-container: #ffd9df;
+  --md-sys-color-on-secondary-container: #2b151a;
+
+  --md-sys-color-tertiary: #7a5900;
+  --md-sys-color-on-tertiary: #ffffff;
+  --md-sys-color-tertiary-container: #ffe08a;
+  --md-sys-color-on-tertiary-container: #261a00;
+
+  --md-sys-color-error: #ba1a1a;
+  --md-sys-color-on-error: #ffffff;
+  --md-sys-color-error-container: #ffdad6;
+  --md-sys-color-on-error-container: #410002;
+
+  --md-sys-color-surface: #fff8f7;
+  --md-sys-color-surface-dim: #e7d6d8;
+  --md-sys-color-surface-bright: #fff8f7;
+  --md-sys-color-surface-container-lowest: #ffffff;
+  --md-sys-color-surface-container-low: #fff0f1;
+  --md-sys-color-surface-container: #fceaec;
+  --md-sys-color-surface-container-high: #f6e4e6;
+  --md-sys-color-surface-container-highest: #f0dee1;
+
+  --md-sys-color-on-surface: #201a1b;
+  --md-sys-color-on-surface-variant: #524345;
+
+  --md-sys-color-outline: #847375;
+  --md-sys-color-outline-variant: #d7c1c4;
+
+  --md-sys-color-inverse-surface: #362f30;
+  --md-sys-color-inverse-on-surface: #fbedee;
+  --md-sys-color-inverse-primary: #ffb1c0;
+
+  color-scheme: light;
 }

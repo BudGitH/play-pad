@@ -8,6 +8,8 @@
 **Created:** 2026-06-27
 **Feature tier:** Prototype _(matches project tier)_
 
+> **Superseded in part by PLAY-006 (see `features/playpad-revamp/`, `design-claw-catch.md`, 2026-11-21).** History below is kept as written. Stale: "Persistent high scores / storage" and "Full rigid-body pile physics" are no longer out of scope (a best score per `<seconds>-<difficulty>` is saved in `playpad.clawCatch.v1`; the pile is a physical heap with tumble); AC-8's `BIN_CAP` periodic refill is now hopper-fed refills (burst of 3 below half the cap). New and not described here: cabinet / marquee / glass, aim line + target ring, skill-based `catchOdds`, streak multiplier, golden prize (+time, capped), two-prize bonus, prize shelf on results, two-tap quit, sticky Start, always-dark cabinet.
+
 ---
 
 ## What & why

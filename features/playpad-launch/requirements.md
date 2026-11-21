@@ -10,6 +10,8 @@
 **Created:** 2026-06-21
 **Feature tier:** Prototype
 
+> **Superseded in part by PLAY-006 (see `features/playpad-revamp/`, `design-hub.md`, 2026-11-21).** History below is kept as written. AC-3 (the horizontal scroll-snap row with prev/next arrows) is replaced by a featured hero, filter chips and a responsive 1 / 2 / 3-column grid (no rail exists any more); AC-2's card content changed (tagline, mode badge, Best / New badges); AC-7's "Start enabled only when every player has a colour" no longer blocks a fresh visit (2 players and colours are preselected). Everything else (registry-driven hub, MD3 tokens, brand assets, deploy) still holds.
+
 ---
 
 ## What & why

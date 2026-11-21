@@ -4,7 +4,7 @@
 
 **Feature:** <feature name>
 **Ticket:** PLAY-___
-**Run at:** 2026-06-21 (round 1)
+**Run at:** 2026-11-21 (round 1)
 **Overall product gate:** ☐ PASS  ☐ BLOCKED  ☐ BLOCKED — ESCALATED
 
 ---

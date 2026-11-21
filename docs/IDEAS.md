@@ -9,6 +9,8 @@
 
 ## ⏭️ Next (ready, not started)
 
+- **Tooling follow-ups (Standard tier):** one-off repo-wide `npm run format` PR, then gate `format:check` in CI; lint inline `<script>` in game HTML (eslint-plugin-html or extract to `.js`); a minimal smoke test (Playwright: hub loads + each game opens without console errors).
+
 - One-tap **"Quick play"** from a card → straight into a default round, skipping setup for the common case.
 - Manual **light/dark toggle** (overrides the system theme).
 - Search / tag **filter** once the catalog grows.

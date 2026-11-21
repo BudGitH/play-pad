@@ -4,7 +4,7 @@
 
 **Feature:** <feature name>
 **Ticket:** PLAY-___
-**Run at:** 2026-06-21 (round 1)
+**Run at:** 2026-11-21 (round 1)
 **Overall result:** ☐ PASS  ☐ FAIL
 
 ---
@@ -23,7 +23,7 @@
 
 > One block per finding. Severity ∈ {CRITICAL, HIGH, MEDIUM, LOW}. Dimensions are the lenses it scored on. Check the ledger for recurrence.
 
-### FINDING-2026-06-21-001
+### FINDING-2026-11-21-001
 - **Severity:** _HIGH_
 - **Dimensions:** _quality, risk_
 - **Where:** `path/to/file` — _what/which pattern_

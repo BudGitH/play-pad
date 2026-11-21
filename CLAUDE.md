@@ -1,4 +1,4 @@
-<!-- brain-version: 3 -->
+<!-- brain-version: 4 -->
 # PlayPad — Project Brain
 
 > A colourful little hub of quick, playable browser mini-games.
@@ -7,7 +7,7 @@ PlayPad is a static, build-free web hub that presents a growing catalog of bite-
 
 > This file is **auto-loaded at the start of every Claude session**. It is the orchestrator: it tells you what to read, how to build, and how to keep itself current. Treat its protocols as standing instructions, not suggestions.
 
-**New here? 30-second orientation:** this project keeps its knowledge in `docs/` and builds every feature through a short loop (below). To start: read the four files in the next section, then follow "How we build every feature." All the depth — tiers, design, QA, the review panel — is pulled in *only when a feature needs it*; you don't have to learn it up front. **Project tier:** Prototype.
+**New here? 30-second orientation:** this project keeps its knowledge in `docs/` and builds every feature through a short loop (below). To start: read the four files in the next section, then follow "How we build every feature." All the depth — tiers, design, QA, the review panel — is pulled in *only when a feature needs it*; you don't have to learn it up front. **Project tier:** Standard (public open-source, MIT).
 
 ---
 
@@ -29,7 +29,7 @@ Skim as needed: `docs/WORKFLOW.md` (how we build), `docs/DESIGN-SYSTEM.md` (how 
 The full procedure is in `docs/WORKFLOW.md`. **Do not skip phases — the discipline is the point.**
 
 1. **REQUIREMENTS** — copy `features/_TEMPLATE/` to `features/<feature-name>/` (see `features/_EXAMPLE/` for a worked example) and fill `requirements.md`: acceptance criteria + business requirements + target personas + feature tier. The **Senior Tech Lead** does a quick feasibility check (advisory).
-   - **1b — DESIGN (UI changes only):** small tweaks → a lite check against `docs/DESIGN-SYSTEM.md`; significant UI → the **Design Roundtable** (Tech Lead + PM + UX propose options) and **you choose** the approach. See `docs/WORKFLOW.md`.
+   - **1b — DESIGN (UI changes only):** small tweaks → a lite check against `docs/DESIGN-SYSTEM.md`; significant UI → **4 concrete HTML mockup options** in `features/<name>/mockups.html`, the **Design Roundtable** weighs them, and **you choose**. See `docs/WORKFLOW.md`.
 2. **TESTS** — fill `test-plan.md` and write the actual tests that encode "done". Tests come *before* the implementation is finished.
 3. **IMPLEMENT** — build until the tests pass, strictly following `docs/CODE_QUALITY.md`.
 4. **QA — recursive multi-lens panel.** Spawn a **panel of independent QA agents in parallel**, one per dimension:
@@ -64,6 +64,9 @@ After any meaningful change, **before you finish**:
 - `docs/CONVENTIONS.md` — project-local stack, naming, style, and the **dev commands** QA runs.
 - `docs/DESIGN-SYSTEM.md` — how the product looks: tokens, components, accessibility floor. Read before any UI work.
 - `docs/PRODUCT-PANEL.md` — the **review panel**: the Senior PM, Senior UX Designer, Senior Tech Lead, and the user personas that validate features.
+- `docs/ENFORCEMENT.md` — which quality rules are wired to tools vs reviewed by eye. QA's QUALITY lens reads this first.
+- `docs/PR-STANDARD.md` — how changes are proposed, reviewed, and merged (every change lands via PR to `main`).
+- `CONTRIBUTING.md` — the human contributor guide (public repo).
 
 ---
 
@@ -74,7 +77,8 @@ After any meaningful change, **before you finish**:
 - **Hub / catalog:** `index.html` (renders from the registry) · `games.js` (`window.GAMES` — add a game here).
 - **Design system:** `styles/tokens.css` (MD3 tokens, light+dark) · `styles/base.css` (components, the rail).
 - **Games:** `games/<slug>/index.html` — today `games/colour-rush/`, `games/snap/`, `games/claw-catch/` (solo, Canvas), `games/super-decoder/` (solo, DOM logic), `games/neon-rush/` (solo, 3D Three.js — vendored `three.min.js` r147 + `GLTFLoader.js` + CC0 `assets/` (GLB characters, synthwave music, SFX) + a game-local `CLAUDE.md`; first game to persist to localStorage and first with vendored assets). (Reference-only, never shipped: `Old prototype/`.)
-- **Brand / deploy:** `icons/` · `manifest.webmanifest` · `_headers` · `tools/build-dist.ps1` → `dist/`.
+- **Brand / deploy:** `icons/` · `manifest.webmanifest` · `_headers` · Cloudflare Pages Git integration (auto-deploys `main`); `tools/build-dist.ps1` → `dist/` for manual uploads only.
+- **Tooling / CI:** `package.json` (dev-only) · `eslint.config.mjs` · `.prettierrc.json` · `tools/secret-scan.mjs` · `.githooks/pre-commit` · `.github/workflows/ci.yml` · `.github/` templates.
 - **The full map:** `docs/ARCHITECTURE.md` (structure, data model, flows, modules).
 
 ---
@@ -86,6 +90,6 @@ After any meaningful change, **before you finish**:
 The canonical commands live in `docs/CONVENTIONS.md` → *Dev commands* (Phase 4 QA runs them). Quick reference:
 
 - **Run the app:** open `index.html` directly, or `python -m http.server 5500` → http://localhost:5500/ (preview config: `.claude/launch.json` → `playpad`).
-- **Build for deploy:** `powershell -ExecutionPolicy Bypass -File tools\build-dist.ps1` → upload `dist/` to Cloudflare Pages (Direct Upload; `_headers` sits at the dist root).
-- **Test:** no automated harness at Prototype tier — QA is the in-workflow multi-lens panel (`docs/WORKFLOW.md`).
-- **Lint / type-check:** none (vanilla, no build step).
+- **Deploy:** merge to `main` → Cloudflare Pages deploys automatically. Manual fallback: `git pull`, then `tools\build-dist.ps1` → upload `dist/`.
+- **Test:** no automated test harness yet — QA is the in-workflow multi-lens panel (`docs/WORKFLOW.md`).
+- **Lint / checks:** `npm install` once, then `npm run check` (lint + format) and `npm run secrets`. CI runs these on every PR.

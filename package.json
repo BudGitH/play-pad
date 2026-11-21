@@ -1,0 +1,19 @@
+{
+  "name": "playpad",
+  "private": true,
+  "description": "Dev-only tooling for PlayPad. The site itself has no build step and no runtime dependencies.",
+  "license": "MIT",
+  "scripts": {
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check": "npm run lint && npm run format:check",
+    "secrets": "node tools/secret-scan.mjs"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.5",
+    "eslint": "9.39.5",
+    "globals": "15.14.0",
+    "prettier": "3.4.2"
+  }
+}

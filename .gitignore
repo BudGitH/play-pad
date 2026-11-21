@@ -43,3 +43,6 @@ s2.html
 .claude/settings.local.json
 desktop.ini
 
+
+# Dev tooling
+node_modules/

@@ -1,0 +1,6 @@
+#!/bin/sh
+# PlayPad pre-commit hook. Blocks: value-shaped secrets (CODE_QUALITY.md #14) and ESLint errors.
+# Enable once per clone:  git config core.hooksPath .githooks
+# Bypass (--no-verify) is legitimate ONLY via the emergency lane in docs/PR-STANDARD.md §5.
+node tools/secret-scan.mjs --staged || exit 1
+npx --no-install eslint . || exit 1

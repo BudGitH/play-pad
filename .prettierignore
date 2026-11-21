@@ -1,0 +1,9 @@
+dist/
+Old prototype/
+node_modules/
+docs/.brain-backup/
+**/three.min.js
+**/GLTFLoader.js
+*.glb
+*.ogg
+package-lock.json

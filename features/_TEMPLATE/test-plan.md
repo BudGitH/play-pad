@@ -4,7 +4,7 @@
 
 **Feature:** <feature name>
 **Ticket:** PLAY-___
-**Created:** 2026-06-21
+**Created:** 2026-11-21
 
 ---
 
@@ -14,6 +14,8 @@
 |---|---|---|
 | AC-1 | _test name_ | unit / integration / e2e |
 | AC-2 | _test name_ | _..._ |
+
+> **Seam features (Standard+):** if `requirements.md` marks *Crosses FE/BE seam? yes*, at least one AC maps to a **contract test** — a test asserting the live response matches the shape documented in `docs/API-CONTRACT.md`. This is the only test that catches contract drift: FE mocks and BE tests both stay green while the seam breaks.
 
 ## Test cases
 

@@ -4,16 +4,17 @@
 
 **Feature:** <feature name>
 **Ticket:** PLAY-___
-**Date:** 2026-06-21
+**Date:** 2026-11-21
 
 ---
 
-## 1. Diverge — options on the table
-> Senior UX Designer + the feature's target personas brainstorm 2–3 distinct approaches. Each must conform to `DESIGN-SYSTEM.md`.
+## 1. Diverge — 4 concrete mockups
+> The options live in **`mockups.html`** (copied from `features/_TEMPLATE/mockups.html` — its embedded comments are the generation spec). Four options differing in **information architecture, not styling**, built from real `requirements.md` content on the shared token set. Open the file to review; summarise each in one line here:
 
-- **Option A — <name>:** _approach in a sentence._
+- **Option A — <name>:** _interaction shape in a sentence._
 - **Option B — <name>:** _..._
 - **Option C — <name>:** _..._
+- **Option D — <name>:** _..._
 
 ## 2. PM brief
 > Senior PM frames the business requirement + success metric the chosen option must serve (one short paragraph).
@@ -34,10 +35,11 @@
 ## 5. Human decision (the real call)
 > **Interactive:** present the options to the human, who picks. **Headless:** auto-select the **Recommended** option and stamp it. **Interactive but no response:** stop here — set `Status: BLOCKED — AWAITING DESIGN DECISION`; do not guess.
 
-- **Chosen option:** _A / B / C_
-- **Decided by:** _human <handle> / auto-selected (headless)_
-- **Date:** 2026-06-21
+- **Chosen option:** _A / B / C / D (or a mix — "A's layout with D's detail panel" is valid)_
+- **Mockup file:** `mockups.html` · **Chosen tab:** ___
+- **Decided by:** _human <handle> / auto-selected (headless — mockups still generated first, so the auto-decision is on record)_
+- **Date:** 2026-11-21
 - **Rationale:** _one line._
 
 ## Handoff
-The chosen option is now the spec: **Phase 2 tests must encode this** flow/states/components; **Phase 3** builds to it; **Phase 5** evaluates the implementation of this option (it does not re-open the design).
+After the decision, **expand the chosen option's states** (empty · loading · error · disabled) in `mockups.html`'s "Chosen — full states" tab. **That tab is now the spec:** Phase 2 tests encode it; Phase 3 builds to it; Phase 5 evaluates the implementation of this option (it does not re-open the design).

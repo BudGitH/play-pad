@@ -4,7 +4,7 @@
 
 _This file is **stable**. It changes when the vision changes, not when the code changes. Keep it short and true._
 
-**Project tier:** Prototype  ·  **Design direction:** see `docs/DESIGN-SYSTEM.md`
+**Project tier:** Standard (public open-source, MIT — upgraded 2026-11-21)  ·  **Design direction:** see `docs/DESIGN-SYSTEM.md`
 
 ---
 

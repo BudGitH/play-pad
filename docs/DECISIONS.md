@@ -41,3 +41,7 @@
 **When to add a row:** you chose between real alternatives and the choice isn't self-evident from the code — architecture, a library, a data-model shape, a tradeoff between speed and correctness, a deviation from `CODE_QUALITY.md`.
 
 **When NOT to add a row:** obvious or forced choices, or anything already explained clearly by the code itself.
+
+| 2026-11-21 | **Open-source as one public MIT repo (github.com/BudGitH/play-pad), tier raised to Standard.** | Public contributors need PR review + automated checks; one repo avoids drift. | Two repos (private enhanced + public vanilla) — drift + double maintenance; staying Prototype — no gate on outside PRs. |
+| 2026-11-21 | **Deploy via Cloudflare Pages Git integration, not a GitHub Actions deploy job.** | No deploy token stored in a public repo; free PR previews; `_headers` honoured. | Actions + wrangler (token exposure risk with forks); GitHub Pages (ignores `_headers`). |
+| 2026-11-21 | **Dev-only Node tooling (ESLint, Prettier, secret scan) + fork-safe CI at Standard tier.** | Mechanical rules enforced on public PRs; the shipped site stays build-free. CI uses `pull_request`, read-only token, SHA-pinned actions. | No tooling (rules decay); Prettier gate now (70-file churn — deferred to one format PR). |

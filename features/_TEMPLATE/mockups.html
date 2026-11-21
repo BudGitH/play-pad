@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<!-- ============================================================================
+  PlayPad — MOCKUP SCAFFOLD (features/<feature-name>/mockups.html)
+  Phase 1b (full design path) · copied from features/_TEMPLATE/mockups.html
+
+  THIS FILE'S COMMENTS ARE THE GENERATION SPEC. A fresh session sees ONLY this
+  file — it must be self-teaching. Read every rule below BEFORE generating.
+
+  WHAT THIS IS
+  Four concrete, clickable-looking HTML mockups of the feature, in one file,
+  for the human to open and choose from. It replaces prose "options on the
+  table" — you cannot judge a design you cannot see.
+
+  ── RULE 1 · DIFFERENTIATE BY INFORMATION ARCHITECTURE, NEVER BY STYLING ──
+  All four options use the IDENTICAL token set (Rule 3). If they differ in
+  colors/fonts/rounding you are re-litigating the design system, which was
+  decided at setup. The options must differ in the SHAPE OF THE INTERACTION.
+  Pick the 4 MOST PLAUSIBLE archetypes for THIS feature (not always the same
+  four) from:
+    · dense sortable table        — power user, high volume, row comparison
+    · card grid                   — scanning, rich per-item status, mobile-first
+    · stepper / timeline          — the thing is a PROCESS with stages
+    · master–detail split         — drill-down primary, context must persist
+    · single-focus form/wizard    — one task, minimal choices, guided
+    · dashboard of summaries      — monitor first, act second
+    · inline/contextual edit      — change-in-place beats navigate-and-edit
+    · conversational / feed       — chronological events, append-heavy
+  If fewer than 4 genuinely fit, generate the honest number and say why —
+  4 forced options are worse than 3 real ones.
+
+  ── RULE 2 · REAL CONTENT FROM requirements.md — NEVER LOREM IPSUM ────────
+  Use the feature's ACTUAL field names and REALISTIC sample data at REALISTIC
+  volume: list UIs get ≥ 15 rows. Why: 3 rows hides the density problem that
+  40 rows reveals; the human is choosing an IA and cannot judge density,
+  truncation, or scanability from placeholder text. Lorem ipsum in the output
+  = generation failure.
+
+  ── RULE 3 · SELF-CONTAINED AND OFFLINE ───────────────────────────────────
+  Copy the token values from docs/DESIGN-SYSTEM.md into the :root block
+  below. ALL CSS inline in this file. ZERO network references — no CDN
+  fonts, no icon kits, no scripts from the web. (The project brain has a
+  zero-runtime-dependency rule; a mockup that needs the network breaks it.)
+  Use system font stacks and inline SVG / unicode for icons.
+
+  ── RULE 4 · EVERY OPTION TAB CARRIES ITS TRADE-OFF CARD ──────────────────
+  Above each option render: one-line strategy · "best when" · trade-off /
+  cost · one-line responsive note (the human reviews at ONE width — tell
+  them what happens at the others).
+
+  ── RULE 5 · THE ACCESSIBILITY FLOOR APPLIES TO THE MOCKUP ITSELF ─────────
+  Contrast ≥ 4.5:1, semantic HTML, visible focus states, no color-only
+  signals. Why: the human is approving a design; if the mockup can't meet
+  the floor, the build can't either — you'd be getting approval for
+  something unbuildable to standard.
+
+  ── RULE 6 · MOCKUPS SHOW THE HAPPY PATH ONLY — STATES COME AFTER ─────────
+  After the human chooses, ADD a fifth tab "Chosen — full states" expanding
+  the winning option's empty / loading / error / disabled states. That fifth
+  tab (not the happy-path one) is the spec Phase 2 tests encode.
+
+  ── RULE 7 · HEADLESS SESSIONS STILL GENERATE ─────────────────────────────
+  If running headless, generate all four options FIRST, then auto-select the
+  Roundtable's Recommended option and stamp it in design-review.md. The
+  mockups put the auto-decision on record so a human can review it later.
+
+  HOW THE HUMAN CHOOSES (rendered in the header below): pick the option
+  whose shape matches how the target personas (docs/PRODUCT-PANEL.md)
+  actually work — volume, frequency, and device beat aesthetics. Mixing is
+  allowed: "A's layout with D's detail panel" is a valid answer.
+============================================================================ -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PlayPad — &lt;feature name&gt; — design options</title>
+<style>
+  /* == TOKENS — copy the values from docs/DESIGN-SYSTEM.md. ==
+     Never invent values here: if a needed token is missing, add it to
+     DESIGN-SYSTEM.md first and note it in docs/DECISIONS.md. */
+  :root{
+    --color-primary:#2456d6; --color-surface:#ffffff; --color-surface-alt:#f4f6fa;
+    --color-on-surface:#1a1d23; --color-muted:#5b6472; --color-border:#d8dde6;
+    --color-success:#1a7f4e; --color-error:#b3261e; --color-warning:#9a6b00;
+    --font-body:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --size-body:15px; --size-caption:13px; --size-heading:20px;
+    --space-xs:4px; --space-sm:8px; --space-md:16px; --space-lg:24px; --space-xl:40px;
+    --radius-sm:4px; --radius-md:8px;
+    --elev-sm:0 1px 2px rgba(16,24,40,.08); --elev-md:0 4px 12px rgba(16,24,40,.12);
+  }
+  body{font-family:var(--font-body);font-size:var(--size-body);color:var(--color-on-surface);
+       background:var(--color-surface-alt);margin:0;padding:var(--space-lg)}
+  .chooser{background:var(--color-surface);border:1px solid var(--color-border);
+       border-radius:var(--radius-md);padding:var(--space-md) var(--space-lg);margin-bottom:var(--space-lg)}
+  /* CSS-only tabs (no JS needed; radio inputs keep it keyboard-operable). */
+  .tabs input[type=radio]{position:absolute;opacity:0}
+  .tabs label{display:inline-block;padding:var(--space-sm) var(--space-md);cursor:pointer;
+       border:1px solid var(--color-border);border-bottom:none;background:var(--color-surface-alt);
+       border-radius:var(--radius-sm) var(--radius-sm) 0 0;font-weight:600;color:var(--color-muted)}
+  .tabs input[type=radio]:focus-visible + label{outline:2px solid var(--color-primary);outline-offset:2px}
+  .tabs input[type=radio]:checked + label{background:var(--color-surface);color:var(--color-primary)}
+  .panel{display:none;background:var(--color-surface);border:1px solid var(--color-border);
+       border-radius:0 var(--radius-md) var(--radius-md) var(--radius-md);padding:var(--space-lg)}
+  #t-a:checked ~ #p-a,#t-b:checked ~ #p-b,#t-c:checked ~ #p-c,#t-d:checked ~ #p-d,#t-x:checked ~ #p-x{display:block}
+  .tradeoff{background:var(--color-surface-alt);border-left:3px solid var(--color-primary);
+       padding:var(--space-sm) var(--space-md);margin-bottom:var(--space-md);font-size:var(--size-caption)}
+  .tradeoff b{color:var(--color-on-surface)}
+</style>
+</head>
+<body>
+
+<div class="chooser">
+  <h1 style="font-size:var(--size-heading);margin:0 0 var(--space-sm)">&lt;Feature name&gt; — 4 design options</h1>
+  <p style="margin:0;color:var(--color-muted)">
+    <b>How to choose:</b> pick the shape that matches how the target personas actually work —
+    volume, frequency, and device beat aesthetics. Mixing is allowed ("A's layout, D's detail panel").
+    All options use the same design tokens; you are choosing the <b>interaction shape</b>, not a theme.
+    Your choice + rationale goes in <code>design-review.md §5</code>.
+  </p>
+</div>
+
+<div class="tabs">
+  <input type="radio" name="opt" id="t-a" checked><label for="t-a">Option A — &lt;name&gt;</label>
+  <input type="radio" name="opt" id="t-b"><label for="t-b">Option B — &lt;name&gt;</label>
+  <input type="radio" name="opt" id="t-c"><label for="t-c">Option C — &lt;name&gt;</label>
+  <input type="radio" name="opt" id="t-d"><label for="t-d">Option D — &lt;name&gt;</label>
+  <input type="radio" name="opt" id="t-x"><label for="t-x">Chosen — full states</label>
+
+  <section class="panel" id="p-a" aria-label="Option A">
+    <div class="tradeoff">
+      <b>Strategy:</b> &lt;one line&gt; · <b>Best when:</b> &lt;one line&gt;<br>
+      <b>Trade-off:</b> &lt;what this shape costs&gt; · <b>Responsive:</b> &lt;what happens on mobile&gt;
+    </div>
+    <!-- GENERATE OPTION A HERE. Real fields from requirements.md, realistic
+         volume (≥15 rows for lists), tokens only, semantic HTML, visible
+         focus on every interactive element. -->
+  </section>
+
+  <section class="panel" id="p-b" aria-label="Option B">
+    <div class="tradeoff"><b>Strategy:</b> … · <b>Best when:</b> … <br><b>Trade-off:</b> … · <b>Responsive:</b> …</div>
+    <!-- GENERATE OPTION B HERE — a genuinely different IA archetype. -->
+  </section>
+
+  <section class="panel" id="p-c" aria-label="Option C">
+    <div class="tradeoff"><b>Strategy:</b> … · <b>Best when:</b> … <br><b>Trade-off:</b> … · <b>Responsive:</b> …</div>
+    <!-- GENERATE OPTION C HERE. -->
+  </section>
+
+  <section class="panel" id="p-d" aria-label="Option D">
+    <div class="tradeoff"><b>Strategy:</b> … · <b>Best when:</b> … <br><b>Trade-off:</b> … · <b>Responsive:</b> …</div>
+    <!-- GENERATE OPTION D HERE. -->
+  </section>
+
+  <section class="panel" id="p-x" aria-label="Chosen option — full states">
+    <div class="tradeoff"><b>Filled AFTER the human decides (Rule 6).</b>
+      Expand the chosen option's <b>empty · loading · error · disabled</b> states.
+      This tab — not the happy path — is the spec Phase 2 tests encode.</div>
+    <!-- AFTER DECISION: render each state of the winning option here. -->
+  </section>
+</div>
+
+</body>
+</html>

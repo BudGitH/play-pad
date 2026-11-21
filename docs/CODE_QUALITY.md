@@ -10,6 +10,15 @@
 
 ---
 
+## 0. How this standard is enforced (read this first)
+
+Rules split into two kinds, and each is policed differently:
+
+- **Mechanically checkable** (~11 of the §18 non-negotiables: no `any`, no `console.log`, no empty catch, function length, nesting, no commented-out code, secrets, coverage, dep CVEs, commit format, no committed `.env`) — these live in **`docs/ENFORCEMENT.md`** and are wired to configs/hooks/CI at Standard+ tier. **In plain terms:** a prose rule decays silently — it just stops being followed one busy session, and you find out during an incident; a lint rule fails in two seconds with a file and line, and the commit doesn't happen. So checkable rules go in config; this document *defines* what those configs must check.
+- **Judgement rules** (naming quality, whether an abstraction is justified, whether a comment explains *why*, design fit) — no tool can check these. They are what this document and the Phase-4 QUALITY lens spend human/agent attention on. QA does **not** re-review by eye what a tool already enforced.
+
+If this document and a generated config ever disagree, this document wins — fix the config and note it in `docs/DECISIONS.md`.
+
 ## Why this standard is shaped this way (consensus)
 
 Four senior perspectives shaped it:
@@ -93,7 +102,7 @@ Comments are a first-class deliverable. Every tier has a required format. The QA
 # PURPOSE: <what this file does, in 1–3 lines>
 #
 # OWNER: <team or person> (<contact>)
-# LAST REVIEWED: 2026-06-21 by <handle>
+# LAST REVIEWED: 2026-11-21 by <handle>
 #
 # BUSINESS CONTEXT:
 #   <which product decision / regulation / requirement drives this code>
@@ -111,7 +120,7 @@ Comments are a first-class deliverable. Every tier has a required format. The QA
 #   - WORKAROUND(PLAY-###): <what and why>
 #
 # CHANGELOG (last 3 significant changes):
-#   2026-06-21 - <change> (PLAY-###)
+#   2026-11-21 - <change> (PLAY-###)
 # ==============================================================================
 ```
 
@@ -120,7 +129,7 @@ Comments are a first-class deliverable. Every tier has a required format. The QA
 // FILE: <Filename>.ts
 // PURPOSE: <what this file does>
 // OWNER: <team> (<contact>)
-// LAST REVIEWED: 2026-06-21 by <handle>
+// LAST REVIEWED: 2026-11-21 by <handle>
 // BUSINESS CONTEXT: <driver + link to PLAY-###>
 // DEPENDENCIES: <internal> / External: <service + limits>
 // HOW TO TEST: <command>

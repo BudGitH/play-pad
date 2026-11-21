@@ -40,13 +40,14 @@ A conditional branch of requirements, **not** a separate phase. It decides *how*
 **Lite path:** the UX designer checks the change against `DESIGN-SYSTEM.md` (tokens / components / states / a11y) and you get a quick human OK. Record it in `requirements.md` → *Design review*. Done.
 
 **Full path** (record in `features/<name>/design-review.md`):
-1. **Diverge** — UX designer + the feature's target personas brainstorm 2–3 approaches (all conforming to `DESIGN-SYSTEM.md`).
+1. **Diverge — generate `mockups.html`.** Copy the scaffold from `features/_TEMPLATE/mockups.html` and generate **4 concrete options** per its embedded spec: options differ in **information architecture, never styling** (all use the `DESIGN-SYSTEM.md` tokens); real content from `requirements.md` at realistic volume (≥15 rows for lists — sparse data hides density problems); fully self-contained/offline; the a11y floor applies to the mockup itself. Present the file for the human to open.
 2. **Brief** — the PM frames the business requirement + success metric the choice must serve.
-3. **Design Roundtable** — Senior Tech Lead + PM + UX converge to 1–3 options with tradeoffs (desirability / viability / feasibility + effort). The Tech Lead **inherits** the Phase-1 feasibility verdict — it costs the *options*, it does not re-open the requirement.
-4. **Persona review** — the target personas react to the converged options.
-5. **Human decision (the real call):** *interactive* → present the options and let the human pick; *headless* → auto-select the **recommended** option and stamp it; *interactive but no response* → stop, set `Status: BLOCKED — AWAITING DESIGN DECISION` (never guess).
+3. **Design Roundtable** — Senior Tech Lead + PM + UX converge on the **rendered options** with tradeoffs (desirability / viability / feasibility + effort). The Tech Lead **inherits** the Phase-1 feasibility verdict — it costs the *options*, it does not re-open the requirement.
+4. **Persona review** — the target personas react to the rendered options.
+5. **Human decision (the real call):** *interactive* → present `mockups.html` and let the human pick (mixing options is valid); *headless* → **generate the mockups first**, then auto-select the **recommended** option and stamp it — the mockups put the auto-decision on record; *interactive but no response* → stop, set `Status: BLOCKED — AWAITING DESIGN DECISION` (never guess).
+6. **Expand states** — add the chosen option's empty/loading/error/disabled states to the "Chosen — full states" tab in `mockups.html`. **That tab is the spec.**
 
-**Exit:** a chosen approach is recorded; Phase 2 tests must encode **that** option.
+**Exit:** a chosen approach is recorded with its states expanded; Phase 2 tests must encode **that** tab.
 
 ### Phase 2 — TESTS
 1. Fill `test-plan.md`: map every acceptance criterion to at least one test; enumerate happy-path, edge, and error cases.
@@ -72,8 +73,8 @@ For each lens, spawn an agent and give it: the feature's `requirements.md`, `tes
 
 | Lens | The agent's job | Pulls from CODE_QUALITY.md |
 |---|---|---|
-| **ACCURACY** | Verify correct output: run/trace the tests, check calculations, rounding, business rules, and every edge case in the test plan. | Testing; error handling; function design |
-| **QUALITY** | Hold the code to the standard: naming, the four-tier comment system, complexity/nesting, type safety, test coverage, no dead code/`console.log`. | Naming; functions; commenting; types; structure; testing; logging |
+| **ACCURACY** | Verify correct output: run/trace the tests, check calculations, rounding, business rules, and every edge case in the test plan. **Seam features:** diff the implementation against `docs/API-CONTRACT.md` in both directions — code that violates the contract AND a contract left stale are equal findings. | Testing; error handling; function design |
+| **QUALITY** | **First read `docs/ENFORCEMENT.md`.** `ENFORCED` rows: run the tool, paste output — never re-review those by eye. `NOT_CONFIGURED` rows: static-review + one standing MEDIUM finding per run ("checkable but unenforced") so the gap escalates through the ledger. Then hold the **judgement** rules: naming quality, four-tier comments, design fit, complexity. | Naming; functions; commenting; types; structure; testing; logging; §0 |
 | **COMPLIANCE** | Check audit trail on data/permission/critical mutations, PII handling, required docs/headers, business-rule traceability. | Audit & debug infra; four-tier comments; traceability |
 | **RISK** (security) | Hunt vulnerabilities: injection, authn/authz, secrets in code, missing input validation at trust boundaries, insecure deserialization, missing rate limits. | Security gates; security comment tags; backend/ frontend security |
 
@@ -116,6 +117,8 @@ Technical QA proves the code is *correct*; this phase proves the feature is *wor
 - [ ] `product-validation.md` = PASS where the tier requires it (baseline + value met).
 - [ ] Dev commands in `CONVENTIONS.md` backfilled if the toolchain firmed up.
 - [ ] Docs (requirements / acceptance criteria) still match what shipped.
+- [ ] `docs/API-CONTRACT.md` updated if the feature touched the FE/BE seam.
+- [ ] *(Standard+, repo present)* PR opened per `docs/PR-STANDARD.md` — or the solo-path / trivial-lane exception recorded in the PR description.
 
 Before finishing:
 - **`docs/LEARNINGS.md`** — append any non-obvious gotcha from this feature, **including product/UX lessons** (e.g. an assumption a persona disproved).
@@ -171,7 +174,9 @@ One knob right-sizes the whole loop. A feature reads its **`Feature tier`** from
 | Phase / check | Prototype | Standard | Production |
 |---|---|---|---|
 | **1 Tech Lead feasibility** | one-line advisory note | advisory; blocks on the 3 conditions | + effort estimate |
-| **1b Design** | lite only (defer new patterns to `IDEAS.md`) | per the routing table | full for any new user-facing pattern |
+| **1b Design** | lite only (defer new patterns to `IDEAS.md`); mockups only on request | per the routing table; full path generates 4 mockups | full (4 mockups) for any new user-facing pattern |
+| **Enforcement** (`ENFORCEMENT.md`) | ledger exists, nothing generated | configs + pre-commit hook generated for the known stack | + CI workflow (when a repo exists) |
+| **PR standard** (`PR-STANDARD.md`) | off — QA panel is the sole gate | active when a repo exists | active + branch protection |
 | **2 Tests** | happy path + top edges | full edge/error matrix | + non-functional probes |
 | **4 QA panel** | 1 combined agent (all lenses), still independent | 4 parallel lenses | multiple agents per lens, agreement required |
 | **4 Optional lenses** | off | on when the concern applies | on |
@@ -194,4 +199,7 @@ A quick manual audit; if 2+ fail, fix them or re-run `/code-project-brain` to re
 - [ ] `findings-ledger.md` logged the last feature's findings; recurrences escalated.
 - [ ] `IDEAS.md` pruned of shipped items.
 - [ ] No stale `TBD` in `CONVENTIONS.md` → *Dev commands* once the app runs.
+- [ ] *(Standard+)* No `ENFORCEMENT.md` row still `NOT_CONFIGURED` after being checkable for 5+ features.
+- [ ] *(Standard+, repo present)* The four PR metrics (`PR-STANDARD.md` Part 7) glanced at: turnaround · size distribution · revert rate · re-review rounds.
+- [ ] `docs/API-CONTRACT.md` (if present) matches the live endpoints — spot-check one.
 - [ ] `CLAUDE.md` brain-version matches the latest you've migrated to.

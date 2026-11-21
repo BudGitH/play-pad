@@ -5,8 +5,8 @@
 **Status:** DRAFT
 **Owner:** @BudGitH
 **Ticket:** PLAY-___
-**Created:** 2026-06-21
-**Feature tier:** Prototype _(defaults to the project tier; may be raised for this feature; lowering needs a one-line note in `docs/DECISIONS.md`)_
+**Created:** 2026-11-21
+**Feature tier:** Standard _(defaults to the project tier; may be raised for this feature; lowering needs a one-line note in `docs/DECISIONS.md`)_
 
 ---
 
@@ -36,6 +36,7 @@
 > Decides whether the design step (Phase 1b) runs. Skip for non-UI features. **UI surface?** (does the user see/interact with anything new) × **reuse-only?** (built entirely from existing `DESIGN-SYSTEM.md` tokens/components) × **tier** → path.
 
 - UI surface? **_yes/no_** · Reuse-only? **_yes/no_** · Tier **_..._** → **Path: _none / lite / full_**
+- **Crosses FE/BE seam?** **_yes/no_** — _if yes: `docs/API-CONTRACT.md` rows updated (link them). If the project has no contract file yet, create it first from the skeleton in `docs/ARCHITECTURE.md` → Boundaries & contracts — the seam gets a contract before it gets acceptance criteria._
 
 ## Design review
 > **Lite path:** record the quick check here. **Full path:** see `features/<name>/design-review.md`. **None:** "n/a — no UI surface".

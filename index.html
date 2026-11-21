@@ -126,6 +126,14 @@
       .hero-card__title {
         margin: 2px 0 4px;
       }
+      .hero-card__desc--short {
+        /* The tagline is one line; when it falls back to a long description, cap it */
+        display: -webkit-box;
+        overflow: hidden;
+        -webkit-line-clamp: 3;
+        line-clamp: 3;
+        -webkit-box-orient: vertical;
+      }
       .hero-card__desc--long,
       .hero-card__badges {
         display: none;
@@ -542,6 +550,14 @@
           return path; // relative path: safe
         }
 
+        // A launch link: safeHref, plus "index.html" when opened from file://, where a
+        // bare directory URL shows a folder listing instead of the game (http(s) is fine).
+        function launchHref(path) {
+          var href = safeHref(path);
+          var isDirectory = href !== "#" && /\/$/.test(href);
+          return window.location.protocol === "file:" && isDirectory ? href + "index.html" : href;
+        }
+
         // Accent is injected into a style attribute: accept hex colours only.
         function accentStyle(accent) {
           var isHex = /^#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(String(accent));
@@ -718,7 +734,7 @@
             "</div></div>" +
             '<div class="hero-card__actions">' +
             '<a class="button button--filled state-layer" href="' +
-            esc(safeHref(game.path)) +
+            esc(launchHref(game.path)) +
             '" data-id="' +
             esc(game.id) +
             '" aria-label="Play ' +
@@ -787,7 +803,7 @@
             '<li class="reveal" style="--i:' +
             index +
             '"><a class="card card--interactive state-layer game-card" href="' +
-            esc(safeHref(game.path)) +
+            esc(launchHref(game.path)) +
             '" data-id="' +
             esc(game.id) +
             '" aria-label="Play ' +
@@ -885,7 +901,7 @@
           var pick = pool[Math.floor(Math.random() * pool.length)];
           if (!pick) return;
           rememberPlayed(pick.id);
-          window.location.assign(safeHref(pick.path));
+          window.location.assign(launchHref(pick.path));
         }
 
         document.addEventListener("click", function (event) {

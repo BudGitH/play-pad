@@ -11,14 +11,14 @@
 
 ## Gate summary
 
-| Lens (dimension)                                              | Agent verdict | Findings (C/H/M/L/I)                                                       | Blocking? |
-| ------------------------------------------------------------- | ------------- | -------------------------------------------------------------------------- | --------- |
-| ACCURACY                                                      | PASS          | 0 / 0 / 3 / 6 / 1                                                          | no        |
-| QUALITY                                                       | PASS          | 0 / 0 / 5 / 7 / 0                                                          | no        |
-| COMPLIANCE                                                    | PASS          | 0 / 0 / 2 / 4 / 6                                                          | no        |
-| RISK (security)                                               | PASS          | 0 / 0 / 1 / 7 / 0                                                          | no        |
-| FX / AUDIO (post-panel addition, independent agent `a37bf2…`) | PASS          | 0 / 0 / 3 / 10 / 3                                                         | no        |
-| **Tests**                                                     | PASS          | probe (see below) · smoke 20/20 · `npm run check` 0 errors · secrets clean | no        |
+| Lens (dimension)                                              | Agent verdict | Findings (C/H/M/L/I)                                                 | Blocking? |
+| ------------------------------------------------------------- | ------------- | -------------------------------------------------------------------- | --------- |
+| ACCURACY                                                      | PASS          | 0 / 0 / 3 / 6 / 1                                                    | no        |
+| QUALITY                                                       | PASS          | 0 / 0 / 5 / 7 / 0                                                    | no        |
+| COMPLIANCE                                                    | PASS          | 0 / 0 / 2 / 4 / 6                                                    | no        |
+| RISK (security)                                               | PASS          | 0 / 0 / 1 / 7 / 0                                                    | no        |
+| FX / AUDIO (post-panel addition, independent agent `a37bf2…`) | PASS          | 0 / 0 / 3 / 10 / 3                                                   | no        |
+| **Tests**                                                     | PASS          | probe 61/61 · smoke 20/20 · `npm run check` 0 errors · secrets clean | no        |
 
 **Tool evidence (not re-reviewed by eye, per `docs/ENFORCEMENT.md`):** `npm run check` → ESLint 0 errors (`max-lines-per-function` warnings only, ledgered), Prettier clean; `npm run secrets` → clean; `npx playwright test` → 20 passed (hub ×8, every game opens, every game starts a round on phone + desktop, Sunset Stride included); `node tests/probes/stride-probe.mjs` → every acceptance criterion probed headless (WebGL via SwiftShader): animation weights in every state, slide pose + uniform scale, dogs behind the runner and on screen, stumble / caught / side-scrape / close call / input buffer / slide cancel, persistence + legacy import + corrupt save, all-assets-blocked and `file://` fallbacks, no-WebGL notice, reduced-motion (with a positive control), phone portrait framing, 3-minute soak.
 

@@ -1,0 +1,4 @@
+Photographic PBR textures from ambientCG (https://ambientcg.com), released under
+CC0 1.0 Universal (https://creativecommons.org/publicdomain/zero/1.0/).
+Assets used: Asphalt031, PavingStones128, Bricks051, Bricks042, Plaster002, Grass004,
+Concrete034, Planks037A, PaintedMetal016 (resized to 512 px; hazard.jpg is colour-graded).

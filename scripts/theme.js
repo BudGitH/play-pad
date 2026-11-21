@@ -17,7 +17,8 @@
    script, no defer/async/module; the path is relative to the page, and games
    live at games/<slug>/index.html):
        <script src="../../scripts/theme.js"></script>
-   Games that are always dark on purpose (e.g. Neon Rush) should NOT include it.
+   Games that are always dark on purpose should NOT include it (Sunset Stride does include it: its
+   3D stage is always bright, but its setup / results / shop chrome follows the theme).
    It is safe to include from any page depth: it loads nothing by URL.
 
    MODULE CONTRACT:

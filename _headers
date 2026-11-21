@@ -33,17 +33,17 @@
   Cache-Control: public, max-age=0, must-revalidate
 /games/super-decoder/index.html
   Cache-Control: public, max-age=0, must-revalidate
-/games/neon-rush/
+/games/sunset-stride/
   Cache-Control: public, max-age=0, must-revalidate
-/games/neon-rush/index.html
+/games/sunset-stride/index.html
   Cache-Control: public, max-age=0, must-revalidate
 
 # Vendored Three.js (version-pinned r147) + GLTFLoader + CC0 assets — safe to cache long
-/games/neon-rush/three.min.js
+/games/sunset-stride/three.min.js
   Cache-Control: public, max-age=604800
-/games/neon-rush/GLTFLoader.js
+/games/sunset-stride/GLTFLoader.js
   Cache-Control: public, max-age=604800
-/games/neon-rush/assets/*
+/games/sunset-stride/assets/*
   Cache-Control: public, max-age=604800
 
 # Shared CSS / JS and the registry — always revalidate. Filenames are NOT hashed, and these ship

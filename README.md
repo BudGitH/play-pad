@@ -10,13 +10,13 @@ PlayPad is a static, build-free web hub that presents a growing catalogue of bit
 
 ## Games
 
-| Game                                                                | Players | What it is                                                                         |
-| ------------------------------------------------------------------- | ------- | ---------------------------------------------------------------------------------- |
-| 🎯 [Colour Rush](https://play-pad.pages.dev/games/colour-rush/)     | 2–4     | Tap your own colour's dots before they vanish. Fastest, most accurate hands win.   |
-| 🃏 [Snap](https://play-pad.pages.dev/games/snap/)                   | 2–4     | Two cards flip; if they match, slap your button first.                             |
-| 🕹️ [Claw Catch](https://play-pad.pages.dev/games/claw-catch/)       | 1       | Steer and time a swinging claw to grab prizes before the clock runs out.           |
-| 🔐 [Super Decoder](https://play-pad.pages.dev/games/super-decoder/) | 1       | Crack a hidden 4-colour code in up to 10 guesses.                                  |
-| 🏃 [Neon Rush](https://play-pad.pages.dev/games/neon-rush/)         | 1       | A 3D neon-city runner: swap lanes, jump, slide, collect coins, unlock new runners. |
+| Game                                                                | Players | What it is                                                                             |
+| ------------------------------------------------------------------- | ------- | -------------------------------------------------------------------------------------- |
+| 🎯 [Colour Rush](https://play-pad.pages.dev/games/colour-rush/)     | 2–4     | Tap your own colour's dots before they vanish. Fastest, most accurate hands win.       |
+| 🃏 [Snap](https://play-pad.pages.dev/games/snap/)                   | 2–4     | Two cards flip; if they match, slap your button first.                                 |
+| 🕹️ [Claw Catch](https://play-pad.pages.dev/games/claw-catch/)       | 1       | Steer and time a swinging claw to grab prizes before the clock runs out.               |
+| 🔐 [Super Decoder](https://play-pad.pages.dev/games/super-decoder/) | 1       | Crack a hidden 4-colour code in up to 10 guesses.                                      |
+| 🌇 [Sunset Stride](https://play-pad.pages.dev/games/sunset-stride/) | 1       | A golden-hour 3D runner: swap lanes, jump, slide, outrun the dog pack, unlock outfits. |
 
 ## Run it locally
 
@@ -27,7 +27,7 @@ python -m http.server 5500
 # then open http://localhost:5500/
 ```
 
-Neon Rush's 3D models and sounds need the served version (browsers block them from `file://`); the game falls back to simple shapes without them.
+Sunset Stride's 3D models, photo textures and sounds need the served version (browsers block them from `file://`); the game falls back to simple shapes, procedural textures and synth sound without them.
 
 To run the checks CI runs (needs Node.js):
 
@@ -64,4 +64,4 @@ Please report vulnerabilities privately; see [SECURITY.md](SECURITY.md).
 
 ## Licence
 
-Released under the [MIT License](LICENSE). Bundled third-party assets keep their own licences; see [`games/neon-rush/assets/CREDITS.md`](games/neon-rush/assets/CREDITS.md).
+Released under the [MIT License](LICENSE). Bundled third-party assets keep their own licences; see [`games/sunset-stride/assets/CREDITS.md`](games/sunset-stride/assets/CREDITS.md).

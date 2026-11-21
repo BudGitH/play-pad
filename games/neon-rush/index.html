@@ -62,13 +62,15 @@
         background: var(--md-sys-color-surface);
       }
 
+      /* Back to hub (48px tall hit area — same recipe as Colour Rush; QC-02) */
       .back-link {
         display: inline-flex;
         align-items: center;
         gap: 6px;
+        min-height: 48px;
         color: var(--md-sys-color-on-surface-variant);
-        padding: 8px 12px 8px 4px;
-        margin: 0 0 6px -4px;
+        padding: 8px 14px 8px 4px;
+        margin: 0 0 2px -4px;
         border-radius: var(--md-sys-shape-corner-full);
         font-size: var(--md-sys-typescale-label-large-size);
         font-weight: var(--md-sys-typescale-label-large-weight);
@@ -536,6 +538,55 @@
         }
       }
 
+      /* ---------- PAUSED (tab hidden / window blurred mid-run): tap to resume, then a fresh 3-2-1 ---------- */
+      #pause {
+        position: absolute;
+        inset: 0;
+        z-index: 70;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        text-align: center;
+        color: #fff;
+        background: rgba(4, 2, 18, 0.84);
+        cursor: pointer;
+      }
+      #pause.active {
+        display: flex;
+      }
+      #pause h2 {
+        margin: 0 0 4px;
+      }
+      #pause p {
+        margin: 0 0 18px;
+        color: rgba(255, 255, 255, 0.82);
+      }
+      #pause .pause-actions {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+      }
+      #pause .button {
+        min-width: 180px;
+      }
+      #pause .pause-quit {
+        background: transparent;
+        color: #fff;
+        border: 1px solid rgba(255, 255, 255, 0.6);
+      }
+      #pause .pause-hint {
+        margin: 16px 0 0;
+        font-size: 12.5px;
+        color: rgba(255, 255, 255, 0.7);
+      }
+      @media (max-height: 420px) {
+        #pause .pause-hint {
+          display: none;
+        }
+      }
+
       /* WebGL-unavailable fallback — the page must never be blank. */
       #glFail {
         position: absolute;
@@ -639,7 +690,98 @@
         flex: 1;
       }
       .res-foot {
-        margin-top: 18px;
+        margin-top: 8px;
+      }
+      .res-actions--more {
+        margin-top: 12px;
+      }
+      /* How the score adds up ("Distance 135 m + 23 coins x 5"): keeps the run length from reading as a mismatch. */
+      .stat.hero .how-score {
+        margin-top: 8px;
+        font-size: 13px;
+        color: rgba(255, 255, 255, 0.82);
+        font-variant-numeric: tabular-nums;
+      }
+      /* Phone landscape (e.g. 844x390): two columns so "Try again" never falls below the fold
+         (head + actions left, the score card right; same idea as Colour Rush / Snap results). */
+      @media (max-height: 500px) and (orientation: landscape) {
+        .res-inner {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+          grid-template-areas:
+            "head stats"
+            "side stats";
+          grid-template-rows: auto auto;
+          align-content: center;
+          column-gap: 28px;
+          max-width: 780px;
+          min-height: 100%;
+          box-sizing: border-box;
+          padding: max(10px, env(safe-area-inset-top)) max(22px, env(safe-area-inset-right))
+            max(10px, env(safe-area-inset-bottom)) max(22px, env(safe-area-inset-left));
+        }
+        .res-head {
+          grid-area: head;
+          align-self: end;
+        }
+        .res-inner .crown {
+          font-size: 30px;
+        }
+        .res-inner h2 {
+          margin: 2px 0;
+        }
+        .res-inner .sub {
+          margin: 0 0 8px;
+        }
+        .newbest {
+          margin-bottom: 8px;
+        }
+        .stat-grid {
+          grid-area: stats;
+          align-self: center;
+          grid-template-columns: repeat(3, 1fr);
+          margin-bottom: 0;
+        }
+        .stat {
+          padding: 10px 4px;
+        }
+        .stat .big {
+          font-size: 24px;
+        }
+        .stat .cap {
+          font-size: 10.5px;
+          margin-top: 2px;
+        }
+        .stat.hero {
+          padding: 14px 8px;
+        }
+        .stat.hero .big {
+          font-size: 40px;
+        }
+        .stat.hero .how-score {
+          margin-top: 4px;
+        }
+        .stat-grid .stat:last-child {
+          grid-column: auto; /* three small tiles share one row here */
+        }
+        .res-side {
+          grid-area: side;
+          align-self: start;
+        }
+        .res-actions {
+          margin-top: 0;
+        }
+        .res-actions--more {
+          margin-top: 8px;
+        }
+        .res-foot {
+          margin-top: 2px;
+        }
+      }
+      @media (max-height: 340px) and (orientation: landscape) {
+        .res-inner .crown {
+          display: none; /* very short phones (e.g. 568x320): the decorative siren makes way for the buttons */
+        }
       }
 
       /* ---------- SHOP ---------- */
@@ -833,6 +975,17 @@
         <div id="flash"></div>
         <div id="toast"></div>
         <div id="countdown"><div class="cnum" id="cnum">3</div></div>
+        <div id="pause" role="dialog" aria-modal="true" aria-labelledby="pauseTitle">
+          <div>
+            <h2 id="pauseTitle" class="headline-small">Paused</h2>
+            <p>Tap anywhere to resume</p>
+            <div class="pause-actions">
+              <button class="button button--filled state-layer" id="resumeBtn">Resume</button>
+              <button class="button state-layer pause-quit" id="pauseQuitBtn">Quit</button>
+            </div>
+            <p class="pause-hint">Space, Enter or P resumes · Esc quits</p>
+          </div>
+        </div>
         <div id="glFail">
           <div>
             <h2 class="headline-small">3D isn't available here</h2>
@@ -853,14 +1006,17 @@
     <!-- ========== RESULTS ========== -->
     <section id="results" class="screen">
       <div class="res-inner">
-        <div class="crown">🚨</div>
-        <h2 id="resTitle" class="headline-small">Busted!</h2>
-        <p class="sub" id="resSub">The hover patrol finally caught up.</p>
-        <div class="newbest" id="newBest">★ NEW BEST SCORE ★</div>
+        <div class="res-head">
+          <div class="crown">🚨</div>
+          <h2 id="resTitle" class="headline-small">Busted!</h2>
+          <p class="sub" id="resSub">The hover patrol caught up with you.</p>
+          <div class="newbest" id="newBest">★ NEW BEST SCORE ★</div>
+        </div>
         <div class="stat-grid">
           <div class="stat hero">
             <div class="big" id="statScore">0</div>
             <div class="cap">Score</div>
+            <div class="how-score" id="statHow"></div>
           </div>
           <div class="stat">
             <div class="big" id="statRunCoins">0</div>
@@ -875,28 +1031,30 @@
             <div class="cap">Best score</div>
           </div>
         </div>
-        <div class="res-actions">
-          <button class="button button--outlined state-layer" id="resShopBtn">Shop</button>
-          <button class="button button--filled state-layer" id="againBtn">Try again</button>
-        </div>
-        <div class="res-actions" style="margin-top: 12px">
-          <button class="button button--outlined state-layer" id="changeBtn">
-            Change settings
-          </button>
-        </div>
-        <div class="res-foot">
-          <a class="back-link state-layer" href="../../index.html" aria-label="Back to PlayPad">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path
-                d="M15 18l-6-6 6-6"
-                stroke="currentColor"
-                stroke-width="2.2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-            </svg>
-            Back to PlayPad
-          </a>
+        <div class="res-side">
+          <div class="res-actions">
+            <button class="button button--outlined state-layer" id="resShopBtn">Shop</button>
+            <button class="button button--filled state-layer" id="againBtn">Try again</button>
+          </div>
+          <div class="res-actions res-actions--more">
+            <button class="button button--outlined state-layer" id="changeBtn">
+              Change settings
+            </button>
+          </div>
+          <div class="res-foot">
+            <a class="back-link state-layer" href="../../index.html" aria-label="Back to PlayPad">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path
+                  d="M15 18l-6-6 6-6"
+                  stroke="currentColor"
+                  stroke-width="2.2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+              Back to PlayPad
+            </a>
+          </div>
         </div>
       </div>
     </section>
@@ -1419,6 +1577,8 @@
             $("countdown").classList.remove("active");
             $("toast").classList.remove("show");
             $("flash").classList.remove("on");
+            paused = false; // a pause never outlives the screen it was raised on
+            $("pause").classList.remove("active");
             ["setup", "game", "results", "shop"].forEach(function (x) {
               $(x).classList.toggle("active", x === s);
             });
@@ -2013,10 +2173,24 @@
             x = c.getContext("2d");
           var px = 0,
             lit = ["#ff2d95", "#22e5ff", "#ffb35a", "#7b3ff2"];
+          // The street runs straight at u = 0.5 of the ring. Keep a clear valley there (buildings ramp up
+          // from 15% height) so the road vanishes into the haze and sun instead of ending at a dark wall.
+          var AHEAD = W / 2,
+            GAP = W * 0.035,
+            RAMP = W * 0.1;
           while (px < W) {
             var bw = 14 + ((Math.random() * 30) | 0),
               bh = 26 + ((Math.random() * 78) | 0);
             if (Math.random() < 0.1) bh += 60; // the odd tall tower
+            var off0 = Math.abs(px + bw / 2 - AHEAD);
+            if (off0 < GAP + RAMP) {
+              var ramp = Math.max(0, (off0 - GAP) / RAMP); // 0 inside the gap, 1 at the ramp's far edge
+              bh *= 0.15 + 0.85 * ramp * ramp * (3 - 2 * ramp);
+              if (off0 < GAP) {
+                px += bw + ((Math.random() * 6) | 0);
+                continue; // nothing dead ahead
+              }
+            }
             x.fillStyle = "#120a2e";
             [0, -W].forEach(function (off) {
               x.fillRect(px + off, H - bh, bw, bh);
@@ -2035,6 +2209,15 @@
             x.globalAlpha = 1;
             px += bw + ((Math.random() * 6) | 0);
           }
+          // Atmospheric haze: the silhouettes dissolve into the fog violet toward their base, so the far
+          // city reads as distance (not a flat cut-out). source-atop paints only over the buildings.
+          x.globalCompositeOperation = "source-atop";
+          var haze = x.createLinearGradient(0, 0, 0, H);
+          haze.addColorStop(0.35, "rgba(42,17,80,0)");
+          haze.addColorStop(1, "rgba(42,17,80,0.9)");
+          x.fillStyle = haze;
+          x.fillRect(0, 0, W, H);
+          x.globalCompositeOperation = "source-over";
           return colorTex(c, false);
         }
         // Night tower facade (128x256): dark glass + ~35% lit windows in warm/cyan/magenta. Tiles at a fixed metre size.
@@ -5217,6 +5400,7 @@
 
         /* ══════════════════════ game state & loop ══════════════════════ */
         var phase = "idle"; // idle | countdown | running | crashed
+        var paused = false; // tab hidden / window blurred mid-run: sim frozen, "Paused" overlay up (phase is kept)
         var distance = 0,
           score = 0,
           runCoins = 0,
@@ -5264,41 +5448,94 @@
           AudioManager.droneStart();
           AudioManager.playMusic();
           // Fast start: retries skip straight to a "GO!" flash; the first run is a snappy
-          // 3-2-1 at 400ms/step (~1.2s, was ~2.8s). Any input skips the rest instantly.
-          var seq = retry ? ["GO!"] : ["3", "2", "1", "GO!"];
-          var STEP_MS = 300;
+          // 3-2-1 at 300ms/step (~1.2s, was ~2.8s). Any input skips the rest instantly.
           announce(retry ? "Go!" : "Get ready");
+          runCountdown(retry ? ["GO!"] : ["3", "2", "1", "GO!"], retry ? 180 : 300);
+        }
+
+        // Countdown timers are tracked on their own so a pause can cancel exactly these (and not the
+        // toast / flash timers that share pendingTimeouts).
+        var countdownIds = [];
+        function clearCountdownTimers() {
+          countdownIds.forEach(clearTimeout);
+          countdownIds.length = 0;
+        }
+        function runCountdown(seq, goDelay) {
+          var STEP_MS = 300;
           $("countdown").classList.add("active");
           seq.forEach(function (v, i) {
-            later(function () {
-              if (phase !== "countdown") return; // already skipped
-              var el = $("cnum");
-              el.textContent = v;
-              el.classList.toggle("go", v === "GO!");
-              el.classList.remove("beat");
-              void el.offsetWidth; // restart the decorative beat animation
-              el.classList.add("beat");
-              AudioManager.jump();
-              if (v === "GO!") {
-                later(beginRunning, retry ? 180 : 300);
-              }
-            }, i * STEP_MS);
+            countdownIds.push(
+              later(function () {
+                if (phase !== "countdown") return; // already skipped
+                var el = $("cnum");
+                el.textContent = v;
+                el.classList.toggle("go", v === "GO!");
+                el.classList.remove("beat");
+                void el.offsetWidth; // restart the decorative beat animation
+                el.classList.add("beat");
+                AudioManager.jump();
+                if (v === "GO!") countdownIds.push(later(beginRunning, goDelay));
+              }, i * STEP_MS),
+            );
           });
         }
 
         function beginRunning() {
-          if (phase !== "countdown") return;
+          if (phase !== "countdown" || paused) return;
           $("countdown").classList.remove("active");
           phase = "running";
           announce("Run started. Arrow keys to move, jump and slide.");
         }
         // Tap/key during the 3-2-1 jumps straight into the run (the input itself is consumed).
         function skipCountdown() {
-          if (phase !== "countdown") return false;
-          pendingTimeouts.forEach(clearTimeout);
-          pendingTimeouts.length = 0;
+          if (phase !== "countdown" || paused) return false;
+          clearCountdownTimers();
           beginRunning();
           return true;
+        }
+
+        /* Pause (tab hidden or window blurred mid-run): freeze the sim, show the overlay and wait for a
+           tap / Space / Enter / P. Resuming replays a 3-2-1 so the runner is never hit the instant the
+           player returns. Banking lives in onCrash only, so a pause can neither bank nor drop a run. */
+        function pauseRun() {
+          if (paused || (phase !== "running" && phase !== "countdown")) return;
+          if (!$("game").classList.contains("active")) return;
+          paused = true;
+          clearCountdownTimers(); // a countdown in flight restarts from 3 on resume
+          $("countdown").classList.remove("active");
+          acc = 0;
+          try {
+            AudioManager.droneLevel(0);
+            AudioManager.suspendMusic();
+          } catch {
+            /* best-effort browser API; failure is non-fatal */
+          }
+          $("pause").classList.add("active");
+          announce("Paused. Tap to resume.");
+          $("resumeBtn").focus({ preventScroll: true });
+        }
+        function resumeRun() {
+          if (!paused) return;
+          paused = false;
+          $("pause").classList.remove("active");
+          $("resumeBtn").blur();
+          try {
+            AudioManager.unlock(); // inside the resuming gesture: mobile audio contexts need it after a hide
+            AudioManager.resumeMusicIfPlaying();
+          } catch {
+            /* best-effort browser API; failure is non-fatal */
+          }
+          qWarm = 1; // don't let the resume hitch count as slow frames
+          qSlowT = 0;
+          qPrev = 0;
+          acc = 0;
+          phase = "countdown"; // world frozen, collisions off: nothing can hit the runner under the 3-2-1
+          announce("Resuming. Get ready.");
+          runCountdown(["3", "2", "1", "GO!"], 300);
+        }
+        function quitRun() {
+          stopRun();
+          UIManager.show("setup");
         }
 
         function stopRun() {
@@ -5308,7 +5545,7 @@
         }
 
         function onCrash() {
-          if (phase !== "running") return; // a crash can only happen mid-run (guards double-fire + the test hook)
+          if (phase !== "running" || paused) return; // a crash can only happen mid-run (guards double-fire + the test hook)
           if (powerups.hoverboard > 0) {
             powerups.hoverboard = 0; // one save, then it's spent
             player.invulnT = 1.5; // i-frames so the same train can't kill on the next step
@@ -5347,23 +5584,38 @@
           var finalScore = lastRun.score,
             isBest = lastRun.isBest;
           $("statScore").textContent = finalScore;
+          // Score = distance (1 pt/m) + coins x COIN_SCORE: say so, so "135 m" next to "Score 250" adds up.
+          $("statHow").textContent =
+            "Distance " +
+            lastRun.distance +
+            " m" +
+            (lastRun.coins > 0
+              ? " + " +
+                lastRun.coins +
+                (lastRun.coins === 1 ? " coin" : " coins") +
+                " × " +
+                COIN_SCORE
+              : ", no coins");
           $("statRunCoins").textContent = lastRun.coins;
           $("statBank").textContent = save.coins;
           $("statBest").textContent = save.highScore;
           $("newBest").classList.toggle("show", isBest);
-          $("resSub").textContent = "You ran " + lastRun.distance + "m before the city caught you.";
+          $("resSub").textContent = "The hover patrol caught up with you.";
           announce(
             "Run over. Score " +
               finalScore +
-              ". " +
+              ": " +
+              lastRun.distance +
+              " metres plus " +
               lastRun.coins +
-              " coins collected." +
+              " coins." +
               (isBest ? " New best score!" : ""),
           );
           UIManager.show("results");
         }
 
         function tick(dt) {
+          if (paused) return; // frozen: no sim, no scroll, no timers
           elapsed += dt;
           if (phase === "running") {
             speed = Math.min(SPEED_MAX, SPEED_BASE + distance * SPEED_RAMP);
@@ -5503,6 +5755,10 @@
             rafLast = now;
             return;
           }
+          if (paused) {
+            rafLast = now; // frozen frame stays on the canvas under the overlay
+            return;
+          }
           qualityMonitor(now - rafLast);
           var dt = Math.min(0.1, (now - rafLast) / 1000); // clamp: tab-restore can't warp the sim
           rafLast = now;
@@ -5530,15 +5786,17 @@
         window.addEventListener("resize", resize);
 
         document.addEventListener("visibilitychange", function () {
-          // rAF stops while hidden; the dt clamp handles resume. Pause/resume the audio.
+          // rAF stops while hidden. Mid-run this is a real pause (overlay + frozen sim); the audio is
+          // always silenced while hidden and only comes back by itself when nothing is paused.
           if (document.hidden) {
+            pauseRun();
             try {
               AudioManager.droneLevel(0);
               AudioManager.suspendMusic();
             } catch {
               /* best-effort browser API; failure is non-fatal */
             }
-          } else {
+          } else if (!paused) {
             try {
               AudioManager.resumeMusicIfPlaying();
             } catch {
@@ -5546,10 +5804,19 @@
             }
           }
         });
+        // Losing window focus (alt-tab, a call, a system sheet) pauses too, even while still visible.
+        window.addEventListener("blur", pauseRun);
 
         /* ══════════════════════ input: keyboard + swipes ══════════════════════ */
         window.addEventListener("keydown", function (ev) {
           if (!$("game").classList.contains("active")) return;
+          if (paused) return pauseKey(ev);
+          if ((ev.key === "p" || ev.key === "P") && !ev.repeat) {
+            ev.preventDefault();
+            return pauseRun();
+          }
+          // a held key from the resume press must not skip the resume 3-2-1
+          if (ev.repeat && phase === "countdown") return;
           // RECURRENCE(PLAY-005, count=2): a global keydown handler must not steal keys from a focused
           // control (1st: Claw Catch joystick). Bail on buttons so Space/Enter activate #quitBtn/#muteBtn.
           if (ev.target && ev.target.closest && ev.target.closest("button")) return;
@@ -5566,6 +5833,23 @@
           }
         });
 
+        // While paused only these keys act: Space / Enter / P resume (a focused button keeps its own
+        // Space / Enter, so Quit stays a Quit), Esc quits through the usual quit path.
+        function pauseKey(ev) {
+          var k = ev.key;
+          if (k === "Escape") {
+            ev.preventDefault();
+            quitRun();
+            return;
+          }
+          if (ev.repeat) return;
+          var onButton = ev.target && ev.target.closest && ev.target.closest("button");
+          if (k === "p" || k === "P" || (!onButton && (k === " " || k === "Enter"))) {
+            ev.preventDefault();
+            resumeRun();
+          }
+        }
+
         (function swipes() {
           var sx = 0,
             sy = 0,
@@ -5573,7 +5857,7 @@
           var THRESHOLD = 30; // px — labelled assumption in requirements.md
           var stage = $("stage");
           stage.addEventListener("pointerdown", function (ev) {
-            if (ev.target.closest("button")) return;
+            if (paused || ev.target.closest("button")) return;
             tracking = true;
             sx = ev.clientX;
             sy = ev.clientY;
@@ -5581,6 +5865,7 @@
           stage.addEventListener("pointerup", function (ev) {
             if (!tracking) return;
             tracking = false;
+            if (paused) return; // a swipe that was mid-air when the pause came up is dropped
             var dx = ev.clientX - sx,
               dy = ev.clientY - sy;
             if (Math.abs(dx) < THRESHOLD && Math.abs(dy) < THRESHOLD) {
@@ -5608,9 +5893,11 @@
         $("changeBtn").addEventListener("click", function () {
           UIManager.show("setup");
         });
-        $("quitBtn").addEventListener("click", function () {
-          stopRun();
-          UIManager.show("setup");
+        $("quitBtn").addEventListener("click", quitRun);
+        $("pauseQuitBtn").addEventListener("click", quitRun);
+        $("pause").addEventListener("click", function (ev) {
+          if (ev.target.closest("#pauseQuitBtn")) return; // Quit has its own handler
+          resumeRun(); // click (not pointerup), so the tap can't also skip the 3-2-1 it starts
         });
         $("setupShopBtn").addEventListener("click", function () {
           shopReturn = "setup";
@@ -5664,6 +5951,7 @@
           get state() {
             return {
               phase: phase,
+              paused: paused,
               lane: player.lane,
               playerY: player.y,
               sliding: player.sliding,
@@ -5855,6 +6143,8 @@
           },
           givePowerup: activatePowerup,
           crash: onCrash,
+          pause: pauseRun,
+          resume: resumeRun,
           input: function (a) {
             PlayerController.input(a);
           },

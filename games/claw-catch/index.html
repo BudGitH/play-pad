@@ -121,6 +121,8 @@
         --md-sys-color-on-surface-variant: #c5c5d0;
         --md-sys-color-outline: #908f99;
         --md-sys-color-outline-variant: #44444e;
+        --md-sys-color-error-container: #93000a;
+        --md-sys-color-on-error-container: #ffdad6;
         color: var(--md-sys-color-on-surface);
       }
       #setup,
@@ -130,13 +132,15 @@
         background: var(--md-sys-color-surface);
       }
 
+      /* Back to hub (48px tall hit area) */
       .back-link {
         display: inline-flex;
         align-items: center;
         gap: 6px;
+        min-height: 48px;
         color: var(--md-sys-color-on-surface-variant);
-        padding: 8px 12px 8px 4px;
-        margin: 0 0 6px -4px;
+        padding: 8px 14px 8px 4px;
+        margin: 0 0 0 -4px;
         border-radius: var(--md-sys-shape-corner-full);
         font-size: var(--md-sys-typescale-label-large-size);
         font-weight: var(--md-sys-typescale-label-large-weight);
@@ -147,9 +151,11 @@
 
       /* ---------- SETUP (chrome reused from Snap) ---------- */
       .setup-inner {
+        --gl: max(22px, env(safe-area-inset-left));
+        --gr: max(22px, env(safe-area-inset-right));
         max-width: 560px;
         margin: 0 auto;
-        padding: max(20px, env(safe-area-inset-top)) 22px 48px;
+        padding: max(12px, env(safe-area-inset-top)) var(--gr) 0 var(--gl);
       }
       .brand {
         margin: 2px 0 6px;
@@ -357,6 +363,7 @@
       .switch {
         width: 52px;
         height: 32px;
+        padding: 0;
         border-radius: var(--md-sys-shape-corner-full);
         background: var(--md-sys-color-surface-container-highest);
         border: 2px solid var(--md-sys-color-outline);
@@ -365,6 +372,12 @@
         transition:
           background var(--md-sys-motion-duration-short3),
           border-color var(--md-sys-motion-duration-short3);
+      }
+      /* Extends the hit area to 62x50 (>= 48x48, WCAG 2.5.8) without changing the 52x32 visual. */
+      .switch::before {
+        content: "";
+        position: absolute;
+        inset: -11px -7px;
       }
       .switch::after {
         content: "";
@@ -396,12 +409,25 @@
         transform: translateX(20px);
       }
 
-      /* Start button — reused */
+      /* Sticky Start bar (as Colour Rush): Start stays on screen however tall the setup is. The bar
+         lets taps fall through its fade; only the button and note are interactive. */
+      .start-bar {
+        position: sticky;
+        bottom: 0;
+        z-index: 5;
+        margin: 0 calc(-1 * var(--gr)) 0 calc(-1 * var(--gl));
+        padding: 24px var(--gr) max(12px, env(safe-area-inset-bottom)) var(--gl);
+        background: linear-gradient(to bottom, transparent, var(--md-sys-color-surface) 30%);
+        pointer-events: none;
+      }
+      .start-bar > * {
+        pointer-events: auto;
+      }
       .start-btn {
         width: 100%;
-        padding: 18px;
+        min-height: 56px;
+        padding: 16px;
         border: 0;
-        margin-top: 8px;
         border-radius: var(--md-sys-shape-corner-full);
         font-size: 18px;
         font-weight: 700;
@@ -421,8 +447,35 @@
         text-align: center;
         color: var(--md-sys-color-on-surface-variant);
         font-size: 12.5px;
-        margin-top: 12px;
-        line-height: 1.5;
+        margin: 8px 0 0;
+        line-height: 1.45;
+      }
+      .start-bar .start-note:empty {
+        display: none;
+      }
+      /* The how-to-play line sits in the normal flow above the sticky bar. */
+      .setup-inner > .start-note {
+        margin: -6px 0 6px;
+      }
+      /* Phone landscape: a compact bar (button and note side by side) so the sticky bar does not eat
+         a third of the screen. */
+      @media (max-height: 500px) and (orientation: landscape) {
+        .start-bar {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          padding-top: 16px;
+        }
+        .start-btn {
+          flex: 0 0 min(260px, 36%);
+          min-height: 48px;
+          padding: 12px;
+        }
+        .start-bar .start-note {
+          flex: 1;
+          margin: 0;
+          text-align: left;
+        }
       }
 
       /* ---------- GAME STAGE (canvas) ---------- */
@@ -515,6 +568,35 @@
       #quitBtn:focus-visible {
         outline: 3px solid var(--md-sys-color-primary);
         outline-offset: -2px;
+      }
+      /* First tap (or Esc) arms the quit; a second tap within 2s confirms. The "Quit?" pill is drawn
+         over the button, anchored to its right edge and growing leftwards, so arming never changes the
+         HUD's size (the canvas measures it, and the streak chip hugs its edge). */
+      #quitBtn .q-ask {
+        display: none;
+        position: absolute;
+        right: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        height: 44px;
+        padding: 0 16px;
+        align-items: center;
+        border-radius: var(--md-sys-shape-corner-full);
+        background: var(--md-sys-color-error-container);
+        color: var(--md-sys-color-on-error-container);
+        font-size: 15px;
+        font-weight: 700;
+        white-space: nowrap;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+      }
+      #quitBtn.armed .q-ask {
+        display: flex;
+      }
+      #quitBtn.armed .q-x {
+        visibility: hidden;
+      }
+      #quitBtn.armed::before {
+        display: none;
       }
 
       /* Streak chip — pops out beside the HUD pill (outside it, so the quit button never shifts). */
@@ -841,8 +923,10 @@
       .stat.hero .big {
         color: var(--md-sys-color-tertiary);
       }
+      /* Play again is the primary action: first in tab order, on the right when side by side. */
       .res-actions {
         display: flex;
+        flex-direction: row-reverse;
         gap: 12px;
         margin-top: 4px;
       }
@@ -850,7 +934,23 @@
         flex: 1;
       }
       .res-foot {
-        margin-top: 18px;
+        margin-top: 10px;
+      }
+      /* Narrow phones: stack the buttons full width, Play again on top. */
+      @media (max-width: 419px) {
+        .res-actions {
+          flex-direction: column;
+        }
+        .res-actions .button {
+          flex: none;
+          width: 100%;
+          white-space: nowrap;
+        }
+      }
+      /* Portrait: one column. The two wrappers only exist for the landscape split below. */
+      .res-head,
+      .res-side {
+        display: contents;
       }
 
       /* ---------- RESULTS: prize shelf, best line, confetti (P2-7) ---------- */
@@ -1008,6 +1108,46 @@
           top: 4px;
           padding: 0 0 0 12px;
         }
+        /* Results: two columns (the round story left, the numbers and actions right) so Play again never
+           falls below the fold. */
+        .res-inner {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+          align-items: center;
+          column-gap: 28px;
+          max-width: 760px;
+          min-height: 100%;
+          padding-top: max(12px, env(safe-area-inset-top));
+          padding-bottom: max(12px, env(safe-area-inset-bottom));
+        }
+        .res-head,
+        .res-side {
+          display: block;
+        }
+        .res-inner .crown {
+          font-size: 32px;
+        }
+        .res-inner h2 {
+          margin: 2px 0;
+        }
+        .res-inner .sub {
+          margin-bottom: 12px;
+        }
+        .shelf {
+          margin-bottom: 0;
+        }
+        .stat-grid {
+          margin-bottom: 14px;
+        }
+        .stat {
+          padding: 10px 8px;
+        }
+        .best-line {
+          margin: 0 0 12px;
+        }
+        .res-foot {
+          margin-top: 4px;
+        }
       }
     </style>
   </head>
@@ -1067,11 +1207,14 @@
           </div>
         </div>
 
-        <button class="start-btn state-layer" id="startBtn">Start</button>
-        <p class="start-note" id="bestNote"></p>
         <p class="start-note" id="startNote">
           One player · joystick or arrow keys to move · the big button to grab.
         </p>
+
+        <div class="start-bar">
+          <button class="start-btn state-layer" id="startBtn">Start</button>
+          <p class="start-note" id="bestNote"></p>
+        </div>
       </div>
     </section>
 
@@ -1084,7 +1227,10 @@
           <span id="sessClock">1:00</span>
           <span id="hudScore">Score <b>0</b></span>
           <button id="keyBtn" aria-pressed="false" aria-label="Show prize values">★</button>
-          <button id="quitBtn" aria-label="Quit game">✕</button>
+          <button id="quitBtn" aria-label="Quit game">
+            <span class="q-x" aria-hidden="true">✕</span>
+            <span class="q-ask" aria-hidden="true">Quit?</span>
+          </button>
         </div>
         <div id="streakChip" aria-hidden="true"></div>
         <div id="keyPanel" aria-hidden="true"><div class="keylist" id="gameKey"></div></div>
@@ -1139,44 +1285,48 @@
     <section id="results" class="screen">
       <div class="res-inner">
         <div class="confetti" id="confetti" aria-hidden="true"></div>
-        <div class="crown">🕹️</div>
-        <h2 id="resTitle" class="headline-small">Round over</h2>
-        <p class="sub" id="resSub"></p>
-        <div class="shelf" id="resShelf" aria-hidden="true"></div>
-        <div class="stat-grid">
-          <div class="stat hero">
-            <div class="big" id="statScore">0</div>
-            <div class="cap">Score</div>
-          </div>
-          <div class="stat">
-            <div class="big" id="statCaught">0</div>
-            <div class="cap">Caught</div>
-          </div>
-          <div class="stat">
-            <div class="big" id="statStreak">0</div>
-            <div class="cap">Top streak</div>
-          </div>
+        <div class="res-head">
+          <div class="crown">🕹️</div>
+          <h2 id="resTitle" class="headline-small">Round over</h2>
+          <p class="sub" id="resSub"></p>
+          <div class="shelf" id="resShelf" aria-hidden="true"></div>
         </div>
-        <p class="best-line" id="resBest"></p>
-        <div class="res-actions">
-          <button class="button button--outlined state-layer" id="changeBtn">
-            Change settings
-          </button>
-          <button class="button button--filled state-layer" id="againBtn">Play again</button>
-        </div>
-        <div class="res-foot">
-          <a class="back-link state-layer" href="../../index.html" aria-label="Back to PlayPad">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path
-                d="M15 18l-6-6 6-6"
-                stroke="currentColor"
-                stroke-width="2.2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-            </svg>
-            Back to PlayPad
-          </a>
+        <div class="res-side">
+          <div class="stat-grid">
+            <div class="stat hero">
+              <div class="big" id="statScore">0</div>
+              <div class="cap">Score</div>
+            </div>
+            <div class="stat">
+              <div class="big" id="statCaught">0</div>
+              <div class="cap">Caught</div>
+            </div>
+            <div class="stat">
+              <div class="big" id="statStreak">0</div>
+              <div class="cap">Top streak</div>
+            </div>
+          </div>
+          <p class="best-line" id="resBest"></p>
+          <div class="res-actions">
+            <button class="button button--filled state-layer" id="againBtn">Play again</button>
+            <button class="button button--outlined state-layer" id="changeBtn">
+              Change settings
+            </button>
+          </div>
+          <div class="res-foot">
+            <a class="back-link state-layer" href="../../index.html" aria-label="Back to PlayPad">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path
+                  d="M15 18l-6-6 6-6"
+                  stroke="currentColor"
+                  stroke-width="2.2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+              Back to PlayPad
+            </a>
+          </div>
         </div>
       </div>
     </section>
@@ -1323,6 +1473,7 @@
         var COUNTDOWN_SEQUENCE = ["3", "2", "1", "GO"];
         var COUNTDOWN_DIGIT_MS = 600;
         var GO_ONLY_MS = 600; // "Play again" shows just a GO flash (LEARNINGS PLAY-005 v2)
+        var QUIT_CONFIRM_MS = 2000; // first quit tap arms "Quit?"; a second tap inside this window confirms
 
         // ---- Physics constants (tuned; named so behaviour is inspectable, never magic numbers) ----
         var CART_RESPONSE = 11; // 1/s — how fast cart velocity chases its target (gives weight)
@@ -1413,7 +1564,9 @@
           countdownStepTs = 0,
           countSeq = COUNTDOWN_SEQUENCE,
           countDigitMs = COUNTDOWN_DIGIT_MS;
-        var roundsStarted = 0; // the full 3-2-1 only plays on the first round of a session
+        var roundsStarted = 0; // full 3-2-1 only on the first round after the setup screen; reset in show("setup")
+        var quitArmed = false,
+          quitTimer = null;
 
         // claw + trolley physics
         var cartX = 0,
@@ -1505,6 +1658,11 @@
           for (var i = 0; i < pendingTimers.length; i++) clearTimeout(pendingTimers[i]);
           pendingTimers.length = 0;
         }
+        function cancelLater(id) {
+          clearTimeout(id);
+          var i = pendingTimers.indexOf(id);
+          if (i >= 0) pendingTimers.splice(i, 1);
+        }
 
         // The ONE screen-change chokepoint: leaving the game tears EVERYTHING down here so no exit path
         // (quit, results, a future route) can leave the RAF loop, countdown, key panel or timers running.
@@ -1531,10 +1689,14 @@
           if (layoutRaf) cancelAnimationFrame(layoutRaf);
           layoutRaf = 0;
           clearLater();
+          disarmQuit(); // the armed "Quit?" pill must never survive a screen change
           publishDebug(); // keep the test mirror honest once the loop has stopped
         }
         function show(s) {
           if ($("game").classList.contains("active") && s !== "game") teardownGame();
+          // Returning to setup starts a fresh session: Start then plays the full 3-2-1 (only "Play
+          // again" from the results flashes a quick GO).
+          if (s === "setup") roundsStarted = 0;
           ["setup", "game", "results"].forEach(function (x) {
             $(x).classList.toggle("active", x === s);
           });
@@ -1546,8 +1708,16 @@
           var KEY = "playpad.clawCatch.v1";
           var BEST_KEY_RE = /^(30|60|90|120)-(chill|normal|tricky)$/;
           var MAX_SCORE = 99999;
+          var needsMigrate = false; // an older save lacks bestOverall: write it back once so the hub sees it
           function defaults() {
-            return { v: 1, best: {}, sound: true };
+            return { v: 1, best: {}, bestOverall: 0, sound: true };
+          }
+          function overallOf(best) {
+            var m = 0;
+            Object.keys(best).forEach(function (k) {
+              if (best[k] > m) m = best[k];
+            });
+            return m;
           }
           function sanitizeScore(x) {
             var n = typeof x === "number" ? x : NaN;
@@ -1567,6 +1737,10 @@
                   if (BEST_KEY_RE.test(k) && n > 0) out.best[k] = n;
                 });
               }
+              // Always derived from the sanitized buckets (never trusted from storage), so saves written
+              // before this field existed gain it on first load and a hand-edited value cannot stick.
+              out.bestOverall = overallOf(out.best);
+              needsMigrate = d.bestOverall !== out.bestOverall;
               return out;
             } catch (e) {
               return defaults();
@@ -1580,6 +1754,7 @@
               /* private mode / storage blocked: in-memory only, never an error */
             }
           }
+          if (needsMigrate) persist();
           function bestKey(sec, diffId) {
             return sec + "-" + diffId;
           }
@@ -1593,6 +1768,7 @@
             var n = sanitizeScore(s);
             if (n > prev) {
               data.best[k] = n;
+              if (n > data.bestOverall) data.bestOverall = n; // the hub reads this top-level field
               persist();
               return true;
             }
@@ -2307,6 +2483,7 @@
             p.hy = (lay.floorY - p.y) / R;
           }
           if (carried) carried.radK = carried.rad / R;
+          if (carried2) carried2.radK = carried2.rad / R;
           var cs = lay.maxX - lay.minX;
           normCart = cs > 1 ? (cartX - lay.minX) / cs : 0.5;
           normReturn = cs > 1 ? (returnStartX - lay.minX) / cs : 0;
@@ -2328,6 +2505,7 @@
             p.vx = p.vy = p.av = 0;
           }
           if (carried) carried.rad = carried.radK * R;
+          if (carried2) carried2.rad = carried2.radK * R;
           var cs = lay.maxX - lay.minX;
           cartX = lay.minX + clamp(normCart, 0, 1) * cs;
           returnStartX = lay.minX + clamp(normReturn, 0, 1) * cs;
@@ -2774,6 +2952,21 @@
         window.addEventListener("keydown", function (ev) {
           if (!running) return;
           var code = ev.code;
+          if (code === "Escape") {
+            if (!ev.repeat) requestQuit();
+            ev.preventDefault();
+            return;
+          }
+          // RECURRENCE(PLAY-005, count=4): a global keydown handler must not steal keys from a focused
+          // control. Space/Enter activate a focused button/link (✕ quit, ★ key, DROP: its click already
+          // grabs), and a text field keeps every key. Steering (arrows / A D) and the grab shortcuts
+          // (S / ArrowDown) still work with a button focused: those keys do nothing on a button.
+          var t = ev.target;
+          var ctl = t && t.closest ? t.closest("button, a[href], input, select, textarea") : null;
+          if (ctl) {
+            var isTextField = ctl.tagName !== "BUTTON" && ctl.tagName !== "A";
+            if (isTextField || code === "Space" || code === "Enter") return;
+          }
           if (code === "ArrowLeft" || code === "KeyA") {
             keyLeft = true;
             ev.preventDefault();
@@ -3399,7 +3592,7 @@
           fallers.length = 0;
 
           catchPayoff(now, info);
-          if (info.gold) addBonusTime(now);
+          info.bonusMs = info.gold ? addBonusTime(now) : 0;
           updateScoreHud();
           updateStreakChip(info.mult > info.prevMult);
           catchToast(info);
@@ -3427,7 +3620,9 @@
         function catchToast(c) {
           var f = c.first,
             toast;
-          if (c.gold) toast = ["Golden! +" + c.pts + " · +5s", f.e + " · Golden", "gold"];
+          // "+Ns" only when time was really added: past the golden time cap a catch scores points only.
+          var plusTime = c.bonusMs > 0 ? " · +" + Math.round(c.bonusMs / 1000) + "s" : "";
+          if (c.gold) toast = ["Golden! +" + c.pts + plusTime, f.e + " · Golden", "gold"];
           else if (c.dbl) toast = ["DOUBLE! +" + c.pts, c.pair, "good"];
           else if (c.mult > c.prevMult)
             toast = ["🔥 ×" + c.mult + " streak!", "+" + c.pts + " · " + f.e, "gold"];
@@ -3441,7 +3636,7 @@
               ". Score " +
               score +
               (c.mult > 1 ? ". Streak multiplier " + c.mult : "") +
-              (c.gold ? ". Plus 5 seconds" : "") +
+              (c.bonusMs > 0 ? ". Plus " + Math.round(c.bonusMs / 1000) + " seconds" : "") +
               ".",
           );
         }
@@ -3457,12 +3652,14 @@
             setFeedback(main, sub, "miss");
           }
         }
+        // Returns the milliseconds actually added (0 once the golden time cap is reached).
         function addBonusTime(now) {
           var add = Math.min(GOLDEN.bonusMs, GOLDEN.capMs - bonusMs);
-          if (add <= 0) return;
+          if (add <= 0) return 0;
           bonusMs += add;
           sessionEndTs += add;
           clockFlashUntil = now + 900;
+          return add;
         }
         function sparkle(x, y, count, color) {
           if (reduceMotion) return;
@@ -3699,7 +3896,32 @@
           show("setup");
           renderBestNote();
         }
-        $("quitBtn").addEventListener("click", stopToSetup);
+
+        // ---------- quit (two taps) ----------
+        function disarmQuit() {
+          quitArmed = false;
+          if (quitTimer !== null) {
+            cancelLater(quitTimer);
+            quitTimer = null;
+          }
+          var q = $("quitBtn");
+          q.classList.remove("armed");
+          q.setAttribute("aria-label", "Quit game");
+        }
+        // First tap (or Esc) arms a "Quit?" pill for 2s; a second tap (or Esc) quits.
+        function requestQuit() {
+          if (quitArmed) {
+            stopToSetup();
+            return;
+          }
+          quitArmed = true;
+          var q = $("quitBtn");
+          q.classList.add("armed");
+          q.setAttribute("aria-label", "Quit? Press again to confirm");
+          announce("Quit? Press again to confirm.");
+          quitTimer = later(disarmQuit, QUIT_CONFIRM_MS);
+        }
+        $("quitBtn").addEventListener("click", requestQuit);
 
         function renderShelf() {
           var shelf = $("resShelf");
@@ -4347,6 +4569,11 @@
         });
         liveProp("carried", function () {
           return !!carried;
+        });
+        // Radii (px) of the prize(s) riding the claw: [first, second]; 0 when there is none. Lets a test
+        // check that a rotation mid-carry rescales BOTH prizes (AR-06).
+        liveProp("carriedRad", function () {
+          return [carried ? carried.rad : 0, carried2 ? carried2.rad : 0];
         });
         liveProp("score", function () {
           return score;

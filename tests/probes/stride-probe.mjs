@@ -146,10 +146,12 @@ async function main() {
   const visible = await page.locator("body").innerText();
   check("AC1", "no user-visible 'Neon Rush' on the setup screen", !/neon\s*rush/i.test(visible));
 
-  // the countdown ("ready" pose) must also never show a bind pose
-  await page.getByRole("button", { name: "Start running" }).click();
-  await page.waitForFunction(() => window.__stride.state.phase === "countdown");
-  const cd = await S(page, () => window.__stride.skin);
+  // the countdown ("ready" pose) must also never show a bind pose. Click and read in ONE page task: the
+  // real 3-2-1 is only ~1.2 s and software WebGL frames are slow, so polling for it would race.
+  const cd = await S(page, () => {
+    document.getElementById("startBtn").click();
+    return window.__stride.skin;
+  });
   check(
     "AC3",
     "countdown: GLB runner in the ready pose at weight 1 (no bind pose)",
@@ -618,6 +620,45 @@ async function main() {
     await bad.ctx.close();
   }
 
+  /* ---- hostile save + hardened test hook (RISK lens) ---- */
+  {
+    const evil = await openGame(browser, {
+      init: () =>
+        localStorage.setItem(
+          "playpad.sunsetStride.v1",
+          JSON.stringify({
+            v: 1,
+            coins: "7",
+            unlocked: ["morning", "morning", "morning", "bogus", "__proto__"],
+            equipped: "__proto__",
+            highScore: 1e308,
+            muted: "false",
+          }),
+        ),
+    });
+    await evil.page.waitForFunction(() => window.__stride);
+    const e = await S(evil.page, () => {
+      const s = window.__stride;
+      s.grantCoins("abc");
+      s.grantCoins(NaN);
+      s.setQuality("__proto__");
+      return { save: s.save, tier: s.quality.tier, dpr: s.quality.dpr };
+    });
+    check(
+      "AC7",
+      "hostile save: strings / dupes / proto keys sanitised; hook rejects NaN coins and a bogus quality tier",
+      e.save.coins === 7 &&
+        e.save.unlocked.length === 1 &&
+        e.save.equipped === "morning" &&
+        e.save.highScore === 1e9 && // 1e308 is clamped to the 1e9 ceiling, not trusted
+        e.save.muted === false &&
+        e.tier === "medium" &&
+        Number.isFinite(e.dpr),
+      JSON.stringify({ save: e.save, tier: e.tier }),
+    );
+    await evil.ctx.close();
+  }
+
   /* ---- shop + skins: buy, equip, 3D thumbnails ---- */
   {
     const shop = await openGame(browser, {
@@ -763,8 +804,11 @@ async function main() {
 
   /* ---- reduced motion: normal mode kicks the FOV (control), reduced motion does not ---- */
   {
+    // Own browser per scenario: software WebGL leaves queued GPU work behind, which stalls the NEXT page load
+    // in the same browser for tens of seconds (a test-harness artefact, not a game issue).
     const fovKick = async (reduced) => {
-      const c = await browser.newContext({
+      const own = await launch();
+      const c = await own.newContext({
         viewport: { width: 1000, height: 620 },
         reducedMotion: reduced ? "reduce" : "no-preference",
       });
@@ -789,6 +833,7 @@ async function main() {
         return s.camera.fov - f0;
       });
       await c.close();
+      await own.close();
       return { kick, errs };
     };
     const normal = await fovKick(false);

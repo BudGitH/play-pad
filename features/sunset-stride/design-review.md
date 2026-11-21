@@ -17,7 +17,7 @@ Players could not read the neon night scene; the owner asked for a bright, real-
 
 ## Roundtable notes
 
-- **UX:** hazard stripes (yellow/black, photographed) already mean "careful" everywhere — use them only for things you must jump over or slide under; vans / trucks are painted, never striped, so colour alone tells "go around" from "go over/under". The runner wears a saturated tee against grey asphalt.
+- **UX:** yellow-and-black hazard stripes mean "careful" everywhere and are used only on the road-works items (barrier, scaffolding sign); vehicles are painted and never striped, so colour tells "go around" from "go over/under". Over vs under is told by **shape** (a solid low thing vs a gap beneath an overhead beam) and, the first time each kind appears in a session, by a one-line hint toast. The market awning is blue/white so it is never confused with the yellow-black barrier. The runner wears a saturated tee against grey asphalt.
 - **Tech Lead:** facade windows are generated in the fragment shader (no baked atlas, works with photo or procedural wall textures); dogs are skinned GLBs with a primitive fallback; chasers sit behind the runner so the camera needs to sit back/high enough to keep them at the bottom of the frame on phones.
 - **Personas:** Maya — "I can see the road"; Sam — keyboard parity + reduced motion (no shake / FOV kick); Dan — one-tap retry.
 

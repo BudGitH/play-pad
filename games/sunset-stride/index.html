@@ -873,8 +873,7 @@
         border-radius: var(--md-sys-shape-corner-xl, 24px);
         margin: 4px 0 18px;
         overflow: hidden;
-        background:
-          radial-gradient(
+        background: radial-gradient(
             circle at 78% 82%,
             #fff3c4 0 11%,
             rgba(255, 214, 140, 0.55) 12% 26%,
@@ -1268,12 +1267,66 @@
         var INPUT_BUFFER = 0.14; // s a too-early jump/slide/lane press is remembered
 
         var SKINS = [
-          { id: "morning", name: "Morning Jogger", desc: "Coral tee, navy trousers, white trainers.", price: 0, tex: "light_a", tee: "#ee6a3c", shoe: 0xf4f1ea, glyph: "🏃" },
-          { id: "ranger", name: "Park Ranger", desc: "Forest tee, khaki trousers, trail shoes.", price: 250, tex: "light_b", tee: "#2f8f5b", shoe: 0x6b4b2e, glyph: "🌲" },
-          { id: "weekend", name: "Weekender", desc: "Mustard tee, charcoal trousers, red trainers.", price: 500, tex: "light_c", tee: "#f0b93b", shoe: 0xd0382d, glyph: "☕" },
-          { id: "sunny", name: "Sunny Side", desc: "Sky-blue tee, white trousers, orange trainers.", price: 800, tex: "dark_a", tee: "#3fa2e8", shoe: 0xf08a2a, glyph: "🌞" },
-          { id: "nightowl", name: "Night Owl", desc: "Violet tee, dark denim, black trainers.", price: 1100, tex: "dark_b", tee: "#7b5ad8", shoe: 0x26272c, glyph: "🦉" },
-          { id: "golden", name: "Golden Hour", desc: "Teal tee, brown trousers, cream trainers.", price: 1500, tex: "dark_c", tee: "#14b0a4", shoe: 0xeadfc6, glyph: "🌇" },
+          {
+            id: "morning",
+            name: "Morning Jogger",
+            desc: "Coral tee, navy trousers, white trainers.",
+            price: 0,
+            tex: "light_a",
+            tee: "#ee6a3c",
+            shoe: 0xf4f1ea,
+            glyph: "🏃",
+          },
+          {
+            id: "ranger",
+            name: "Park Ranger",
+            desc: "Forest tee, khaki trousers, trail shoes.",
+            price: 250,
+            tex: "light_b",
+            tee: "#2f8f5b",
+            shoe: 0x6b4b2e,
+            glyph: "🌲",
+          },
+          {
+            id: "weekend",
+            name: "Weekender",
+            desc: "Mustard tee, charcoal trousers, red trainers.",
+            price: 500,
+            tex: "light_c",
+            tee: "#f0b93b",
+            shoe: 0xd0382d,
+            glyph: "☕",
+          },
+          {
+            id: "sunny",
+            name: "Sunny Side",
+            desc: "Sky-blue tee, white trousers, orange trainers.",
+            price: 800,
+            tex: "dark_a",
+            tee: "#3fa2e8",
+            shoe: 0xf08a2a,
+            glyph: "🌞",
+          },
+          {
+            id: "nightowl",
+            name: "Night Owl",
+            desc: "Violet tee, dark denim, black trainers.",
+            price: 1100,
+            tex: "dark_b",
+            tee: "#7b5ad8",
+            shoe: 0x26272c,
+            glyph: "🦉",
+          },
+          {
+            id: "golden",
+            name: "Golden Hour",
+            desc: "Teal tee, brown trousers, cream trainers.",
+            price: 1500,
+            tex: "dark_c",
+            tee: "#14b0a4",
+            shoe: 0xeadfc6,
+            glyph: "🌇",
+          },
         ];
 
         /* ══════════════════════ SaveManager ══════════════════════
@@ -1303,6 +1356,8 @@
             var d = JSON.parse(raw);
             return d && typeof d === "object" && d.v === 1 ? d : null;
           }
+          // TRUST_BOUNDARY: localStorage is user-editable. Validation: version check, finite 0..1e9 counts,
+          // `unlocked` whitelisted against SKINS and de-duplicated, strict booleans, try/catch -> defaults.
           function load() {
             try {
               var out = defaults();
@@ -1314,7 +1369,7 @@
                 if (ld) {
                   out.coins = sanitizeCount(ld.coins);
                   out.highScore = sanitizeCount(ld.highScore);
-                  out.muted = !!ld.muted;
+                  out.muted = ld.muted === true;
                   importedLegacy = true;
                 }
                 return out;
@@ -1323,12 +1378,15 @@
               if (!d) return out;
               out.coins = sanitizeCount(d.coins);
               out.highScore = sanitizeCount(d.highScore);
-              out.muted = !!d.muted;
+              out.muted = d.muted === true;
               if (Array.isArray(d.unlocked)) {
-                out.unlocked = d.unlocked.filter(function (id) {
-                  return SKINS.some(function (s) {
-                    return s.id === id;
-                  });
+                out.unlocked = d.unlocked.filter(function (id, i, all) {
+                  return (
+                    all.indexOf(id) === i && // de-duplicated: a hostile 500k-entry list is rewritten on every persist
+                    SKINS.some(function (s) {
+                      return s.id === id;
+                    })
+                  );
                 });
               }
               if (out.unlocked.indexOf("morning") < 0) out.unlocked.push("morning");
@@ -1347,7 +1405,7 @@
             }
           }
           if (importedLegacy) persist(); // the hub's "Best" tile reads this key: write the imported progress now
-          return { data: data, persist: persist };
+          return { data: data, persist: persist, sanitizeCount: sanitizeCount };
         })();
         var save = SaveManager.data;
 
@@ -1913,21 +1971,6 @@
             ),
           );
         }
-        // Box with its UVs scaled to metres (tile = metres per texture repeat) so a photo texture keeps a
-        // constant real-world scale on any box size.
-        function boxM(w, h, d, tile) {
-          var g = new THREE.BoxGeometry(w, h, d);
-          var uv = g.attributes.uv,
-            nrm = g.attributes.normal;
-          for (var i = 0; i < uv.count; i++) {
-            var nx = Math.abs(nrm.getX(i)),
-              ny = Math.abs(nrm.getY(i));
-            var su = nx > 0.5 ? d : w,
-              sv = ny > 0.5 ? d : h;
-            uv.setXY(i, (uv.getX(i) * su) / tile, (uv.getY(i) * sv) / tile);
-          }
-          return g;
-        }
         function makeInst(geo, mat, count) {
           var m = new THREE.InstancedMesh(geo, mat, count);
           m.frustumCulled = false; // instance bounds are unknown to three — never cull
@@ -2067,11 +2110,22 @@
         // grain from the rest-pose position (so it sticks to the body as it animates) and a little contact
         // darkening near the ground. `grain` is the grain scale, `ground` the rest-pose height of the contact AO.
         function patchCharacter(mat, grain, ground, minH, up, furTop) {
-          var upS = "vec3( " + up.x.toFixed(4) + ", " + up.y.toFixed(4) + ", " + up.z.toFixed(4) + " )";
+          var upS =
+            "vec3( " + up.x.toFixed(4) + ", " + up.y.toFixed(4) + ", " + up.z.toFixed(4) + " )";
           mat.onBeforeCompile = function (sh) {
             sh.vertexShader = sh.vertexShader
-              .replace("#include <common>", "#include <common>\nvarying vec3 vRP;\nvarying float vH;")
-              .replace("#include <begin_vertex>", "#include <begin_vertex>\nvRP = position;\nvH = dot( position, " + upS + " ) - " + minH.toFixed(4) + ";");
+              .replace(
+                "#include <common>",
+                "#include <common>\nvarying vec3 vRP;\nvarying float vH;",
+              )
+              .replace(
+                "#include <begin_vertex>",
+                "#include <begin_vertex>\nvRP = position;\nvH = dot( position, " +
+                  upS +
+                  " ) - " +
+                  minH.toFixed(4) +
+                  ";",
+              );
             sh.fragmentShader = sh.fragmentShader
               .replace(
                 "#include <common>",
@@ -2080,10 +2134,18 @@
               .replace(
                 "#include <map_fragment>",
                 "#include <map_fragment>\n" +
-                  "vec3 gp = floor( vRP * " + grain.toFixed(2) + " );\n" +
+                  "vec3 gp = floor( vRP * " +
+                  grain.toFixed(2) +
+                  " );\n" +
                   "diffuseColor.rgb *= 0.93 + 0.14 * gh( gp );\n" +
-                  "diffuseColor.rgb *= mix( 0.8, 1.0, smoothstep( 0.0, " + ground.toFixed(4) + ", vH ) );" +
-                  (furTop ? "\ndiffuseColor.rgb *= mix( 1.14, 0.88, smoothstep( 0.0, " + furTop.toFixed(4) + ", vH ) );" : ""),
+                  "diffuseColor.rgb *= mix( 0.8, 1.0, smoothstep( 0.0, " +
+                  ground.toFixed(4) +
+                  ", vH ) );" +
+                  (furTop
+                    ? "\ndiffuseColor.rgb *= mix( 1.14, 0.88, smoothstep( 0.0, " +
+                      furTop.toFixed(4) +
+                      ", vH ) );"
+                    : ""),
               )
               .replace(
                 "#include <output_fragment>",
@@ -2711,7 +2773,11 @@
           function branch(ax, ay, az, bx, by, bz, r, hex) {
             var d = new THREE.Vector3(bx - ax, by - ay, bz - az),
               q = new THREE.Quaternion().setFromUnitVectors(_Y, d.clone().normalize());
-            var m = new THREE.Matrix4().compose(new THREE.Vector3((ax + bx) / 2, (ay + by) / 2, (az + bz) / 2), q, new THREE.Vector3(1, 1, 1));
+            var m = new THREE.Matrix4().compose(
+              new THREE.Vector3((ax + bx) / 2, (ay + by) / 2, (az + bz) / 2),
+              q,
+              new THREE.Vector3(1, 1, 1),
+            );
             return bakeGeo(new THREE.CylinderGeometry(r * 0.7, r, d.length(), 7), m, hex);
           }
           var trunkParts = [
@@ -2744,8 +2810,8 @@
               c = new THREE.Color(),
               bp = b.attributes.position;
             for (var j = 0; j < col.count; j++) {
-              var t = clamp((bp.getY(j) - y) / (r * sy) * 0.5 + 0.5, 0, 1);
-              var jit = 0.94 + 0.12 * (Math.sin(j * 12.9898 + seed) * 43758.5453 % 1 + 1) * 0.5;
+              var t = clamp(((bp.getY(j) - y) / (r * sy)) * 0.5 + 0.5, 0, 1);
+              var jit = 0.94 + 0.12 * (((Math.sin(j * 12.9898 + seed) * 43758.5453) % 1) + 1) * 0.5;
               c.copy(lc).lerp(hc, t).multiplyScalar(jit);
               col.setXYZ(j, c.r, c.g, c.b);
             }
@@ -2808,8 +2874,8 @@
           placeEntry(e);
         }
         function rowTick(move) {
-          ["l", "r"].forEach(function (side) {
-            var list = rows[side],
+          for (var sd = 0; sd < 2; sd++) {
+            var list = sd ? rows.r : rows.l,
               tail = 0,
               i;
             for (i = 0; i < list.length; i++) {
@@ -2824,7 +2890,7 @@
                 tail = e.z - e.len / 2;
               }
             }
-          });
+          }
         }
         function treesTick() {
           if (!treeMesh) return;
@@ -2884,8 +2950,9 @@
           if (renderer) worldTick(0);
         }
         function applyQuality(name, manual) {
-          var t = TIERS[name] || TIERS.medium;
-          quality.tier = TIERS[name] ? name : "medium";
+          var known = Object.prototype.hasOwnProperty.call(TIERS, name); // "__proto__" is not a tier
+          var t = known ? TIERS[name] : TIERS.medium;
+          quality.tier = known ? name : "medium";
           if (manual) quality.auto = false;
           if (!renderer) return;
           quality.dpr = Math.min(window.devicePixelRatio || 1, t.dpr);
@@ -3106,6 +3173,7 @@
             holder.updateMatrix();
             foot.attach(holder); // keeps the world transform, then rides the bone through every animation
           });
+          return sole;
         }
         // Eyes + nose for the dog. The pack ships a faceless head, so find it from the geometry: the long
         // horizontal axis, the end with the larger vertical extent (skull + ears vs a thin tail), the nose
@@ -3171,7 +3239,11 @@
             fwd = new THREE.Vector3(ax === 0 ? dir : 0, 0, ax === 2 ? dir : 0),
             up = new THREE.Vector3(0, 1, 0),
             side = new THREE.Vector3().crossVectors(up, fwd).normalize();
-          var dark = new THREE.MeshStandardMaterial({ color: 0x15110f, roughness: 0.25, metalness: 0.1 }),
+          var dark = new THREE.MeshStandardMaterial({
+              color: 0x15110f,
+              roughness: 0.25,
+              metalness: 0.1,
+            }),
             glint = new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false });
           function part(geo, mat, at) {
             var m = new THREE.Mesh(geo, mat);
@@ -3180,11 +3252,23 @@
             m.updateMatrix();
             bone.attach(m);
           }
-          part(new THREE.SphereGeometry(0.034, 12, 10), dark, nose.clone().addScaledVector(fwd, -0.012).addScaledVector(up, 0.006)); // nose
+          part(
+            new THREE.SphereGeometry(0.034, 12, 10),
+            dark,
+            nose.clone().addScaledVector(fwd, -0.012).addScaledVector(up, 0.006),
+          ); // nose
           [-1, 1].forEach(function (s) {
-            var at = nose.clone().addScaledVector(fwd, -0.12).addScaledVector(up, 0.07).addScaledVector(side, s * 0.052);
+            var at = nose
+              .clone()
+              .addScaledVector(fwd, -0.12)
+              .addScaledVector(up, 0.07)
+              .addScaledVector(side, s * 0.052);
             part(new THREE.SphereGeometry(0.024, 12, 10), dark, at);
-            part(new THREE.SphereGeometry(0.007, 6, 5), glint, at.clone().addScaledVector(fwd, 0.016).addScaledVector(up, 0.01));
+            part(
+              new THREE.SphereGeometry(0.007, 6, 5),
+              glint,
+              at.clone().addScaledVector(fwd, 0.016).addScaledVector(up, 0.01),
+            );
           });
         }
         function makeGlbRunner(gltf, palette, skinId) {
@@ -3218,8 +3302,11 @@
           box.setFromObject(model);
           model.position.y -= box.min.y; // feet on y = 0
           var rig = makePoseRig(model);
-          var shoeMat = new THREE.MeshStandardMaterial({ color: skinById(skinId || save.equipped).shoe, roughness: 0.55 });
-          addSneakers(rig, shoeMat);
+          var shoeMat = new THREE.MeshStandardMaterial({
+            color: skinById(skinId || save.equipped).shoe,
+            roughness: 0.55,
+          });
+          var soleMat = addSneakers(rig, shoeMat);
           var mixer = new THREE.AnimationMixer(model);
           var clips = {};
           gltf.animations.forEach(function (c) {
@@ -3253,6 +3340,13 @@
               mat.color.set(tex ? 0xffffff : 0x7fd0ff);
               mat.needsUpdate = true;
               shoeMat.color.set(skinById(id || save.equipped).shoe);
+            },
+            // i-frame ghosting: partial transparency instead of vanishing, so the runner never disappears
+            setAlpha: function (a) {
+              [mat, shoeMat, soleMat].forEach(function (m) {
+                m.transparent = a < 1;
+                m.opacity = a;
+              });
             },
             play: function (state, o) {
               if (state === view.state && !(o && o.restart)) return;
@@ -3336,6 +3430,7 @@
               W.Walk = W.Jump = W.Death = 0;
               view.state = "run";
               view.slideT = view.slideW = view.stumbleT = view.stumbleW = 0;
+              view.setAlpha(1);
               Object.keys(A).forEach(function (n) {
                 A[n].stop();
                 A[n].reset();
@@ -3470,9 +3565,18 @@
               dogMesh = o;
               smoothNormals(o.geometry, 55);
               // the dog's mesh node is rotated: find the rest-pose "up" in mesh-local space for the fur gradient
-              var upL = new THREE.Vector3(0, 1, 0).transformDirection(new THREE.Matrix4().copy(o.matrixWorld).invert());
+              var upL = new THREE.Vector3(0, 1, 0).transformDirection(
+                new THREE.Matrix4().copy(o.matrixWorld).invert(),
+              );
               var rh = restHeightRange(o.geometry, upL);
-              patchCharacter(mat, 120 / (rh.hi - rh.lo), (rh.hi - rh.lo) * 0.2, rh.lo, upL, rh.hi - rh.lo);
+              patchCharacter(
+                mat,
+                120 / (rh.hi - rh.lo),
+                (rh.hi - rh.lo) * 0.2,
+                rh.lo,
+                upL,
+                rh.hi - rh.lo,
+              );
               o.material = mat;
               o.frustumCulled = false;
               o.castShadow = true;
@@ -3558,6 +3662,8 @@
           var glbRunnerReady = false,
             previewGltf = null;
 
+          // TRUST_BOUNDARY: same-origin asset bytes -> GLTFLoader.parse. Validation: r.ok, same-origin relative URLs
+          // only, parse errors caught by the caller (the primitive fallback takes over).
           function fetchBuf(url) {
             return fetch(url).then(function (r) {
               if (!r.ok) throw new Error(url + " " + r.status);
@@ -3668,6 +3774,10 @@
                 }),
               ]);
             },
+            // WebGL context restored: thumbnails rendered while it was lost are blank, so forget them
+            resetThumbs: function () {
+              thumbs = {};
+            },
             pendingRunner: null,
             pendingDogs: null,
             // Called when nothing is mid-run (start of a run / on the setup screen): hot-swap in loaded models.
@@ -3715,14 +3825,18 @@
             thumbKit.view.setSkin(skinTex[id], id);
             var prevRT = renderer.getRenderTarget(),
               prevClear = renderer.getClearAlpha();
-            renderer.setRenderTarget(thumbKit.rt);
-            renderer.setClearColor(0x000000, 0);
-            renderer.clear();
-            renderer.render(thumbKit.sc, thumbKit.cam);
             var px = new Uint8Array(192 * 192 * 4);
-            renderer.readRenderTargetPixels(thumbKit.rt, 0, 0, 192, 192, px);
-            renderer.setRenderTarget(prevRT);
-            renderer.setClearAlpha(prevClear);
+            try {
+              renderer.setRenderTarget(thumbKit.rt);
+              renderer.setClearColor(0x000000, 0);
+              renderer.clear();
+              renderer.render(thumbKit.sc, thumbKit.cam);
+              renderer.readRenderTargetPixels(thumbKit.rt, 0, 0, 192, 192, px);
+            } finally {
+              // a throw here must never leave the game canvas bound to the 192 px offscreen target (blank game)
+              renderer.setRenderTarget(prevRT);
+              renderer.setClearAlpha(prevClear);
+            }
             var c = mkCanvas(192, 192),
               x = c.getContext("2d"),
               img = x.createImageData(192, 192);
@@ -3958,7 +4072,8 @@
               if (runnerView.kind === "glb") {
                 var blink =
                   player.invulnT > 0 && !prefersReduced && Math.floor(player.invulnT * 9) % 2 === 0;
-                runnerView.root.visible = runnerView.ready && !blink;
+                runnerView.root.visible = runnerView.ready;
+                runnerView.setAlpha(blink ? 0.4 : 1);
               }
             }
           },
@@ -3999,7 +4114,9 @@
         function fitText(x, text, tx, ty, maxW, px, center) {
           x.font = "800 " + px + "px Inter, 'Segoe UI', Arial, sans-serif";
           var tw = x.measureText(text).width;
-          if (tw > maxW) x.font = "800 " + Math.floor((px * maxW) / tw) + "px Inter, 'Segoe UI', Arial, sans-serif";
+          if (tw > maxW)
+            x.font =
+              "800 " + Math.floor((px * maxW) / tw) + "px Inter, 'Segoe UI', Arial, sans-serif";
           x.textAlign = center ? "center" : "left";
           x.fillText(text, tx, ty);
         }
@@ -4037,7 +4154,15 @@
             x.fillStyle = fg;
             x.textBaseline = "middle";
             lines.forEach(function (ln, i) {
-              fitText(x, ln, w / 2, lines.length > 1 ? h * (0.34 + i * 0.36) : h / 2, w - 40, lines.length > 1 ? 58 : 78, true);
+              fitText(
+                x,
+                ln,
+                w / 2,
+                lines.length > 1 ? h * (0.34 + i * 0.36) : h / 2,
+                w - 40,
+                lines.length > 1 ? 58 : 78,
+                true,
+              );
             });
           });
         }
@@ -4046,7 +4171,7 @@
           var c = mkCanvas(128, 128),
             x = c.getContext("2d");
           for (var i = 0; i < 4; i++) {
-            x.fillStyle = i % 2 ? "#f3efe6" : "#c8372d";
+            x.fillStyle = i % 2 ? "#f3efe6" : "#2a6db5";
             x.fillRect(i * 32, 0, 32, 128);
           }
           return colorTex(c, true); // RepeatWrapping: the awning parts are wider than one metre
@@ -4058,24 +4183,81 @@
             concrete = TexLib.get("concrete");
           function plane(tex, extra) {
             return new THREE.MeshStandardMaterial(
-              Object.assign({ map: tex, transparent: true, roughness: 0.6, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 }, extra || {}),
+              Object.assign(
+                {
+                  map: tex,
+                  transparent: true,
+                  roughness: 0.6,
+                  depthWrite: false,
+                  polygonOffset: true,
+                  polygonOffsetFactor: -3,
+                  polygonOffsetUnits: -3,
+                },
+                extra || {},
+              ),
             );
           }
           obMats = {
-            hazard: new THREE.MeshStandardMaterial({ map: hazard, roughness: 0.55, metalness: 0.2 }),
+            hazard: new THREE.MeshStandardMaterial({
+              map: hazard,
+              roughness: 0.55,
+              metalness: 0.2,
+            }),
             planks: new THREE.MeshStandardMaterial({ map: planks, roughness: 0.82 }),
             concrete: new THREE.MeshStandardMaterial({ map: concrete, roughness: 0.9 }),
-            awning: new THREE.MeshStandardMaterial({ map: awningTexture(), roughness: 0.92, side: THREE.DoubleSide }),
-            dark: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6, metalness: 0.25 }),
-            matte: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, metalness: 0 }),
-            steel: new THREE.MeshStandardMaterial({ color: 0xbcc2ca, roughness: 0.38, metalness: 0.85 }),
-            chrome: new THREE.MeshStandardMaterial({ color: 0xd9dee4, roughness: 0.22, metalness: 1 }),
+            awning: new THREE.MeshStandardMaterial({
+              map: awningTexture(),
+              roughness: 0.92,
+              side: THREE.DoubleSide,
+            }),
+            dark: new THREE.MeshStandardMaterial({
+              vertexColors: true,
+              roughness: 0.6,
+              metalness: 0.25,
+            }),
+            matte: new THREE.MeshStandardMaterial({
+              vertexColors: true,
+              roughness: 0.85,
+              metalness: 0,
+            }),
+            steel: new THREE.MeshStandardMaterial({
+              color: 0xbcc2ca,
+              roughness: 0.38,
+              metalness: 0.85,
+            }),
+            chrome: new THREE.MeshStandardMaterial({
+              color: 0xd9dee4,
+              roughness: 0.22,
+              metalness: 1,
+            }),
             tire: new THREE.MeshStandardMaterial({ color: 0x151517, roughness: 0.92 }),
-            glass: new THREE.MeshPhysicalMaterial({ color: 0x0c1826, roughness: 0.1, metalness: 0, clearcoat: 0.4, envMapIntensity: 0.8 }),
-            lamp: new THREE.MeshStandardMaterial({ color: 0xff8a1f, emissive: 0xff6a00, emissiveIntensity: 1, roughness: 0.4 }),
-            tail: new THREE.MeshStandardMaterial({ color: 0xb01c14, emissive: 0xff2a1a, emissiveIntensity: 0.9, roughness: 0.3 }),
+            glass: new THREE.MeshPhysicalMaterial({
+              color: 0x0c1826,
+              roughness: 0.1,
+              metalness: 0,
+              clearcoat: 0.4,
+              envMapIntensity: 0.8,
+            }),
+            lamp: new THREE.MeshStandardMaterial({
+              color: 0xff8a1f,
+              emissive: 0xff6a00,
+              emissiveIntensity: 1,
+              roughness: 0.4,
+            }),
+            tail: new THREE.MeshStandardMaterial({
+              color: 0xb01c14,
+              emissive: 0xff2a1a,
+              emissiveIntensity: 0.9,
+              roughness: 0.3,
+            }),
             paint: PAINT.map(function (c) {
-              return new THREE.MeshPhysicalMaterial({ color: c, roughness: 0.34, metalness: 0.12, clearcoat: 0.85, clearcoatRoughness: 0.12 });
+              return new THREE.MeshPhysicalMaterial({
+                color: c,
+                roughness: 0.34,
+                metalness: 0.12,
+                clearcoat: 0.85,
+                clearcoatRoughness: 0.12,
+              });
             }),
             // flat decal planes (separate textured quads on the vehicles / signs)
             pExpressSide: plane(liveryTexture("SUNSET EXPRESS", true)),
@@ -4083,14 +4265,21 @@
             pFoodSide: plane(liveryTexture("SUNNY BITES · TACOS", true)),
             pFoodRear: plane(liveryTexture("SUNNY BITES", false)),
             pBusSide: plane(liveryTexture("TOWN TRANSIT · LINE 12", true)),
-            pBusDest: new THREE.MeshBasicMaterial({ map: plateTexture(["12 TOWN CENTRE"], "#120d06", "#ffb12a", false), toneMapped: false }),
+            pBusDest: new THREE.MeshBasicMaterial({
+              map: plateTexture(["12 TOWN CENTRE"], "#120d06", "#ffb12a", false),
+              toneMapped: false,
+            }),
             pHeadroom: plane(plateTexture(["LOW HEADROOM", "1.0 m"], "#f5c518", "#1c1a17", true)),
           };
         }
         // One baked, rounded part (rotations in radians). Geometry is cached per obstacle variant and shared by
         // every pooled instance.
         function rb(w, h, d, r, k, x, y, z, hex, ry, rx, rz) {
-          return bakeGeo(roundedBoxGeo(w, h, d, r, k), mat4(x, y, z, 1, 1, 1, rx || 0, ry || 0, rz || 0), hex === undefined ? 0xffffff : hex);
+          return bakeGeo(
+            roundedBoxGeo(w, h, d, r, k),
+            mat4(x, y, z, 1, 1, 1, rx || 0, ry || 0, rz || 0),
+            hex === undefined ? 0xffffff : hex,
+          );
         }
         function cylY(rad, h, x, y, z, hex, seg) {
           return bakeGeo(new THREE.CylinderGeometry(rad, rad, h, seg || 16), mat4(x, y, z), hex);
@@ -4103,13 +4292,35 @@
           var d = new THREE.Vector3(bx - ax, by - ay, bz - az),
             len = d.length();
           var q = new THREE.Quaternion().setFromUnitVectors(_Y, d.normalize());
-          var m = new THREE.Matrix4().compose(new THREE.Vector3((ax + bx) / 2, (ay + by) / 2, (az + bz) / 2), q, new THREE.Vector3(1, 1, 1));
+          var m = new THREE.Matrix4().compose(
+            new THREE.Vector3((ax + bx) / 2, (ay + by) / 2, (az + bz) / 2),
+            q,
+            new THREE.Vector3(1, 1, 1),
+          );
           return bakeGeo(new THREE.CylinderGeometry(r, r, len, 8), m, 0xffffff);
         }
         function wheel(parts, x, y, z, rad, wd) {
-          parts.tire.push(bakeGeo(new THREE.CylinderGeometry(rad, rad, wd, 20), mat4(x, y, z, 1, 1, 1, 0, 0, Math.PI / 2), 0xffffff));
-          parts.chrome.push(bakeGeo(new THREE.CylinderGeometry(rad * 0.58, rad * 0.58, wd + 0.03, 16), mat4(x, y, z, 1, 1, 1, 0, 0, Math.PI / 2), 0xffffff));
-          parts.dark.push(bakeGeo(new THREE.CylinderGeometry(rad * 0.24, rad * 0.24, wd + 0.05, 10), mat4(x, y, z, 1, 1, 1, 0, 0, Math.PI / 2), 0x4a4d52));
+          parts.tire.push(
+            bakeGeo(
+              new THREE.CylinderGeometry(rad, rad, wd, 20),
+              mat4(x, y, z, 1, 1, 1, 0, 0, Math.PI / 2),
+              0xffffff,
+            ),
+          );
+          parts.chrome.push(
+            bakeGeo(
+              new THREE.CylinderGeometry(rad * 0.58, rad * 0.58, wd + 0.03, 16),
+              mat4(x, y, z, 1, 1, 1, 0, 0, Math.PI / 2),
+              0xffffff,
+            ),
+          );
+          parts.dark.push(
+            bakeGeo(
+              new THREE.CylinderGeometry(rad * 0.24, rad * 0.24, wd + 0.05, 10),
+              mat4(x, y, z, 1, 1, 1, 0, 0, Math.PI / 2),
+              0x4a4d52,
+            ),
+          );
         }
         function cone(p, x, z) {
           p.matte.push(
@@ -4121,32 +4332,83 @@
         function fruit(p, cx, cy, cz, cols, rows, step, r) {
           var pal = [0xf08a1a, 0xd62d2d, 0xf4d21f, 0x7fb83a, 0xf08a1a];
           for (var i = 0; i < cols; i++)
-            for (var j = 0; j < rows; j++) p.matte.push(ball(r, cx + (i - (cols - 1) / 2) * step, cy + ((i + j) % 2) * 0.03, cz + (j - (rows - 1) / 2) * step, pal[(i * 3 + j) % pal.length]));
+            for (var j = 0; j < rows; j++)
+              p.matte.push(
+                ball(
+                  r,
+                  cx + (i - (cols - 1) / 2) * step,
+                  cy + ((i + j) % 2) * 0.03,
+                  cz + (j - (rows - 1) / 2) * step,
+                  pal[(i * 3 + j) % pal.length],
+                ),
+              );
         }
         function newParts() {
-          return { paint: [], glass: [], dark: [], tire: [], chrome: [], tail: [], hazard: [], planks: [], concrete: [], lamp: [], matte: [], steel: [], awning: [], planes: [] };
+          return {
+            paint: [],
+            glass: [],
+            dark: [],
+            tire: [],
+            chrome: [],
+            tail: [],
+            hazard: [],
+            planks: [],
+            concrete: [],
+            lamp: [],
+            matte: [],
+            steel: [],
+            awning: [],
+            planes: [],
+          };
         }
         // Shared van / truck details: tail lights, bumper, wheels.
         function vehicleRear(p, half, z, bumperY, lightY, lightX) {
           p.dark.push(rb(half * 2 + 0.1, 0.24, 0.22, 0.08, 1, 0, bumperY, z, 0x33363c));
-          p.tail.push(rb(0.2, 0.34, 0.06, 0.04, 1, -lightX, lightY, z, undefined), rb(0.2, 0.34, 0.06, 0.04, 1, lightX, lightY, z, undefined));
+          p.tail.push(
+            rb(0.2, 0.34, 0.06, 0.04, 1, -lightX, lightY, z, undefined),
+            rb(0.2, 0.34, 0.06, 0.04, 1, lightX, lightY, z, undefined),
+          );
         }
-        var OB_VARIANTS = { hurdle: ["barrier"], crates: ["pallet"], cart: ["fruit"], bar: ["scaffold", "canopy"], van: ["delivery", "food"], truck: ["box", "bus"] };
+        var OB_VARIANTS = {
+          hurdle: ["barrier"],
+          crates: ["pallet"],
+          cart: ["fruit"],
+          bar: ["scaffold", "canopy"],
+          van: ["delivery", "food"],
+          truck: ["box", "bus"],
+        };
         var OB_BUILD = {
           // ---- jump ----
           "hurdle:barrier": function (p) {
-            p.hazard.push(rb(2.0, 0.4, 0.08, 0.03, 1, 0, 0.68, 0), rb(2.0, 0.2, 0.08, 0.03, 1, 0, 0.28, 0));
+            p.hazard.push(
+              rb(2.0, 0.4, 0.08, 0.03, 1, 0, 0.68, 0),
+              rb(2.0, 0.2, 0.08, 0.03, 1, 0, 0.28, 0),
+            );
             [-0.88, 0.88].forEach(function (x) {
-              p.dark.push(rb(0.07, 0.98, 0.07, 0.025, 1, x, 0.49, 0.2, 0x3a3d43), rb(0.07, 0.98, 0.07, 0.025, 1, x, 0.49, -0.2, 0x3a3d43), rb(0.08, 0.06, 0.78, 0.02, 1, x, 0.03, 0, 0x2a2c30));
+              p.dark.push(
+                rb(0.07, 0.98, 0.07, 0.025, 1, x, 0.49, 0.2, 0x3a3d43),
+                rb(0.07, 0.98, 0.07, 0.025, 1, x, 0.49, -0.2, 0x3a3d43),
+                rb(0.08, 0.06, 0.78, 0.02, 1, x, 0.03, 0, 0x2a2c30),
+              );
               p.matte.push(rb(0.34, 0.12, 0.22, 0.05, 1, x, 0.12, 0.0, 0xb9a37a)); // sandbag ballast on each foot
             });
-            p.dark.push(rb(2.04, 0.04, 0.1, 0.015, 1, 0, 0.9, 0, 0xf2efe6), rb(2.04, 0.04, 0.1, 0.015, 1, 0, 0.46, 0, 0xf2efe6)); // reflective edge strips
-            p.lamp.push(cylY(0.1, 0.16, 0, 1.0, 0, 0xffffff), cylY(0.04, 0.1, 0, 0.92, 0, 0xffffff, 8));
+            p.dark.push(
+              rb(2.04, 0.04, 0.1, 0.015, 1, 0, 0.9, 0, 0xf2efe6),
+              rb(2.04, 0.04, 0.1, 0.015, 1, 0, 0.46, 0, 0xf2efe6),
+            ); // reflective edge strips
+            p.lamp.push(
+              cylY(0.1, 0.16, 0, 1.0, 0, 0xffffff),
+              cylY(0.04, 0.1, 0, 0.92, 0, 0xffffff, 8),
+            );
             cone(p, -0.98, 0.55);
             cone(p, 0.98, 0.55);
           },
           "crates:pallet": function (p) {
-            p.planks.push(rb(1.5, 0.04, 1.0, 0.012, 1, 0, 0.12, 0), rb(1.3, 0.45, 0.85, 0.04, 1, 0, 0.365, 0), rb(1.0, 0.42, 0.7, 0.04, 1, 0.1, 0.8, 0, 0xffffff, 0.12));
+            p.planks.push(
+              rb(1.5, 0.04, 1.0, 0.012, 1, 0, 0.12, 0),
+              rb(1.3, 0.45, 0.85, 0.04, 1, 0, 0.365, 0),
+              rb(1.0, 0.42, 0.7, 0.04, 1, 0.1, 0.8, 0, 0xffffff, 0.12),
+            );
             [-0.62, 0, 0.62].forEach(function (x) {
               p.planks.push(rb(0.13, 0.1, 1.0, 0.012, 1, x, 0.05, 0)); // pallet stringers
             });
@@ -4160,7 +4422,10 @@
           },
           "cart:fruit": function (p) {
             p.planks.push(rb(1.5, 0.4, 0.85, 0.05, 1, 0, 0.62, 0));
-            p.dark.push(rb(1.56, 0.05, 0.9, 0.02, 1, 0, 0.84, 0, 0x2a6f78), rb(1.54, 0.06, 0.88, 0.02, 1, 0, 0.44, 0, 0x2a6f78));
+            p.dark.push(
+              rb(1.56, 0.05, 0.9, 0.02, 1, 0, 0.84, 0, 0x2a6f78),
+              rb(1.54, 0.06, 0.88, 0.02, 1, 0, 0.44, 0, 0x2a6f78),
+            );
             [-0.82, 0.82].forEach(function (x) {
               wheel(p, x, 0.34, 0, 0.34, 0.09);
             });
@@ -4177,11 +4442,17 @@
                 p.steel.push(tube(x, 0, z, x, 2.75, z, 0.035));
                 p.dark.push(rb(0.22, 0.04, 0.22, 0.015, 1, x, 0.02, z, 0x2a2c30));
               });
-              p.steel.push(tube(x, 1.05, -0.16, x, 2.7, 0.16, 0.025), tube(x, 1.05, 0.16, x, 2.7, -0.16, 0.025));
+              p.steel.push(
+                tube(x, 1.05, -0.16, x, 2.7, 0.16, 0.025),
+                tube(x, 1.05, 0.16, x, 2.7, -0.16, 0.025),
+              );
               p.lamp.push(cylY(0.09, 0.12, x, 2.86, 0, 0xffffff));
             });
             [1.05, 1.6, 2.15, 2.7].forEach(function (y) {
-              p.steel.push(tube(-1.1, y, -0.16, 1.1, y, -0.16, 0.03), tube(-1.1, y, 0.16, 1.1, y, 0.16, 0.03));
+              p.steel.push(
+                tube(-1.1, y, -0.16, 1.1, y, -0.16, 0.03),
+                tube(-1.1, y, 0.16, 1.1, y, 0.16, 0.03),
+              );
             });
             p.hazard.push(rb(2.0, 0.55, 0.08, 0.03, 1, 0, 1.33, 0.0));
             p.planes.push({ mat: "pHeadroom", w: 1.2, h: 0.38, x: 0, y: 1.33, z: 0.045, ry: 0 });
@@ -4192,16 +4463,33 @@
               p.steel.push(tube(x, 2.6, 0, x * 0.88, 2.0, 0.5, 0.025));
               p.dark.push(rb(0.24, 0.05, 0.24, 0.02, 1, x, 0.025, 0, 0x2a2c30));
             });
-            p.awning.push(rb(2.4, 0.05, 1.1, 0.02, 1, 0, 1.75, -0.05, 0xffffff, 0, 0.5, 0), rb(2.4, 0.42, 0.05, 0.02, 1, 0, 1.2, 0.46));
-            p.dark.push(rb(2.4, 0.05, 0.05, 0.02, 1, 0, 0.995, 0.47, 0x8a2a22));
+            p.awning.push(
+              rb(2.4, 0.05, 1.1, 0.02, 1, 0, 1.75, -0.05, 0xffffff, 0, 0.5, 0),
+              rb(2.4, 0.42, 0.05, 0.02, 1, 0, 1.2, 0.46),
+            );
+            p.dark.push(rb(2.4, 0.05, 0.05, 0.02, 1, 0, 0.995, 0.47, 0x1f4f86));
           },
           // ---- go around ----
           "van:delivery": function (p) {
-            p.paint.push(rb(2.0, 1.7, 4.4, 0.18, 2, 0, 1.2, 0), rb(1.9, 0.14, 4.2, 0.07, 1, 0, 2.08, 0));
-            p.glass.push(rb(1.5, 0.66, 0.05, 0.06, 1, 0, 1.62, 2.205), rb(1.55, 0.66, 0.05, 0.06, 1, 0, 1.55, -2.2), rb(0.05, 0.6, 0.95, 0.06, 1, -1.005, 1.62, -1.45), rb(0.05, 0.6, 0.95, 0.06, 1, 1.005, 1.62, -1.45));
+            p.paint.push(
+              rb(2.0, 1.7, 4.4, 0.18, 2, 0, 1.2, 0),
+              rb(1.9, 0.14, 4.2, 0.07, 1, 0, 2.08, 0),
+            );
+            p.glass.push(
+              rb(1.5, 0.66, 0.05, 0.06, 1, 0, 1.62, 2.205),
+              rb(1.55, 0.66, 0.05, 0.06, 1, 0, 1.55, -2.2),
+              rb(0.05, 0.6, 0.95, 0.06, 1, -1.005, 1.62, -1.45),
+              rb(0.05, 0.6, 0.95, 0.06, 1, 1.005, 1.62, -1.45),
+            );
             p.dark.push(
-              rb(2.04, 0.3, 4.46, 0.1, 1, 0, 0.46, 0, 0x2a2d33), rb(0.03, 1.3, 0.03, 0.01, 1, 0, 1.2, 2.205, 0x2a2d33), rb(0.05, 0.14, 0.05, 0.02, 1, -0.15, 1.15, 2.22, 0x6a6e75), rb(0.05, 0.14, 0.05, 0.02, 1, 0.15, 1.15, 2.22, 0x6a6e75),
-              rb(0.5, 0.16, 0.03, 0.01, 1, 0, 0.86, 2.23, 0xf2f0e8), rb(0.12, 0.22, 0.1, 0.04, 1, -1.12, 1.55, -1.7, 0x25272b), rb(0.12, 0.22, 0.1, 0.04, 1, 1.12, 1.55, -1.7, 0x25272b), rb(0.5, 0.1, 0.7, 0.04, 1, 0, 2.2, 0.5, 0xcfd3d8),
+              rb(2.04, 0.3, 4.46, 0.1, 1, 0, 0.46, 0, 0x2a2d33),
+              rb(0.03, 1.3, 0.03, 0.01, 1, 0, 1.2, 2.205, 0x2a2d33),
+              rb(0.05, 0.14, 0.05, 0.02, 1, -0.15, 1.15, 2.22, 0x6a6e75),
+              rb(0.05, 0.14, 0.05, 0.02, 1, 0.15, 1.15, 2.22, 0x6a6e75),
+              rb(0.5, 0.16, 0.03, 0.01, 1, 0, 0.86, 2.23, 0xf2f0e8),
+              rb(0.12, 0.22, 0.1, 0.04, 1, -1.12, 1.55, -1.7, 0x25272b),
+              rb(0.12, 0.22, 0.1, 0.04, 1, 1.12, 1.55, -1.7, 0x25272b),
+              rb(0.5, 0.1, 0.7, 0.04, 1, 0, 2.2, 0.5, 0xcfd3d8),
             );
             [-1, 1].forEach(function (s) {
               [-1.5, 1.5].forEach(function (z) {
@@ -4211,14 +4499,33 @@
             });
             vehicleRear(p, 1.0, 2.22, 0.5, 1.0, 0.84);
             [-1, 1].forEach(function (s) {
-              p.planes.push({ mat: "pExpressSide", w: 3.4, h: 0.4, x: s * 1.012, y: 1.2, z: 0.4, ry: (s * Math.PI) / 2 });
+              p.planes.push({
+                mat: "pExpressSide",
+                w: 3.4,
+                h: 0.4,
+                x: s * 1.012,
+                y: 1.2,
+                z: 0.4,
+                ry: (s * Math.PI) / 2,
+              });
             });
             p.planes.push({ mat: "pExpressRear", w: 1.7, h: 0.32, x: 0, y: 0.98, z: 2.215, ry: 0 });
           },
           "van:food": function (p) {
-            p.paint.push(rb(2.0, 1.95, 4.4, 0.22, 2, 0, 1.25, 0), rb(1.9, 0.12, 4.2, 0.07, 1, 0, 2.28, 0));
-            p.glass.push(rb(1.5, 0.5, 0.05, 0.06, 1, 0, 1.75, 2.205), rb(1.55, 0.66, 0.05, 0.06, 1, 0, 1.55, -2.2), rb(0.05, 0.66, 1.7, 0.06, 1, 1.005, 1.6, -0.1)); // serving hatch on the kerb side
-            p.dark.push(rb(2.04, 0.3, 4.46, 0.1, 1, 0, 0.46, 0, 0x2a2d33), rb(0.28, 0.06, 1.8, 0.02, 1, 1.12, 1.22, -0.1, 0xcfd3d8), rb(0.3, 0.4, 0.3, 0.05, 1, 0.5, 2.55, -1.0, 0x6a6e75));
+            p.paint.push(
+              rb(2.0, 1.95, 4.4, 0.22, 2, 0, 1.25, 0),
+              rb(1.9, 0.12, 4.2, 0.07, 1, 0, 2.28, 0),
+            );
+            p.glass.push(
+              rb(1.5, 0.5, 0.05, 0.06, 1, 0, 1.75, 2.205),
+              rb(1.55, 0.66, 0.05, 0.06, 1, 0, 1.55, -2.2),
+              rb(0.05, 0.66, 1.7, 0.06, 1, 1.005, 1.6, -0.1),
+            ); // serving hatch on the kerb side
+            p.dark.push(
+              rb(2.04, 0.3, 4.46, 0.1, 1, 0, 0.46, 0, 0x2a2d33),
+              rb(0.28, 0.06, 1.8, 0.02, 1, 1.12, 1.22, -0.1, 0xcfd3d8),
+              rb(0.3, 0.4, 0.3, 0.05, 1, 0.5, 2.55, -1.0, 0x6a6e75),
+            );
             p.awning.push(rb(0.9, 0.04, 2.0, 0.015, 1, 1.4, 2.0, -0.1, 0xffffff, 0, 0, -0.4)); // striped hatch awning
             [-1, 1].forEach(function (s) {
               [-1.5, 1.5].forEach(function (z) {
@@ -4227,17 +4534,39 @@
               });
             });
             vehicleRear(p, 1.0, 2.22, 0.5, 1.0, 0.84);
-            p.planes.push({ mat: "pFoodSide", w: 3.4, h: 0.4, x: -1.012, y: 1.1, z: 0.4, ry: -Math.PI / 2 });
+            p.planes.push({
+              mat: "pFoodSide",
+              w: 3.4,
+              h: 0.4,
+              x: -1.012,
+              y: 1.1,
+              z: 0.4,
+              ry: -Math.PI / 2,
+            });
             p.planes.push({ mat: "pFoodRear", w: 1.7, h: 0.32, x: 0, y: 1.0, z: 2.215, ry: 0 });
           },
           "truck:box": function (p) {
-            p.paint.push(rb(2.3, 2.4, 6.0, 0.14, 2, 0, 1.8, 1.35), rb(2.15, 1.8, 1.9, 0.28, 2, 0, 1.45, -3.5));
-            p.glass.push(rb(1.8, 0.75, 0.05, 0.08, 1, 0, 1.85, -4.47), rb(0.05, 0.7, 1.2, 0.08, 1, -1.085, 1.85, -3.55), rb(0.05, 0.7, 1.2, 0.08, 1, 1.085, 1.85, -3.55));
-            p.dark.push(
-              rb(2.1, 0.3, 8.6, 0.1, 1, 0, 0.56, 0, 0x2a2d33), rb(2.0, 0.1, 0.05, 0.02, 1, 0, 0.82, 4.34, 0x8a8d92), rb(0.5, 0.46, 0.04, 0.02, 1, -0.75, 0.5, 4.1, 0x1c1d20), rb(0.5, 0.46, 0.04, 0.02, 1, 0.75, 0.5, 4.1, 0x1c1d20),
-              rb(0.12, 0.24, 0.1, 0.04, 1, -1.22, 1.9, -4.1, 0x25272b), rb(0.12, 0.24, 0.1, 0.04, 1, 1.22, 1.9, -4.1, 0x25272b), rb(0.1, 1.7, 0.1, 0.04, 1, 1.0, 2.4, -2.95, 0x6a6e75), rb(2.32, 0.14, 6.02, 0.05, 1, 0, 1.0, 1.35, 0xc22a22),
+            p.paint.push(
+              rb(2.3, 2.4, 6.0, 0.14, 2, 0, 1.8, 1.35),
+              rb(2.15, 1.8, 1.9, 0.28, 2, 0, 1.45, -3.5),
             );
-            for (var i = 0; i < 6; i++) p.dark.push(rb(2.0, 0.04, 0.04, 0.015, 1, 0, 1.3 + i * 0.3, 4.36, 0x9a9da3)); // roll-up door ribs
+            p.glass.push(
+              rb(1.8, 0.75, 0.05, 0.08, 1, 0, 1.85, -4.47),
+              rb(0.05, 0.7, 1.2, 0.08, 1, -1.085, 1.85, -3.55),
+              rb(0.05, 0.7, 1.2, 0.08, 1, 1.085, 1.85, -3.55),
+            );
+            p.dark.push(
+              rb(2.1, 0.3, 8.6, 0.1, 1, 0, 0.56, 0, 0x2a2d33),
+              rb(2.0, 0.1, 0.05, 0.02, 1, 0, 0.82, 4.34, 0x8a8d92),
+              rb(0.5, 0.46, 0.04, 0.02, 1, -0.75, 0.5, 4.1, 0x1c1d20),
+              rb(0.5, 0.46, 0.04, 0.02, 1, 0.75, 0.5, 4.1, 0x1c1d20),
+              rb(0.12, 0.24, 0.1, 0.04, 1, -1.22, 1.9, -4.1, 0x25272b),
+              rb(0.12, 0.24, 0.1, 0.04, 1, 1.22, 1.9, -4.1, 0x25272b),
+              rb(0.1, 1.7, 0.1, 0.04, 1, 1.0, 2.4, -2.95, 0x6a6e75),
+              rb(2.32, 0.14, 6.02, 0.05, 1, 0, 1.0, 1.35, 0xc22a22),
+            );
+            for (var i = 0; i < 6; i++)
+              p.dark.push(rb(2.0, 0.04, 0.04, 0.015, 1, 0, 1.3 + i * 0.3, 4.36, 0x9a9da3)); // roll-up door ribs
             [-1, 1].forEach(function (s) {
               wheel(p, s * 1.0, 0.46, -3.4, 0.46, 0.32);
               wheel(p, s * 1.0, 0.46, 1.2, 0.46, 0.32);
@@ -4245,24 +4574,53 @@
             });
             vehicleRear(p, 1.1, 4.37, 0.62, 0.98, 0.95);
             [-1, 1].forEach(function (s) {
-              p.planes.push({ mat: "pExpressSide", w: 5.0, h: 0.62, x: s * 1.162, y: 1.8, z: 1.35, ry: (s * Math.PI) / 2 });
+              p.planes.push({
+                mat: "pExpressSide",
+                w: 5.0,
+                h: 0.62,
+                x: s * 1.162,
+                y: 1.8,
+                z: 1.35,
+                ry: (s * Math.PI) / 2,
+              });
             });
             p.planes.push({ mat: "pExpressRear", w: 2.0, h: 0.4, x: 0, y: 1.9, z: 4.39, ry: 0 });
           },
           "truck:bus": function (p) {
             p.paint.push(rb(2.3, 2.5, 8.4, 0.32, 2, 0, 1.73, 0));
-            p.glass.push(rb(0.05, 0.95, 7.7, 0.1, 1, -1.155, 2.15, 0), rb(0.05, 0.95, 7.7, 0.1, 1, 1.155, 2.15, 0), rb(1.7, 0.8, 0.05, 0.08, 1, 0, 2.15, 4.215), rb(0.05, 1.55, 1.2, 0.05, 1, 1.158, 1.5, -2.9), rb(1.8, 1.0, 0.05, 0.1, 1, 0, 2.0, -4.22));
+            p.glass.push(
+              rb(0.05, 0.95, 7.7, 0.1, 1, -1.155, 2.15, 0),
+              rb(0.05, 0.95, 7.7, 0.1, 1, 1.155, 2.15, 0),
+              rb(1.7, 0.8, 0.05, 0.08, 1, 0, 2.15, 4.215),
+              rb(0.05, 1.55, 1.2, 0.05, 1, 1.158, 1.5, -2.9),
+              rb(1.8, 1.0, 0.05, 0.1, 1, 0, 2.0, -4.22),
+            );
             p.dark.push(
-              rb(2.34, 0.4, 8.5, 0.1, 1, 0, 0.56, 0, 0x2a2d33), rb(1.4, 0.28, 2.6, 0.1, 1, 0, 3.08, -0.6, 0xdfe3e8), rb(1.2, 0.5, 0.04, 0.02, 1, 0, 1.0, 4.22, 0x23252a), rb(0.04, 1.55, 0.04, 0.01, 1, 1.158, 1.5, -2.3, 0x23252a), rb(0.04, 1.55, 0.04, 0.01, 1, 1.158, 1.5, -3.5, 0x23252a),
+              rb(2.34, 0.4, 8.5, 0.1, 1, 0, 0.56, 0, 0x2a2d33),
+              rb(1.4, 0.28, 2.6, 0.1, 1, 0, 3.08, -0.6, 0xdfe3e8),
+              rb(1.2, 0.5, 0.04, 0.02, 1, 0, 1.0, 4.22, 0x23252a),
+              rb(0.04, 1.55, 0.04, 0.01, 1, 1.158, 1.5, -2.3, 0x23252a),
+              rb(0.04, 1.55, 0.04, 0.01, 1, 1.158, 1.5, -3.5, 0x23252a),
             );
             [-1, 1].forEach(function (s) {
               wheel(p, s * 1.1, 0.5, -3.0, 0.5, 0.34);
               wheel(p, s * 1.1, 0.5, 2.7, 0.5, 0.34);
-              p.dark.push(rb(0.14, 0.8, 1.4, 0.06, 1, s * 1.14, 0.8, -3.0, 0x25272b), rb(0.14, 0.8, 1.4, 0.06, 1, s * 1.14, 0.8, 2.7, 0x25272b));
+              p.dark.push(
+                rb(0.14, 0.8, 1.4, 0.06, 1, s * 1.14, 0.8, -3.0, 0x25272b),
+                rb(0.14, 0.8, 1.4, 0.06, 1, s * 1.14, 0.8, 2.7, 0x25272b),
+              );
             });
             vehicleRear(p, 1.1, 4.25, 0.58, 1.3, 0.98);
             [-1, 1].forEach(function (s) {
-              p.planes.push({ mat: "pBusSide", w: 4.1, h: 0.5, x: s * 1.162, y: 1.1, z: -0.15, ry: (s * Math.PI) / 2 });
+              p.planes.push({
+                mat: "pBusSide",
+                w: 4.1,
+                h: 0.5,
+                x: s * 1.162,
+                y: 1.1,
+                z: -0.15,
+                ry: (s * Math.PI) / 2,
+              });
             });
             p.planes.push({ mat: "pBusDest", w: 1.4, h: 0.3, x: 0, y: 2.8, z: 4.225, ry: 0 });
           },
@@ -4279,7 +4637,13 @@
           // decal planes: merge those that share a material into one mesh (a van has 3 planes but 2 materials)
           var byMat = {};
           parts.planes.forEach(function (pl) {
-            (byMat[pl.mat] = byMat[pl.mat] || []).push(bakeGeo(new THREE.PlaneGeometry(pl.w, pl.h), mat4(pl.x, pl.y, pl.z, 1, 1, 1, 0, pl.ry, 0), 0xffffff));
+            (byMat[pl.mat] = byMat[pl.mat] || []).push(
+              bakeGeo(
+                new THREE.PlaneGeometry(pl.w, pl.h),
+                mat4(pl.x, pl.y, pl.z, 1, 1, 1, 0, pl.ry, 0),
+                0xffffff,
+              ),
+            );
           });
           out.planes = Object.keys(byMat).map(function (m) {
             return { mat: m, geo: mergeGeos(byMat[m]) };
@@ -4322,12 +4686,24 @@
           scene.add(g);
           return info;
         }
+        function prewarmObstacles() {
+          if (!renderer) return;
+          initObstacleKit();
+          Object.keys(OB_VARIANTS).forEach(function (t) {
+            OB_VARIANTS[t].forEach(function (v) {
+              obGeo(t + ":" + v);
+            });
+          });
+        }
         function spawnObstacle(type, lane, z, variantArg) {
           if (!renderer) return null;
           initObstacleKit();
           var spec = OB_SPEC[type],
             vars = OB_VARIANTS[type],
-            variant = variantArg && vars.indexOf(variantArg) >= 0 ? variantArg : vars[Math.floor(rand() * vars.length)],
+            variant =
+              variantArg && vars.indexOf(variantArg) >= 0
+                ? variantArg
+                : vars[Math.floor(rand() * vars.length)],
             key = type + ":" + variant,
             pool = (obPool[key] = obPool[key] || []),
             o = null,
@@ -4349,6 +4725,7 @@
           o.z = z;
           o.passed = false;
           o.nearMiss = false;
+          o.hinted = false;
           if (o.paintMesh) o.paintMesh.material = obMats.paint[Math.floor(rand() * PAINT.length)];
           o.group.position.set(LANE_X[lane], 0, z);
           o.group.visible = true;
@@ -4374,8 +4751,21 @@
           // beveled coin with a raised rim and an inset face ring (a lathe profile, radius x height)
           var cg = new THREE.LatheGeometry(
             [
-              [0, 0.045], [0.2, 0.045], [0.215, 0.058], [0.255, 0.058], [0.27, 0.045], [0.315, 0.045], [0.345, 0.022], [0.35, 0],
-              [0.345, -0.022], [0.315, -0.045], [0.27, -0.045], [0.255, -0.058], [0.215, -0.058], [0.2, -0.045], [0, -0.045],
+              [0, 0.045],
+              [0.2, 0.045],
+              [0.215, 0.058],
+              [0.255, 0.058],
+              [0.27, 0.045],
+              [0.315, 0.045],
+              [0.345, 0.022],
+              [0.35, 0],
+              [0.345, -0.022],
+              [0.315, -0.045],
+              [0.27, -0.045],
+              [0.255, -0.058],
+              [0.215, -0.058],
+              [0.2, -0.045],
+              [0, -0.045],
             ].map(function (q) {
               return new THREE.Vector2(q[0], q[1]);
             }),
@@ -4918,12 +5308,23 @@
           var len = planSegment();
           director.cursor = distance + len + clamp(speed * 0.95, 10, 22);
         }
+        // First-time hints: the first time each kind of obstacle shows up in a session, say what to do about it.
+        var hintShown = {},
+          HINT = {
+            jump: "Low obstacle — swipe up to jump",
+            slide: "Overhead — swipe down to slide",
+            block: "Blocked — change lane",
+          };
         function stepWorldObjects(move) {
           var i, o;
           for (i = activeObstacles.length - 1; i >= 0; i--) {
             o = activeObstacles[i];
             o.z += move;
             o.group.position.z = o.z;
+            if (!o.hinted && distance < 700 && o.z > -34 && !hintShown[o.spec.kind]) {
+              hintShown[o.spec.kind] = o.hinted = true;
+              UIManager.toast(HINT[o.spec.kind]);
+            }
             if (o.z - o.spec.len / 2 > KILL_Z) releaseObstacle(o, i);
           }
           for (i = activePickups.length - 1; i >= 0; i--) {
@@ -4988,6 +5389,7 @@
           qSlowT = 0;
           resetRun();
           resize();
+          prewarmObstacles(); // build every obstacle variant's geometry now, not mid-run on first spawn
           phase = "countdown";
           AudioManager.unlock();
           AudioManager.playMusic();
@@ -5104,6 +5506,7 @@
           if (runnerView) {
             runnerView.play("caught");
             runnerView.root.visible = runnerView.ready;
+            if (runnerView.setAlpha) runnerView.setAlpha(1);
           }
           lastRun.score = Math.floor(score);
           lastRun.coins = runCoins;
@@ -5337,6 +5740,8 @@
           var w = $("stage").clientWidth,
             h = $("stage").clientHeight;
           if (w < 2 || h < 2) return; // hidden screen — retry next entry (canvas-size lesson)
+          // cap the drawing buffer (~4.5 M px) so a 5K display on the high tier cannot allocate hundreds of MB
+          renderer.setPixelRatio(Math.min(quality.dpr, Math.max(0.5, Math.sqrt(4.5e6 / (w * h)))));
           renderer.setSize(w, h, false);
           camera.aspect = w / h;
           camParams(camera.aspect);
@@ -5345,6 +5750,16 @@
           camera.updateProjectionMatrix();
         }
         window.addEventListener("resize", resize);
+        if (renderer) {
+          // three restores the context itself; we only stop the sim running blind and refresh the shop previews
+          renderer.domElement.addEventListener("webglcontextlost", function (ev) {
+            ev.preventDefault();
+            pauseRun();
+          });
+          renderer.domElement.addEventListener("webglcontextrestored", function () {
+            CharacterKit.resetThumbs();
+          });
+        }
 
         document.addEventListener("visibilitychange", function () {
           // rAF stops while hidden. Mid-run this is a real pause (overlay + frozen sim); the audio is always
@@ -5377,8 +5792,10 @@
           }
           // a held key from the resume press must not skip the resume 3-2-1
           if (ev.repeat && phase === "countdown") return;
-          // RECURRENCE(PLAY-005, count=2): a global keydown handler must not steal keys from a focused
-          // control. Bail on buttons so Space/Enter activate #quitBtn/#muteBtn.
+          // RECURRENCE(PLAY-005, count=3): a global keydown handler must not steal keys from a focused
+          // control, and must not go deaf while one has focus: bail on buttons ONLY for the activation keys
+          // (Space/Enter), so arrows / WASD keep steering after a click on #muteBtn. Systemic fix: handler
+          // shape above; codebase scan: no other game has this pattern (grep closest("button")).
           var k = ev.key;
           if (
             ev.target &&
@@ -5743,7 +6160,7 @@
             chase.gap = clamp(g, GAP_METER_MIN, GAP_CALM + 2);
           },
           grantCoins: function (n) {
-            save.coins += n;
+            save.coins = SaveManager.sanitizeCount(save.coins + SaveManager.sanitizeCount(n));
             SaveManager.persist();
           },
           givePowerup: activatePowerup,
@@ -5760,7 +6177,7 @@
             PlayerController.input(a);
           },
           step: function (ms) {
-            var n = Math.round(ms / 1000 / STEP);
+            var n = Math.round(clamp(Number(ms) || 0, 0, 120000) / 1000 / STEP); // a stray 1e9 must not freeze the tab
             for (var i = 0; i < n; i++) tick(STEP);
             render();
           },

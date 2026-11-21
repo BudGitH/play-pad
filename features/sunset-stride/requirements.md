@@ -57,12 +57,13 @@ See `design-review.md`.
 - **AC2 Legibility:** in a screenshot at 390×844 and 1280×720 the road, three lanes, every obstacle type and the runner are distinguishable; mean scene luminance is bright (not a night scene); obstacle colours contrast with the asphalt.
 - **AC3 No T-pose:** the runner is never shown in bind pose. `__stride.skin` reports a non-zero total clip weight in every state (setup preview, countdown, run, jump, land, slide, stumble, caught) and arm spread is below T-pose width while running.
 - **AC4 Runner animation:** while running, the leg / arm bones move (bone spread changes across frames); the slide uses the authored pose (torso reclined, legs forward, lowest point near the ground, **no non-uniform scale on the model**).
-- **AC5 Chasers behind:** after a hit, ≥ 1 dog is at z > 0 (behind the runner), inside the camera frustum, and closes to within 2.2 m; they never spawn ahead of the runner; after ~5 s clean they are ≥ 3.5 m back.
+- **AC5 Chasers behind:** after a hit, ≥ 1 dog is at z > 0 (behind the runner), inside the camera frustum, and closes to within 2.2 m; they never spawn ahead of the runner; after ~6 s clean they are ≥ 3.5 m back (the pack falls back 0.35 m/s from 1.7 m).
 - **AC6 Mechanics:** (a) a first frontal hit is a stumble (run continues, speed drops, i-frames), a second within the danger window ends the run; (b) a hit while changing lane into a blocker bounces back and is never fatal; (c) a buffered input fires on landing; (d) jumping during a slide cancels it; (e) a close call awards +10 and pushes the dogs back.
 - **AC7 Persistence:** coins, unlocked skins, equipped skin, best score and mute persist under `playpad.sunsetStride.v1`; legacy coins/best are imported once.
 - **AC8 Fallbacks:** with every asset request failing (and on `file://`) the game starts, runs, and shows a primitive runner and dogs, procedural textures and synth sound, with no uncaught errors.
 - **AC9 Existing contract kept:** pause on hide / blur, instant start, quality tiers, ≤ 170 draw calls on high, no per-frame allocation in hot paths, WebGL-missing notice, reduced-motion respected.
 - **AC10 Smoke:** `npm run smoke` passes (hub + all games, round starts on phone + desktop).
+- **AC11 Model fidelity (owner request mid-run: "high fidelity, improved visual quality"):** within a CC0 stylised pack — smooth (auto-smoothed) normals, a face, trainers and outfit palettes on the runner; eyes, nose and fur shading on the dogs; vehicles with rounded bodies, clearcoat paint, glass, wheels with hubs, lights and a livery; organic trees; every obstacle a recognisable real-world object. Verified by close-up renders and the probes (draw-call / triangle budgets unchanged in kind). **Not** a photoreal or high-polygon character: the rigged CC0 set available offline is stylised low-poly, polished rather than replaced.
 
 ## Edge cases & error states
 
@@ -76,6 +77,7 @@ See `design-review.md`.
 
 - New music composition, multiplayer, online leaderboards, daily missions, climbing onto vans, additional worlds, haptics.
 - Upgrading three.js past r147 (see `games/sunset-stride/CLAUDE.md`).
+- Photoreal / high-polygon characters (no suitable CC0 rigged set; Mixamo-style assets cannot be redistributed in this repo). Carrying the old Neon Rush outfits over (the characters changed completely; only coins, best score and mute are imported — recorded in `docs/DECISIONS.md`).
 
 ## Non-functional requirements
 

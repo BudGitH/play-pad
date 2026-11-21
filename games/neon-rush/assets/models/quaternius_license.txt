@@ -1,9 +1,0 @@
-Astronaut.glb — "Astronaut" by Quaternius
-Source: https://poly.pizza/m/3hC2i0CTuO (via poly.pizza, GLB export)
-Author site: https://quaternius.com
-
-License: CC0 1.0 Universal (Public Domain Dedication)
-https://creativecommons.org/publicdomain/zero/1.0/
-
-Free for personal and commercial use, no attribution required
-(credit appreciated — thanks Quaternius!).

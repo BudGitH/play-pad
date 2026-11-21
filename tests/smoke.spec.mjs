@@ -253,7 +253,7 @@ test("games.js lists live games to run rounds in (a game with no driver is flagg
 
 for (const vp of ROUND_VIEWPORTS) {
   test.describe(`start a round at ${vp.name}`, () => {
-    // Neon Rush compiles its shaders in software on CI (no GPU), which is slow; leave headroom.
+    // Sunset Stride compiles its shaders in software on CI (no GPU), which is slow; leave headroom.
     test.describe.configure({ timeout: 45_000 });
     test.use({
       viewport: { width: vp.width, height: vp.height },

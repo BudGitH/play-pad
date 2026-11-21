@@ -1,0 +1,6 @@
+music.ogg — "Chill lofi inspired" (seamless loop edit)
+Original: omfgdude — https://opengameart.org/content/chill-lofi-inspired
+Loop edit: qubodup — https://opengameart.org/content/chill-lofi-inspired-loop-edit
+Licence shown on the OpenGameArt page (retrieved 2026-11-21): CC0 1.0 Universal.
+The file in this repo was re-encoded (Ogg Vorbis, quality 3, 44.1 kHz) from chilllofir-loop.ogg; no audio edits.
+https://creativecommons.org/publicdomain/zero/1.0/

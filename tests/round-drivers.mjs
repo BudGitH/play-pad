@@ -12,7 +12,7 @@
 //   heartbeat    optional async (page) => number that must keep increasing while the round
 //                runs — proves the game loop is alive, not just that a screen is showing
 //
-// Prefer the game's own debug hook (window.__claw / __decoder / __neon) when it has one;
+// Prefer the game's own debug hook (window.__claw / __decoder / __stride) when it has one;
 // otherwise assert on visible in-round DOM state. Nothing here uses a fixed sleep.
 import { expect } from "@playwright/test";
 
@@ -77,18 +77,18 @@ export const ROUND_DRIVERS = {
     },
   },
 
-  "neon-rush": {
+  "sunset-stride": {
     start: "Start running",
     // Needs WebGL: if the browser has none the game shows its own "turn on WebGL" notice and
     // never leaves "idle", so this fails loudly rather than passing on a blank canvas.
-    signal: '__neon.state.phase === "running", score advancing',
+    signal: '__stride.state.phase === "running", score advancing',
     async waitForRound(page) {
       await expect
-        .poll(() => page.evaluate(() => window.__neon?.state.phase), {
+        .poll(() => page.evaluate(() => window.__stride?.state.phase), {
           timeout: ROUND_TIMEOUT_MS,
         })
         .toBe("running");
     },
-    heartbeat: (page) => page.evaluate(() => window.__neon.state.score),
+    heartbeat: (page) => page.evaluate(() => window.__stride.state.score),
   },
 };

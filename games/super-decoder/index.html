@@ -1072,6 +1072,27 @@
         .row.active {
           min-height: 48px;
         }
+        /* Results on a short landscape phone: tighten so the stats and both buttons fit above the
+         fold (the screen still scrolls if a device is shorter still). */
+        .res-inner {
+          padding-top: max(14px, env(safe-area-inset-top));
+          padding-bottom: 20px;
+        }
+        .res-inner .crown {
+          font-size: 30px;
+        }
+        .res-inner .sub {
+          margin-bottom: 14px;
+        }
+        .newBest {
+          margin-bottom: 10px;
+        }
+        .stat {
+          padding: 10px 8px;
+        }
+        .stat-grid {
+          margin-bottom: 14px;
+        }
       }
 
       /* ---------- RESULTS — reused from Snap / Claw Catch ---------- */

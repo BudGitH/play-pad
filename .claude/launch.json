@@ -6,12 +6,6 @@
       "runtimeExecutable": "python",
       "runtimeArgs": ["-m", "http.server", "5500"],
       "port": 5500
-    },
-    {
-      "name": "playpad-dist",
-      "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "5501", "--directory", "dist"],
-      "port": 5501
     }
   ]
 }

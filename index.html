@@ -11,18 +11,38 @@
 
     <link rel="icon" href="icons/favicon.svg" type="image/svg+xml" />
     <link rel="manifest" href="manifest.webmanifest" />
-    <meta name="theme-color" content="#08080c" />
+    <!-- Two metas so the phone's status bar matches the page in either system theme.
+         scripts/theme.js rewrites both when the player picks a theme by hand. -->
+    <meta name="theme-color" content="#fff8f7" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#08080c" media="(prefers-color-scheme: dark)" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="PlayPad" />
+
+    <!-- Applies the saved light/dark choice before first paint (no flash). -->
+    <script src="scripts/theme.js"></script>
 
     <link rel="stylesheet" href="styles/tokens.css" />
     <link rel="stylesheet" href="styles/base.css" />
 
     <style>
-      /* ---- Page layout (catalog-specific; components live in base.css) ---- */
+      /* ---- Page layout (hub-specific; shared components live in base.css) ---- */
+      html {
+        /* A focused/anchored element must never hide under the sticky app bar, and
+           keeps a margin from the bottom edge so its focus ring is not clipped */
+        scroll-padding-top: calc(80px + env(safe-area-inset-top));
+        scroll-padding-bottom: 24px;
+      }
       body {
         display: flex;
         flex-direction: column;
+      }
+      /* One centred column shared by the app bar, main and footer */
+      .wrap {
+        width: 100%;
+        max-width: var(--pp-layout-max);
+        margin: 0 auto;
+        padding-inline: max(var(--pp-gutter), env(safe-area-inset-left))
+          max(var(--pp-gutter), env(safe-area-inset-right));
       }
 
       /* Top app bar */
@@ -30,240 +50,478 @@
         position: sticky;
         top: 0;
         z-index: 20;
+        background: var(--md-sys-color-surface);
+        padding-top: env(safe-area-inset-top);
+        transition: box-shadow var(--md-sys-motion-duration-short3)
+          var(--md-sys-motion-easing-standard);
+      }
+      .app-bar--scrolled {
+        box-shadow: var(--md-sys-elevation-level2);
+      }
+      .app-bar .wrap {
         display: flex;
         align-items: center;
         gap: 12px;
-        padding: calc(env(safe-area-inset-top) + 12px) max(16px, env(safe-area-inset-right)) 12px
-          max(16px, env(safe-area-inset-left));
-        background: var(--md-sys-color-surface);
-        border-bottom: 1px solid transparent;
-        transition:
-          border-color var(--md-sys-motion-duration-short3) ease,
-          box-shadow var(--md-sys-motion-duration-short3) ease;
-      }
-      .app-bar--scrolled {
-        border-bottom-color: var(--md-sys-color-outline-variant);
-        box-shadow: var(--md-sys-elevation-level2);
+        min-height: 64px;
       }
       .app-bar__logo {
         width: 36px;
         height: 36px;
         border-radius: 9px;
       }
-      .app-bar__title {
-        letter-spacing: -0.02em;
+      .app-bar__spacer {
+        flex: 1;
+      }
+      /* .icon-button sets display, which would otherwise beat the hidden attribute */
+      .icon-button[hidden] {
+        display: none;
       }
 
       main {
         flex: 1;
-        width: 100%;
-        max-width: 1120px;
-        margin: 0 auto;
-        padding-bottom: env(safe-area-inset-bottom);
+      }
+      /* The skip-link target: a focus ring around the whole section would be noise */
+      #games:focus {
+        outline: none;
+      }
+      .intro {
+        padding-block: var(--md-sys-spacing-sm) var(--md-sys-spacing-md);
+      }
+      .intro p {
+        margin-top: var(--md-sys-spacing-xs);
       }
 
-      /* Hero */
-      .hero {
-        padding: clamp(28px, 6vw, 56px) max(20px, env(safe-area-inset-left)) 8px
-          max(20px, env(safe-area-inset-right));
-        max-width: 640px;
+      /* ---- Featured hero: "Jump back in" / "Game of the day" ---- */
+      .hero-card {
+        display: grid;
+        grid-template-columns: 96px 1fr;
+        gap: var(--md-sys-spacing-md);
+        padding: var(--md-sys-spacing-md);
+        border-radius: var(--md-sys-shape-corner-xl);
+        background: var(--md-sys-color-surface-container-high);
+        box-shadow: var(--md-sys-elevation-level1);
       }
-      .hero h1 {
-        margin: 0 0 12px;
+      .hero-card[hidden] {
+        display: none;
       }
-      .hero p {
-        max-width: 46ch;
+      .hero-card__media {
+        width: 96px;
+        height: 96px;
+        border-radius: var(--md-sys-shape-corner-lg);
+        display: grid;
+        place-items: center;
+        background: radial-gradient(circle at 78% 20%, rgba(255, 255, 255, 0.3), transparent 45%),
+          radial-gradient(circle at 18% 86%, rgba(0, 0, 0, 0.28), transparent 50%),
+          var(--card-accent, var(--md-sys-color-primary));
       }
-
-      /* Section header */
-      .section-head {
+      .hero-card__icon {
+        font-size: 56px;
+        line-height: 1;
+        filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.38));
+      }
+      .hero-card__eyebrow {
+        color: var(--md-sys-color-primary);
+        text-transform: uppercase;
+      }
+      .hero-card__title {
+        margin: 2px 0 4px;
+      }
+      .hero-card__desc--long,
+      .hero-card__badges {
+        display: none;
+      }
+      .hero-card__actions {
+        grid-column: 1 / -1;
         display: flex;
-        align-items: baseline;
-        justify-content: space-between;
+        gap: var(--md-sys-spacing-sm);
+      }
+      .hero-card__actions .button {
+        white-space: nowrap;
+      }
+      .hero-card__actions .button--filled {
+        flex: 1;
+      }
+
+      /* ---- Section header + filter chips ---- */
+      .section-head {
+        padding-top: var(--md-sys-spacing-lg);
+      }
+      .filters {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--md-sys-spacing-sm);
+        padding-block: 12px var(--md-sys-spacing-md);
+      }
+
+      /* ---- Game list (compact) / grid (medium+) ---- */
+      .game-grid {
+        list-style: none;
+        margin: 0;
+        padding: 0 0 var(--md-sys-spacing-xl);
+        display: grid;
+        grid-template-columns: 1fr;
         gap: 12px;
-        padding: 20px max(20px, env(safe-area-inset-left)) 4px max(20px, env(safe-area-inset-right));
       }
-      .section-head .count {
-        color: var(--md-sys-color-on-surface-variant);
+      .game-grid > li {
+        display: flex;
       }
-
-      /* Rail edge padding aligns cards with the hero text */
-      .rail {
-        --rail-edge: max(20px, env(safe-area-inset-left));
-      }
-      /* Centre the scroll arrows over the card media tile, not the title text */
-      .rail__arrow {
-        top: calc(8px + 78px);
-      }
-
-      /* Game card */
       .game-card {
-        width: min(82vw, 340px);
+        flex: 1;
+        min-width: 0;
+        display: grid;
+        grid-template-columns: var(--pp-list-tile) 1fr auto;
+        align-items: center;
+        gap: var(--md-sys-spacing-md);
+        min-height: 104px;
+        padding: 12px;
         overflow: hidden;
-        color: var(--md-sys-color-on-surface);
-      }
-      .game-card__media,
-      .game-card__body {
-        position: relative;
-        z-index: 1;
       }
       .game-card__media {
-        height: 156px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        position: relative;
+        z-index: 1;
+        width: var(--pp-list-tile);
+        height: var(--pp-list-tile);
+        border-radius: var(--md-sys-shape-corner-md);
+        display: grid;
+        place-items: center;
         background: radial-gradient(circle at 78% 20%, rgba(255, 255, 255, 0.28), transparent 45%),
           radial-gradient(circle at 18% 86%, rgba(0, 0, 0, 0.28), transparent 50%),
           var(--card-accent, var(--md-sys-color-primary));
       }
       .game-card__icon {
-        font-size: 66px;
+        font-size: 44px;
         line-height: 1;
         filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.38));
+        transition: transform var(--md-sys-motion-duration-short4)
+          var(--md-sys-motion-easing-emphasized);
       }
       .game-card__body {
+        position: relative;
+        z-index: 1;
+        min-width: 0;
         display: flex;
         flex-direction: column;
-        gap: 10px;
-        padding: 16px;
+        gap: 4px;
       }
       .game-card__title {
-        margin: 0;
+        font-size: 18px;
+        font-weight: 700;
+        line-height: 1.3;
       }
-      .game-card__desc {
-        margin: 0;
+      .game-card__tagline {
         display: -webkit-box;
-        -webkit-line-clamp: 3;
-        line-clamp: 3;
-        -webkit-box-orient: vertical;
         overflow: hidden;
-      }
-      .game-card__tags {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
+        -webkit-line-clamp: 2;
+        line-clamp: 2;
+        -webkit-box-orient: vertical;
       }
       .game-card__meta {
         display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-top: 4px;
-        min-height: 24px;
-      }
-      .game-card__players {
-        color: var(--md-sys-color-on-surface-variant);
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 2px;
       }
       .game-card__play {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        color: var(--md-sys-color-primary);
-        font-weight: 700;
+        position: relative;
+        z-index: 1;
+        display: grid;
+        place-items: center;
+        width: 40px;
+        height: 40px;
+        border-radius: var(--md-sys-shape-corner-full);
+        background: var(--md-sys-color-primary-container);
+        color: var(--md-sys-color-on-primary-container);
+      }
+      .game-card__play-label {
+        display: none;
+      }
+      /* Hover/press feel: slightly bigger than the shared .card--interactive values */
+      .card--interactive.game-card:hover {
+        transform: translateY(-4px);
+      }
+      .card--interactive.game-card:hover .game-card__icon {
+        transform: scale(1.12) rotate(-6deg);
+      }
+      .card--interactive.game-card:active {
+        transform: scale(0.97);
       }
 
-      /* "Coming soon" placeholder card */
+      /* "Coming soon": dimmed, not a link, no play glyph */
       .game-card--soon {
         opacity: 0.62;
       }
       .game-card--soon .game-card__media {
         filter: saturate(0.7);
       }
+      .empty {
+        grid-column: 1 / -1;
+        padding: var(--md-sys-spacing-xl) 0;
+        text-align: center;
+      }
 
-      footer {
-        padding: 28px max(20px, env(safe-area-inset-left)) calc(28px + env(safe-area-inset-bottom))
-          max(20px, env(safe-area-inset-right));
+      /* Footer shares the content column; the rule lines up with the content edges */
+      footer .wrap {
+        padding-block: 0 env(safe-area-inset-bottom);
+      }
+      .footer__inner {
+        padding-block: var(--md-sys-spacing-lg);
         color: var(--md-sys-color-on-surface-variant);
+        border-top: 1px solid var(--md-sys-color-outline-variant);
       }
       footer a {
         color: var(--md-sys-color-primary);
         text-decoration: underline;
       }
+
+      /* ---- medium: 600-839 -> 2-column vertical cards ---- */
+      @media (min-width: 600px) {
+        .game-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: var(--md-sys-spacing-md);
+        }
+        .game-card {
+          grid-template-columns: 1fr;
+          grid-template-rows: auto 1fr;
+          align-items: stretch;
+          padding: 0;
+          gap: 0;
+        }
+        .game-card__media {
+          width: auto;
+          height: var(--pp-card-media-height);
+          border-radius: 0;
+        }
+        .game-card__icon {
+          font-size: 72px;
+        }
+        .game-card__body {
+          padding: var(--md-sys-spacing-md) var(--md-sys-spacing-md) 0;
+          gap: 6px;
+        }
+        .game-card__title {
+          font-size: var(--md-sys-typescale-title-large-size);
+        }
+        .game-card__play {
+          justify-self: end;
+          align-self: end;
+          margin: 12px var(--md-sys-spacing-md) var(--md-sys-spacing-md);
+          width: auto;
+          height: 40px;
+          padding: 0 var(--md-sys-spacing-md) 0 12px;
+          display: inline-flex;
+          gap: 6px;
+          font-size: var(--md-sys-typescale-label-large-size);
+          font-weight: 700;
+        }
+        .game-card__play-label {
+          display: inline;
+        }
+        .hero-card {
+          grid-template-columns: 200px 1fr;
+          gap: var(--md-sys-spacing-lg);
+          padding: var(--md-sys-spacing-lg);
+        }
+        .hero-card__media {
+          width: 200px;
+          height: 168px;
+          grid-row: span 2;
+        }
+        .hero-card__icon {
+          font-size: 96px;
+        }
+        .hero-card__actions {
+          grid-column: 2;
+        }
+        .hero-card__actions .button--filled {
+          flex: 0 0 auto;
+        }
+      }
+
+      /* ---- expanded: >= 840 -> 3-column grid, split-card hero ---- */
+      @media (min-width: 840px) {
+        .game-grid {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 20px;
+        }
+        .intro {
+          padding-block: var(--md-sys-spacing-lg);
+        }
+        .hero-card {
+          grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+          gap: 0;
+          padding: 0;
+          overflow: hidden;
+        }
+        .hero-card__media {
+          width: auto;
+          height: auto;
+          min-height: 184px;
+          border-radius: 0;
+        }
+        .hero-card__icon {
+          font-size: 104px;
+        }
+        .hero-card__body {
+          padding: var(--md-sys-spacing-lg) var(--md-sys-spacing-xl) 0;
+        }
+        .hero-card__desc--short {
+          display: none;
+        }
+        .hero-card__desc--long {
+          display: block;
+          max-width: 52ch;
+        }
+        .hero-card__badges {
+          display: flex;
+          gap: 6px;
+          margin-top: 12px;
+        }
+        .hero-card__actions {
+          padding: var(--md-sys-spacing-md) var(--md-sys-spacing-xl) var(--md-sys-spacing-lg);
+        }
+      }
+
+      /* ---- Motion: only when the player allows it ---- */
+      @media (prefers-reduced-motion: no-preference) {
+        .reveal {
+          animation: pp-rise var(--md-sys-motion-duration-medium2)
+            var(--md-sys-motion-easing-emphasized-decelerate) both;
+          animation-delay: calc(var(--i, 0) * var(--pp-stagger-step));
+        }
+        .hero-card__icon {
+          animation: pp-pop var(--md-sys-motion-duration-long1)
+            var(--md-sys-motion-easing-emphasized) 120ms both;
+        }
+      }
+      @keyframes pp-rise {
+        from {
+          opacity: 0;
+          transform: translateY(12px);
+        }
+      }
+      @keyframes pp-pop {
+        0% {
+          transform: scale(0.6) rotate(-8deg);
+          opacity: 0;
+        }
+        70% {
+          transform: scale(1.06) rotate(2deg);
+          opacity: 1;
+        }
+      }
     </style>
   </head>
   <body>
-    <header class="app-bar" id="appBar" role="banner">
-      <img class="app-bar__logo" src="icons/favicon.svg" alt="" width="36" height="36" />
-      <span class="app-bar__title title-large brand-wordmark">PlayPad</span>
+    <a class="skip-link button button--filled" href="#games">Skip to games</a>
+
+    <header class="app-bar" id="appBar">
+      <div class="wrap">
+        <img class="app-bar__logo" src="icons/favicon.svg" alt="" width="36" height="36" />
+        <span class="title-large brand-wordmark">PlayPad</span>
+        <span class="app-bar__spacer"></span>
+        <button
+          class="icon-button state-layer"
+          id="themeButton"
+          type="button"
+          aria-label="Switch to light theme"
+          hidden
+        >
+          <svg id="themeIcon" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"></svg>
+        </button>
+      </div>
     </header>
 
-    <main>
-      <section class="hero">
-        <h1 class="display-small">Press play.</h1>
-        <p class="body-large text-muted">
-          A little hub of quick, colourful mini-games. No install, no signup — pick one and go.
-        </p>
-      </section>
+    <main id="main">
+      <div class="wrap">
+        <section class="intro reveal" style="--i: 0">
+          <h1 class="display-small">Press play.</h1>
+          <p class="body-large text-muted">Quick mini-games. No install, no signup.</p>
+        </section>
 
-      <section class="rail" aria-labelledby="gamesHeading">
-        <div class="section-head">
-          <h2 class="headline-small" id="gamesHeading">Games</h2>
-          <span class="count label-large" id="gamesCount"></span>
-        </div>
+        <section
+          class="hero-card reveal"
+          style="--i: 1"
+          aria-labelledby="heroTitle"
+          id="hero"
+          hidden
+        ></section>
 
-        <div class="rail__viewport">
-          <button
-            class="icon-button rail__arrow rail__arrow--prev state-layer"
-            id="railPrev"
-            type="button"
-            aria-label="Scroll to previous games"
-            hidden
+        <section aria-labelledby="gamesHeading" id="games" tabindex="-1">
+          <div class="section-head">
+            <h2 class="headline-small" id="gamesHeading">All games</h2>
+            <span class="visually-hidden" id="gamesStatus" aria-live="polite"></span>
+          </div>
+          <div class="filters" role="group" aria-label="Filter games" id="filters"></div>
+          <ul class="game-grid" id="grid" role="list"></ul>
+          <noscript
+            ><p class="body-large text-muted">
+              PlayPad needs JavaScript to list the games.
+            </p></noscript
           >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path
-                d="M15 18l-6-6 6-6"
-                stroke="currentColor"
-                stroke-width="2.2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-            </svg>
-          </button>
-
-          <div class="rail__track" id="gameTrack"></div>
-
-          <button
-            class="icon-button rail__arrow rail__arrow--next state-layer"
-            id="railNext"
-            type="button"
-            aria-label="Scroll to more games"
-            hidden
-          >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path
-                d="M9 18l6-6-6-6"
-                stroke="currentColor"
-                stroke-width="2.2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-            </svg>
-          </button>
-        </div>
-      </section>
+        </section>
+      </div>
     </main>
 
     <footer class="body-small">
-      PlayPad · built with
-      <a href="https://m3.material.io" target="_blank" rel="noopener">Material Design 3</a>. More
-      games coming soon.
+      <div class="wrap">
+        <div class="footer__inner">
+          PlayPad · built with
+          <a href="https://m3.material.io" target="_blank" rel="noopener">Material Design 3</a>. New
+          games land here regularly.
+        </div>
+      </div>
     </footer>
 
     <script src="games.js"></script>
     <script>
+      /* ==========================================================================
+         Hub script: renders the featured hero, filter chips and game list from
+         window.GAMES (games.js), remembers the last game / filter in localStorage,
+         and wires the theme toggle (scripts/theme.js owns the theme itself).
+         Storage is UNTRUSTED input: every read is validated and wrapped in try/catch;
+         with storage blocked the hub still works, in memory only (PLAY-006).
+         ========================================================================== */
       (function () {
         "use strict";
 
-        var GAMES = window.GAMES || [];
-        var track = document.getElementById("gameTrack");
-        var prev = document.getElementById("railPrev");
-        var next = document.getElementById("railNext");
-        var appBar = document.getElementById("appBar");
-        var countEl = document.getElementById("gamesCount");
+        var HUB_STORAGE_KEY = "playpad.hub.v1";
+        var NEW_BADGE_DAYS = 30;
+        var MS_PER_DAY = 86400000;
+        var BEST_SCORE_MAX = 1e9;
+        var MAX_STAGGERED_ITEMS = 7; // intro + hero + the first cards; the rest appear together
+        var FILTERS = [
+          { id: "all", label: "All" },
+          { id: "solo", label: "Solo" },
+          { id: "together", label: "Play together" },
+        ];
+        var STATUS_WORDING = { all: "", solo: " solo", together: " play-together" };
+        var CHECK_ICON =
+          '<svg class="chip-filter__check" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z" fill="currentColor"/></svg>';
+        var PLAY_ICON =
+          '<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>';
+        var SUN_ICON =
+          '<path d="M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10zM11 1h2v3h-2zm0 19h2v3h-2zM1 11h3v2H1zm19 0h3v2h-3zM4.2 5.6l1.4-1.4 2.1 2.1-1.4 1.4zm12.1 12.1 1.4-1.4 2.1 2.1-1.4 1.4zM4.2 18.4l2.1-2.1 1.4 1.4-2.1 2.1zM16.3 6.3l2.1-2.1 1.4 1.4-2.1 2.1z" fill="currentColor"/>';
+        var MOON_ICON =
+          '<path d="M12.3 2a9.9 9.9 0 1 0 9.7 12.2A7.5 7.5 0 0 1 12.3 2z" fill="currentColor"/>';
 
-        // ---- escape for HTML CONTEXT (text + double-quoted attributes).
-        //      NOT a URL sanitiser — fields used as links also go through safeHref(). ----
-        function esc(s) {
-          return String(s == null ? "" : s)
+        // Only well-formed registry entries are rendered; the rest are skipped, never thrown on.
+        var allGames = (Array.isArray(window.GAMES) ? window.GAMES : []).filter(function (game) {
+          return game && game.id && game.title;
+        });
+        var liveGames = allGames.filter(function (game) {
+          return game.status !== "soon";
+        });
+        var soonGames = allGames.filter(function (game) {
+          return game.status === "soon";
+        });
+        var hubState = freshHubState();
+        var bestScores = {}; // game id -> best score (0 = none), refreshed with the hub state
+
+        // ---- escaping ----------------------------------------------------------
+        // Escape for HTML CONTEXT (text + double-quoted attributes). NOT a URL
+        // sanitiser: fields used as links also go through safeHref().
+        function esc(value) {
+          return String(value == null ? "" : value)
             .replace(/&/g, "&amp;")
             .replace(/</g, "&lt;")
             .replace(/>/g, "&gt;")
@@ -271,147 +529,417 @@
             .replace(/'/g, "&#39;");
         }
 
-        // ---- allow only relative or http(s) links; neutralise javascript:/data: etc. ----
-        function safeHref(p) {
-          // strip control chars first (a "java\nscript:" value would otherwise
-          // re-collapse to a live scheme during the browser's URL parse)
+        // Allow only relative or http(s) links; neutralise javascript:/data: etc.
+        function safeHref(path) {
+          // Strip control chars first: a "java\nscript:" value would otherwise
+          // re-collapse to a live scheme during the browser's URL parse.
           // eslint-disable-next-line no-control-regex -- intentional: strip control chars before scheme check (XSS guard)
-          p = String(p == null ? "" : p).replace(/[\x00-\x1F\x7F]/g, "");
-          if (/^\s*[a-z][a-z0-9+.-]*:/i.test(p)) {
+          path = String(path == null ? "" : path).replace(/[\x00-\x1F\x7F]/g, "");
+          if (/^\s*[a-z][a-z0-9+.-]*:/i.test(path)) {
             // has an explicit scheme
-            return /^\s*https?:/i.test(p) ? p : "#";
+            return /^\s*https?:/i.test(path) ? path : "#";
           }
-          return p; // relative path — safe
+          return path; // relative path: safe
         }
 
-        function chip(label) {
-          return '<span class="chip">' + esc(label) + "</span>";
+        // Accent is injected into a style attribute: accept hex colours only.
+        function accentStyle(accent) {
+          var isHex = /^#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(String(accent));
+          return isHex ? ' style="--card-accent:' + esc(accent) + '"' : "";
         }
 
-        // ---- build one card ----
-        function cardHTML(g) {
-          var media =
-            '<div class="game-card__media" style="--card-accent:' +
-            esc(g.accent) +
-            '">' +
-            '<span class="game-card__icon" aria-hidden="true">' +
-            esc(g.icon) +
-            "</span>" +
-            "</div>";
+        // Registry ids become DOM ids: keep them to a safe character set.
+        function domId(id) {
+          return "g-" + String(id).replace(/[^a-z0-9_-]/gi, "-");
+        }
 
-          var tags = (g.tags || []).map(chip).join("");
+        // ---- storage (fail-soft, untrusted) -----------------------------------
+        function readJson(key) {
+          try {
+            var raw = window.localStorage.getItem(key);
+            return raw == null ? null : JSON.parse(raw);
+          } catch (error) {
+            return null; // blocked storage or malformed JSON: treat as absent
+          }
+        }
 
-          if (g.status === "soon") {
-            return (
-              '<div class="card game-card game-card--soon" aria-disabled="true">' +
-              media +
-              '<div class="game-card__body">' +
-              '<h3 class="game-card__title title-large">' +
-              esc(g.title) +
-              "</h3>" +
-              '<p class="game-card__desc body-medium text-muted">' +
-              esc(g.description) +
-              "</p>" +
-              '<div class="game-card__tags">' +
-              tags +
-              "</div>" +
-              "</div>" +
-              "</div>"
+        function writeJson(key, value) {
+          try {
+            window.localStorage.setItem(key, JSON.stringify(value));
+            return true;
+          } catch (error) {
+            return false; // private mode / quota: state lives in memory only
+          }
+        }
+
+        function freshHubState() {
+          return { v: 1, last: null, played: {}, filter: "all" };
+        }
+
+        function findLive(id) {
+          return liveGames.filter(function (game) {
+            return game.id === id;
+          })[0];
+        }
+
+        function isKnownFilter(id) {
+          return FILTERS.some(function (filter) {
+            return filter.id === id;
+          });
+        }
+
+        // Rebuild a clean state object from whatever is in storage: only known
+        // values survive (LEARNINGS 2026-07-12: stored data is untrusted).
+        function loadHubState() {
+          var saved = readJson(HUB_STORAGE_KEY);
+          var state = freshHubState();
+          if (!saved || typeof saved !== "object" || saved.v !== 1) return state;
+          if (typeof saved.last === "string" && findLive(saved.last)) state.last = saved.last;
+          if (isKnownFilter(saved.filter)) state.filter = saved.filter;
+          if (saved.played && typeof saved.played === "object") {
+            allGames.forEach(function (game) {
+              var playedAt = Number(saved.played[game.id]);
+              if (Number.isFinite(playedAt) && playedAt > 0) state.played[game.id] = playedAt;
+            });
+          }
+          return state;
+        }
+
+        // Best score from the game's own save: a finite whole number in 1..1e9, else 0.
+        function readBestScore(game) {
+          if (!game.best || !game.best.key || !game.best.field) return 0;
+          var save = readJson(String(game.best.key));
+          if (!save || typeof save !== "object") return 0;
+          var score = Math.floor(Number(save[game.best.field]));
+          return Number.isFinite(score) && score > 0 ? Math.min(score, BEST_SCORE_MAX) : 0;
+        }
+
+        function refreshFromStorage() {
+          hubState = loadHubState();
+          bestScores = {};
+          liveGames.forEach(function (game) {
+            bestScores[game.id] = readBestScore(game);
+          });
+        }
+
+        function saveHubState() {
+          writeJson(HUB_STORAGE_KEY, hubState);
+        }
+
+        function rememberPlayed(id) {
+          hubState.last = id;
+          hubState.played[id] = Date.now();
+          saveHubState();
+        }
+
+        // ---- game facts ----------------------------------------------------------
+        function isSolo(game) {
+          return String(game.players == null ? "" : game.players).trim() === "1";
+        }
+
+        function matchesFilter(game, filterId) {
+          return filterId === "all" || (filterId === "solo") === isSolo(game);
+        }
+
+        function modeLabel(game) {
+          if (isSolo(game)) return "Solo";
+          return game.players ? game.players + " players" : "Play together";
+        }
+
+        function isNew(game) {
+          if (!game.added || hubState.played[game.id] || bestScores[game.id]) return false;
+          var addedAt = Date.parse(game.added);
+          return Number.isFinite(addedAt) && Date.now() - addedAt < NEW_BADGE_DAYS * MS_PER_DAY;
+        }
+
+        function badgesHTML(game) {
+          var badges = [];
+          if (isNew(game)) badges.push('<span class="badge badge--new">New</span>');
+          badges.push('<span class="badge">' + esc(modeLabel(game)) + "</span>");
+          var best = bestScores[game.id];
+          if (best) {
+            badges.push(
+              '<span class="badge badge--best"><span aria-hidden="true">🏆</span> ' +
+                esc((game.best && game.best.label) || "Best") +
+                " " +
+                best.toLocaleString("en-US") +
+                "</span>",
             );
           }
+          return badges.join("");
+        }
 
-          var players = g.players
-            ? '<span class="game-card__players label-medium">👥 ' + esc(g.players) + "</span>"
-            : "<span></span>";
+        function blurb(game) {
+          return game.tagline || game.description;
+        }
 
+        // ---- featured hero -----------------------------------------------------
+        // "Jump back in" = last game launched from the hub; otherwise a
+        // deterministic "Game of the day" (same for everyone, needs no server).
+        function pickFeatured() {
+          var lastPlayed = findLive(hubState.last);
+          if (lastPlayed) return { game: lastPlayed, eyebrow: "Jump back in" };
+          var dayIndex = Math.floor(Date.now() / MS_PER_DAY);
+          return { game: liveGames[dayIndex % liveGames.length], eyebrow: "Game of the day" };
+        }
+
+        // With a single live game there is nothing to be surprised by: no button.
+        function surpriseButtonHTML() {
+          if (liveGames.length < 2) return "";
           return (
-            '<a class="card card--interactive state-layer game-card"' +
-            ' href="' +
-            esc(safeHref(g.path)) +
-            '"' +
-            ' aria-label="Play ' +
-            esc(g.title) +
-            '">' +
-            media +
-            '<div class="game-card__body">' +
-            '<h3 class="game-card__title title-large">' +
-            esc(g.title) +
-            "</h3>" +
-            '<p class="game-card__desc body-medium text-muted">' +
-            esc(g.description) +
-            "</p>" +
-            '<div class="game-card__tags">' +
-            tags +
-            "</div>" +
-            '<div class="game-card__meta">' +
-            players +
-            '<span class="game-card__play label-large">Play' +
-            ' <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
-            '<path d="M8 5v14l11-7z" fill="currentColor"/></svg>' +
-            "</span>" +
-            "</div>" +
-            "</div>" +
-            "</a>"
+            '<button class="button button--tonal state-layer" type="button" id="surprise">' +
+            '<span aria-hidden="true">🎲</span><span>Surprise me</span></button>'
           );
         }
 
-        // ---- render ----
-        function render() {
-          if (!GAMES.length) {
-            track.innerHTML =
-              '<p class="body-large text-muted" style="padding:24px">No games yet — check back soon.</p>';
+        function heroHTML(featured) {
+          var game = featured.game;
+          return (
+            '<div class="hero-card__media"' +
+            accentStyle(game.accent) +
+            '><span class="hero-card__icon" aria-hidden="true">' +
+            esc(game.icon) +
+            "</span></div>" +
+            '<div class="hero-card__body">' +
+            '<p class="hero-card__eyebrow label-medium">' +
+            featured.eyebrow +
+            "</p>" +
+            '<h2 class="hero-card__title headline-small" id="heroTitle">' +
+            esc(game.title) +
+            "</h2>" +
+            '<p class="hero-card__desc--short body-medium text-muted">' +
+            esc(blurb(game)) +
+            "</p>" +
+            '<p class="hero-card__desc--long body-large text-muted">' +
+            esc(game.description) +
+            "</p>" +
+            '<div class="hero-card__badges">' +
+            badgesHTML(game) +
+            "</div></div>" +
+            '<div class="hero-card__actions">' +
+            '<a class="button button--filled state-layer" href="' +
+            esc(safeHref(game.path)) +
+            '" data-id="' +
+            esc(game.id) +
+            '" aria-label="Play ' +
+            esc(game.title) +
+            ' now"><span aria-hidden="true">' +
+            PLAY_ICON +
+            "</span><span>Play now</span></a>" +
+            surpriseButtonHTML() +
+            "</div>"
+          );
+        }
+
+        function renderHero() {
+          var hero = document.getElementById("hero");
+          if (!liveGames.length) {
+            hero.hidden = true;
             return;
           }
-          track.innerHTML = GAMES.map(cardHTML).join("");
-          var live = GAMES.filter(function (g) {
-            return g.status !== "soon";
+          hero.innerHTML = heroHTML(pickFeatured());
+          hero.hidden = false;
+        }
+
+        // ---- filter chips ------------------------------------------------------
+        function countFor(filterId) {
+          return liveGames.filter(function (game) {
+            return matchesFilter(game, filterId);
           }).length;
-          countEl.textContent = live + (live === 1 ? " game" : " games");
         }
 
-        // ---- rail arrows ----
-        function step() {
-          var first = track.querySelector(".game-card");
-          if (!first) return track.clientWidth * 0.8;
-          return first.getBoundingClientRect().width + 16; // card + gap
+        // Built once: later filter changes only flip aria-pressed, so keyboard
+        // focus stays on the chip the player just activated.
+        function renderFilters() {
+          document.getElementById("filters").innerHTML = FILTERS.map(function (filter) {
+            return (
+              '<button type="button" class="chip-filter state-layer" data-filter="' +
+              filter.id +
+              '" aria-pressed="false">' +
+              CHECK_ICON +
+              "<span>" +
+              filter.label +
+              '</span><span class="chip-filter__count">' +
+              countFor(filter.id) +
+              "</span></button>"
+            );
+          }).join("");
         }
-        function updateArrows() {
-          var scrollable = track.scrollWidth - track.clientWidth > 4;
-          prev.hidden = next.hidden = !scrollable;
-          if (!scrollable) return;
-          prev.disabled = track.scrollLeft <= 1;
-          next.disabled = track.scrollLeft + track.clientWidth >= track.scrollWidth - 1;
-        }
-        prev.addEventListener("click", function () {
-          track.scrollBy({ left: -step(), behavior: "smooth" });
-        });
-        next.addEventListener("click", function () {
-          track.scrollBy({ left: step(), behavior: "smooth" });
-        });
 
-        // ---- scroll-driven UI (throttled with rAF) ----
-        var ticking = false;
-        function onScroll() {
-          if (ticking) return;
-          ticking = true;
-          requestAnimationFrame(function () {
-            updateArrows();
-            ticking = false;
+        function paintFilterState() {
+          var chips = document.querySelectorAll("[data-filter]");
+          Array.prototype.forEach.call(chips, function (chip) {
+            chip.setAttribute(
+              "aria-pressed",
+              String(chip.getAttribute("data-filter") === hubState.filter),
+            );
           });
         }
-        track.addEventListener("scroll", onScroll, { passive: true });
-        window.addEventListener("resize", onScroll);
-        window.addEventListener(
-          "scroll",
-          function () {
-            appBar.classList.toggle("app-bar--scrolled", window.scrollY > 4);
-          },
-          { passive: true },
-        );
 
-        // ---- boot ----
-        render();
-        updateArrows();
+        // ---- game list -----------------------------------------------------------
+        function staggerIndex(position, firstIndex) {
+          return Math.min(position + firstIndex, MAX_STAGGERED_ITEMS);
+        }
+
+        function liveCardHTML(game, index) {
+          var describedBy = domId(game.id) + "-info";
+          return (
+            '<li class="reveal" style="--i:' +
+            index +
+            '"><a class="card card--interactive state-layer game-card" href="' +
+            esc(safeHref(game.path)) +
+            '" data-id="' +
+            esc(game.id) +
+            '" aria-label="Play ' +
+            esc(game.title) +
+            '" aria-describedby="' +
+            describedBy +
+            '"><span class="game-card__media"' +
+            accentStyle(game.accent) +
+            '><span class="game-card__icon" aria-hidden="true">' +
+            esc(game.icon) +
+            '</span></span><span class="game-card__body"><span class="game-card__title">' +
+            esc(game.title) +
+            '</span><span id="' +
+            describedBy +
+            '"><span class="game-card__tagline body-medium text-muted">' +
+            esc(blurb(game)) +
+            '</span><span class="game-card__meta">' +
+            badgesHTML(game) +
+            '</span></span></span><span class="game-card__play" aria-hidden="true">' +
+            PLAY_ICON +
+            '<span class="game-card__play-label">Play</span></span></a></li>'
+          );
+        }
+
+        // A placeholder, not a link: no hover, no play glyph, "Coming soon" in text.
+        function soonCardHTML(game, index) {
+          return (
+            '<li class="reveal" style="--i:' +
+            index +
+            '"><div class="card game-card game-card--soon" aria-disabled="true">' +
+            '<span class="game-card__media"' +
+            accentStyle(game.accent) +
+            '><span class="game-card__icon" aria-hidden="true">' +
+            esc(game.icon) +
+            '</span></span><span class="game-card__body"><span class="game-card__title">' +
+            esc(game.title) +
+            '</span><span class="game-card__tagline body-medium text-muted">' +
+            esc(blurb(game)) +
+            '</span><span class="game-card__meta"><span class="badge">Coming soon</span></span></span></div></li>'
+          );
+        }
+
+        function statusText(shownCount) {
+          return (
+            "Showing " +
+            shownCount +
+            (STATUS_WORDING[hubState.filter] || "") +
+            (shownCount === 1 ? " game" : " games")
+          );
+        }
+
+        // firstIndex: 2 on page load (after the intro + hero), 0 on a later filter change.
+        function renderGrid(firstIndex) {
+          var shown = liveGames.filter(function (game) {
+            return matchesFilter(game, hubState.filter);
+          });
+          var cards = shown.map(function (game, position) {
+            return liveCardHTML(game, staggerIndex(position, firstIndex));
+          });
+          if (hubState.filter === "all") {
+            soonGames.forEach(function (game, position) {
+              cards.push(soonCardHTML(game, staggerIndex(shown.length + position, firstIndex)));
+            });
+          }
+          var emptyMessage = allGames.length
+            ? "No games here yet — try “All”."
+            : "No games yet — check back soon.";
+          document.getElementById("grid").innerHTML = cards.length
+            ? cards.join("")
+            : '<li class="empty body-large text-muted">' + emptyMessage + "</li>";
+          document.getElementById("gamesStatus").textContent = statusText(shown.length);
+        }
+
+        function renderAll(firstIndex) {
+          renderHero();
+          paintFilterState();
+          renderGrid(firstIndex);
+        }
+
+        // ---- actions -------------------------------------------------------------
+        function setFilter(filterId) {
+          if (!isKnownFilter(filterId)) return;
+          hubState.filter = filterId;
+          saveHubState();
+          paintFilterState();
+          renderGrid(0);
+        }
+
+        // Any live game except the one played last, so the dice always change something.
+        function surprise() {
+          var pool = liveGames.filter(function (game) {
+            return game.id !== hubState.last;
+          });
+          if (!pool.length) pool = liveGames;
+          var pick = pool[Math.floor(Math.random() * pool.length)];
+          if (!pick) return;
+          rememberPlayed(pick.id);
+          window.location.assign(safeHref(pick.path));
+        }
+
+        document.addEventListener("click", function (event) {
+          var chip = event.target.closest("[data-filter]");
+          if (chip) return setFilter(chip.getAttribute("data-filter"));
+          if (event.target.closest("#surprise")) return surprise();
+          var launch = event.target.closest("a[data-id]");
+          if (launch) rememberPlayed(launch.getAttribute("data-id"));
+        });
+
+        // ---- theme toggle (scripts/theme.js does the work) ------------------------
+        var themeButton = document.getElementById("themeButton");
+
+        function paintThemeButton() {
+          // Shows the theme you would switch TO, as an icon and in the accessible name.
+          var target = window.PlayPadTheme.current() === "dark" ? "light" : "dark";
+          document.getElementById("themeIcon").innerHTML =
+            target === "light" ? SUN_ICON : MOON_ICON;
+          themeButton.setAttribute("aria-label", "Switch to " + target + " theme");
+        }
+
+        function initThemeToggle() {
+          // No theme script (blocked or missing): hide the control rather than ship a dead button.
+          if (!window.PlayPadTheme) return;
+          themeButton.hidden = false;
+          paintThemeButton();
+          themeButton.addEventListener("click", function () {
+            window.PlayPadTheme.toggle();
+          });
+          document.addEventListener("playpad-themechange", paintThemeButton);
+        }
+
+        // ---- app bar elevation on scroll -------------------------------------------
+        function paintAppBar() {
+          document
+            .getElementById("appBar")
+            .classList.toggle("app-bar--scrolled", window.scrollY > 4);
+        }
+
+        // ---- boot ------------------------------------------------------------------
+        refreshFromStorage();
+        renderFilters();
+        renderAll(2);
+        initThemeToggle();
+        paintAppBar();
+        window.addEventListener("scroll", paintAppBar, { passive: true });
+
+        // Back/forward cache: returning from a game must show the fresh "Jump back
+        // in" game, best score and New badge, not the page as it was left.
+        window.addEventListener("pageshow", function (event) {
+          if (!event.persisted) return;
+          refreshFromStorage();
+          renderAll(0);
+        });
       })();
     </script>
   </body>

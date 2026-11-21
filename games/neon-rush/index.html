@@ -196,6 +196,68 @@
         color: var(--md-sys-color-on-surface-variant);
       }
 
+      /* Sound toggle (MD3 switch) — local copy (base.css has no .switch; same recipe as Claw Catch).
+         Without it the button collapses to a tiny pill (PLAY-006 F4). The ::before extends the
+         hit area to >=48px without changing the 52x32 visual. */
+      .switch {
+        width: 52px;
+        height: 32px;
+        padding: 0;
+        border-radius: var(--md-sys-shape-corner-full);
+        background: var(--md-sys-color-surface-container-highest);
+        border: 2px solid var(--md-sys-color-outline);
+        position: relative;
+        flex: none;
+        cursor: pointer;
+        transition:
+          background var(--md-sys-motion-duration-short3),
+          border-color var(--md-sys-motion-duration-short3);
+      }
+      .switch::before {
+        content: "";
+        position: absolute;
+        inset: -9px -5px;
+      }
+      .switch::after {
+        content: "";
+        position: absolute;
+        top: 6px;
+        left: 6px;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: var(--md-sys-color-outline);
+        transition:
+          transform var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-emphasized),
+          width var(--md-sys-motion-duration-short4),
+          height var(--md-sys-motion-duration-short4),
+          top var(--md-sys-motion-duration-short4),
+          left var(--md-sys-motion-duration-short4),
+          background var(--md-sys-motion-duration-short4);
+      }
+      .switch[aria-pressed="true"] {
+        background: var(--md-sys-color-primary);
+        border-color: var(--md-sys-color-primary);
+      }
+      .switch[aria-pressed="true"]::after {
+        top: 3px;
+        left: 3px;
+        width: 24px;
+        height: 24px;
+        background: var(--md-sys-color-on-primary);
+        transform: translateX(20px);
+      }
+      .switch:focus-visible {
+        outline: 3px solid var(--md-sys-color-primary);
+        outline-offset: 3px;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .switch,
+        .switch::after {
+          transition: none;
+        }
+      }
+
       .start-btn {
         width: 100%;
         padding: 18px;
@@ -828,6 +890,9 @@
         }
         var prefersReduced =
           window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        // Linear colour pipeline: hex literals below are sRGB-authored and render as written (the
+        // brand neons stay #ff2d95/#22e5ff on screen). Must run before any THREE.Color is created.
+        THREE.ColorManagement.legacyMode = false;
 
         var LANE_X = [-2.4, 0, 2.4];
         var GRAVITY = 18;
@@ -1423,7 +1488,11 @@
           UIManager.renderShop();
         }
 
-        /* ══════════════════════ THREE scene ══════════════════════ */
+        /* ══════════════════════ THREE scene ══════════════════════
+     Rain-slick synthwave night (PLAY-006): road → lit facades with signs → violet-fogged towers →
+     silhouette skyline ring → a banded sun sitting ON the horizon. Colour pipeline is linear
+     (ColorManagement on) so brand hex values render as authored; every colour CanvasTexture is
+     tagged sRGB. Everything here is procedural (zero downloads) so file:// gets the full look. */
         var renderer = null,
           scene,
           camera;
@@ -1445,77 +1514,334 @@
         }
 
         var skinRoot = null; // current skin mesh group, child of playerGroup
-        var roadTex = null; // scrolling road CanvasTexture (updated in the run loop)
+        var roadTex = null,
+          sideTex = null,
+          gridTex = null; // scrolling CanvasTextures (advanced in worldTick)
         var skyGroup = null,
           skyMesh = null,
           skyMat = null,
-          starField = null; // dynamic skydome + stars
+          starField = null,
+          skyRing = null; // dynamic skydome + stars + skyline silhouette ring
+        var hemiLight = null,
+          dirLight = null,
+          roadMat = null,
+          envTex = null;
+        var worldScroll = 0; // metres travelled this run (drives lamps / towers / flicker)
+        var maxAniso = renderer ? Math.min(8, renderer.capabilities.getMaxAnisotropy()) : 1;
 
-        /* Procedural CanvasTextures — zero downloads, guaranteed offline. A scrolling tech-grid
-     road (sells speed) and a lit-window facade for the buildings. */
-        function makeRoadTexture() {
-          var c = document.createElement("canvas");
-          c.width = 128;
-          c.height = 512;
-          var x = c.getContext("2d");
-          x.fillStyle = "#0a0518";
-          x.fillRect(0, 0, 128, 512);
-          for (var i = 0; i < 1600; i++) {
-            var v = (Math.random() * 22) | 0;
-            x.fillStyle = "rgba(" + (24 + v) + "," + (16 + v) + "," + (46 + v) + ",0.5)";
-            x.fillRect((Math.random() * 128) | 0, (Math.random() * 512) | 0, 1, 1);
+        /* ---------- quality tiers (session-scoped, no save-schema change) ---------- */
+        var TIERS = {
+          high: {
+            dpr: 2,
+            shadows: true,
+            shadowSize: 1024,
+            particles: 1,
+            speedLines: true,
+            streaks: true,
+            flicker: true,
+            env: true,
+            fogFar: 115,
+            roadRough: 0.38,
+          },
+          medium: {
+            dpr: 1.5,
+            shadows: true,
+            shadowSize: 512,
+            particles: 0.6,
+            speedLines: false,
+            streaks: true,
+            flicker: true,
+            env: true,
+            fogFar: 105,
+            roadRough: 0.38,
+          },
+          low: {
+            dpr: 1,
+            shadows: false,
+            shadowSize: 512,
+            particles: 0.6,
+            speedLines: false,
+            streaks: false,
+            flicker: false,
+            env: false,
+            fogFar: 95,
+            roadRough: 0.6,
+          },
+        };
+        var TIER_ORDER = ["high", "medium", "low"];
+        var quality = { tier: "medium", dpr: 1, shadows: true, avgMs: 16.7, auto: true };
+        function detectTier() {
+          var coarse = false;
+          try {
+            coarse = !!(window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
+          } catch (e) {
+            coarse = false;
           }
-          x.strokeStyle = "rgba(90,70,170,0.16)";
+          var cores = navigator.hardwareConcurrency || 4;
+          return !coarse && cores > 4 ? "high" : "medium";
+        }
+
+        /* ---------- tiny geometry/texture helpers ---------- */
+        var _Y = new THREE.Vector3(0, 1, 0);
+        var _m4 = new THREE.Matrix4(),
+          _q4 = new THREE.Quaternion(),
+          _p3 = new THREE.Vector3(),
+          _s3 = new THREE.Vector3(),
+          _tc = new THREE.Color();
+        function mkCanvas(w, h) {
+          var c = document.createElement("canvas");
+          c.width = w;
+          c.height = h;
+          return c;
+        }
+        function colorTex(canvas, repeat) {
+          var t = new THREE.CanvasTexture(canvas);
+          t.encoding = THREE.sRGBEncoding;
+          t.anisotropy = maxAniso;
+          if (repeat) t.wrapS = t.wrapT = THREE.RepeatWrapping;
+          return t;
+        }
+        // Bake a geometry (non-indexed, own position/normal/uv/colour) so many parts merge into ONE draw call.
+        function bakeGeo(geo, matrix, hex, k) {
+          var g = geo.index ? geo.toNonIndexed() : geo.clone();
+          if (matrix) g.applyMatrix4(matrix);
+          var n = g.attributes.position.count;
+          if (!g.attributes.uv) g.setAttribute("uv", new THREE.BufferAttribute(new Float32Array(n * 2), 2));
+          var col = new Float32Array(n * 3),
+            c = new THREE.Color(hex === undefined ? 0xffffff : hex);
+          c.multiplyScalar(k === undefined ? 1 : k);
+          for (var i = 0; i < n; i++) {
+            col[i * 3] = c.r;
+            col[i * 3 + 1] = c.g;
+            col[i * 3 + 2] = c.b;
+          }
+          g.setAttribute("color", new THREE.BufferAttribute(col, 3));
+          return g;
+        }
+        function mergeGeos(list) {
+          var total = 0,
+            i,
+            j;
+          for (i = 0; i < list.length; i++) total += list[i].attributes.position.count;
+          var P = new Float32Array(total * 3),
+            N = new Float32Array(total * 3),
+            U = new Float32Array(total * 2),
+            C = new Float32Array(total * 3);
+          var o = 0;
+          for (i = 0; i < list.length; i++) {
+            var a = list[i].attributes,
+              cnt = a.position.count;
+            P.set(a.position.array, o * 3);
+            N.set(a.normal.array, o * 3);
+            U.set(a.uv.array, o * 2);
+            C.set(a.color.array, o * 3);
+            o += cnt;
+            list[i].dispose();
+          }
+          var g = new THREE.BufferGeometry();
+          g.setAttribute("position", new THREE.BufferAttribute(P, 3));
+          g.setAttribute("normal", new THREE.BufferAttribute(N, 3));
+          g.setAttribute("uv", new THREE.BufferAttribute(U, 2));
+          g.setAttribute("color", new THREE.BufferAttribute(C, 3));
+          return g;
+        }
+        function mat4(px, py, pz, sx, sy, sz, rx, ry) {
+          _q4.setFromEuler(new THREE.Euler(rx || 0, ry || 0, 0));
+          return new THREE.Matrix4().compose(
+            new THREE.Vector3(px, py, pz),
+            _q4.clone(),
+            new THREE.Vector3(sx === undefined ? 1 : sx, sy === undefined ? 1 : sy, sz === undefined ? 1 : sz),
+          );
+        }
+        function makeInst(geo, mat, count) {
+          var m = new THREE.InstancedMesh(geo, mat, count);
+          m.frustumCulled = false; // instance bounds are unknown to three — never cull
+          m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+          for (var i = 0; i < count; i++) {
+            _m4.makeScale(0, 0, 0);
+            m.setMatrixAt(i, _m4);
+          }
+          return m;
+        }
+        // Per-instance transform without allocation. ry = yaw; face = billboard toward the camera.
+        function setInst(mesh, i, px, py, pz, sx, sy, sz, ry, face) {
+          _p3.set(px, py, pz);
+          _s3.set(sx, sy, sz);
+          if (face) _q4.copy(camera.quaternion);
+          else _q4.setFromAxisAngle(_Y, ry || 0);
+          _m4.compose(_p3, _q4, _s3);
+          mesh.setMatrixAt(i, _m4);
+        }
+        var _hideM = new THREE.Matrix4().makeScale(0, 0, 0);
+        function hideInst(mesh, i) {
+          mesh.setMatrixAt(i, _hideM);
+        }
+        // Shader patches --------------------------------------------------------------------
+        // Additive things must fade to BLACK in fog (mix to the fog colour would glow violet).
+        function patchAdditiveFog(mat) {
+          mat.onBeforeCompile = function (sh) {
+            sh.fragmentShader = sh.fragmentShader.replace(
+              "#include <fog_fragment>",
+              "#ifdef USE_FOG\n gl_FragColor.rgb *= 1.0 - smoothstep( fogNear, fogFar, vFogDepth );\n#endif",
+            );
+          };
+          mat.customProgramCacheKey = function () {
+            return "addfog";
+          };
+          return mat;
+        }
+        // Scale the UVs by the object's world scale so a window texture tiles at a fixed metre size
+        // on boxes of any dimensions (works for Mesh and InstancedMesh).
+        function patchTexScale(mat, tileX, tileY) {
+          mat.onBeforeCompile = function (sh) {
+            sh.vertexShader = sh.vertexShader.replace(
+              "#include <uv_vertex>",
+              "#include <uv_vertex>\n#ifdef USE_UV\n mat4 mm_ = modelMatrix;\n #ifdef USE_INSTANCING\n mm_ = modelMatrix * instanceMatrix;\n #endif\n vec3 sc_ = vec3( length( mm_[0].xyz ), length( mm_[1].xyz ), length( mm_[2].xyz ) );\n vUv = vUv * vec2( ( sc_.x + sc_.z ) * 0.5 / " +
+                tileX.toFixed(2) +
+                ", sc_.y / " +
+                tileY.toFixed(2) +
+                " );\n#endif",
+            );
+          };
+          mat.customProgramCacheKey = function () {
+            return "texscale" + tileX + "x" + tileY;
+          };
+          return mat;
+        }
+        // Instanced sprite-sheet cell: aRect = (u0, v0, du, dv) per instance.
+        function patchSignUV(mat) {
+          mat.onBeforeCompile = function (sh) {
+            sh.vertexShader = sh.vertexShader
+              .replace("#include <common>", "#include <common>\nattribute vec4 aRect;")
+              .replace(
+                "#include <uv_vertex>",
+                "#include <uv_vertex>\n#ifdef USE_UV\n vUv = vUv * aRect.zw + aRect.xy;\n#endif",
+              );
+          };
+          mat.customProgramCacheKey = function () {
+            return "signuv";
+          };
+          return mat;
+        }
+        // Fresnel rim: neon edge light on character materials (silhouette pops against the night road).
+        function applyRim(mat, hex, str) {
+          var cu = { value: new THREE.Color(hex) },
+            su = { value: str };
+          mat.userData.rim = { c: cu, s: su };
+          mat.onBeforeCompile = function (sh) {
+            sh.uniforms.uRimColor = cu;
+            sh.uniforms.uRimStr = su;
+            sh.fragmentShader = sh.fragmentShader
+              .replace("#include <common>", "#include <common>\nuniform vec3 uRimColor;\nuniform float uRimStr;")
+              .replace(
+                "#include <emissivemap_fragment>",
+                "#include <emissivemap_fragment>\n totalEmissiveRadiance += uRimColor * uRimStr * pow( 1.0 - saturate( dot( normalize( normal ), normalize( vViewPosition ) ) ), 2.5 );",
+              );
+          };
+          mat.customProgramCacheKey = function () {
+            return "rim";
+          };
+          mat.needsUpdate = true;
+        }
+
+        /* ---------- procedural CanvasTextures (colour maps tagged sRGB) ---------- */
+        // Wet asphalt: 256x1024 tile = 9.6 m x 38.4 m. Speckle, worn tyre bands, faint lane-centre dashes
+        // (the dashes scroll, which is what sells speed — the neon lane strips are static).
+        function makeRoadTexture() {
+          var c = mkCanvas(256, 1024),
+            x = c.getContext("2d"),
+            i;
+          x.fillStyle = "#0b0818";
+          x.fillRect(0, 0, 256, 1024);
+          for (i = 0; i < 6000; i++) {
+            var v = (Math.random() * 26) | 0;
+            x.fillStyle = "rgba(" + (22 + v) + "," + (16 + v) + "," + (44 + v) + ",0.5)";
+            x.fillRect((Math.random() * 256) | 0, (Math.random() * 1024) | 0, 1 + (Math.random() < 0.2), 1);
+          }
+          x.fillStyle = "rgba(150,140,230,0.06)"; // worn tyre bands either side of each lane centre
+          [0.25, 0.5, 0.75].forEach(function (uc) {
+            x.fillRect(Math.round((uc - 0.075) * 256) - 7, 0, 14, 1024);
+            x.fillRect(Math.round((uc + 0.075) * 256) - 7, 0, 14, 1024);
+          });
+          x.fillStyle = "rgba(207,239,255,0.42)"; // dashed lane-centre markers 0.12 x 2.2 m
+          [0.25, 0.5, 0.75].forEach(function (uc) {
+            for (var d = 0; d < 6; d++) x.fillRect(Math.round(uc * 256) - 2, Math.round(d * 170.67), 3, 59);
+          });
+          x.strokeStyle = "rgba(90,70,170,0.14)"; // expansion joints every 9.6 m
           x.lineWidth = 1;
-          for (var y = 0; y < 512; y += 32) {
+          for (var y = 0; y < 1024; y += 256) {
             x.beginPath();
             x.moveTo(0, y + 0.5);
-            x.lineTo(128, y + 0.5);
+            x.lineTo(256, y + 0.5);
             x.stroke();
           }
-          x.fillStyle = "rgba(34,229,255,0.34)";
-          for (var y2 = 0; y2 < 512; y2 += 72) {
-            x.fillRect(61, y2, 5, 34);
-          }
-          var t = new THREE.CanvasTexture(c);
-          t.wrapS = t.wrapT = THREE.RepeatWrapping;
-          t.repeat.set(6, 26);
+          var t = colorTex(c, true);
+          t.repeat.set(1, 280 / 38.4);
           return t;
         }
-        function makeWindowTexture() {
-          var c = document.createElement("canvas");
-          c.width = 64;
-          c.height = 128;
-          var x = c.getContext("2d");
-          x.fillStyle = "#050310";
-          x.fillRect(0, 0, 64, 128);
-          var cols = 4,
-            rows = 8,
-            pw = 64 / cols,
-            ph = 128 / rows;
-          var pal = ["#22e5ff", "#ff2d95", "#7b3ff2", "#ffd54a"];
-          for (var r = 0; r < rows; r++)
-            for (var col = 0; col < cols; col++) {
-              if (Math.random() < 0.5) {
-                x.fillStyle = pal[(Math.random() * pal.length) | 0];
-                x.fillRect(col * pw + 3, r * ph + 4, pw - 6, ph - 8);
-              }
+        function makeSidewalkTexture() {
+          var c = mkCanvas(128, 128),
+            x = c.getContext("2d");
+          x.fillStyle = "#141029";
+          x.fillRect(0, 0, 128, 128);
+          for (var i = 0; i < 700; i++) {
+            var v = (Math.random() * 18) | 0;
+            x.fillStyle = "rgba(" + (28 + v) + "," + (22 + v) + "," + (56 + v) + ",0.45)";
+            x.fillRect((Math.random() * 128) | 0, (Math.random() * 128) | 0, 1, 1);
+          }
+          x.fillStyle = "rgba(120,100,200,0.22)"; // paving joints (2 m tile)
+          x.fillRect(0, 0, 128, 2);
+          x.fillRect(0, 0, 2, 128);
+          x.fillRect(62, 0, 1, 128);
+          x.fillRect(0, 62, 128, 1);
+          return colorTex(c, true);
+        }
+        function makeGridTexture() {
+          var c = mkCanvas(64, 64),
+            x = c.getContext("2d");
+          x.fillStyle = "#07051a";
+          x.fillRect(0, 0, 64, 64);
+          x.fillStyle = "rgba(123,63,242,0.14)"; // faint purple 4 m grid
+          x.fillRect(0, 0, 64, 1);
+          x.fillRect(0, 0, 1, 64);
+          return colorTex(c, true);
+        }
+        function makeFadeTexture() {
+          // horizontal black alpha ramp: opaque at u=0 (the facade) -> clear at u=1 (the street)
+          var c = mkCanvas(64, 8),
+            x = c.getContext("2d");
+          var g = x.createLinearGradient(0, 0, 64, 0);
+          g.addColorStop(0, "rgba(0,0,0,1)");
+          g.addColorStop(1, "rgba(0,0,0,0)");
+          x.fillStyle = g;
+          x.fillRect(0, 0, 64, 8);
+          return new THREE.CanvasTexture(c);
+        }
+        function makeStreakTexture() {
+          // soft vertical streak (fake wet reflection): bright core, fades along its length and sideways
+          var c = mkCanvas(32, 128),
+            x = c.getContext("2d"),
+            d = x.createImageData(32, 128);
+          for (var j = 0; j < 128; j++)
+            for (var i = 0; i < 32; i++) {
+              var u = 1 - Math.abs(i - 15.5) / 16,
+                v = Math.sin((j / 127) * Math.PI);
+              var a = Math.pow(u, 1.6) * Math.pow(v, 0.8);
+              var k = (j * 32 + i) * 4;
+              d.data[k] = d.data[k + 1] = d.data[k + 2] = 255;
+              d.data[k + 3] = Math.round(a * 255);
             }
-          var t = new THREE.CanvasTexture(c);
-          t.wrapS = t.wrapT = THREE.RepeatWrapping;
-          t.repeat.set(2, 3);
-          return t;
+          x.putImageData(d, 0, 0);
+          return new THREE.CanvasTexture(c);
         }
 
-        /* ══════════════════════ Particle FX + sky ══════════════════════
-     Pooled THREE.Points with additive blending — fading each particle's vertex colour to
-     black reads as a fade-out (no per-vertex alpha plumbing). One soft-dot sprite is shared
-     by every emitter (thruster exhaust, shield aura, stars). */
+        /* Particle FX. Pooled THREE.Points with additive blending — fading each particle's vertex
+     colour to black reads as a fade-out (no per-vertex alpha plumbing). One soft-dot sprite is
+     shared by every emitter (thruster exhaust, shield aura, stars, coin bursts). */
         var _spriteTex = null;
         function makeSpriteTexture() {
           if (_spriteTex) return _spriteTex;
-          var c = document.createElement("canvas");
-          c.width = c.height = 64;
+          var c = mkCanvas(64, 64);
           var x = c.getContext("2d");
           var g = x.createRadialGradient(32, 32, 0, 32, 32, 32);
           g.addColorStop(0, "rgba(255,255,255,1)");
@@ -1553,74 +1879,177 @@
           return pts;
         }
 
-        /* Synthwave skydome texture: vertical gradient (indigo zenith → magenta horizon glow →
-     deep base) with a banded retro sun on the forward horizon. Tinted + rolled live for the
-     "sky evolves the longer you play" feel; fog is disabled on the dome so it stays visible
-     past the fog far-plane. */
+        /* Synthwave skydome (2048x1024 equirect). The EQUATOR (v = 0.5) is the horizon: magenta glow
+     band hugging it, violet below (matches the fog), a banded retro sun SITTING on the horizon
+     at the forward azimuth (u = 0.75 is -z on a three.js SphereGeometry). Doubles as the
+     PMREM source so the wet road reflects the horizon glow. */
         function makeSkyTexture() {
-          var c = document.createElement("canvas");
-          c.width = 1024;
-          c.height = 512;
-          var x = c.getContext("2d");
-          var g = x.createLinearGradient(0, 0, 0, 512);
-          g.addColorStop(0.0, "#080423");
-          g.addColorStop(0.34, "#1e0d4e");
-          g.addColorStop(0.5, "#5a1f8c");
-          g.addColorStop(0.6, "#ff2d95"); // horizon glow band
-          g.addColorStop(0.68, "#37124b");
-          g.addColorStop(1.0, "#06021a");
+          var W = 2048,
+            H = 1024;
+          var c = mkCanvas(W, H),
+            x = c.getContext("2d");
+          var g = x.createLinearGradient(0, 0, 0, H);
+          g.addColorStop(0.0, "#05021a");
+          g.addColorStop(0.3, "#160a45");
+          g.addColorStop(0.42, "#4a1a86");
+          g.addColorStop(0.48, "#ff3d9a"); // horizon glow band
+          g.addColorStop(0.5, "#ff7bad");
+          g.addColorStop(0.52, "#2a0f45");
+          g.addColorStop(1.0, "#05021a");
           x.fillStyle = g;
-          x.fillRect(0, 0, 1024, 512);
-          // retro sun just above the horizon, centred (forward azimuth), with scanline gaps
-          var sunX = 512,
-            sunY = 512 * 0.575,
-            sunR = 96;
-          var gg = x.createRadialGradient(sunX, sunY, 8, sunX, sunY, sunR * 2.4);
-          gg.addColorStop(0, "rgba(255,150,190,0.55)");
-          gg.addColorStop(1, "rgba(255,150,190,0)");
+          x.fillRect(0, 0, W, H);
+          var sunX = W * 0.75,
+            sunY = H * 0.462,
+            sunR = 56;
+          var gg = x.createRadialGradient(sunX, sunY, 8, sunX, sunY, sunR * 2.8);
+          gg.addColorStop(0, "rgba(255,120,190,0.6)");
+          gg.addColorStop(1, "rgba(255,120,190,0)");
           x.globalCompositeOperation = "lighter";
           x.fillStyle = gg;
-          x.fillRect(0, 0, 1024, 512);
+          x.fillRect(sunX - sunR * 3, sunY - sunR * 3, sunR * 6, sunR * 6);
           x.globalCompositeOperation = "source-over";
-          x.save();
-          x.beginPath();
-          x.arc(sunX, sunY, sunR, 0, Math.PI * 2);
-          x.clip();
-          var sg = x.createLinearGradient(0, sunY - sunR, 0, sunY + sunR);
+          var sc = mkCanvas(sunR * 2, sunR * 2),
+            sx = sc.getContext("2d");
+          var sg = sx.createLinearGradient(0, 0, 0, sunR * 2);
           sg.addColorStop(0, "#ffe27a");
           sg.addColorStop(0.5, "#ff7bad");
           sg.addColorStop(1, "#ff2d95");
-          x.fillStyle = sg;
-          x.fillRect(sunX - sunR, sunY - sunR, sunR * 2, sunR * 2);
-          x.globalCompositeOperation = "destination-out";
+          sx.fillStyle = sg;
+          sx.beginPath();
+          sx.arc(sunR, sunR, sunR, 0, Math.PI * 2);
+          sx.fill();
+          sx.globalCompositeOperation = "destination-out"; // 7 retro scanline gaps, thicker toward the bottom
           for (var i = 0; i < 7; i++) {
-            x.fillRect(sunX - sunR, sunY + 6 + i * 11, sunR * 2, 3 + i * 0.8);
+            sx.fillRect(0, sunR + 3 + i * 9, sunR * 2, 2 + i * 0.9);
           }
-          x.restore();
-          var t = new THREE.CanvasTexture(c);
+          x.drawImage(sc, sunX - sunR, sunY - sunR);
+          var t = colorTex(c, false);
+          t.anisotropy = 1;
           return t;
         }
+        // Skyline silhouette ring: dark #120a2e blocks with a few lit pixels, alpha-cut. Wraps seamlessly.
+        function makeRingTexture() {
+          var W = 2048,
+            H = 256;
+          var c = mkCanvas(W, H),
+            x = c.getContext("2d");
+          var px = 0,
+            lit = ["#ff2d95", "#22e5ff", "#ffb35a", "#7b3ff2"];
+          while (px < W) {
+            var bw = 22 + ((Math.random() * 46) | 0),
+              bh = 40 + ((Math.random() * 120) | 0);
+            if (Math.random() < 0.12) bh += 70; // the odd tall tower
+            x.fillStyle = "#120a2e";
+            [0, -W].forEach(function (off) {
+              x.fillRect(px + off, H - bh, bw, bh);
+              if (bh > 150) x.fillRect(px + off + bw / 2 - 1, H - bh - 18, 2, 18); // antenna
+            });
+            for (var k = 0; k < bw * bh * 0.03; k++) {
+              x.fillStyle = lit[(Math.random() * 4) | 0];
+              x.fillRect(px + 2 + ((Math.random() * (bw - 4)) | 0), H - bh + 4 + ((Math.random() * (bh - 6)) | 0), 2, 2);
+            }
+            px += bw + ((Math.random() * 6) | 0);
+          }
+          return colorTex(c, false);
+        }
+        // Night tower facade (128x256): dark glass + ~35% lit windows in warm/cyan/magenta. Tiles at a fixed metre size.
+        function makeTowerTexture() {
+          var c = mkCanvas(128, 256),
+            x = c.getContext("2d");
+          x.fillStyle = "#0b0822";
+          x.fillRect(0, 0, 128, 256);
+          var pal = ["#ffb35a", "#ffb35a", "#5fe8ff", "#ff5fb0", "#9a7bff"];
+          for (var r = 0; r < 16; r++)
+            for (var col = 0; col < 8; col++) {
+              if (Math.random() < 0.38) {
+                x.fillStyle = pal[(Math.random() * pal.length) | 0];
+                x.globalAlpha = 0.55 + Math.random() * 0.45;
+                x.fillRect(col * 16 + 3, r * 16 + 4, 10, 8);
+              }
+            }
+          x.globalAlpha = 1;
+          return colorTex(c, true);
+        }
+        // Eight neon sign cells (128x448 each) — vertical, letters stacked, outline-glow style. ASCII only.
+        var SIGN_WORDS = ["NOODLE", "24/7", "ARCADE", "HOTEL", "OPEN", "BAR", "PIXEL", "DINER"];
+        var SIGN_COLORS = ["#ff2d95", "#22e5ff", "#ffd54a", "#ff2d95", "#22e5ff", "#ffd54a", "#b36bff", "#22e5ff"];
+        function makeSignAtlas() {
+          var c = mkCanvas(1024, 512),
+            x = c.getContext("2d");
+          x.textAlign = "center";
+          x.textBaseline = "middle";
+          SIGN_WORDS.forEach(function (w, i) {
+            var cx = i * 128 + 64,
+              col = SIGN_COLORS[i];
+            x.fillStyle = "rgba(8,4,30,0.92)"; // dark backing board
+            x.fillRect(i * 128 + 8, 8, 112, 496);
+            x.strokeStyle = col;
+            x.lineWidth = 4;
+            x.shadowColor = col;
+            x.shadowBlur = 14;
+            x.strokeRect(i * 128 + 10, 10, 108, 492);
+            var n = w.length,
+              step = Math.min(78, 470 / n);
+            x.font = "bold " + Math.round(step * 0.86) + 'px "Arial Black", Arial, sans-serif';
+            for (var k = 0; k < n; k++) {
+              var ch = w[k],
+                cy = 256 + (k - (n - 1) / 2) * step;
+              x.shadowBlur = 16;
+              x.shadowColor = col;
+              x.fillStyle = col;
+              x.fillText(ch, cx, cy);
+              x.shadowBlur = 0;
+              x.fillStyle = "#ffffff";
+              x.globalAlpha = 0.85;
+              x.fillText(ch, cx, cy);
+              x.globalAlpha = 1;
+            }
+          });
+          x.shadowBlur = 0;
+          return colorTex(c, false);
+        }
 
+        /* ---------- scene, lights, sky, ground ---------- */
+        var ROAD_W = 9.6,
+          FACADE_X = 9.2,
+          WORLD_Z = -100,
+          WORLD_LEN = 280;
+        function scaleUV(g, su, sv, flipU) {
+          var uv = g.attributes.uv;
+          for (var i = 0; i < uv.count; i++) {
+            var u = uv.getX(i);
+            uv.setXY(i, (flipU ? 1 - u : u) * su, uv.getY(i) * sv);
+          }
+          return g;
+        }
+        var flatQuad = function (w, len, x, y, z) {
+          return new THREE.Matrix4().compose(
+            new THREE.Vector3(x, y, z),
+            new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI / 2),
+            new THREE.Vector3(1, 1, 1),
+          );
+        };
         if (renderer) {
-          renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2)); // dpr cap (LEARNINGS perf row)
           renderer.shadowMap.enabled = true;
           renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-          // GLTFLoader tags GLB textures as sRGB; without matching output encoding the
-          // characters render grey/washed on http(s) where the real models load.
+          // GLTFLoader tags GLB textures as sRGB; matching output encoding keeps the characters true-colour.
           renderer.outputEncoding = THREE.sRGBEncoding;
 
           scene = new THREE.Scene();
           scene.background = new THREE.Color(NEON.bg);
-          // fog blends distant scenery into a muted purple haze that reads against the skydome
-          // horizon (not into black); FOG_BASE is also the starting tint the sky hue-roll drifts from
-          var FOG_BASE = 0x241053;
-          scene.fog = new THREE.Fog(FOG_BASE, 26, 98);
+          // Violet haze: displays as authored (fog is mixed AFTER output encoding in r147, so its colour
+          // is stored as display values). Hue drift is clamped around violet in updateSky — never red.
+          scene.fog = new THREE.Fog(0x000000, 30, 115);
+          scene.fog.color.setRGB(0x2a / 255, 0x11 / 255, 0x50 / 255);
 
-          camera = new THREE.PerspectiveCamera(58, 1, 0.1, 200);
+          camera = new THREE.PerspectiveCamera(58, 1, 0.5, 200);
           camera.position.set(0, 4.4, 8);
 
-          scene.add(new THREE.HemisphereLight(0x8a7bff, 0x120a2a, 0.9));
-          var dirLight = new THREE.DirectionalLight(0xc9d6ff, 1.0);
+          // Lighting rig: cool hemisphere fill, a moon key (the only shadow caster) and two neon rim
+          // lights from the far side so silhouettes catch magenta/cyan edges from the chase camera.
+          hemiLight = new THREE.HemisphereLight(0x6b5cff, 0x1a0b2e, 0.55);
+          scene.add(hemiLight);
+          dirLight = new THREE.DirectionalLight(0xb8c4ff, 0.8);
           dirLight.position.set(6, 14, 8);
           dirLight.castShadow = true;
           dirLight.shadow.mapSize.set(1024, 1024);
@@ -1630,37 +2059,44 @@
           dirLight.shadow.camera.bottom = -6;
           dirLight.shadow.camera.near = 1;
           dirLight.shadow.camera.far = 45;
+          dirLight.shadow.bias = -0.0004;
           scene.add(dirLight);
+          scene.add(dirLight.target);
+          var rimA = new THREE.DirectionalLight(0xff2d95, 0.45);
+          rimA.position.set(-6, 2.5, -12);
+          scene.add(rimA);
+          var rimB = new THREE.DirectionalLight(0x22e5ff, 0.36);
+          rimB.position.set(6, 2.5, -12);
+          scene.add(rimB);
 
-          // Global skydome (gradient + retro sun) + starfield. Grouped so a single slow Y-roll +
-          // material hue-drift makes the sky evolve the longer you run. Follows the camera in
-          // render() so it always reads as infinitely far. fog:false keeps it visible past fog-far.
+          // Skydome (gradient + horizon sun) + starfield; follows the camera so it reads as infinitely far.
           skyGroup = new THREE.Group();
+          var skyTex = makeSkyTexture();
           skyMat = new THREE.MeshBasicMaterial({
-            map: makeSkyTexture(),
+            map: skyTex,
             side: THREE.BackSide,
             fog: false,
             depthWrite: false,
           });
-          skyMesh = new THREE.Mesh(new THREE.SphereGeometry(160, 32, 20), skyMat);
-          skyMesh.renderOrder = -1;
+          skyMesh = new THREE.Mesh(new THREE.SphereGeometry(160, 48, 24), skyMat);
+          skyMesh.renderOrder = -2;
           skyGroup.add(skyMesh);
           var starGeo = new THREE.BufferGeometry();
-          var STAR_N = 240,
+          var STAR_N = 260,
             starPos = new Float32Array(STAR_N * 3);
           for (var si = 0; si < STAR_N; si++) {
             var sth = Math.random() * Math.PI * 2,
-              sph = Math.random() * Math.random() * (Math.PI * 0.46),
+              sph = 0.12 + Math.random() * Math.random() * (Math.PI * 0.4),
               sr = 150;
             starPos[si * 3] = Math.cos(sph) * Math.cos(sth) * sr;
-            starPos[si * 3 + 1] = Math.sin(sph) * sr + 10;
+            starPos[si * 3 + 1] = Math.sin(sph) * sr;
             starPos[si * 3 + 2] = Math.cos(sph) * Math.sin(sth) * sr;
           }
           starGeo.setAttribute("position", new THREE.BufferAttribute(starPos, 3));
           starField = new THREE.Points(
             starGeo,
             new THREE.PointsMaterial({
-              size: 2.4,
+              size: 2.2,
               map: makeSpriteTexture(),
               color: 0xbfeaff,
               transparent: true,
@@ -1671,94 +2107,414 @@
             }),
           );
           starField.frustumCulled = false;
+          starField.renderOrder = -1;
           skyGroup.add(starField);
           scene.add(skyGroup);
-
-          // Ground + static neon lane lines
-          roadTex = makeRoadTexture();
-          var ground = new THREE.Mesh(
-            new THREE.PlaneGeometry(46, 280),
-            new THREE.MeshStandardMaterial({
-              color: 0x0b0620,
-              roughness: 0.9,
-              metalness: 0.1,
-              map: roadTex,
+          // Silhouette skyline ring (L3): alpha-cut, unfogged, follows the camera on x/z.
+          skyRing = new THREE.Mesh(
+            new THREE.CylinderGeometry(140, 140, 34, 48, 1, true),
+            new THREE.MeshBasicMaterial({
+              map: makeRingTexture(),
+              side: THREE.BackSide,
+              alphaTest: 0.5,
+              fog: false,
             }),
           );
-          ground.rotation.x = -Math.PI / 2;
-          ground.position.z = -100;
-          ground.receiveShadow = true;
-          scene.add(ground);
+          skyRing.position.y = 14;
+          skyRing.frustumCulled = false;
+          scene.add(skyRing);
 
-          var lineGeo = new THREE.BoxGeometry(0.08, 0.02, 280);
-          var cyanLineMat = new THREE.MeshBasicMaterial({ color: NEON.cyan });
-          var magLineMat = new THREE.MeshBasicMaterial({ color: NEON.magenta });
-          [-1.2, 1.2].forEach(function (x) {
-            var l = new THREE.Mesh(lineGeo, cyanLineMat);
-            l.position.set(x, 0.011, -100);
-            scene.add(l);
+          // Image-based light: PMREM of the sky so the wet road / chrome reflect the horizon glow.
+          try {
+            var pm = new THREE.PMREMGenerator(renderer);
+            skyTex.mapping = THREE.EquirectangularReflectionMapping;
+            envTex = pm.fromEquirectangular(skyTex).texture;
+            skyTex.mapping = THREE.UVMapping;
+            pm.dispose();
+          } catch (e) {
+            envTex = null;
+          }
+
+          // ---- ground: road / curb + sidewalk / outer ground (every roadside box now sits on geometry) ----
+          roadTex = makeRoadTexture();
+          roadMat = new THREE.MeshStandardMaterial({
+            map: roadTex,
+            roughness: 0.38,
+            metalness: 0.25,
+            envMapIntensity: 0.9,
           });
-          [-3.7, 3.7].forEach(function (x) {
-            var l = new THREE.Mesh(lineGeo, magLineMat);
-            l.position.set(x, 0.011, -100);
-            scene.add(l);
-          });
+          var road = new THREE.Mesh(new THREE.PlaneGeometry(ROAD_W, WORLD_LEN), roadMat);
+          road.rotation.x = -Math.PI / 2;
+          road.position.z = WORLD_Z;
+          road.receiveShadow = true;
+          scene.add(road);
+
+          gridTex = makeGridTexture();
+          var outer = new THREE.Mesh(
+            scaleUV(new THREE.PlaneGeometry(160, 300), 40, 75),
+            new THREE.MeshStandardMaterial({ map: gridTex, roughness: 0.9, metalness: 0 }),
+          );
+          outer.rotation.x = -Math.PI / 2;
+          outer.position.set(0, -0.02, WORLD_Z);
+          scene.add(outer);
+
+          sideTex = makeSidewalkTexture();
+          var swGeo = mergeGeos([
+            bakeGeo(
+              scaleUV(new THREE.PlaneGeometry(4.1, WORLD_LEN), 2.05, 140),
+              flatQuad(4.1, WORLD_LEN, -7.15, 0.12, WORLD_Z),
+            ),
+            bakeGeo(
+              scaleUV(new THREE.PlaneGeometry(4.1, WORLD_LEN), 2.05, 140),
+              flatQuad(4.1, WORLD_LEN, 7.15, 0.12, WORLD_Z),
+            ),
+          ]);
+          var sidewalk = new THREE.Mesh(
+            swGeo,
+            new THREE.MeshStandardMaterial({
+              map: sideTex,
+              roughness: 0.85,
+              metalness: 0.05,
+              envMapIntensity: 0.4,
+            }),
+          );
+          sidewalk.receiveShadow = true;
+          scene.add(sidewalk);
+
+          var curbBox = new THREE.BoxGeometry(0.3, 0.18, WORLD_LEN);
+          var curbs = new THREE.Mesh(
+            mergeGeos([
+              bakeGeo(curbBox, mat4(-4.95, 0.09, WORLD_Z), 0x1d1838),
+              bakeGeo(curbBox, mat4(4.95, 0.09, WORLD_Z), 0x1d1838),
+            ]),
+            new THREE.MeshStandardMaterial({
+              vertexColors: true,
+              roughness: 0.5,
+              metalness: 0.2,
+              envMapIntensity: 0.6,
+            }),
+          );
+          curbs.receiveShadow = true;
+          scene.add(curbs);
+          var stripBox = new THREE.BoxGeometry(0.3, 0.04, WORLD_LEN);
+          scene.add(
+            new THREE.Mesh(
+              mergeGeos([
+                bakeGeo(stripBox, mat4(-4.95, 0.2, WORLD_Z), NEON.magenta),
+                bakeGeo(stripBox, mat4(4.95, 0.2, WORLD_Z), NEON.cyan),
+              ]),
+              new THREE.MeshBasicMaterial({ vertexColors: true }),
+            ),
+          );
+          // neon lane strips (cyan inner, magenta outer) + additive glow underlay
+          var lineBox = new THREE.BoxGeometry(0.1, 0.02, WORLD_LEN);
+          scene.add(
+            new THREE.Mesh(
+              mergeGeos([
+                bakeGeo(lineBox, mat4(-1.2, 0.011, WORLD_Z), NEON.cyan),
+                bakeGeo(lineBox, mat4(1.2, 0.011, WORLD_Z), NEON.cyan),
+                bakeGeo(lineBox, mat4(-3.7, 0.011, WORLD_Z), NEON.magenta),
+                bakeGeo(lineBox, mat4(3.7, 0.011, WORLD_Z), NEON.magenta),
+              ]),
+              new THREE.MeshBasicMaterial({ vertexColors: true }),
+            ),
+          );
+          var glowQ = function (x, hex) {
+            return bakeGeo(new THREE.PlaneGeometry(0.5, WORLD_LEN), flatQuad(0.5, WORLD_LEN, x, 0.013, WORLD_Z), hex, 0.3);
+          };
+          var lineGlow = new THREE.Mesh(
+            mergeGeos([
+              glowQ(-1.2, NEON.cyan),
+              glowQ(1.2, NEON.cyan),
+              glowQ(-3.7, NEON.magenta),
+              glowQ(3.7, NEON.magenta),
+            ]),
+            patchAdditiveFog(
+              new THREE.MeshBasicMaterial({
+                vertexColors: true,
+                transparent: true,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false,
+              }),
+            ),
+          );
+          lineGlow.renderOrder = 1;
+          scene.add(lineGlow);
+          // contact shadow: dark gradient on the pavement where every facade meets the ground
+          var fade = makeFadeTexture();
+          var aoGeo = mergeGeos([
+            bakeGeo(
+              new THREE.PlaneGeometry(1.4, WORLD_LEN),
+              flatQuad(1.4, WORLD_LEN, -(FACADE_X - 0.7), 0.126, WORLD_Z),
+            ),
+            bakeGeo(
+              scaleUV(new THREE.PlaneGeometry(1.4, WORLD_LEN), 1, 1, true),
+              flatQuad(1.4, WORLD_LEN, FACADE_X - 0.7, 0.126, WORLD_Z),
+            ),
+          ]);
+          var ao = new THREE.Mesh(
+            aoGeo,
+            new THREE.MeshBasicMaterial({
+              map: fade,
+              color: 0x000000,
+              transparent: true,
+              opacity: 0.6,
+              depthWrite: false,
+            }),
+          );
+          ao.renderOrder = 1;
+          scene.add(ao);
         }
 
-        /* Recycled scenery: buildings (with neon edge wireframes) + edge light bars for speed feel. */
-        var buildings = [],
-          lightBars = [];
+        /* ---------- street lamps (instanced; NO point lights): pole+arm+head, halo, ground pool, wet streak ---------- */
+        var LAMP_N = 8,
+          LAMP_GAP = 16,
+          LAMP_SPAN = 128,
+          SIGN_N = 14; // pooled neon signs (about 40% of the roadside buildings carry one)
+        var lampInst = null,
+          lampHalo = null,
+          poolInst = null,
+          streakInst = null;
         if (renderer) {
-          var bldGeo = new THREE.BoxGeometry(1, 1, 1);
-          var winTex = makeWindowTexture();
-          var bldMat = new THREE.MeshStandardMaterial({
-            color: 0x0d0722,
-            roughness: 0.85,
-            emissive: 0xffffff,
-            emissiveMap: winTex,
-            emissiveIntensity: 0.55,
-          });
-          var edgeMats = [
-            new THREE.LineBasicMaterial({ color: NEON.magenta }),
-            new THREE.LineBasicMaterial({ color: NEON.cyan }),
-            new THREE.LineBasicMaterial({ color: NEON.purple }),
-          ];
-          var bldEdges = new THREE.EdgesGeometry(bldGeo);
-          for (var bi = 0; bi < 26; bi++) {
-            var side = bi % 2 === 0 ? -1 : 1;
-            var b = new THREE.Mesh(bldGeo, bldMat);
-            var wire = new THREE.LineSegments(bldEdges, edgeMats[bi % 3]);
-            b.add(wire);
-            b.userData.side = side;
-            scene.add(b);
-            buildings.push(b);
-            resetBuilding(b, -10 - (bi >> 1) * 18);
-          }
-          var barGeo = new THREE.BoxGeometry(0.14, 0.5, 0.14);
-          var barMatC = new THREE.MeshBasicMaterial({ color: NEON.cyan });
-          var barMatM = new THREE.MeshBasicMaterial({ color: NEON.magenta });
-          for (var li = 0; li < 30; li++) {
-            var side2 = li % 2 === 0 ? -1 : 1;
-            var bar = new THREE.Mesh(barGeo, li % 4 < 2 ? barMatC : barMatM);
-            bar.position.set(side2 * 4.4, 0.25, -(li >> 1) * 8);
-            scene.add(bar);
-            lightBars.push(bar);
-          }
+          var lampGeo = mergeGeos([
+            bakeGeo(new THREE.CylinderGeometry(0.06, 0.08, 4.2, 6), mat4(0, 2.1, 0), 0x1b1d2e),
+            bakeGeo(new THREE.BoxGeometry(0.95, 0.07, 0.07), mat4(0.45, 4.2, 0), 0x2a2d44),
+            bakeGeo(new THREE.BoxGeometry(0.55, 0.08, 0.28), mat4(0.85, 4.13, 0), 0xe9f6ff),
+          ]);
+          lampInst = makeInst(
+            lampGeo,
+            new THREE.MeshBasicMaterial({ vertexColors: true }),
+            LAMP_N * 2,
+          );
+          scene.add(lampInst);
+          var addMat = function (map) {
+            return patchAdditiveFog(
+              new THREE.MeshBasicMaterial({
+                map: map,
+                transparent: true,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false,
+              }),
+            );
+          };
+          lampHalo = makeInst(new THREE.PlaneGeometry(1, 1), addMat(makeSpriteTexture()), LAMP_N * 2);
+          lampHalo.renderOrder = 2;
+          for (var lh = 0; lh < LAMP_N * 2; lh++) lampHalo.setColorAt(lh, _tc.set(0xbfe9ff).multiplyScalar(0.7));
+          scene.add(lampHalo);
+          var flatPlane = new THREE.PlaneGeometry(1, 1);
+          flatPlane.rotateX(-Math.PI / 2);
+          poolInst = makeInst(flatPlane, addMat(makeSpriteTexture()), LAMP_N * 2);
+          poolInst.renderOrder = 1;
+          for (var lp = 0; lp < LAMP_N * 2; lp++)
+            poolInst.setColorAt(lp, _tc.set(lp < LAMP_N ? NEON.magenta : NEON.cyan).multiplyScalar(0.55));
+          scene.add(poolInst);
+          streakInst = makeInst(flatPlane, addMat(makeStreakTexture()), LAMP_N * 2 + SIGN_N);
+          streakInst.renderOrder = 1;
+          for (var ls = 0; ls < LAMP_N * 2 + SIGN_N; ls++)
+            streakInst.setColorAt(ls, _tc.set(ls < LAMP_N ? NEON.magenta : NEON.cyan).multiplyScalar(0.3));
+          scene.add(streakInst);
         }
-        function resetBuilding(b, z) {
-          var h = 6 + Math.random() * 16;
-          var w = 3 + Math.random() * 4;
-          // once textured GLB buildings own the roadside, the neon boxes retreat to a far skyline
-          var off = cityMode ? 20 + Math.random() * 9 : 8.5 + Math.random() * 5;
-          if (cityMode) h = 10 + Math.random() * 20;
-          b.scale.set(w, h, 4 + Math.random() * 5);
-          b.position.set(b.userData.side * off, h / 2, z);
+        function lampsTick() {
+          for (var s = 0; s < 2; s++) {
+            var side = s ? 1 : -1;
+            for (var i = 0; i < LAMP_N; i++) {
+              var idx = s * LAMP_N + i;
+              var z = ((worldScroll + i * LAMP_GAP + (s ? LAMP_GAP / 2 : 0)) % LAMP_SPAN) - 102;
+              setInst(lampInst, idx, side * 5.3, 0, z, 1, 1, 1, s ? Math.PI : 0);
+              setInst(lampHalo, idx, side * 4.45, 4.05, z, 1.5, 1.5, 1, 0, true);
+              setInst(poolInst, idx, side * 3.9, 0.016, z, 3.2, 1, 3.2, 0);
+              setInst(streakInst, idx, side * 3.9, 0.017, z, 0.5, 1, 6, 0);
+            }
+          }
+          lampInst.instanceMatrix.needsUpdate = true;
+          lampHalo.instanceMatrix.needsUpdate = true;
+          poolInst.instanceMatrix.needsUpdate = true;
+          streakInst.instanceMatrix.needsUpdate = true;
         }
 
-        /* Textured roadside city (KayKit City Builder Bits, CC0) — loaded async like the
-     character GLBs. Until (or unless) they arrive, the neon boxes above are the city:
-     file:// and any failed fetch keep the old look, nothing ever depends on these. */
+        /* ---------- roadside row: lit facades, roofline trims, neon signs ---------- */
+        var ROW_N = 14,
+          ROW_START = 24,
+          ROW_DROP = 26;
+        var rowTail = [0, 0]; // far edge (z) of the last building per side [left, right]
+        var roadside = []; // active entries (neon boxes until the KayKit GLBs arrive, then the GLB clones)
+        var boxRow = [],
+          glbRow = [];
         var cityMode = false;
+        var trimInst = null,
+          signInst = null,
+          signHalo = null;
+        var ACCENTS = [NEON.magenta, NEON.cyan, NEON.purple, 0xffb35a];
+        if (renderer) {
+          trimInst = makeInst(
+            new THREE.BoxGeometry(1, 1, 1),
+            new THREE.MeshBasicMaterial({ color: 0xffffff }),
+            ROW_N * 2,
+          );
+          for (var ti = 0; ti < ROW_N * 2; ti++) trimInst.setColorAt(ti, _tc.set(NEON.magenta));
+          scene.add(trimInst);
+          var signGeo = new THREE.PlaneGeometry(1, 1);
+          var rect = new Float32Array(SIGN_N * 4);
+          signGeo.setAttribute("aRect", new THREE.InstancedBufferAttribute(rect, 4));
+          signInst = makeInst(
+            signGeo,
+            patchSignUV(
+              new THREE.MeshBasicMaterial({ map: makeSignAtlas(), side: THREE.DoubleSide }),
+            ),
+            SIGN_N,
+          );
+          for (var si2 = 0; si2 < SIGN_N; si2++) signInst.setColorAt(si2, _tc.set(0xffffff));
+          scene.add(signInst);
+          var haloMat = patchAdditiveFog(
+            new THREE.MeshBasicMaterial({
+              map: makeSpriteTexture(),
+              transparent: true,
+              blending: THREE.AdditiveBlending,
+              depthWrite: false,
+            }),
+          );
+          signHalo = makeInst(new THREE.PlaneGeometry(1, 1), haloMat, SIGN_N);
+          signHalo.renderOrder = 2;
+          for (var sh2 = 0; sh2 < SIGN_N; sh2++) signHalo.setColorAt(sh2, _tc.set(0x000000));
+          scene.add(signHalo);
+        }
+        function newEntry(side) {
+          return {
+            obj: null,
+            kind: "box",
+            side: side,
+            z: 0,
+            w: 6,
+            h: 10,
+            d: 6,
+            ox: 0,
+            oy: 0,
+            oz: 0,
+            accent: NEON.magenta,
+            sign: -1,
+            signZ: 0,
+            signY: 5,
+            word: 0,
+            flick: 0,
+            phase: 0,
+            period: 5,
+            gap: 1,
+          };
+        }
+        function rerollEntry(e, idx) {
+          e.gap = 0.6 + Math.random() * 1.8;
+          e.accent = ACCENTS[(Math.random() * ACCENTS.length) | 0];
+          if (e.kind === "box") {
+            e.w = 4.5 + Math.random() * 3.5;
+            e.d = 5.5 + Math.random() * 3;
+            e.h = 9 + Math.random() * 12;
+            e.obj.scale.set(e.d, e.h, e.w);
+          }
+          if (e.sign >= 0) {
+            e.word = (Math.random() * SIGN_WORDS.length) | 0;
+            e.signZ = (Math.random() - 0.5) * Math.max(0, e.w - 2.4);
+            e.signY = 4.2 + Math.random() * 2.4;
+            e.flick = Math.random() < 0.25 ? 1 : 0; // ~10% of all buildings carry a flickering sign
+            e.phase = Math.random() * 7;
+            e.period = 4 + Math.random() * 3;
+            var a = signInst.geometry.attributes.aRect;
+            a.setXYZW(e.sign, e.word / SIGN_WORDS.length, 0, 1 / SIGN_WORDS.length, 1);
+            a.needsUpdate = true;
+            signInst.setColorAt(e.sign, _tc.set(0xffffff));
+            signHalo.setColorAt(e.sign, _tc.set(SIGN_COLORS[e.word]).multiplyScalar(0.55));
+            streakInst.setColorAt(LAMP_N * 2 + e.sign, _tc.set(SIGN_COLORS[e.word]).multiplyScalar(0.3));
+            e.lit = 1;
+            signInst.instanceColor.needsUpdate = true;
+            signHalo.instanceColor.needsUpdate = true;
+            streakInst.instanceColor.needsUpdate = true;
+          }
+          trimInst.setColorAt(idx, _tc.set(e.accent));
+          trimInst.instanceColor.needsUpdate = true;
+        }
+        function placeEntry(e) {
+          if (!e.obj) return;
+          if (e.kind === "box") e.obj.position.set(e.side * (FACADE_X + e.d / 2), e.h / 2, e.z);
+          else e.obj.position.set(e.ox, e.oy, e.z + e.oz);
+        }
+        function layoutRow(row) {
+          var cur = [ROW_START, ROW_START];
+          for (var i = 0; i < row.length; i++) {
+            var e = row[i],
+              s = e.side < 0 ? 0 : 1;
+            rerollEntry(e, i);
+            e.z = cur[s] - e.w / 2;
+            cur[s] -= e.w + e.gap;
+            rowTail[s] = cur[s] + e.gap;
+            placeEntry(e);
+          }
+        }
+        function writeEntry(i, e) {
+          setInst(trimInst, i, e.side * (FACADE_X - 0.04), e.h + 0.03, e.z, 0.16, 0.12, e.w * 0.98, 0);
+          if (e.sign >= 0) {
+            var sx = e.side * (FACADE_X - 0.5),
+              sz = e.z + e.signZ,
+              ry = e.side < 0 ? Math.PI / 2 : -Math.PI / 2;
+            setInst(signInst, e.sign, sx, e.signY, sz, 0.85, 3.4, 1, ry);
+            setInst(signHalo, e.sign, sx - e.side * 0.2, e.signY, sz, 2.6, 6, 1, 0, true);
+            setInst(streakInst, LAMP_N * 2 + e.sign, e.side * 3.2, 0.017, sz, 0.5, 1, 6, 0);
+          }
+        }
+        function rowTick(move) {
+          rowTail[0] += move;
+          rowTail[1] += move;
+          for (var i = 0; i < roadside.length; i++) {
+            var e = roadside[i],
+              s = e.side < 0 ? 0 : 1;
+            e.z += move;
+            if (e.z - e.w / 2 > ROW_DROP) {
+              rerollEntry(e, i);
+              e.z = rowTail[s] - e.gap - e.w / 2;
+              rowTail[s] = e.z - e.w / 2;
+            }
+            placeEntry(e);
+            writeEntry(i, e);
+          }
+          trimInst.instanceMatrix.needsUpdate = true;
+          signInst.instanceMatrix.needsUpdate = true;
+          signHalo.instanceMatrix.needsUpdate = true;
+          streakInst.instanceMatrix.needsUpdate = true;
+        }
+        // Neon boxes ARE the city until (unless) the KayKit GLBs load — the file:// fallback keeps the
+        // full lit-street look, sitting on the sidewalk at the same slot the GLB facades use.
+        if (renderer) {
+          var boxGeo = new THREE.BoxGeometry(1, 1, 1);
+          var boxTex = makeTowerTexture();
+          var boxMat = patchTexScale(
+            new THREE.MeshStandardMaterial({
+              color: 0xffffff,
+              map: boxTex,
+              emissive: 0xffffff,
+              emissiveMap: boxTex,
+              emissiveIntensity: 1.0,
+              roughness: 0.7,
+              metalness: 0.1,
+            }),
+            6,
+            12,
+          );
+          var boxSigns = 0;
+          for (var bi = 0; bi < ROW_N * 2; bi++) {
+            var be = newEntry(bi % 2 === 0 ? -1 : 1);
+            be.obj = new THREE.Mesh(boxGeo, boxMat);
+            if (bi % 5 < 2) be.sign = boxSigns++; // ~40% carry a sign
+            scene.add(be.obj);
+            boxRow.push(be);
+          }
+          roadside = boxRow;
+          layoutRow(boxRow);
+          boxRow.forEach(function (e, i) {
+            writeEntry(i, e);
+          });
+        }
+
+        /* Textured roadside city (KayKit City Builder Bits, CC0) — loaded async like the character
+     GLBs. Night-graded (0.55x + blue lerp), with a lit-window EMISSIVE MASK cut from the shared
+     atlas's glass cell (3 colour variants). If the canvas read fails the old uniform emissive stays. */
         var cityBuildings = [];
         var CITY_FILES = [
           "building_A",
@@ -1770,66 +2526,261 @@
           "building_G",
           "building_H",
         ];
-        var CITY_SPACING = 17,
-          CITY_COUNT = 16;
-        function prepCityModel(scene3) {
-          scene3.traverse(function (o) {
-            if (o.isMesh && o.material && o.material.emissive) {
-              // self-lit night look: reuse the color map as a dim emissive map so the texture
-              // reads under the dark sky without extra lights
-              o.material.emissive = new THREE.Color(0xbfc8ff);
-              o.material.emissiveMap = o.material.map;
-              o.material.emissiveIntensity = 0.38;
-            }
+        var cityAtlas = null; // the ONE shared atlas texture (all KayKit pieces use the same image)
+        function makeWindowMask(size, hex) {
+          try {
+            var c = mkCanvas(size, size),
+              x = c.getContext("2d");
+            x.fillStyle = "#000";
+            x.fillRect(0, 0, size, size);
+            x.fillStyle = hex;
+            // glass swatch = bottom-left cell of the 4x4 atlas (image px x 0-255, y 768-1023 at 1024)
+            x.fillRect(0, size * 0.75, size * 0.25, size * 0.25);
+            var t = new THREE.CanvasTexture(c);
+            t.flipY = false;
+            t.encoding = THREE.sRGBEncoding;
+            return t;
+          } catch (e) {
+            return null;
+          }
+        }
+        function prepCityModels(models) {
+          var base = null;
+          models[0].traverse(function (o) {
+            if (o.isMesh && !base) base = o.material;
           });
-          return scene3;
+          if (!base) return [];
+          cityAtlas = base.map;
+          var size = (cityAtlas && cityAtlas.image && cityAtlas.image.width) || 1024;
+          var variants = ["#ffb35a", "#5fe8ff", "#ff5fb0"].map(function (hex) {
+            var m = base.clone();
+            m.map = cityAtlas;
+            m.color.multiplyScalar(0.4).lerp(new THREE.Color(0x4a5090), 0.3); // night grade
+            m.envMapIntensity = 0.5;
+            var mask = makeWindowMask(size, hex);
+            if (mask) {
+              m.emissive = new THREE.Color(0xffffff);
+              m.emissiveMap = mask;
+              m.emissiveIntensity = 1.1;
+            } else {
+              m.emissive = new THREE.Color(0xbfc8ff);
+              m.emissiveMap = cityAtlas;
+              m.emissiveIntensity = 0.3;
+            }
+            return m;
+          });
+          return variants;
         }
         function enableCityBuildings(models) {
-          // pool: alternate sides, cycle through the loaded models, normalize each to a
-          // believable height; recycling only shifts z so layout stays stable
-          for (var i = 0; i < CITY_COUNT; i++) {
-            var src = models[i % models.length];
-            var inst = src.clone();
+          var variants = prepCityModels(models);
+          if (!variants.length) return;
+          var n = models.length,
+            glbSigns = 0;
+          for (var i = 0; i < ROW_N * 2; i++) {
             var side = i % 2 === 0 ? -1 : 1;
-            var box = new THREE.Box3().setFromObject(inst);
-            var size = new THREE.Vector3();
-            box.getSize(size);
-            var s = (7 + Math.random() * 5) / (size.y || 1);
-            inst.scale.setScalar(s);
-            inst.scale.y *= 1 + Math.random() * 0.4; // gentle tower stretch
+            var src = models[(((i >> 1) * 3 + (side < 0 ? 0 : 2)) | 0) % n];
+            var inst = src.clone();
+            inst.traverse(function (o) {
+              if (o.isMesh) o.material = variants[(i * 7) % 3 | 0];
+            });
             inst.rotation.y = side === -1 ? Math.PI / 2 : -Math.PI / 2; // face the road
+            var box = new THREE.Box3().setFromObject(inst),
+              size0 = new THREE.Vector3();
+            box.getSize(size0);
+            var s = (6.5 + Math.random() * 5.5) / (size0.y || 1);
+            inst.scale.setScalar(s);
+            inst.scale.y *= 1 + Math.random() * 0.45; // gentle tower stretch
+            inst.updateMatrixWorld(true);
             box.setFromObject(inst);
-            inst.position.set(
-              side * (9.6 + Math.random() * 2.6),
-              -box.min.y,
-              -4 - i * CITY_SPACING + Math.random() * 6,
-            );
+            var e = newEntry(side);
+            e.kind = "glb";
+            e.obj = inst;
+            e.w = box.max.z - box.min.z;
+            e.d = box.max.x - box.min.x;
+            e.h = box.max.y - box.min.y;
+            // inner (road-facing) edge sits exactly on the facade line; origin offsets keep that on recycle
+            e.ox = side < 0 ? -FACADE_X - box.max.x + inst.position.x : FACADE_X - box.min.x + inst.position.x;
+            e.oy = -box.min.y + inst.position.y;
+            e.oz = inst.position.z - (box.min.z + box.max.z) / 2;
+            if (i % 5 < 2) e.sign = glbSigns++;
             scene.add(inst);
+            glbRow.push(e);
             cityBuildings.push(inst);
           }
+          boxRow.forEach(function (e) {
+            e.obj.visible = false;
+          });
+          roadside = glbRow;
           cityMode = true;
-          buildings.forEach(function (b) {
-            resetBuilding(b, b.position.z);
-          }); // push the boxes out to skyline duty
+          layoutRow(glbRow);
+          for (var k = 0; k < SIGN_N; k++) {
+            hideInst(signInst, k);
+            hideInst(signHalo, k);
+            hideInst(streakInst, LAMP_N * 2 + k);
+          }
+          glbRow.forEach(function (e, i) {
+            writeEntry(i, e);
+          });
         }
         function preloadCity() {
           if (!gltfLoader || !renderer) return;
           var loaded = [],
             done = 0;
+          function finish() {
+            if (++done === CITY_FILES.length && loaded.length) enableCityBuildings(loaded);
+          }
           CITY_FILES.forEach(function (f) {
             gltfLoader.load(
               "assets/models/city/" + f + ".glb",
               function (g) {
-                loaded.push(prepCityModel(g.scene));
-                if (++done === CITY_FILES.length && loaded.length) enableCityBuildings(loaded);
+                loaded.push(g.scene);
+                finish();
               },
               undefined,
-              function () {
-                if (++done === CITY_FILES.length && loaded.length) enableCityBuildings(loaded);
-              },
+              finish,
             );
           });
         }
+
+        /* ---------- skyline layers: L2 instanced night towers (+ roof strips, blinking antennas) ---------- */
+        var TOWER_N = 32,
+          TOWER_SPAN = 16 * 9.6;
+        var towers = [],
+          towerInst = null,
+          capInst = null,
+          antInst = null;
+        function rerollTower(t) {
+          t.w = 5 + Math.random() * 5;
+          t.d = 5 + Math.random() * 5;
+          t.h = 14 + Math.random() * 28;
+          t.x = t.side * (18 + Math.random() * 16);
+          t.ant = Math.random() < 0.3;
+          t.ax = (Math.random() - 0.5) * 2;
+        }
+        if (renderer) {
+          var tGeo = new THREE.BoxGeometry(1, 1, 1);
+          tGeo.translate(0, 0.5, 0);
+          towerInst = makeInst(
+            tGeo,
+            patchTexScale(new THREE.MeshBasicMaterial({ map: makeTowerTexture() }), 6, 12),
+            TOWER_N,
+          );
+          capInst = makeInst(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ color: 0xffffff }), TOWER_N);
+          antInst = makeInst(
+            new THREE.BoxGeometry(1, 1, 1),
+            new THREE.MeshBasicMaterial({ color: 0xff2030 }),
+            TOWER_N,
+          );
+          for (var ki = 0; ki < TOWER_N; ki++) {
+            var tw = { side: ki % 2 === 0 ? -1 : 1, z: 0 };
+            rerollTower(tw);
+            tw.z = 18 - (ki >> 1) * 9.6 - Math.random() * 3;
+            towers.push(tw);
+            towerInst.setColorAt(ki, _tc.setScalar(0.55 + Math.random() * 0.45));
+            capInst.setColorAt(ki, _tc.set(ACCENTS[(Math.random() * 3) | 0]));
+          }
+          scene.add(towerInst);
+          scene.add(capInst);
+          scene.add(antInst);
+        }
+        function towersTick(move) {
+          for (var i = 0; i < towers.length; i++) {
+            var t = towers[i];
+            t.z += move;
+            if (t.z - t.d / 2 > 30) {
+              t.z -= TOWER_SPAN;
+              rerollTower(t);
+            }
+            setInst(towerInst, i, t.x, 0, t.z, t.w, t.h, t.d, 0);
+            setInst(capInst, i, t.x, t.h, t.z, t.w + 0.25, 0.3, t.d + 0.25, 0);
+            if (t.ant) setInst(antInst, i, t.x + t.ax, t.h + 1.8, t.z, 0.16, 3.6, 0.16, 0);
+            else hideInst(antInst, i);
+          }
+          towerInst.instanceMatrix.needsUpdate = true;
+          capInst.instanceMatrix.needsUpdate = true;
+          antInst.instanceMatrix.needsUpdate = true;
+        }
+
+        /* One call advances every scrolling layer (road dashes, pavement, grid, facades, lamps, towers). */
+        function worldTick(move) {
+          if (!renderer) return;
+          worldScroll += move;
+          roadTex.offset.y = (roadTex.offset.y + move / 38.4) % 1;
+          sideTex.offset.y = (sideTex.offset.y + move / 2) % 1;
+          gridTex.offset.y = (gridTex.offset.y + move / 4) % 1;
+          rowTick(move);
+          lampsTick();
+          towersTick(move);
+        }
+        function worldReset() {
+          if (!renderer) return;
+          worldScroll = 0;
+          layoutRow(roadside);
+          roadside.forEach(function (e, i) {
+            writeEntry(i, e);
+          });
+          for (var k = 0; k < towers.length; k++) {
+            towers[k].z = 18 - (k >> 1) * 9.6 - Math.random() * 3;
+          }
+          worldTick(0);
+        }
+        // Per-frame (not per-tick) animation: sign dropouts + antenna pulse. Static under reduced motion.
+        var _antC = new THREE.Color();
+        function worldAnim(t) {
+          if (!renderer) return;
+          var flick = TIERS[quality.tier].flicker && !prefersReduced;
+          var dirty = false;
+          for (var i = 0; i < roadside.length; i++) {
+            var e = roadside[i];
+            if (e.sign < 0) continue;
+            var lit = 1;
+            if (flick && e.flick) {
+              var ph = (t + e.phase) % e.period;
+              lit = ph < 0.4 && Math.sin(ph * 55) < 0 ? 0.15 : 1;
+            }
+            if (lit !== e.lit) {
+              e.lit = lit;
+              signInst.setColorAt(e.sign, _tc.setScalar(lit));
+              dirty = true;
+            }
+          }
+          if (dirty) signInst.instanceColor.needsUpdate = true;
+          var p = prefersReduced ? 1 : 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(t * Math.PI * 2));
+          antInst.material.color.setRGB(p, 0.08 * p, 0.12 * p);
+        }
+
+        /* ---------- quality tiers: apply / downgrade ---------- */
+        function applyQuality(name, manual) {
+          var T = TIERS[name];
+          if (!T || !renderer) return;
+          quality.tier = name;
+          quality.dpr = Math.min(window.devicePixelRatio || 1, T.dpr);
+          quality.shadows = T.shadows;
+          if (manual) quality.auto = false;
+          renderer.setPixelRatio(quality.dpr);
+          resize(); // setPixelRatio alone doesn't resize the drawing buffer
+          renderer.shadowMap.enabled = T.shadows;
+          dirLight.castShadow = T.shadows;
+          if (dirLight.shadow.mapSize.x !== T.shadowSize) {
+            dirLight.shadow.mapSize.set(T.shadowSize, T.shadowSize);
+            if (dirLight.shadow.map) {
+              dirLight.shadow.map.dispose();
+              dirLight.shadow.map = null;
+            }
+          }
+          scene.environment = T.env && envTex ? envTex : null;
+          roadMat.roughness = T.roadRough;
+          scene.fog.far = T.fogFar;
+          streakInst.visible = T.streaks;
+          scene.traverse(function (o) {
+            var m = o.material;
+            if (!m) return;
+            if (Array.isArray(m)) m.forEach(function (mm) { mm.needsUpdate = true; });
+            else m.needsUpdate = true;
+          });
+        }
+
+        if (renderer) applyQuality(detectTier(), false);
 
         /* ══════════════════════ Skins (primitive-built, articulated) ══════════════════════
      Each builder returns a Group and stashes animatable joints on `userData.parts`
@@ -2798,7 +3749,6 @@
           },
           tick: function (dt) {
             var move = speed * dt;
-            if (roadTex) roadTex.offset.y += move * 0.03; // scroll the road toward the camera (sells speed)
             distToNextWave -= move;
             if (distToNextWave <= 0) {
               var wasFirst = firstWave;
@@ -2851,24 +3801,8 @@
                 activePickups.splice(i, 1);
               }
             }
-            // scenery recycle
-            if (renderer) {
-              for (i = 0; i < buildings.length; i++) {
-                var b = buildings[i];
-                b.position.z += move;
-                if (b.position.z > 24) resetBuilding(b, b.position.z - 240);
-              }
-              for (i = 0; i < cityBuildings.length; i++) {
-                var cb = cityBuildings[i];
-                cb.position.z += move;
-                if (cb.position.z > 26) cb.position.z -= CITY_COUNT * CITY_SPACING;
-              }
-              for (i = 0; i < lightBars.length; i++) {
-                var bar = lightBars[i];
-                bar.position.z += move;
-                if (bar.position.z > 12) bar.position.z -= 120;
-              }
-            }
+            // scenery: road dashes, pavement, facades, lamps, towers
+            worldTick(move);
           },
         };
 
@@ -3187,6 +4121,7 @@
           powerups.hoverboard = 0;
           PlayerController.reset();
           ObstacleSpawner.reset();
+          worldReset();
           if (renderer) {
             droneGroup.position.set(0, 2.4, 6.4);
           }
@@ -3335,6 +4270,19 @@
           UIManager.puChip("puHoverboard", powerups.hoverboard);
         }
 
+        // Camera rig: blends toward a wider/taller/further framing as the viewport gets narrower so
+        // all three lanes stay in view on portrait phones (PLAY-006 F12). Recomputed in resize().
+        var camBase = { fov: 58, y: 4.4, z: 8, lookY: 1.6, lookZ: -8 };
+        function camParams(aspect) {
+          var t = clamp((1.3 - aspect) / 0.8, 0, 1);
+          camBase.fov = 58 + 14 * t;
+          camBase.y = 4.4 + 1.6 * t;
+          camBase.z = 8 + 2.8 * t;
+          camBase.lookY = 1.6 - 0.2 * t;
+          camBase.lookZ = -8 - 2 * t;
+        }
+        camParams(16 / 9);
+
         function render() {
           if (phase === "running" || phase === "countdown") paintHud();
           if (!renderer) return;
@@ -3342,31 +4290,29 @@
           var shake = phase === "crashed" && !prefersReduced ? Math.max(0, crashT) * 0.25 : 0;
           camera.position.set(
             camX + (shake ? (Math.random() - 0.5) * shake : 0),
-            4.4 + player.y * 0.25 + (shake ? (Math.random() - 0.5) * shake : 0),
-            8,
+            camBase.y + player.y * 0.25 + (shake ? (Math.random() - 0.5) * shake : 0),
+            camBase.z,
           );
-          camera.lookAt(camX * 1.2, 1.6, -8);
+          camera.lookAt(camX * 1.2, camBase.lookY, camBase.lookZ);
           updateSky();
+          worldAnim(elapsed);
+          // the moon key follows the runner so shadows stay crisp in every lane
+          dirLight.position.set(6 + player.x, 14, 8);
+          dirLight.target.position.set(player.x, 0, 0);
           renderer.render(scene, camera);
         }
 
-        // Dynamic sky: keep the dome centred on the camera (infinitely far), and — the longer/
-        // further you run — slowly roll it and drift its tint + the fog hue through the synthwave
-        // band, so the sky visibly evolves. Static under reduced motion.
-        var _skyTint = new THREE.Color(),
-          _fogHue = new THREE.Color();
+        // Skydome stays centred on the camera (infinitely far). The sun sways a hair around forward
+        // (never drifts out of view); the haze hue drifts through violet/blue/magenta only — never red.
+        var _fogHue = new THREE.Color();
         function updateSky() {
           if (!skyGroup) return;
           skyGroup.position.copy(camera.position);
+          skyRing.position.set(camera.position.x, 14, camera.position.z);
           if (prefersReduced) return;
-          skyGroup.rotation.y = elapsed * 0.012 + distance * 0.0009;
-          var hue = (((distance * 0.0009) % 1) + 1) % 1; // cycles through the palette as you go
-          _skyTint.setHSL(hue, 0.45, 0.82);
-          skyMat.color.copy(_skyTint); // gentle dome tint (multiplies texture)
-          if (scene.fog) {
-            _fogHue.setHSL(hue, 0.6, 0.22);
-            scene.fog.color.copy(_fogHue);
-          }
+          skyGroup.rotation.y = 0.06 * Math.sin(elapsed * 0.05);
+          _fogHue.setHSL(0.73 + 0.06 * Math.sin(distance * 0.0012), 0.62, 0.18);
+          scene.fog.color.copy(_fogHue);
         }
 
         var rafLast = 0,
@@ -3395,6 +4341,8 @@
           if (w < 2 || h < 2) return; // hidden screen — retry next entry (canvas-size lesson)
           renderer.setSize(w, h, false);
           camera.aspect = w / h;
+          camParams(camera.aspect);
+          camera.fov = camBase.fov;
           camera.updateProjectionMatrix();
         }
         window.addEventListener("resize", resize);

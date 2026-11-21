@@ -379,21 +379,6 @@ button {
   white-space: nowrap;
 }
 
-/* ---- Page transition (hub <-> game) ------------------------------------- */
-/* Cross-document View Transition: a short cross-fade when navigating between
-   same-origin pages that both load this file. Browsers without support ignore
-   the at-rule and simply cut, so navigation is never delayed by script.
-   Inputs are blocked for about this long during the fade (PLAY-006 R2). */
-@media (prefers-reduced-motion: no-preference) {
-  @view-transition {
-    navigation: auto;
-  }
-  ::view-transition-old(root),
-  ::view-transition-new(root) {
-    animation-duration: var(--md-sys-motion-duration-short4);
-  }
-}
-
 /* ---- Reduced motion ----------------------------------------------------- */
 @media (prefers-reduced-motion: reduce) {
   *,

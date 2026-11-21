@@ -550,19 +550,17 @@
         letter-spacing: 0.04em;
       }
       .cnum.beat {
-        animation: beat 0.7s var(--md-sys-motion-easing-emphasized);
+        animation: beat 0.3s var(--md-sys-motion-easing-emphasized);
       }
+      /* A one-way pop (scale only): the numeral never fades out, so the 3-2-1 is not a ~3 Hz brightness
+         pulse (WCAG 2.3.1) even at the 300 ms first-run pace. */
       @keyframes beat {
         0% {
-          transform: scale(0.4);
-          opacity: 0;
+          transform: scale(1.35);
         }
-        30% {
-          opacity: 1;
-        }
+        45%,
         100% {
-          transform: scale(1.25);
-          opacity: 0;
+          transform: scale(1);
         }
       }
 
@@ -1102,7 +1100,11 @@
     <!-- ========== GAME ========== -->
     <section id="game" class="screen">
       <div id="stage">
-        <canvas id="glCanvas"></canvas>
+        <canvas
+          id="glCanvas"
+          role="img"
+          aria-label="Game view: a jogger running down a town street with dogs close behind"
+        ></canvas>
         <div id="hud">
           <span id="hudScore">0</span>
           <span id="hudCoins">🪙 0</span>
@@ -1127,7 +1129,7 @@
           </div>
         </div>
         <div id="flash"></div>
-        <div id="toast"></div>
+        <div id="toast" role="status"></div>
         <div id="countdown"><div class="cnum" id="cnum">3</div></div>
         <div id="pause" role="dialog" aria-modal="true" aria-labelledby="pauseTitle">
           <div>
@@ -1137,7 +1139,7 @@
               <button class="button button--filled state-layer" id="resumeBtn">Resume</button>
               <button class="button state-layer pause-quit" id="pauseQuitBtn">Quit</button>
             </div>
-            <p class="pause-hint">Space, Enter or P resumes · Esc quits</p>
+            <p class="pause-hint">Space, Enter, P or Esc resumes</p>
           </div>
         </div>
         <div id="glFail">
@@ -1945,6 +1947,12 @@
         function announce(msg) {
           $("srStatus").textContent = msg;
         }
+        // While the Pause dialog is up the HUD buttons underneath must not be Tab-reachable (the dialog is modal).
+        function setGameChromeInert(on) {
+          ["hud", "dogMeter", "puDock"].forEach(function (id) {
+            $(id).inert = on;
+          });
+        }
 
         var focusOnShow = false; // false until the first setup screen is up (no focus theft on page load)
         var UIManager = {
@@ -1955,6 +1963,7 @@
             $("toast").classList.remove("show");
             $("flash").classList.remove("on");
             paused = false; // a pause never outlives the screen it was raised on
+            setGameChromeInert(false);
             $("pause").classList.remove("active");
             ["setup", "game", "results", "shop"].forEach(function (x) {
               $(x).classList.toggle("active", x === s);
@@ -2011,7 +2020,7 @@
             m.classList.toggle("danger", gapNow < GAP_DANGER);
             m.classList.toggle("warn", gapNow >= GAP_DANGER && gapNow < GAP_CALM - 0.3);
           },
-          renderShop: function () {
+          renderShop: function (focusId) {
             $("walletCoins").textContent = save.coins;
             var grid = $("skinGrid");
             grid.textContent = "";
@@ -2054,11 +2063,14 @@
               var btn = document.createElement("button");
               btn.className =
                 "button state-layer " + (equipped ? "button--outlined" : "button--filled");
+              btn.dataset.btn = skin.id;
               if (equipped) {
                 btn.textContent = "Equipped";
-                btn.disabled = true;
+                btn.setAttribute("aria-disabled", "true"); // stays focusable so focus survives the re-render
+                btn.setAttribute("aria-label", skin.name + ", equipped");
               } else if (owned) {
                 btn.textContent = "Equip";
+                btn.setAttribute("aria-label", "Equip " + skin.name);
                 btn.addEventListener("click", function () {
                   equipSkin(skin.id);
                 });
@@ -2078,6 +2090,9 @@
               card.appendChild(act);
               grid.appendChild(card);
             });
+            // Buy / Equip rebuild the grid: put focus back on that card's button (it would fall to the page otherwise)
+            var keep = focusId && grid.querySelector('[data-btn="' + focusId + '"]');
+            if (keep) keep.focus({ preventScroll: true });
           },
         };
 
@@ -2103,7 +2118,7 @@
           AudioManager.buy();
           announce(skin.name + " bought and equipped");
           CharacterKit.applySkin();
-          UIManager.renderShop();
+          UIManager.renderShop(id);
         }
         function equipSkin(id) {
           if (save.unlocked.indexOf(id) < 0) return;
@@ -2111,7 +2126,7 @@
           SaveManager.persist();
           announce(skinById(id).name + " equipped");
           CharacterKit.applySkin();
-          UIManager.renderShop();
+          UIManager.renderShop(id);
         }
 
         /* ══════════════════════ THREE renderer, quality tiers, helpers ══════════════════════
@@ -6388,12 +6403,14 @@
             /* best-effort browser API; failure is non-fatal */
           }
           $("pause").classList.add("active");
-          announce("Paused. Tap to resume.");
+          announce("Paused. Resume with the button, or press Space, Enter, P or Escape.");
+          setGameChromeInert(true);
           $("resumeBtn").focus({ preventScroll: true });
         }
         function resumeRun() {
           if (!paused) return;
           paused = false;
+          setGameChromeInert(false);
           $("pause").classList.remove("active");
           $("resumeBtn").blur();
           try {
@@ -6727,6 +6744,7 @@
         /* ══════════════════════ input: keyboard + swipes ══════════════════════ */
         window.addEventListener("keydown", function (ev) {
           if (!$("game").classList.contains("active")) return;
+          if (ev.ctrlKey || ev.metaKey || ev.altKey) return; // Ctrl+D, Alt+Left, screen-reader chords are not ours
           if ((ev.key === "m" || ev.key === "M") && !ev.repeat) {
             ev.preventDefault();
             AudioManager.setMuted(!save.muted); // same path as the HUD button (a desktop player's hands stay on the keys)
@@ -6738,8 +6756,8 @@
             ev.preventDefault();
             return pauseRun();
           }
-          // a held key from the resume press must not skip the resume 3-2-1
-          if (ev.repeat && phase === "countdown") return;
+          // one press = one move (a held key must not chain lane changes, nor skip the resume 3-2-1)
+          if (ev.repeat) return;
           // RECURRENCE(PLAY-005, count=3): a global keydown handler must not steal keys from a focused
           // control, and must not go deaf while one has focus: bail on buttons ONLY for the activation keys
           // (Space/Enter), so arrows / WASD keep steering after a click on #muteBtn. Systemic fix: handler
@@ -6764,18 +6782,19 @@
           }
         });
 
-        // While paused only these keys act: Space / Enter / P resume (a focused button keeps its own Space /
-        // Enter, so Quit stays a Quit), Esc quits through the usual quit path.
+        // While paused only these keys act: Space / Enter / P / Esc resume (a focused button keeps its own Space /
+        // Enter, so Quit stays a Quit). Esc resumes rather than quits: Esc is also what pauses, so a double tap or
+        // a held key must not end the run; Quit is the button.
         function pauseKey(ev) {
           var k = ev.key;
-          if (k === "Escape") {
-            ev.preventDefault();
-            quitRun();
-            return;
-          }
           if (ev.repeat) return;
           var onButton = ev.target && ev.target.closest && ev.target.closest("button");
-          if (k === "p" || k === "P" || (!onButton && (k === " " || k === "Enter"))) {
+          if (
+            k === "Escape" ||
+            k === "p" ||
+            k === "P" ||
+            (!onButton && (k === " " || k === "Enter"))
+          ) {
             ev.preventDefault();
             resumeRun();
           }
@@ -6869,7 +6888,7 @@
         function syncMuteUi() {
           $("muteBtn").textContent = save.muted ? "🔇" : "🔊";
           $("muteBtn").setAttribute("aria-pressed", String(save.muted));
-          $("muteBtn").setAttribute("aria-label", save.muted ? "Unmute sound" : "Mute sound");
+          $("muteBtn").setAttribute("aria-label", "Mute sound"); // fixed name + aria-pressed (pressed = muted)
           $("soundToggle").setAttribute("aria-pressed", String(!save.muted));
         }
         $("muteBtn").addEventListener("click", function (ev) {

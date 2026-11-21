@@ -948,11 +948,41 @@ async function main() {
     await dk.page.waitForFunction(() => window.__stride.state.phase === "running", null, {
       timeout: 30000,
     });
-    // Esc pauses, P resumes; M mutes and unmutes
+    // Esc pauses (HUD becomes inert under the modal dialog), Esc again resumes WITHOUT quitting, P also resumes
     await dk.page.keyboard.press("Escape");
     const paused = await S(dk.page, () => window.__stride.state.paused);
+    const inert = await S(dk.page, () => document.getElementById("hud").inert === true);
+    await dk.page.keyboard.press("Escape");
+    const escResume = await S(dk.page, () => ({
+      paused: window.__stride.state.paused,
+      phase: window.__stride.state.phase,
+      inert: document.getElementById("hud").inert,
+    }));
+    await dk.page.waitForFunction(() => window.__stride.state.phase === "running", null, {
+      timeout: 15000,
+    });
+    await dk.page.keyboard.press("Escape");
     await dk.page.keyboard.press("p");
     const resumed = await S(dk.page, () => window.__stride.state.paused);
+    await dk.page.waitForFunction(() => window.__stride.state.phase === "running", null, {
+      timeout: 15000,
+    });
+    // modifier chords (Ctrl+Left ...) are not game input
+    const chords = await S(dk.page, () => window.__stride.state.lane);
+    await dk.page.keyboard.press("Control+ArrowLeft");
+    await dk.page.keyboard.press("Alt+ArrowLeft");
+    const chordsAfter = await S(dk.page, () => window.__stride.state.lane);
+    check(
+      "AC13",
+      "keys: Esc / Esc pauses then resumes (no accidental quit), HUD inert while paused, Ctrl / Alt chords ignored",
+      paused === true &&
+        inert === true &&
+        escResume.paused === false &&
+        escResume.inert === false &&
+        escResume.phase !== "idle" &&
+        chordsAfter === chords,
+      JSON.stringify({ paused, inert, escResume, chords, chordsAfter }),
+    );
     const m0 = await S(dk.page, () => window.__stride.state.muted);
     await dk.page.keyboard.press("m");
     const m1 = await S(dk.page, () => window.__stride.state.muted);
@@ -1024,6 +1054,57 @@ async function main() {
       dk.errors.slice(0, 2).join(" | "),
     );
     await dk.ctx.close();
+  }
+
+  {
+    const sh = await openGame(browser, {
+      viewport: { width: 1000, height: 700 },
+      init: () =>
+        localStorage.setItem(
+          "playpad.sunsetStride.v1",
+          JSON.stringify({
+            v: 1,
+            coins: 5000,
+            unlocked: ["morning", "ranger"],
+            equipped: "morning",
+            highScore: 0,
+            muted: true,
+          }),
+        ),
+    });
+    await sh.page.locator("#setupShopBtn").click();
+    const eq = sh.page.locator('#skinGrid button[aria-label^="Equip "]').first();
+    await eq.waitFor();
+    const label = await eq.getAttribute("aria-label");
+    await eq.click();
+    const after = await S(sh.page, () => {
+      const a = document.activeElement;
+      return {
+        id: a && a.dataset ? a.dataset.btn : null,
+        label: a && a.getAttribute("aria-label"),
+        aria: a && a.getAttribute("aria-disabled"),
+      };
+    });
+    check(
+      "AC13",
+      "shop: Equip has a name; after equipping, focus stays on that card's (now 'equipped') button",
+      /^Equip \S/.test(label) &&
+        after.id &&
+        /equipped$/.test(after.label || "") &&
+        after.aria === "true",
+      JSON.stringify({ label, after }),
+    );
+    await sh.ctx.close();
+  }
+  {
+    const html = readFileSync(resolve("games/sunset-stride/index.html"), "utf8");
+    const beat = (html.match(/@keyframes beat\s*\{[\s\S]*?\n {6}\}/) || [""])[0];
+    check(
+      "AC13",
+      "countdown numeral never fades out (no ~3 Hz brightness pulse, WCAG 2.3.1)",
+      beat.length > 20 && !/opacity/.test(beat),
+      beat.replace(/\s+/g, " ").slice(0, 90),
+    );
   }
 
   /* ---- AC9: WebGL missing -> the game explains instead of a blank screen ---- */

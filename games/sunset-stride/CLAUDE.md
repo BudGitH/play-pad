@@ -43,7 +43,7 @@
 
 ## Instant start, pause
 
-First run is a snappy 3-2-1-GO at 300 ms/step; **retries skip to a "GO!" flash**; **any tap/key during the countdown skips it**. Hidden tab or window blur during `running`/`countdown` sets `paused`: `tick()` and the rAF loop freeze, audio suspends, a **"Paused" overlay** (`#pause`) comes up; Space / Enter / P resume, Esc quits, resuming replays a 3-2-1. A crashed (caught) run is never paused; `onCaught` banks synchronously.
+First run is a snappy 3-2-1-GO at 300 ms/step; **retries skip to a "GO!" flash**; **any tap/key during the countdown skips it**. Hidden tab or window blur during `running`/`countdown` sets `paused`: `tick()` and the rAF loop freeze, audio suspends, a **"Paused" overlay** (`#pause`) comes up; Space / Enter / P / **Esc** resume (Esc also pauses a live run, so it must never quit: Quit is the button), the HUD underneath is `inert` while paused, resuming replays a 3-2-1. The countdown numeral only scales in — it never fades out (a 300 ms fade would be a ~3 Hz brightness pulse, WCAG 2.3.1). **Keyboard loop:** arrows / WASD / Space steer (one press = one move; Ctrl / Alt / Meta chords are ignored), **P** / **Esc** pause, **M** mutes, the results screen focuses _Try again_ (Enter / Space) and **R** retries; the setup **Start** button sits in a sticky bar so it is never below the fold. Swipes act when the finger passes 30 px, not on lift. A crashed (caught) run is never paused; `onCaught` banks synchronously.
 
 ## Testing
 

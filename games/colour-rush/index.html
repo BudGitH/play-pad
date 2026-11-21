@@ -15,6 +15,13 @@
     <link rel="stylesheet" href="../../styles/base.css" />
 
     <style>
+      /* Game-local token: ink for any text/glyph drawn ON a player colour. Black clears
+         >= 5.7:1 on all eight palette colours (white fails AA on four of them).
+         Keep in sync with games/snap. */
+      :root {
+        --ink-on-player: #0b0b0f;
+      }
+
       /* ---- App shell (full-screen, immersive game) ---- */
       html,
       body {
@@ -42,6 +49,12 @@
       .screen.active {
         display: block;
       }
+      /* Screens take programmatic focus (so Tab starts from the top of the new screen),
+         but must not draw a ring around the whole viewport. */
+      .screen:focus,
+      .screen:focus-visible {
+        outline: none;
+      }
       #setup,
       #results {
         overflow-y: auto;
@@ -49,14 +62,15 @@
         background: var(--md-sys-color-surface);
       }
 
-      /* Back to hub */
+      /* Back to hub (48px tall hit area) */
       .back-link {
         display: inline-flex;
         align-items: center;
         gap: 6px;
+        min-height: 48px;
         color: var(--md-sys-color-on-surface-variant);
-        padding: 8px 12px 8px 4px;
-        margin: 0 0 6px -4px;
+        padding: 8px 14px 8px 4px;
+        margin: 0 0 0 -4px;
         border-radius: var(--md-sys-shape-corner-full);
         font-size: var(--md-sys-typescale-label-large-size);
         font-weight: var(--md-sys-typescale-label-large-weight);
@@ -67,9 +81,11 @@
 
       /* ---------- SETUP ---------- */
       .setup-inner {
+        --gl: max(22px, env(safe-area-inset-left));
+        --gr: max(22px, env(safe-area-inset-right));
         max-width: 560px;
         margin: 0 auto;
-        padding: max(20px, env(safe-area-inset-top)) 22px 48px;
+        padding: max(12px, env(safe-area-inset-top)) var(--gr) 0 var(--gl);
       }
       .brand {
         margin: 2px 0 6px;
@@ -150,7 +166,7 @@
         transform: scale(0.96);
       }
 
-      /* Player colour rows */
+      /* Player rows: avatar + colour */
       .player-row {
         background: var(--md-sys-color-surface-container);
         border: 1.5px solid var(--md-sys-color-outline-variant);
@@ -161,62 +177,138 @@
       .player-head {
         display: flex;
         align-items: center;
-        gap: 10px;
-        margin-bottom: 12px;
+        gap: 12px;
+        margin-bottom: 14px;
       }
-      .player-dot {
-        width: 14px;
-        height: 14px;
+      /* The animal is the player's identity: tap to cycle (48px target). */
+      .avatar-btn {
+        position: relative;
+        flex: none;
+        width: 48px;
+        height: 48px;
+        padding: 0;
+        border: 0;
         border-radius: 50%;
-        background: var(--md-sys-color-outline-variant);
-        box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.12);
+        display: grid;
+        place-items: center;
+        font-size: 26px;
+        line-height: 1;
+        background: var(--md-sys-color-surface-container-highest);
+        box-shadow: 0 0 0 2px var(--md-sys-color-outline-variant);
+        transition: transform var(--md-sys-motion-duration-short3)
+          var(--md-sys-motion-easing-emphasized);
+      }
+      .avatar-btn::after {
+        content: "\21BB";
+        position: absolute;
+        right: -3px;
+        bottom: -3px;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        font-size: 13px;
+        font-weight: 800;
+        background: var(--md-sys-color-surface-container-highest);
+        color: var(--md-sys-color-on-surface);
+        border: 1.5px solid var(--md-sys-color-outline);
+      }
+      .avatar-btn:active {
+        transform: scale(0.92);
       }
       .player-name {
-        font-size: 15px;
+        font-size: 16px;
         font-weight: 700;
+        line-height: 1.25;
       }
       .player-name .pick {
         color: var(--md-sys-color-on-surface-variant);
+        font-weight: 600;
+      }
+      .player-name .hint-line {
+        display: block;
+        font-size: 12px;
         font-weight: 500;
+        color: var(--md-sys-color-on-surface-variant);
+        margin-top: 2px;
       }
       .swatches {
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
+        display: grid;
+        grid-template-columns: repeat(4, 48px);
+        justify-content: space-between;
+        gap: 12px 10px;
       }
+      @media (min-width: 560px) {
+        .swatches {
+          grid-template-columns: repeat(8, 48px);
+        }
+      }
+      /* 48x48 colour swatch with its shape glyph (colour is never the only signal) */
       .swatch {
-        width: 42px;
-        height: 42px;
-        border-radius: var(--md-sys-shape-corner-md);
-        border: 0;
         position: relative;
+        width: 48px;
+        height: 48px;
+        padding: 0;
+        border: 0;
+        border-radius: var(--md-sys-shape-corner-md);
+        background: none;
+        display: grid;
+        place-items: center;
+        font-size: 20px;
+        line-height: 1;
+        color: var(--ink-on-player);
         outline: 2.5px solid transparent;
         outline-offset: 2px;
         transition:
           transform var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-emphasized),
-          outline-color var(--md-sys-motion-duration-short3),
-          opacity var(--md-sys-motion-duration-short3);
+          outline-color var(--md-sys-motion-duration-short3);
       }
-      .swatch:active {
-        transform: scale(0.9);
+      .swatch .sw-fill {
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        transition: opacity var(--md-sys-motion-duration-short3);
+      }
+      .swatch .sw-sym,
+      .swatch .sw-av {
+        position: relative;
+        pointer-events: none;
+      }
+      .swatch .sw-sym {
+        font-weight: 700;
+        opacity: 0.8;
+      }
+      .swatch:active:not([disabled]) {
+        transform: scale(0.92);
       }
       .swatch[aria-pressed="true"] {
         outline-color: var(--md-sys-color-on-surface);
       }
+      /* A taken colour is dimmed but wears its owner's animal, so it reads as "taken". */
       .swatch[disabled] {
-        opacity: 0.18;
+        cursor: not-allowed;
+      }
+      .swatch[disabled] .sw-fill {
+        opacity: 0.35;
+      }
+      .swatch[disabled] .sw-av {
+        font-size: 24px;
       }
       .swatch[aria-pressed="true"]::after {
-        content: "";
+        content: "\2713";
         position: absolute;
-        inset: 0;
-        margin: auto;
-        width: 13px;
-        height: 7px;
-        border-left: 3px solid #fff;
-        border-bottom: 3px solid #fff;
-        transform: rotate(-45deg) translate(1px, -2px);
-        filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.6));
+        top: -7px;
+        right: -7px;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        font-size: 12px;
+        font-weight: 800;
+        background: var(--md-sys-color-on-surface);
+        color: var(--md-sys-color-surface);
       }
       /* Keyboard focus ring — must beat both .swatch and the selected-state ring */
       .swatch:focus-visible {
@@ -224,15 +316,18 @@
         outline-offset: 2px;
       }
 
-      /* Sound toggle (MD3 switch) */
+      /* Sound & buzz toggle (MD3 switch). The whole row is the hit area. */
       .toggle-row {
         display: flex;
         align-items: center;
         justify-content: space-between;
+        gap: 12px;
+        min-height: 64px;
         background: var(--md-sys-color-surface-container);
         border: 1.5px solid var(--md-sys-color-outline-variant);
         border-radius: var(--md-sys-shape-corner-md);
-        padding: 14px 16px;
+        padding: 10px 16px;
+        cursor: pointer;
       }
       .toggle-row .t-label {
         font-size: 15px;
@@ -285,12 +380,25 @@
         transform: translateX(20px);
       }
 
-      /* Start button (filled primary CTA) */
+      /* Sticky Start bar: Start stays on screen however tall the setup is. The bar lets
+         taps fall through its fade; only the button and note are interactive. */
+      .start-bar {
+        position: sticky;
+        bottom: 0;
+        z-index: 5;
+        margin: 0 calc(-1 * var(--gr)) 0 calc(-1 * var(--gl));
+        padding: 24px var(--gr) max(12px, env(safe-area-inset-bottom)) var(--gl);
+        background: linear-gradient(to bottom, transparent, var(--md-sys-color-surface) 30%);
+        pointer-events: none;
+      }
+      .start-bar > * {
+        pointer-events: auto;
+      }
       .start-btn {
         width: 100%;
-        padding: 18px;
+        min-height: 56px;
+        padding: 16px;
         border: 0;
-        margin-top: 8px;
         border-radius: var(--md-sys-shape-corner-full);
         font-size: 18px;
         font-weight: 700;
@@ -314,23 +422,57 @@
         text-align: center;
         color: var(--md-sys-color-on-surface-variant);
         font-size: 12.5px;
-        margin-top: 12px;
-        line-height: 1.5;
+        margin: 8px 0 0;
+        line-height: 1.45;
+      }
+
+      /* Phone landscape: a compact bar (button and note side by side) so the sticky bar
+         does not eat a third of the screen. */
+      @media (max-height: 500px) and (orientation: landscape) {
+        .start-bar {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          padding-top: 16px;
+        }
+        .start-btn {
+          flex: 0 0 min(260px, 36%);
+          min-height: 48px;
+          padding: 12px;
+        }
+        .start-note {
+          flex: 1;
+          margin: 0;
+          text-align: left;
+        }
       }
 
       /* ---------- GAME (immersive dark stage so dots pop) ---------- */
+      /* The stage is dark in BOTH themes, so pin the dark-theme roles the HUD uses
+         (the light-theme tertiary would be near-invisible on black). */
       #game {
-        background: #000;
+        --md-sys-color-primary: #ff6b85;
+        --md-sys-color-tertiary: #f4c26b;
+        --md-sys-color-error-container: #93000a;
+        --md-sys-color-on-error-container: #ffdad6;
+        background: radial-gradient(circle at 50% 40%, #15151d, #000 70%);
       }
+      /* Inset by the safe areas (top: none, the topbar covers it) so dots never sit under
+         a notch, rounded corner or home indicator. Dot coordinates are play-area coordinates. */
       #playArea {
         position: absolute;
-        inset: 0;
+        top: 0;
+        left: env(safe-area-inset-left);
+        right: env(safe-area-inset-right);
+        bottom: env(safe-area-inset-bottom);
         touch-action: none;
         overflow: hidden;
       }
 
       .dot {
         position: absolute;
+        display: grid;
+        place-items: center;
         border-radius: 50%;
         touch-action: none;
         z-index: 10;
@@ -342,6 +484,13 @@
         animation-timing-function: linear;
         animation-fill-mode: forwards;
         will-change: transform, opacity;
+      }
+      /* Shape glyph: the colour-blind-safe second signal. Decoration only. */
+      .dsym {
+        line-height: 1;
+        font-weight: 700;
+        color: rgba(11, 11, 15, 0.7);
+        pointer-events: none;
       }
       @keyframes dotlife {
         0% {
@@ -387,6 +536,36 @@
         opacity: 1;
       }
 
+      /* "+1" floater in the owner's colour. Removed by a JS timer, never animationend. */
+      .floater {
+        position: absolute;
+        z-index: 12;
+        font-size: 26px;
+        font-weight: 800;
+        line-height: 1;
+        pointer-events: none;
+        text-shadow:
+          0 0 3px #000,
+          0 1px 3px #000,
+          0 0 9px rgba(0, 0, 0, 0.7);
+        transform: translate(-50%, -50%);
+        animation: floatup 0.6s ease-out forwards;
+      }
+      .floater--static {
+        animation: none;
+      }
+      @keyframes floatup {
+        from {
+          transform: translate(-50%, -50%);
+          opacity: 1;
+        }
+        to {
+          transform: translate(-50%, calc(-50% - 24px));
+          opacity: 0;
+        }
+      }
+
+      /* The topbar overlays the stage but lets taps through (only the quit button is live). */
       #topbar {
         position: absolute;
         top: 0;
@@ -395,8 +574,10 @@
         z-index: 25;
         display: flex;
         align-items: center;
-        gap: 14px;
-        padding: calc(env(safe-area-inset-top) + 9px) 12px 11px;
+        gap: 12px;
+        padding: calc(env(safe-area-inset-top) + 9px) max(12px, env(safe-area-inset-right)) 11px
+          max(12px, env(safe-area-inset-left));
+        pointer-events: none;
       }
       #topbar::before {
         content: "";
@@ -413,33 +594,46 @@
         color: #fff;
         flex: none;
         min-width: 42px;
+        transition: color var(--md-sys-motion-duration-short3);
       }
       #scoreChips {
         display: flex;
-        gap: 14px;
+        gap: 8px;
         flex: 1;
+        min-width: 0;
         flex-wrap: wrap;
         align-items: center;
       }
+      /* Score chip v2: a pill in the player's colour — animal, shape glyph, score. */
       .chipscore {
         display: flex;
         align-items: center;
         gap: 6px;
-        font-size: 16px;
+        height: 36px;
+        padding: 0 12px 0 9px;
+        border-radius: var(--md-sys-shape-corner-full);
+        color: var(--ink-on-player);
         font-weight: 800;
         font-variant-numeric: tabular-nums;
-        color: #fff;
       }
-      .chipscore .sw {
-        width: 16px;
-        height: 16px;
-        border-radius: 5px;
-        flex: none;
-        box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.25);
+      .chipscore.hit {
+        box-shadow: 0 0 0 3px #fff;
+      }
+      .chipscore .av {
+        font-size: 18px;
+        line-height: 1;
+      }
+      .chipscore .sh {
+        font-size: 14px;
+        line-height: 1;
+        opacity: 0.8;
       }
       .chipscore .nv {
         display: inline-block;
-        min-width: 12px;
+        min-width: 2ch;
+        font-size: 20px;
+        line-height: 1;
+        text-align: right;
         transition: transform var(--md-sys-motion-duration-short3)
           var(--md-sys-motion-easing-emphasized);
       }
@@ -447,8 +641,10 @@
       #quitBtn {
         flex: none;
         position: relative;
+        z-index: 0;
         width: 48px;
         height: 48px;
+        padding: 0;
         border: 0;
         background: transparent;
         color: #fff;
@@ -457,20 +653,45 @@
         display: grid;
         place-items: center;
         border-radius: 50%;
+        pointer-events: auto;
       }
       #quitBtn::before {
         content: "";
         position: absolute;
+        z-index: -1;
         width: 36px;
         height: 36px;
         border-radius: 50%;
         background: rgba(255, 255, 255, 0.14);
       }
-      #quitBtn {
-        z-index: 0;
+      /* First tap arms the quit; a second tap within 2s confirms. The "Quit?" pill is drawn
+         over the button, anchored to its right edge and growing leftwards, so arming never
+         changes the topbar layout (the score chips must not re-wrap). */
+      #quitBtn .q-ask {
+        display: none;
+        position: absolute;
+        right: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        height: 44px;
+        padding: 0 16px;
+        align-items: center;
+        border-radius: var(--md-sys-shape-corner-full);
+        background: var(--md-sys-color-error-container);
+        color: var(--md-sys-color-on-error-container);
+        font-size: 15px;
+        font-weight: 700;
+        white-space: nowrap;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
       }
-      #quitBtn::before {
-        z-index: -1;
+      #quitBtn.armed .q-ask {
+        display: flex;
+      }
+      #quitBtn.armed .q-x {
+        visibility: hidden;
+      }
+      #quitBtn.armed::before {
+        display: none;
       }
       #progress {
         position: absolute;
@@ -485,6 +706,41 @@
         width: 100%;
         background: rgba(255, 255, 255, 0.7);
         transform-origin: left;
+      }
+      /* Final 5 seconds: the clock and bar change colour (set from the loop). */
+      #game.final #sessClock {
+        color: var(--md-sys-color-tertiary);
+      }
+      #game.final #progressFill {
+        background: var(--md-sys-color-primary);
+      }
+
+      /* "TIME!" moment over the stage before the results (shown ~400ms by a JS timer) */
+      #timeUp {
+        position: absolute;
+        inset: 0;
+        z-index: 30;
+        display: grid;
+        place-items: center;
+        pointer-events: none;
+        opacity: 0;
+        transform: scale(0.8);
+        transition:
+          opacity var(--md-sys-motion-duration-short3),
+          transform var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-emphasized);
+      }
+      #timeUp.show {
+        opacity: 1;
+        transform: none;
+      }
+      #timeUp span {
+        font-size: clamp(56px, 22vmin, 170px);
+        font-weight: 800;
+        letter-spacing: 0.03em;
+        background: var(--brand-gradient);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
       }
 
       /* Countdown */
@@ -530,15 +786,61 @@
         }
       }
 
+      /* Paused (tab hidden mid-round): a tap resumes with a fresh 3-2-1 */
+      #pause {
+        position: absolute;
+        inset: 0;
+        z-index: 70;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        text-align: center;
+        color: #fff;
+        background: rgba(0, 0, 0, 0.88);
+        cursor: pointer;
+      }
+      #pause.active {
+        display: flex;
+      }
+      #pause h2 {
+        margin: 0 0 6px;
+      }
+      #pause p {
+        margin: 0 0 22px;
+        color: rgba(255, 255, 255, 0.78);
+      }
+
       /* ---------- RESULTS ---------- */
       .res-inner {
+        display: flex;
+        flex-direction: column;
         max-width: 520px;
         margin: 0 auto;
-        padding: max(28px, env(safe-area-inset-top)) 22px 40px;
+        padding: max(28px, env(safe-area-inset-top)) max(22px, env(safe-area-inset-right))
+          max(40px, env(safe-area-inset-bottom)) max(22px, env(safe-area-inset-left));
         text-align: center;
+      }
+      /* Portrait: one column — head, ranks, actions, footer (order keeps tab order sane) */
+      .res-side {
+        display: contents;
+      }
+      .res-head {
+        order: 1;
+      }
+      #rankList {
+        order: 2;
+        margin-top: 18px;
+      }
+      .res-actions {
+        order: 3;
+      }
+      .res-foot {
+        order: 4;
       }
       .res-inner .crown {
         font-size: 46px;
+        line-height: 1.2;
       }
       .res-inner h2 {
         margin: 6px 0 4px;
@@ -546,7 +848,11 @@
       .res-inner .sub {
         color: var(--md-sys-color-on-surface-variant);
         font-size: 14px;
-        margin: 0 0 26px;
+        margin: 0 0 8px;
+      }
+      .res-inner .sub--try {
+        color: var(--md-sys-color-on-surface);
+        font-weight: 600;
       }
       .rank {
         display: flex;
@@ -574,43 +880,130 @@
         color: var(--md-sys-color-tertiary);
       }
       .rank .swt {
-        width: 34px;
-        height: 34px;
+        display: grid;
+        place-items: center;
+        width: 36px;
+        height: 36px;
         border-radius: var(--md-sys-shape-corner-sm);
         flex: none;
+        font-size: 18px;
+        font-weight: 700;
+        line-height: 1;
+        color: var(--ink-on-player);
       }
       .rank .rname {
         flex: 1;
-        font-size: 16px;
+        min-width: 0;
+        font-size: 17px;
         font-weight: 700;
-      }
-      .rank .rname small {
-        display: block;
-        font-weight: 500;
-        color: var(--md-sys-color-on-surface-variant);
-        font-size: 12px;
       }
       .rank .rscore {
         font-size: 24px;
         font-weight: 800;
         font-variant-numeric: tabular-nums;
       }
+      /* Play again is the primary action: first in tab order, on the right when side by side */
       .res-actions {
         display: flex;
+        flex-direction: row-reverse;
         gap: 12px;
-        margin-top: 22px;
+        margin-top: 14px;
       }
       .res-actions .button {
         flex: 1;
       }
       .res-foot {
-        margin-top: 18px;
+        margin-top: 10px;
+      }
+      /* Narrow phones: stack the buttons full width, Play again on top */
+      @media (max-width: 419px) {
+        .res-actions {
+          flex-direction: column;
+        }
+        .res-actions .button {
+          flex: none;
+          width: 100%;
+          white-space: nowrap;
+        }
+      }
+      /* Phone landscape: two columns so Play again never falls below the fold */
+      @media (max-height: 500px) and (orientation: landscape) {
+        .res-inner {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+          align-items: center;
+          column-gap: 28px;
+          max-width: 760px;
+          min-height: 100%;
+          padding-top: max(12px, env(safe-area-inset-top));
+          padding-bottom: max(12px, env(safe-area-inset-bottom));
+        }
+        .res-side {
+          display: block;
+        }
+        #rankList {
+          margin-top: 0;
+          max-height: calc(100vh - 24px);
+          max-height: calc(100dvh - 24px);
+          overflow-y: auto;
+        }
+        .res-inner .crown {
+          font-size: 32px;
+        }
+        .res-inner h2 {
+          margin: 2px 0;
+        }
+        .res-actions {
+          flex-direction: column;
+          margin-top: 12px;
+        }
+        .res-actions .button {
+          flex: none;
+          width: 100%;
+          white-space: nowrap;
+        }
+        .rank {
+          padding: 8px 14px;
+          margin-bottom: 8px;
+        }
+        .res-foot {
+          margin-top: 4px;
+        }
+      }
+
+      /* Results confetti: 36 CSS-animated pieces, removed by a JS timer (skipped under
+         reduced motion in JS, so nothing is ever rendered there). */
+      #confetti {
+        position: fixed;
+        inset: 0;
+        z-index: 40;
+        overflow: hidden;
+        pointer-events: none;
+      }
+      #confetti i {
+        position: absolute;
+        top: -18px;
+        width: 9px;
+        height: 14px;
+        border-radius: 2px;
+        box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.18);
+        animation: confettiFall 1.4s cubic-bezier(0.3, 0.55, 0.5, 1) both;
+      }
+      @keyframes confettiFall {
+        from {
+          transform: translate3d(0, 0, 0) rotate(0deg);
+          opacity: 1;
+        }
+        to {
+          transform: translate3d(var(--dx, 0), 108vh, 0) rotate(var(--rot, 540deg));
+          opacity: 0.9;
+        }
       }
     </style>
   </head>
   <body>
     <!-- ========== SETUP ========== -->
-    <section id="setup" class="screen active">
+    <section id="setup" class="screen active" tabindex="-1">
       <div class="setup-inner">
         <a class="back-link state-layer" href="../../index.html" aria-label="Back to PlayPad">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -638,7 +1031,7 @@
 
         <div class="block" id="colourBlock">
           <div class="label">
-            <span>Pick colours</span><span class="hint">one each, all different</span>
+            <span>Animal &amp; colour</span><span class="hint">one each, all different</span>
           </div>
           <div id="playerRows"></div>
         </div>
@@ -656,32 +1049,51 @@
         </div>
 
         <div class="block">
-          <div class="toggle-row">
+          <div class="toggle-row" id="soundRow">
             <div>
-              <div class="t-label">Sound</div>
-              <div class="t-sub">A note each time a dot is tapped</div>
+              <div class="t-label">Sound &amp; buzz</div>
+              <div class="t-sub">A note per tap, plus a buzz on phones that support it</div>
             </div>
-            <button class="switch" id="soundToggle" aria-pressed="true" aria-label="Sound"></button>
+            <button
+              class="switch"
+              id="soundToggle"
+              aria-pressed="true"
+              aria-label="Sound and buzz"
+            ></button>
           </div>
         </div>
 
-        <button class="start-btn state-layer" id="startBtn" disabled>Start</button>
-        <p class="start-note" id="startNote">Pick a colour for every player to start.</p>
+        <div class="start-bar">
+          <button class="start-btn state-layer" id="startBtn">Start</button>
+          <p class="start-note" id="startNote">Pick a colour for every player to start.</p>
+        </div>
       </div>
     </section>
 
     <!-- ========== GAME ========== -->
-    <section id="game" class="screen">
+    <section id="game" class="screen" tabindex="-1">
       <div id="playArea"></div>
+      <div id="timeUp" aria-hidden="true"><span>TIME!</span></div>
       <div id="topbar">
-        <div id="sessClock">0:00</div>
+        <div id="sessClock">1:00</div>
         <div id="scoreChips"></div>
-        <button id="quitBtn" aria-label="Quit game">✕</button>
+        <button id="quitBtn" aria-label="Quit game">
+          <span class="q-x" aria-hidden="true">✕</span>
+          <span class="q-ask" aria-hidden="true">Quit?</span>
+        </button>
         <div id="progress"><div id="progressFill"></div></div>
       </div>
     </section>
 
     <div id="countdown"><div class="cnum" id="cnum">3</div></div>
+
+    <div id="pause" role="dialog" aria-modal="true" aria-labelledby="pauseTitle">
+      <div>
+        <h2 id="pauseTitle" class="headline-small">Paused</h2>
+        <p>Tap anywhere to resume</p>
+        <button class="button button--filled state-layer" id="resumeBtn">Resume</button>
+      </div>
+    </div>
 
     <!-- Screen-reader-only live region: announces the round outcome (the spatial tap
      loop itself has no keyboard/AT equivalent — see design-review.md). -->
@@ -690,30 +1102,35 @@
     <!-- ========== RESULTS ========== -->
     <section id="results" class="screen">
       <div class="res-inner">
-        <div class="crown">🏆</div>
-        <h2 id="winTitle" class="headline-small">Winner</h2>
-        <p class="sub" id="winSub"></p>
+        <div class="res-side">
+          <div class="res-head">
+            <div class="crown" aria-hidden="true">🏆</div>
+            <h2 id="winTitle" class="headline-small">Winner</h2>
+            <p class="sub" id="winSub"></p>
+            <p class="sub sub--try" id="greatTry" hidden></p>
+          </div>
+          <div class="res-actions">
+            <button class="button button--filled state-layer" id="againBtn">Play again</button>
+            <button class="button button--outlined state-layer" id="changeBtn">
+              Change settings
+            </button>
+          </div>
+          <div class="res-foot">
+            <a class="back-link state-layer" href="../../index.html" aria-label="Back to PlayPad">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path
+                  d="M15 18l-6-6 6-6"
+                  stroke="currentColor"
+                  stroke-width="2.2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+              Back to PlayPad
+            </a>
+          </div>
+        </div>
         <div id="rankList"></div>
-        <div class="res-actions">
-          <button class="button button--outlined state-layer" id="changeBtn">
-            Change settings
-          </button>
-          <button class="button button--filled state-layer" id="againBtn">Play again</button>
-        </div>
-        <div class="res-foot">
-          <a class="back-link state-layer" href="../../index.html" aria-label="Back to PlayPad">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path
-                d="M15 18l-6-6 6-6"
-                stroke="currentColor"
-                stroke-width="2.2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-            </svg>
-            Back to PlayPad
-          </a>
-        </div>
       </div>
     </section>
 
@@ -722,6 +1139,7 @@
         "use strict";
 
         // ---------- config ----------
+        // PALETTE / SHAPES / AVATARS: keep in sync with games/snap (same indices, same values).
         var PALETTE = [
           { name: "Red", hex: "#FF453A" },
           { name: "Blue", hex: "#0A84FF" },
@@ -729,9 +1147,14 @@
           { name: "Yellow", hex: "#FFD60A" },
           { name: "Orange", hex: "#FF9F0A" },
           { name: "Purple", hex: "#BF5AF2" },
-          { name: "Pink", hex: "#FF375F" },
+          { name: "Pink", hex: "#FF9BD2" }, // light pink: Red and Pink used to look identical
           { name: "Cyan", hex: "#64D2FF" },
         ];
+        // One shape per palette colour (same index) so colour is never the only signal.
+        // The heart carries a U+FE0E variation selector so it renders as text, not an emoji.
+        var SHAPES = ["●", "▲", "■", "◆", "★", "✚", "♥︎", "✿"];
+        // Player identity = animal + colour. Seat i starts as AVATARS[i]; tap to cycle.
+        var AVATARS = ["🦊", "🐸", "🐼", "🐯", "🐵", "🐰", "🐶", "🐱", "🦁", "🐧", "🐙", "🦄"];
         var DURATIONS = [
           { s: 30, l: "0:30" },
           { s: 60, l: "1:00" },
@@ -748,34 +1171,46 @@
         // pleasant per-player tones (C major pentatonic)
         var TONES = [523.25, 659.25, 783.99, 987.77];
         var MAX_DOTS = 12;
+        var FINAL_MS = 5000; // "rush hour": last 5 seconds
+        var RUSH_FACTOR = 0.8; // spawn interval multiplier during rush hour
+        var QUIT_CONFIRM_MS = 2000;
 
         // ---------- setup state ----------
         var numPlayers = 2;
-        var selections = [null, null, null, null];
+        var seatColour = [0, 1, 2, 3]; // palette index per seat (null = not picked)
+        var seatAvatar = [0, 1, 2, 3]; // AVATARS index per seat
         var durationSec = 60;
         var speedIdx = 1; // Normal
         var soundOn = true;
 
         // ---------- game state ----------
-        var players = []; // {idx,name,hex,score,chipEl,numEl}
-        var ownerByHex = {}; // hex -> player idx
+        var players = []; // {idx,ci,hex,shape,name,score,chipEl,numEl}
         var dots = []; // live dot elements
-        var spawnCounts = {}; // hex -> times spawned (for balancing)
-        var running = false;
-        var sessionStartTs = 0,
-          sessionEndTs = 0;
+        var spawnCounts = []; // per player: times spawned (for balancing)
+        var running = false; // a round is live (rAF loop owns the clock)
+        var counting = false; // a 3-2-1 is on screen
+        var paused = false; // tab was hidden; pause overlay is up
+        var finishing = false; // the "TIME!" beat before results
+        var quitArmed = false;
+        var remainMs = 0; // time left in the round (survives a pause)
+        var sessionEndTs = 0;
         var nextSpawnTs = 0;
-        var spawnIntervalMs = 500,
+        var baseSpawnMs = 500,
           lifeMs = 2000;
+        var lastSec = -1;
         var rafId = null;
+        var countdownTimer = null,
+          quitTimer = null,
+          orientTimer = null;
+        var timers = []; // every pending setTimeout; show() clears them all
         var areaW = 0,
           areaH = 0,
           topBarH = 60,
           dotSize = 70;
         var audioCtx = null;
-        var reduceMotion = !!(
-          window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches
-        );
+        var reduceMq = window.matchMedia
+          ? window.matchMedia("(prefers-reduced-motion: reduce)")
+          : null;
 
         // ---------- helpers ----------
         function $(id) {
@@ -786,19 +1221,71 @@
           if (cls) e.className = cls;
           return e;
         }
-        function colourName(hex) {
-          for (var i = 0; i < PALETTE.length; i++) {
-            if (PALETTE[i].hex === hex) return PALETTE[i].name;
-          }
-          return "";
+        function prefersReduced() {
+          return !!(reduceMq && reduceMq.matches);
         }
+        function announce(msg) {
+          $("srStatus").textContent = msg;
+        }
+        function gameActive() {
+          return $("game").classList.contains("active");
+        }
+        // Every timeout goes through here so show() can cancel them all in one place.
+        function later(fn, ms) {
+          var id = setTimeout(function () {
+            var i = timers.indexOf(id);
+            if (i >= 0) timers.splice(i, 1);
+            fn();
+          }, ms);
+          timers.push(id);
+          return id;
+        }
+        function cancelLater(id) {
+          clearTimeout(id);
+          var i = timers.indexOf(id);
+          if (i >= 0) timers.splice(i, 1);
+        }
+        function clearTimers() {
+          for (var i = 0; i < timers.length; i++) clearTimeout(timers[i]);
+          timers.length = 0;
+        }
+        function seatName(seat) {
+          return AVATARS[seatAvatar[seat]] + " " + PALETTE[seatColour[seat]].name;
+        }
+
+        /**
+         * The single chokepoint for screen changes (LEARNINGS "UI teardown"): every timer,
+         * rAF loop, overlay, dot and decoration is torn down HERE, so no exit path
+         * (quit, results, change settings, play again) can leave a ghost game behind.
+         */
         function show(s) {
+          running = false;
+          counting = false;
+          paused = false;
+          finishing = false;
+          if (rafId) {
+            cancelAnimationFrame(rafId);
+            rafId = null;
+          }
+          clearTimers();
+          countdownTimer = quitTimer = orientTimer = null;
+          clearDots();
+          clearFloaters();
+          clearConfetti();
+          disarmQuit();
+          $("countdown").classList.remove("active");
+          $("pause").classList.remove("active");
+          $("timeUp").classList.remove("show");
+          $("game").classList.remove("final");
           ["setup", "game", "results"].forEach(function (x) {
             $(x).classList.toggle("active", x === s);
           });
+          // Move focus onto the new screen so keyboard users start from its top.
+          var target = s === "results" ? $("againBtn") : $(s);
+          target.focus({ preventScroll: true });
         }
 
-        // ---------- audio ----------
+        // ---------- audio + haptics ----------
         function initAudio() {
           if (audioCtx) return;
           try {
@@ -807,6 +1294,10 @@
           } catch (e) {
             audioCtx = null;
           }
+        }
+        function primeAudio() {
+          initAudio();
+          if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
         }
         function beep(freq, dur, type, gain) {
           if (!soundOn || !audioCtx) return;
@@ -826,6 +1317,15 @@
             /* a single missed beep must never interrupt gameplay */
           }
         }
+        // Android/Chromium only (iOS has no navigator.vibrate): a silent no-op elsewhere.
+        function buzz(pattern) {
+          if (!soundOn || !navigator.vibrate) return;
+          try {
+            navigator.vibrate(pattern);
+          } catch (e) {
+            /* haptics are a bonus, never an error */
+          }
+        }
         function toneFor(idx) {
           beep(TONES[idx % TONES.length], 0.16, "sine", 0.17);
         }
@@ -840,77 +1340,144 @@
         //  SETUP UI
         // ============================================================
         function buildChips(container, items, getActive, onPick) {
+          // Re-rendering drops focus: remember which chip had it and give it back.
+          var focusIdx = Array.prototype.indexOf.call(container.children, document.activeElement);
           container.innerHTML = "";
           items.forEach(function (it) {
             var b = el("button", "sel-chip");
+            b.appendChild(document.createTextNode(it.main));
             if (it.sub) {
-              b.innerHTML = it.main + "<small>" + it.sub + "</small>";
-            } else {
-              b.textContent = it.main;
+              var sm = el("small");
+              sm.textContent = it.sub;
+              b.appendChild(sm);
             }
+            if (it.label) b.setAttribute("aria-label", it.label);
             b.setAttribute("aria-pressed", getActive(it) ? "true" : "false");
             b.addEventListener("click", function () {
               onPick(it);
             });
             container.appendChild(b);
           });
+          if (focusIdx >= 0 && container.children[focusIdx]) container.children[focusIdx].focus();
+        }
+        function colourTakenBy(ci, exceptSeat) {
+          for (var i = 0; i < numPlayers; i++) {
+            if (i !== exceptSeat && seatColour[i] === ci) return i;
+          }
+          return -1;
+        }
+        // A newly active seat gets its default colour, or the first colour nobody holds.
+        function freeColourFor(seat) {
+          if (colourTakenBy(seat, seat) === -1) return seat;
+          for (var c = 0; c < PALETTE.length; c++) {
+            if (colourTakenBy(c, seat) === -1) return c;
+          }
+          return null;
+        }
+        function setPlayerCount(n) {
+          numPlayers = n;
+          for (var i = 0; i < 4; i++) {
+            if (i >= n) seatColour[i] = null;
+            else if (seatColour[i] === null) seatColour[i] = freeColourFor(i);
+          }
+        }
+        // Cycle to the next animal that no seat is wearing (no duplicates).
+        function cycleAvatar(seat) {
+          var next = seatAvatar[seat];
+          for (var k = 0; k < AVATARS.length; k++) {
+            next = (next + 1) % AVATARS.length;
+            if (seatAvatar.indexOf(next) === -1) break;
+          }
+          seatAvatar[seat] = next;
         }
         function renderPlayerChips() {
           buildChips(
             $("playerChips"),
             [2, 3, 4].map(function (n) {
-              return { main: String(n), n: n };
+              return { main: String(n), n: n, label: n + " players" };
             }),
             function (it) {
               return it.n === numPlayers;
             },
             function (it) {
-              numPlayers = it.n;
-              for (var i = numPlayers; i < 4; i++) {
-                selections[i] = null;
-              }
+              setPlayerCount(it.n);
               renderPlayerChips();
               renderPlayerRows();
               refreshStart();
             },
           );
         }
-        function renderPlayerRows() {
+        function buildSwatch(slot, ci) {
+          var c = PALETTE[ci];
+          var takenBy = colourTakenBy(ci, slot);
+          var b = el("button", "swatch");
+          var fill = el("span", "sw-fill");
+          fill.style.background = c.hex;
+          var mark = el("span", takenBy >= 0 ? "sw-av" : "sw-sym");
+          mark.textContent = takenBy >= 0 ? AVATARS[seatAvatar[takenBy]] : SHAPES[ci];
+          b.appendChild(fill);
+          b.appendChild(mark);
+          b.setAttribute("data-k", "sw-" + slot + "-" + ci);
+          b.setAttribute("aria-pressed", seatColour[slot] === ci ? "true" : "false");
+          if (takenBy >= 0) {
+            b.disabled = true;
+            b.setAttribute("aria-label", c.name + " — taken by " + AVATARS[seatAvatar[takenBy]]);
+          } else {
+            b.setAttribute("aria-label", c.name);
+            b.addEventListener("click", function () {
+              seatColour[slot] = seatColour[slot] === ci ? null : ci;
+              renderPlayerRows("sw-" + slot + "-" + ci);
+              refreshStart();
+            });
+          }
+          return b;
+        }
+        function buildPlayerHead(slot) {
+          var ci = seatColour[slot];
+          var head = el("div", "player-head");
+          var av = el("button", "avatar-btn");
+          av.textContent = AVATARS[seatAvatar[slot]];
+          if (ci !== null) av.style.background = PALETTE[ci].hex;
+          av.setAttribute("data-k", "av-" + slot);
+          av.setAttribute(
+            "aria-label",
+            "Player " + (slot + 1) + " is " + AVATARS[seatAvatar[slot]] + ". Change animal",
+          );
+          av.addEventListener("click", function () {
+            cycleAvatar(slot);
+            renderPlayerRows("av-" + slot);
+          });
+          var name = el("div", "player-name");
+          name.appendChild(
+            document.createTextNode(ci !== null ? PALETTE[ci].name : "Pick a colour"),
+          );
+          if (ci !== null) {
+            var shape = el("span", "pick");
+            shape.textContent = " " + SHAPES[ci];
+            name.appendChild(shape);
+          }
+          if (slot === 0) {
+            var hint = el("span", "hint-line");
+            hint.textContent = "Tap the animal to change it";
+            name.appendChild(hint);
+          }
+          head.appendChild(av);
+          head.appendChild(name);
+          return head;
+        }
+        function renderPlayerRows(focusKey) {
           var wrap = $("playerRows");
           wrap.innerHTML = "";
           for (var i = 0; i < numPlayers; i++) {
-            (function (slot) {
-              var row = el("div", "player-row");
-              var head = el("div", "player-head");
-              var dot = el("div", "player-dot");
-              if (selections[slot]) dot.style.background = selections[slot];
-              var name = el("div", "player-name");
-              var pname = selections[slot] ? colourName(selections[slot]) : "tap a colour";
-              name.innerHTML =
-                "Player " + (slot + 1) + ' <span class="pick">· ' + pname + "</span>";
-              head.appendChild(dot);
-              head.appendChild(name);
-              row.appendChild(head);
-              var sw = el("div", "swatches");
-              PALETTE.forEach(function (c) {
-                var b = el("button", "swatch");
-                b.style.background = c.hex;
-                var takenByOther = selections.indexOf(c.hex) !== -1 && selections[slot] !== c.hex;
-                if (takenByOther) b.setAttribute("disabled", "");
-                b.setAttribute("aria-pressed", selections[slot] === c.hex ? "true" : "false");
-                b.setAttribute("aria-label", c.name);
-                b.addEventListener("click", function () {
-                  if (takenByOther) return;
-                  selections[slot] = selections[slot] === c.hex ? null : c.hex;
-                  renderPlayerRows();
-                  refreshStart();
-                });
-                sw.appendChild(b);
-              });
-              row.appendChild(sw);
-              wrap.appendChild(row);
-            })(i);
+            var row = el("div", "player-row");
+            row.appendChild(buildPlayerHead(i));
+            var sw = el("div", "swatches");
+            for (var c = 0; c < PALETTE.length; c++) sw.appendChild(buildSwatch(i, c));
+            row.appendChild(sw);
+            wrap.appendChild(row);
           }
+          var f = focusKey && wrap.querySelector('[data-k="' + focusKey + '"]');
+          if (f) f.focus();
         }
         function renderDurationChips() {
           buildChips(
@@ -945,7 +1512,7 @@
         function chosenCount() {
           var c = 0;
           for (var i = 0; i < numPlayers; i++) {
-            if (selections[i]) c++;
+            if (seatColour[i] !== null) c++;
           }
           return c;
         }
@@ -953,94 +1520,154 @@
           var ready = chosenCount() === numPlayers;
           $("startBtn").disabled = !ready;
           $("startNote").textContent = ready
-            ? "Gather round one screen. Scores read best from the bottom edge."
+            ? "Everyone gather round. Tap only your colour — tapping someone else's gives them the point!"
             : "Pick a colour for every player to start.";
         }
 
-        $("soundToggle").addEventListener("click", function () {
+        // The whole row is the hit area (the 32px switch alone is under the 48px floor).
+        $("soundRow").addEventListener("click", function () {
           soundOn = !soundOn;
-          this.setAttribute("aria-pressed", soundOn ? "true" : "false");
+          $("soundToggle").setAttribute("aria-pressed", soundOn ? "true" : "false");
         });
         $("startBtn").addEventListener("click", function () {
           if ($("startBtn").disabled) return;
-          initAudio();
-          if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+          primeAudio();
           startGame();
         });
 
         // ============================================================
         //  GAME
         // ============================================================
+        // Measure the real play area (the safe-area-inset box), and where the topbar ends in
+        // it. Called on start, at GO, and on every resize/rotation.
         function measureArea() {
-          areaW = window.innerWidth;
-          areaH = window.innerHeight;
+          var pa = $("playArea").getBoundingClientRect();
+          if (!pa.width || !pa.height) return; // game screen is hidden
+          areaW = pa.width;
+          areaH = pa.height;
           var tb = $("topbar").getBoundingClientRect();
-          topBarH = tb.height || 60;
+          topBarH = Math.max(0, tb.bottom - pa.top) || 60;
           dotSize = Math.max(58, Math.min(88, Math.round(Math.min(areaW, areaH) * 0.16)));
         }
-        window.addEventListener("resize", function () {
-          if (running) measureArea();
-        });
+        // A dot placed for the old size may now be off-screen (rotation mid-round): drop it.
+        function pruneOutOfBounds() {
+          for (var i = dots.length - 1; i >= 0; i--) {
+            var d = dots[i];
+            if (
+              d.__x < 0 ||
+              d.__y < topBarH ||
+              d.__x + d.__size > areaW ||
+              d.__y + d.__size > areaH
+            ) {
+              removeDot(d);
+            }
+          }
+        }
+        function onViewportChange() {
+          if (!gameActive()) return;
+          measureArea();
+          pruneOutOfBounds();
+        }
+        window.addEventListener("resize", onViewportChange);
         window.addEventListener("orientationchange", function () {
-          if (running) setTimeout(measureArea, 150);
+          // some browsers report stale sizes until just after the event
+          if (orientTimer !== null) cancelLater(orientTimer);
+          orientTimer = later(onViewportChange, 150);
         });
 
+        function buildChip(p) {
+          var chip = el("div", "chipscore");
+          chip.style.background = p.hex;
+          chip.setAttribute("role", "group");
+          chip.setAttribute("aria-label", p.name + ": 0");
+          var av = el("span", "av");
+          av.textContent = AVATARS[seatAvatar[p.idx]];
+          var sh = el("span", "sh");
+          sh.textContent = p.shape;
+          var nv = el("span", "nv");
+          nv.textContent = "0";
+          chip.appendChild(av);
+          chip.appendChild(sh);
+          chip.appendChild(nv);
+          p.chipEl = chip;
+          p.numEl = nv;
+          return chip;
+        }
         function buildScoreboard() {
           players = [];
-          ownerByHex = {};
-          spawnCounts = {};
+          spawnCounts = [];
           var chips = $("scoreChips");
           chips.innerHTML = "";
           for (var i = 0; i < numPlayers; i++) {
-            var hex = selections[i];
-            var chip = el("div", "chipscore");
-            var sw = el("span", "sw");
-            sw.style.background = hex;
-            var nv = el("span", "nv");
-            nv.textContent = "0";
-            chip.appendChild(sw);
-            chip.appendChild(nv);
-            chips.appendChild(chip);
-            players.push({
+            var ci = seatColour[i];
+            var p = {
               idx: i,
-              name: "P" + (i + 1),
-              hex: hex,
+              ci: ci,
+              hex: PALETTE[ci].hex,
+              shape: SHAPES[ci],
+              name: seatName(i),
               score: 0,
-              chipEl: chip,
-              numEl: nv,
-            });
-            ownerByHex[hex] = i;
-            spawnCounts[hex] = 0;
+              chipEl: null,
+              numEl: null,
+            };
+            chips.appendChild(buildChip(p));
+            players.push(p);
+            spawnCounts.push(0);
           }
         }
 
-        function startGame() {
-          clearDots();
-          buildScoreboard();
-          show("game");
-          measureArea();
-          $("progressFill").style.transform = "scaleX(1)";
-          countdown(function () {
-            running = true;
-            sessionStartTs = performance.now();
-            sessionEndTs = sessionStartTs + durationSec * 1000;
-            spawnIntervalMs = SPEEDS[speedIdx].spawn;
-            lifeMs = SPEEDS[speedIdx].life;
-            nextSpawnTs = sessionStartTs; // first dot immediately
-            rafId = requestAnimationFrame(loop);
-          });
+        function fmtClock(totalS) {
+          var ss = totalS % 60;
+          return Math.floor(totalS / 60) + ":" + (ss < 10 ? "0" : "") + ss;
+        }
+        // Paints the clock, progress bar and final-5-seconds state for `remain` ms.
+        function paintClock(remain) {
+          var sec = Math.ceil(remain / 1000);
+          var rush = remain <= FINAL_MS;
+          if (sec !== lastSec) {
+            lastSec = sec;
+            $("sessClock").textContent = fmtClock(sec);
+            if (rush && remain > 0) beep(660, 0.05, "sine", 0.12); // soft tick each second
+          }
+          $("progressFill").style.transform = "scaleX(" + remain / (durationSec * 1000) + ")";
+          $("game").classList.toggle("final", rush);
         }
 
-        function countdown(done) {
+        function startGame() {
+          show("game"); // full teardown first, then paint the fresh round
+          buildScoreboard();
+          measureArea();
+          remainMs = durationSec * 1000;
+          lastSec = -1;
+          $("sessClock").textContent = fmtClock(durationSec); // never "0:00" during the 3-2-1
+          $("progressFill").style.transform = "scaleX(1)";
+          beginCountdown(startRound);
+        }
+
+        function startRound() {
+          measureArea(); // re-measure at GO: the phone may have rotated during the 3-2-1
+          running = true;
+          var now = performance.now();
+          sessionEndTs = now + remainMs;
+          baseSpawnMs = SPEEDS[speedIdx].spawn;
+          lifeMs = SPEEDS[speedIdx].life;
+          nextSpawnTs = now; // first dot immediately
+          rafId = requestAnimationFrame(loop);
+        }
+
+        function beginCountdown(done) {
           var overlay = $("countdown"),
             cnum = $("cnum");
-          overlay.classList.add("active");
           var seq = ["3", "2", "1", "GO"],
             i = 0;
+          counting = true;
+          overlay.classList.add("active");
           function step() {
             if (i >= seq.length) {
               overlay.classList.remove("active");
-              done();
+              counting = false;
+              countdownTimer = null;
+              if (gameActive()) done(); // belt and braces: show() already cancels this timer
               return;
             }
             var val = seq[i];
@@ -1051,22 +1678,17 @@
             if (val === "GO") soundGo();
             else soundTick();
             i++;
-            setTimeout(step, val === "GO" ? 600 : 700);
+            countdownTimer = later(step, val === "GO" ? 600 : 700);
           }
           step();
         }
 
-        // choose the colour that has spawned least so far (random tiebreak) -> balanced
-        function pickSpawnHex() {
-          var min = Infinity,
-            i;
-          for (i = 0; i < players.length; i++) {
-            var c = spawnCounts[players[i].hex];
-            if (c < min) min = c;
-          }
-          var pool = [];
-          for (i = 0; i < players.length; i++) {
-            if (spawnCounts[players[i].hex] === min) pool.push(players[i].hex);
+        // choose the player whose colour has spawned least so far (random tiebreak) -> balanced
+        function pickSpawnIdx() {
+          var min = Math.min.apply(null, spawnCounts),
+            pool = [];
+          for (var i = 0; i < spawnCounts.length; i++) {
+            if (spawnCounts[i] === min) pool.push(i);
           }
           return pool[Math.floor(Math.random() * pool.length)];
         }
@@ -1081,6 +1703,7 @@
           }
           return false;
         }
+        // Positions are play-area coordinates (the dots live inside #playArea).
         function findSpot(size) {
           var pad = 8;
           var minX = pad,
@@ -1102,25 +1725,31 @@
 
         function spawnDot() {
           if (dots.length >= MAX_DOTS) return;
-          var hex = pickSpawnHex();
-          spawnCounts[hex] = (spawnCounts[hex] || 0) + 1;
+          var owner = pickSpawnIdx();
+          var p = players[owner];
+          spawnCounts[owner]++;
           var pos = findSpot(dotSize);
           var d = el("div", "dot");
           d.style.width = d.style.height = dotSize + "px";
           d.style.left = pos.x + "px";
           d.style.top = pos.y + "px";
-          d.style.background = hex;
+          d.style.background = p.hex;
+          var sym = el("span", "dsym");
+          sym.textContent = p.shape;
+          sym.style.fontSize = Math.round(dotSize * 0.38) + "px";
+          d.appendChild(sym);
           d.__x = pos.x;
           d.__y = pos.y;
-          d.__owner = ownerByHex[hex];
+          d.__size = dotSize;
+          d.__owner = owner;
           d.__removed = false;
           d.__done = false;
-          if (reduceMotion) {
+          if (prefersReduced()) {
             // The dotlife animation is suppressed under reduced motion, so animationend
             // would fire instantly. Show the dot statically and time its life ourselves
             // so it stays tappable for the full lifespan.
             d.classList.add("dot--static");
-            setTimeout(function () {
+            later(function () {
               removeDot(d);
             }, lifeMs);
           } else {
@@ -1145,16 +1774,54 @@
           var owner = players[d.__owner];
           owner.score++;
           owner.numEl.textContent = String(owner.score);
+          owner.chipEl.setAttribute("aria-label", owner.name + ": " + owner.score);
           bump(owner.numEl);
+          flashChip(owner.chipEl);
+          spawnFloater(d, owner);
           toneFor(owner.idx);
-          d.classList.add("tapped"); // burst, then animationend removes it
+          buzz(12);
+          d.style.pointerEvents = "none";
+          if (prefersReduced()) {
+            // .dot.tapped forces a 0.26s animation that beats the reduced-motion collapse,
+            // so skip the burst: just let the dot disappear.
+            later(function () {
+              removeDot(d);
+            }, 120);
+          } else {
+            d.classList.add("tapped"); // burst; animationend (or the timer) removes it
+            later(function () {
+              removeDot(d);
+            }, 320);
+          }
         }
 
         function bump(node) {
           node.style.transform = "scale(1.4)";
-          setTimeout(function () {
+          later(function () {
             node.style.transform = "scale(1)";
           }, 120);
+        }
+        function flashChip(chip) {
+          chip.classList.add("hit");
+          later(function () {
+            chip.classList.remove("hit");
+          }, 140);
+        }
+        // "+1" in the owner's colour at the dot centre. Pure decoration, removed by a timer.
+        function spawnFloater(d, owner) {
+          var f = el("span", "floater" + (prefersReduced() ? " floater--static" : ""));
+          f.textContent = "+1";
+          f.style.color = owner.hex;
+          f.style.left = d.__x + d.__size / 2 + "px";
+          f.style.top = d.__y + d.__size / 2 + "px";
+          $("playArea").appendChild(f);
+          later(function () {
+            if (f.parentNode) f.parentNode.removeChild(f);
+          }, 600);
+        }
+        function clearFloaters() {
+          var fs = $("playArea").querySelectorAll(".floater");
+          for (var i = 0; i < fs.length; i++) fs[i].parentNode.removeChild(fs[i]);
         }
 
         function removeDot(d) {
@@ -1174,108 +1841,235 @@
         function loop() {
           if (!running) return;
           var now = performance.now();
-          if (now >= sessionEndTs) {
+          var remain = Math.max(0, sessionEndTs - now);
+          paintClock(remain); // paint first so 0:00 is actually shown at the boundary
+          if (remain <= 0) {
             endGame();
             return;
           }
 
-          // spawn; if we fell far behind (e.g. backgrounded), skip the backlog
-          if (now - nextSpawnTs > spawnIntervalMs * 2) nextSpawnTs = now;
+          // spawn faster in the last 5 s; if we fell far behind, skip the backlog
+          var interval = remain <= FINAL_MS ? baseSpawnMs * RUSH_FACTOR : baseSpawnMs;
+          if (now - nextSpawnTs > interval * 2) nextSpawnTs = now;
           while (now >= nextSpawnTs) {
             spawnDot();
-            nextSpawnTs += spawnIntervalMs;
+            nextSpawnTs += interval;
           }
-
-          var remain = Math.max(0, sessionEndTs - now);
-          var totalS = Math.ceil(remain / 1000);
-          var mm = Math.floor(totalS / 60),
-            ss = totalS % 60;
-          $("sessClock").textContent = mm + ":" + (ss < 10 ? "0" : "") + ss;
-          $("progressFill").style.transform = "scaleX(" + remain / (durationSec * 1000) + ")";
-
           rafId = requestAnimationFrame(loop);
         }
 
         function endGame() {
           running = false;
-          if (rafId) cancelAnimationFrame(rafId);
+          finishing = true;
+          if (rafId) {
+            cancelAnimationFrame(rafId);
+            rafId = null;
+          }
           clearDots();
-          showResults();
+          beep(988, 0.12, "sine", 0.2);
+          later(function () {
+            beep(659, 0.25, "sine", 0.2);
+          }, 130);
+          buzz(60);
+          $("timeUp").classList.add("show");
+          later(showResults, 400);
         }
 
-        $("quitBtn").addEventListener("click", function () {
-          running = false;
-          if (rafId) cancelAnimationFrame(rafId);
+        // ---------- quit (two taps) ----------
+        function disarmQuit() {
+          quitArmed = false;
+          if (quitTimer !== null) {
+            cancelLater(quitTimer);
+            quitTimer = null;
+          }
+          var q = $("quitBtn");
+          q.classList.remove("armed");
+          q.setAttribute("aria-label", "Quit game");
+        }
+        // First tap (or Esc) arms a "Quit?" pill for 2s; a second tap (or Esc) quits.
+        function requestQuit() {
+          if (quitArmed) {
+            show("setup");
+            return;
+          }
+          quitArmed = true;
+          var q = $("quitBtn");
+          q.classList.add("armed");
+          q.setAttribute("aria-label", "Quit? Press again to confirm");
+          announce("Quit? Press again to confirm.");
+          quitTimer = later(disarmQuit, QUIT_CONFIRM_MS);
+        }
+        $("quitBtn").addEventListener("click", requestQuit);
+        document.addEventListener("keydown", function (ev) {
+          if (ev.key !== "Escape" || ev.repeat || paused || !gameActive()) return;
+          ev.preventDefault();
+          requestQuit();
+        });
+
+        // ---------- pause when hidden ----------
+        // A phone call or app switch must not burn the clock: freeze it, clear the stage and
+        // wait for a tap, then resume with a fresh 3-2-1.
+        function pauseGame() {
+          if (paused || finishing || !gameActive()) return;
+          if (running) {
+            remainMs = Math.max(0, sessionEndTs - performance.now());
+            running = false;
+          } else if (counting) {
+            counting = false;
+          } else {
+            return;
+          }
+          if (rafId) {
+            cancelAnimationFrame(rafId);
+            rafId = null;
+          }
+          if (countdownTimer !== null) {
+            cancelLater(countdownTimer);
+            countdownTimer = null;
+          }
+          $("countdown").classList.remove("active");
           clearDots();
-          show("setup");
+          clearFloaters();
+          disarmQuit();
+          paused = true;
+          $("pause").classList.add("active");
+          announce("Paused. Tap to resume.");
+          $("resumeBtn").focus({ preventScroll: true });
+        }
+        function resumeGame() {
+          if (!paused) return;
+          primeAudio();
+          paused = false;
+          $("pause").classList.remove("active");
+          $("game").focus({ preventScroll: true });
+          beginCountdown(startRound);
+        }
+        $("pause").addEventListener("click", resumeGame);
+        document.addEventListener("visibilitychange", function () {
+          if (document.hidden || document.visibilityState === "hidden") pauseGame();
         });
 
         // ============================================================
         //  RESULTS
         // ============================================================
+        function clearConfetti() {
+          var c = $("confetti");
+          if (c && c.parentNode) c.parentNode.removeChild(c);
+        }
+        // 36 pieces, 1.4s CSS fall, removed by a timer. Nothing is rendered under reduced motion.
+        function launchConfetti(colours) {
+          if (prefersReduced()) return;
+          var wrap = el("div");
+          wrap.id = "confetti";
+          wrap.setAttribute("aria-hidden", "true");
+          for (var i = 0; i < 36; i++) {
+            var piece = el("i");
+            piece.style.left = Math.random() * 100 + "%";
+            piece.style.background = colours[i % colours.length];
+            piece.style.animationDelay = Math.random() * 0.4 + "s";
+            piece.style.setProperty("--dx", Math.round(Math.random() * 120 - 60) + "px");
+            piece.style.setProperty("--rot", Math.round(360 + Math.random() * 540) + "deg");
+            wrap.appendChild(piece);
+          }
+          document.body.appendChild(wrap);
+          later(clearConfetti, 2000);
+        }
+
+        function resultHeadline(sorted, top) {
+          var winners = sorted.filter(function (p) {
+            return p.score === top;
+          });
+          if (top === 0)
+            return { title: "Nobody scored", sub: "Too fast? Run it back.", winners: [] };
+          if (winners.length > 1) {
+            var names = winners.map(function (p) {
+              return p.name;
+            });
+            return {
+              title: "It's a tie!",
+              sub: names.join(" & ") + " — " + top + " each",
+              winners: winners,
+            };
+          }
+          return {
+            title: sorted[0].name + " wins!",
+            sub: top + (top === 1 ? " point" : " points"),
+            winners: winners,
+          };
+        }
+        function buildRankRow(p, pos, top) {
+          var row = el("div", "rank" + (p.score === top && top > 0 ? " win" : ""));
+          var ps = el("div", "pos");
+          ps.textContent = pos;
+          var swt = el("div", "swt");
+          swt.style.background = p.hex;
+          swt.textContent = p.shape;
+          var nm = el("div", "rname");
+          nm.textContent = p.name;
+          var sc = el("div", "rscore");
+          sc.textContent = p.score;
+          row.appendChild(ps);
+          row.appendChild(swt);
+          row.appendChild(nm);
+          row.appendChild(sc);
+          return row;
+        }
+        // Kind words for anyone who ended on zero (only when somebody did score)
+        function fillGreatTry(sorted, top) {
+          var zeros = sorted.filter(function (p) {
+            return p.score === 0;
+          });
+          var tryEl = $("greatTry");
+          tryEl.hidden = !(top > 0 && zeros.length);
+          tryEl.textContent = tryEl.hidden
+            ? ""
+            : "Great try, " +
+              zeros
+                .map(function (p) {
+                  return p.name;
+                })
+                .join(" & ") +
+              "!";
+        }
+        function fillRankList(sorted, top) {
+          var list = $("rankList");
+          list.innerHTML = "";
+          var pos = 0,
+            lastScore = null;
+          sorted.forEach(function (p, i) {
+            if (p.score !== lastScore) {
+              pos = i + 1;
+              lastScore = p.score;
+            }
+            list.appendChild(buildRankRow(p, pos, top));
+          });
+        }
         function showResults() {
           var sorted = players.slice().sort(function (a, b) {
             return b.score - a.score;
           });
           var top = sorted[0].score;
-          var winners = sorted.filter(function (p) {
-            return p.score === top;
-          });
-          var tie = winners.length > 1 && top > 0;
-
-          if (top === 0) {
-            $("winTitle").textContent = "Nobody scored";
-            $("winSub").textContent = "Too fast? Run it back.";
-          } else if (tie) {
-            $("winTitle").textContent = "It's a tie!";
-            $("winSub").textContent =
-              winners
-                .map(function (p) {
-                  return p.name;
-                })
-                .join(" & ") +
-              " — " +
-              top +
-              " each";
-          } else {
-            $("winTitle").textContent = sorted[0].name + " wins";
-            $("winSub").textContent = top + (top === 1 ? " point" : " points");
-          }
-
-          var list = $("rankList");
-          list.innerHTML = "";
-          var pos = 0,
-            lastScore = null,
-            shown = 0;
-          sorted.forEach(function (p) {
-            shown++;
-            if (p.score !== lastScore) {
-              pos = shown;
-              lastScore = p.score;
-            }
-            var isWin = p.score === top && top > 0;
-            var row = el("div", "rank" + (isWin ? " win" : ""));
-            var ps = el("div", "pos");
-            ps.textContent = pos;
-            var swt = el("div", "swt");
-            swt.style.background = p.hex;
-            var nm = el("div", "rname");
-            nm.innerHTML = p.name + "<small>" + colourName(p.hex) + "</small>";
-            var sc = el("div", "rscore");
-            sc.textContent = p.score;
-            row.appendChild(ps);
-            row.appendChild(swt);
-            row.appendChild(nm);
-            row.appendChild(sc);
-            list.appendChild(row);
-          });
-          $("srStatus").textContent = $("winTitle").textContent + ". " + $("winSub").textContent;
+          var head = resultHeadline(sorted, top);
+          $("winTitle").textContent = head.title;
+          $("winSub").textContent = head.sub;
+          fillGreatTry(sorted, top);
+          fillRankList(sorted, top);
+          var tryEl = $("greatTry");
+          announce(head.title + ". " + head.sub + (tryEl.hidden ? "" : ". " + tryEl.textContent));
           show("results");
+          if (top === 0) return;
+          // winner's colour; a tie gets the whole palette
+          var colours =
+            head.winners.length === 1
+              ? [head.winners[0].hex]
+              : PALETTE.map(function (c) {
+                  return c.hex;
+                });
+          launchConfetti(colours);
         }
 
         $("againBtn").addEventListener("click", function () {
-          initAudio();
-          if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+          primeAudio();
           startGame();
         });
         $("changeBtn").addEventListener("click", function () {

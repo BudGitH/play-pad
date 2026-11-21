@@ -1789,21 +1789,25 @@
           return mat;
         }
         // Fresnel rim: neon edge light on character materials (silhouette pops against the night road).
-        function applyRim(mat, hex, str) {
+        // `fill` = a character-only self-illumination: albedo * fill is added to the emissive term, so the
+        // runner stays readable on the dark road whatever the scene lights do (lights can't be scoped per object).
+        function applyRim(mat, hex, str, fill) {
           var cu = { value: new THREE.Color(hex) },
-            su = { value: str };
-          mat.userData.rim = { c: cu, s: su };
+            su = { value: str },
+            fu = { value: fill || 0 };
+          mat.userData.rim = { c: cu, s: su, f: fu };
           mat.onBeforeCompile = function (sh) {
             sh.uniforms.uRimColor = cu;
             sh.uniforms.uRimStr = su;
+            sh.uniforms.uFill = fu;
             sh.fragmentShader = sh.fragmentShader
               .replace(
                 "#include <common>",
-                "#include <common>\nuniform vec3 uRimColor;\nuniform float uRimStr;",
+                "#include <common>\nuniform vec3 uRimColor;\nuniform float uRimStr;\nuniform float uFill;",
               )
               .replace(
                 "#include <emissivemap_fragment>",
-                "#include <emissivemap_fragment>\n totalEmissiveRadiance += uRimColor * uRimStr * pow( 1.0 - saturate( dot( normalize( normal ), normalize( vViewPosition ) ) ), 3.2 );",
+                "#include <emissivemap_fragment>\n totalEmissiveRadiance += diffuseColor.rgb * uFill + uRimColor * uRimStr * pow( 1.0 - saturate( dot( normalize( normal ), normalize( vViewPosition ) ) ), 3.2 );",
               );
           };
           mat.customProgramCacheKey = function () {
@@ -3137,7 +3141,7 @@
         function rimify(g, hex, str) {
           g.traverse(function (o) {
             if (o.isMesh && o.material && o.material.isMeshStandardMaterial)
-              applyRim(o.material, hex, str);
+              applyRim(o.material, hex, str, 0.2);
           });
           return g;
         }
@@ -3170,13 +3174,15 @@
           airTime: 1.15, // predicted airtime of the current jump (drives the Bot's Jump clip fit)
           landed: false,
         };
+        var crashPush = { x: 0, z: 0, zT: 0 }; // crash framing correction (see PlayerController.frameCrash)
+        var _cpv = new THREE.Vector3();
         var blob = null; // always-on blob shadow decal (grounds the runner even where real shadows are off)
         if (renderer) {
           var blobC = mkCanvas(64, 64),
             blobX = blobC.getContext("2d");
           var blobG = blobX.createRadialGradient(32, 32, 0, 32, 32, 32);
-          blobG.addColorStop(0, "rgba(0,0,0,0.9)");
-          blobG.addColorStop(0.55, "rgba(0,0,0,0.45)");
+          blobG.addColorStop(0, "rgba(0,0,0,1)");
+          blobG.addColorStop(0.6, "rgba(0,0,0,0.6)");
           blobG.addColorStop(1, "rgba(0,0,0,0)");
           blobX.fillStyle = blobG;
           blobX.fillRect(0, 0, 64, 64);
@@ -3187,7 +3193,7 @@
             new THREE.MeshBasicMaterial({
               map: new THREE.CanvasTexture(blobC),
               transparent: true,
-              opacity: 0.55,
+              opacity: 0.8,
               depthWrite: false,
               fog: false,
             }),
@@ -3256,7 +3262,7 @@
      between wrap and rig, pivoting at the feet) adds the crouch / landing squash / board spin so
      the visuals always match the gameplay hitbox (SLIDE_H 0.72 m). */
         function hueRemapTexture(tex) {
-          // Rogue atlas: greens + teals (hue 75-186) -> deep magenta-violet so the back view isn't a green blob.
+          // Rogue atlas: greens + teals (hue 75-186) -> hot pink (lifted lightness) so the back view isn't a green blob and stays readable on the dark road.
           try {
             var img = tex.image,
               w = img.width,
@@ -3281,9 +3287,9 @@
               else if (mx === g) hh = ((b - r) / dl + 2) * 60;
               else hh = ((r - g) / dl + 4) * 60;
               if (hh < 75 || hh > 186 || s < 0.15) continue;
-              hh = 318 / 360;
-              s *= 0.9;
-              l *= 0.8;
+              hh = 330 / 360; // hot pink (brand magenta is ~328)
+              s = Math.min(0.95, s * 1.05);
+              l = Math.min(0.78, 0.3 + l * 0.8); // lift: dark teal -> rich pink, light green -> light pink (readable on the road)
               var q = l < 0.5 ? l * (1 + s) : l + s - l * s,
                 p = 2 * l - q;
               var hue2rgb = function (t) {
@@ -3318,7 +3324,7 @@
             yaw: Math.PI,
             lift: 0,
             headTop: 0.85,
-            rim: [NEON.cyan, 0.75],
+            rim: [NEON.cyan, 0.9, 0.18],
             crouch: { sx: 1.1, sy: 0.58, sz: 1.1, pitch: -0.4 },
             fx: function (m) {
               if (m.map) {
@@ -3349,12 +3355,18 @@
             ridePitch: -0.1,
             spin: true,
             headTop: 0.31,
-            rim: [NEON.magenta, 0.6],
+            rim: [NEON.magenta, 0.8, 0.5],
             crouch: { sx: 1.1, sy: 0.45, sz: 1.1, pitch: -0.6, y: -0.16 }, // squats down onto the deck
             fx: function (m, nm) {
               if (/SciFi_Light_Accent/i.test(nm)) {
                 m.emissive.set(NEON.cyan);
                 m.emissiveIntensity = 1.4;
+              } else if (/SciFi_Light/i.test(nm)) {
+                m.color.set(0xd2d6f2); // silver armour plates (the stock near-black suit vanished on the road)
+              } else if (/SciFi_MainDark/i.test(nm)) {
+                m.color.set(0x4a467c);
+              } else if (/SciFi_Main/i.test(nm)) {
+                m.color.set(0x6c6aa8);
               }
             },
             clips: {
@@ -3373,7 +3385,7 @@
             yaw: Math.PI,
             lift: 0,
             headTop: 0.6,
-            rim: [NEON.magenta, 0.7],
+            rim: [NEON.magenta, 0.8, 0.15],
             crouch: { sx: 1.2, sy: 0.45, sz: 1.2, pitch: -0.6 },
             fx: function (m, nm) {
               if (nm === "Main") {
@@ -3498,7 +3510,7 @@
                 var m = src.clone();
                 m.envMapIntensity = 0.35;
                 if (cfg.fx) cfg.fx(m, src.name || "");
-                applyRim(m, cfg.rim[0], cfg.rim[1]);
+                applyRim(m, cfg.rim[0], cfg.rim[1], cfg.rim[2]);
                 mats[src.uuid] = m;
               }
               o.material = mats[src.uuid];
@@ -3774,6 +3786,7 @@
             player.invulnT = 0;
             player.airTime = 1.15;
             player.landed = false;
+            crashPush.x = crashPush.z = crashPush.zT = 0;
             if (playerGroup) {
               playerGroup.position.set(0, 0, 0);
               playerGroup.rotation.set(0, 0, 0);
@@ -3883,10 +3896,10 @@
               }
               // blob shadow: always on (low tier has no real shadows) — shrinks/fades with height
               if (blob) {
-                var bs = 1.1 * (1 - clamp(player.y * 0.12, 0, 0.5));
+                var bs = 1.4 * (1 - clamp(player.y * 0.12, 0, 0.5));
                 blob.position.set(player.x, 0.03, playerGroup.position.z);
                 blob.scale.set(bs, 1, bs);
-                blob.material.opacity = 0.55 * (1 - clamp(player.y * 0.18, 0, 0.6));
+                blob.material.opacity = 0.8 * (1 - clamp(player.y * 0.18, 0, 0.6));
               }
             }
             if (player.landed && !prefersReduced) camBump = 0.1; // landing dip
@@ -3905,7 +3918,9 @@
               }
             }
             playerGroup.position.y = player.y;
-            playerGroup.position.z = 1.4 * easeOut2(clamp(age / 0.25, 0, 1));
+            var kz = 1.4 * easeOut2(clamp(age / 0.25, 0, 1)); // knock-back toward the camera
+            playerGroup.position.z = kz - crashPush.z;
+            playerGroup.position.x = player.x + crashPush.x;
             var gltf = skinRoot.userData.gltf;
             if (gltf) {
               gltf.update(dt, {
@@ -3920,11 +3935,43 @@
             } else {
               skinRoot.rotation.x = -1.2 * easeOut2(clamp(age / 0.35, 0, 1));
             }
+            this.frameCrash(dt, kz, gltf);
             skinRoot.rotation.z += (0 - skinRoot.rotation.z) * Math.min(1, dt * 10);
             if (blob) {
-              blob.position.set(player.x, 0.03, playerGroup.position.z);
-              blob.material.opacity = 0.55;
+              blob.position.set(playerGroup.position.x, 0.03, playerGroup.position.z);
+              blob.material.opacity = 0.8;
             }
+          },
+          // Keep the falling rig inside the frame in every lane / aspect: the death clip topples toward the
+          // camera, so the push-back (monotonic, eased) holds its nearest point above the bottom edge, and
+          // the lane offset is clamped to the visible half-width at its depth.
+          frameCrash: function (dt, kz, gltf) {
+            // z where the bottom view ray meets the ground (live fov incl. the speed kick); nearer than this is
+            // below the frame. 0.85 m margin covers the hood/limb thickness beyond the bone positions.
+            var zLimit =
+              camBase.z -
+              camBase.y / Math.tan(camBase.pitch + (camera.fov * Math.PI) / 360) -
+              0.85;
+            var need = 0;
+            if (gltf) {
+              playerGroup.updateMatrixWorld(true);
+              var maxZ = -1e9,
+                bones = gltf.bones;
+              for (var i = 0; i < bones.length; i++) {
+                bones[i].getWorldPosition(_cpv);
+                if (_cpv.z > maxZ) maxZ = _cpv.z;
+              }
+              need = Math.max(0, kz + (maxZ - playerGroup.position.z) - zLimit);
+            } else {
+              need = Math.max(0, kz + 0.9 - zLimit);
+            }
+            crashPush.zT = Math.max(crashPush.zT, need);
+            crashPush.z += (crashPush.zT - crashPush.z) * Math.min(1, dt * 30);
+            var depth = Math.max(2, camBase.z - playerGroup.position.z),
+              half = Math.tan((camera.fov * Math.PI) / 360) * camera.aspect * depth;
+            var lim = Math.max(0.3, half * 0.86 - 1.0),
+              dxc = player.x - camX;
+            crashPush.x += (clamp(dxc, -lim, lim) - dxc - crashPush.x) * Math.min(1, dt * 14);
           },
           height: function () {
             return player.sliding ? SLIDE_H : STAND_H;
@@ -5349,7 +5396,7 @@
 
         // Camera rig: blends toward a wider/taller/further framing as the viewport gets narrower so
         // all three lanes stay in view on portrait phones (PLAY-006 F12). Recomputed in resize().
-        var camBase = { fov: 58, y: 4.4, z: 8, lookY: 1.6, lookZ: -8 };
+        var camBase = { fov: 58, y: 4.4, z: 8, lookY: 1.6, lookZ: -8, pitch: 0.17 };
         function camParams(aspect) {
           var t = clamp((1.3 - aspect) / 0.8, 0, 1);
           camBase.fov = 58 + 14 * t;
@@ -5357,6 +5404,7 @@
           camBase.z = 8 + 2.8 * t;
           camBase.lookY = 1.6 - 0.2 * t;
           camBase.lookZ = -8 - 2 * t;
+          camBase.pitch = Math.atan((camBase.y - camBase.lookY) / (camBase.z - camBase.lookZ));
         }
         camParams(16 / 9);
 
@@ -5611,6 +5659,8 @@
               quality: quality,
               models: MODEL_CFG,
               droneGroup: droneGroup,
+              crashPush: crashPush,
+              camBase: camBase,
             };
           },
           get state() {

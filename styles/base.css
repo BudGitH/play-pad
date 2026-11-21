@@ -2,9 +2,13 @@
    PlayPad — base styles & MD3 components
    ----------------------------------------------------------------------------
    Reset, typography utilities, and the shared component vocabulary (card, chip,
-   button, state layers, focus, the horizontal game rail). Spacing/shape/colour
-   come from tokens.css; the only literals are a few off-grid component paddings
-   (6/12px) and 1px hairlines, kept intentionally.
+   filter chip, badge, button, skip link, state layers, focus). Spacing/shape/
+   colour come from tokens.css; the only literals are a few off-grid component
+   paddings (4/6/12px) and 1px hairlines, kept intentionally.
+
+   Hub-only layout (app bar, hero, game grid) lives in index.html's <style>, not
+   here, so game pages never inherit it. Every rule in this file is shared with
+   all game pages: add new class names, never change an existing component rule.
    ========================================================================== */
 
 /* ---- Reset -------------------------------------------------------------- */
@@ -256,7 +260,7 @@ button {
   padding: 0 12px;
 }
 
-/* Icon-only round button (e.g. rail arrows, quit) */
+/* Icon-only round button (e.g. the hub theme toggle, a game's quit) */
 .icon-button {
   position: relative;
   display: inline-flex;
@@ -280,65 +284,85 @@ button {
   pointer-events: none;
 }
 
-/* ---- Horizontal game rail (scroll-based selection) ---------------------- */
-.rail {
-  position: relative;
+/* ---- Skip link (first tab stop; appears on focus) ------------------------ */
+/* Pair with .button .button--filled. Parked off-screen (still focusable). */
+.skip-link {
+  position: absolute;
+  left: var(--md-sys-spacing-md);
+  top: -100px;
+  z-index: 50;
 }
-/* Wrapper around the scroll track so arrows centre on the track, not the
-   whole section, and never sit outside the viewport (no stray h-scroll). */
-.rail__viewport {
-  position: relative;
-}
-.rail__track {
-  display: flex;
-  gap: var(--md-sys-spacing-md);
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  scroll-padding-inline: var(--rail-edge, 24px);
-  overscroll-behavior-x: contain;
-  -webkit-overflow-scrolling: touch;
-  padding: var(--md-sys-spacing-sm) var(--rail-edge, 24px) var(--md-sys-spacing-lg);
-  scrollbar-width: thin;
-  scrollbar-color: var(--md-sys-color-outline-variant) transparent;
-}
-.rail__track::-webkit-scrollbar {
-  height: 8px;
-}
-.rail__track::-webkit-scrollbar-track {
-  background: transparent;
-}
-.rail__track::-webkit-scrollbar-thumb {
-  background: var(--md-sys-color-outline-variant);
-  border-radius: var(--md-sys-shape-corner-full);
-}
-.rail__track > * {
-  scroll-snap-align: start;
-  flex: 0 0 auto;
+.skip-link:focus {
+  top: calc(env(safe-area-inset-top) + var(--md-sys-spacing-sm));
 }
 
-/* Desktop arrow affordances — hidden where there's no hover/fine pointer */
-.rail__arrow {
+/* ---- Filter chip (single-select toggle: aria-pressed) --------------------- */
+/* 40px visual height; the ::after grows the hit area to 48px without moving
+   neighbours. Pressed state = tonal fill + a leading check (not colour alone).
+   Markup: <button class="chip-filter state-layer" aria-pressed="true">
+             <svg class="chip-filter__check" aria-hidden="true">…</svg>
+             <span>Label</span><span class="chip-filter__count">3</span></button> */
+.chip-filter {
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 var(--md-sys-spacing-md);
+  border-radius: var(--md-sys-shape-corner-sm);
+  border: 1px solid var(--md-sys-color-outline);
+  background: transparent;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: var(--md-sys-typescale-label-large-size);
+  font-weight: var(--md-sys-typescale-label-large-weight);
+  letter-spacing: var(--md-sys-typescale-label-large-tracking);
+  white-space: nowrap;
+}
+.chip-filter::after {
+  content: "";
   position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 5;
-  box-shadow: var(--md-sys-elevation-level2);
+  inset: -4px 0;
 }
-.rail__arrow--prev {
-  left: var(--md-sys-spacing-xs);
-}
-.rail__arrow--next {
-  right: var(--md-sys-spacing-xs);
-}
-.rail__arrow[hidden] {
+.chip-filter__check {
   display: none;
 }
-/* Hide the arrows where cards span (near-)full width or touch is the norm —
-   there, overlaying a card would cover its content; swipe/scroll is natural. */
-@media (pointer: coarse), (max-width: 720px) {
-  .rail__arrow {
-    display: none;
-  }
+.chip-filter__count {
+  opacity: 0.8;
+  font-weight: 500;
+}
+.chip-filter[aria-pressed="true"] {
+  padding-left: 10px;
+  border-color: transparent;
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+}
+.chip-filter[aria-pressed="true"] .chip-filter__check {
+  display: block;
+}
+
+/* ---- Badge (small read-only status label) -------------------------------- */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--md-sys-spacing-xs);
+  height: 24px;
+  padding: 0 var(--md-sys-spacing-sm);
+  border-radius: var(--md-sys-shape-corner-xs);
+  background: var(--md-sys-color-surface-container-highest);
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: var(--md-sys-typescale-label-medium-size);
+  font-weight: var(--md-sys-typescale-label-medium-weight);
+  letter-spacing: var(--md-sys-typescale-label-medium-tracking);
+  white-space: nowrap;
+}
+.badge--best {
+  background: var(--md-sys-color-tertiary-container);
+  color: var(--md-sys-color-on-tertiary-container);
+}
+.badge--new {
+  background: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
 }
 
 /* ---- Visually-hidden (for screen-reader-only labels) -------------------- */
@@ -353,6 +377,21 @@ button {
   clip-path: inset(50%);
   overflow: hidden;
   white-space: nowrap;
+}
+
+/* ---- Page transition (hub <-> game) ------------------------------------- */
+/* Cross-document View Transition: a short cross-fade when navigating between
+   same-origin pages that both load this file. Browsers without support ignore
+   the at-rule and simply cut, so navigation is never delayed by script.
+   Inputs are blocked for about this long during the fade (PLAY-006 R2). */
+@media (prefers-reduced-motion: no-preference) {
+  @view-transition {
+    navigation: auto;
+  }
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: var(--md-sys-motion-duration-short4);
+  }
 }
 
 /* ---- Reduced motion ----------------------------------------------------- */

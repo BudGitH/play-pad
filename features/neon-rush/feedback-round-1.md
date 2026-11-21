@@ -13,14 +13,14 @@ Owner feedback on the deployed game, and how each item was addressed. All code i
 
 ## What shipped
 
-| # | Change | Where |
-|---|---|---|
-| 1a | `renderer.outputEncoding = THREE.sRGBEncoding` — GLB textures no longer render grey | renderer setup |
-| 1b | `applySkin` fully resets the cached `AnimationMixer` (stopAllAction + weight-0 sweep + forced idle weight); mixer also ticked in the `crashed` phase; state machine tracks the **resolved** action so missing clips don't re-fade | `applySkin`, `buildGltfSkin.ctrl` |
-| 2 | KayKit City Builder Bits `building_A..H.glb` cloned into a recycled `cityBuildings` pool; neon boxes retreat to a far skyline (`cityMode`) and stay as the file:// / failure fallback | `preloadCity`/`enableCityBuildings`/`resetBuilding` |
-| 3 | KayKit `car_police.glb` hover cruiser (wheels hidden, red/blue roof lightbar + underglow) replaces the primitive drone visual; primitive drone stays as fallback | `preloadPatrol` |
-| 4 | `MODEL_CFG.skater` → Quaternius `Astronaut` (clips verified from the GLB: `CharacterArmature|Run/Idle_Neutral/Roll`, no jump clip); `SKINS` renamed "Star Rider"; `glowMats` adds cyan accent glow; `Knight.glb` removed | `MODEL_CFG`, `SKINS` |
-| 5 | `firstWave` flag: first wave of each run spawns at z=-55 (vs -110) with a short `distToNextWave`, coins guaranteed → first contact ~1–5s (was ~11s) | `ObstacleSpawner` |
+| #   | Change                                                                                                                                                                                                                            | Where                                                                                                                   |
+| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | -------------------- |
+| 1a  | `renderer.outputEncoding = THREE.sRGBEncoding` — GLB textures no longer render grey                                                                                                                                               | renderer setup                                                                                                          |
+| 1b  | `applySkin` fully resets the cached `AnimationMixer` (stopAllAction + weight-0 sweep + forced idle weight); mixer also ticked in the `crashed` phase; state machine tracks the **resolved** action so missing clips don't re-fade | `applySkin`, `buildGltfSkin.ctrl`                                                                                       |
+| 2   | KayKit City Builder Bits `building_A..H.glb` cloned into a recycled `cityBuildings` pool; neon boxes retreat to a far skyline (`cityMode`) and stay as the file:// / failure fallback                                             | `preloadCity`/`enableCityBuildings`/`resetBuilding`                                                                     |
+| 3   | KayKit `car_police.glb` hover cruiser (wheels hidden, red/blue roof lightbar + underglow) replaces the primitive drone visual; primitive drone stays as fallback                                                                  | `preloadPatrol`                                                                                                         |
+| 4   | `MODEL_CFG.skater` → Quaternius `Astronaut` (clips verified from the GLB: `CharacterArmature                                                                                                                                      | Run/Idle_Neutral/Roll`, no jump clip); `SKINS`renamed "Star Rider";`glowMats`adds cyan accent glow;`Knight.glb` removed | `MODEL_CFG`, `SKINS` |
+| 5   | `firstWave` flag: first wave of each run spawns at z=-55 (vs -110) with a short `distToNextWave`, coins guaranteed → first contact ~1–5s (was ~11s)                                                                               | `ObstacleSpawner`                                                                                                       |
 
 New CC0 assets vendored + credited: `assets/models/Astronaut.glb`, `assets/models/city/*` (+ license files); `assets/CREDITS.md`, game `CLAUDE.md`, and `docs/ARCHITECTURE.md` updated. `Knight.glb` deleted.
 

@@ -31,7 +31,7 @@ window.GAMES = [
     accent: "#ff375f",
     icon: "🎯",
     players: "2–4",
-    status: "live"
+    status: "live",
   },
   {
     id: "snap",
@@ -43,7 +43,7 @@ window.GAMES = [
     accent: "#bf5af2",
     icon: "🃏",
     players: "2–4",
-    status: "live"
+    status: "live",
   },
   {
     id: "claw-catch",
@@ -55,7 +55,7 @@ window.GAMES = [
     accent: "#64d2ff",
     icon: "🕹️",
     players: "1",
-    status: "live"
+    status: "live",
   },
   {
     id: "super-decoder",
@@ -67,7 +67,7 @@ window.GAMES = [
     accent: "#30d158",
     icon: "🔐",
     players: "1",
-    status: "live"
+    status: "live",
   },
   {
     id: "neon-rush",
@@ -79,6 +79,6 @@ window.GAMES = [
     accent: "#ff2d95",
     icon: "🏃",
     players: "1",
-    status: "live"
-  }
+    status: "live",
+  },
 ];

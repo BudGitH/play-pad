@@ -1,6 +1,6 @@
 # Feature: Neon Rush — 3D endless runner (game #5)
 
-> **Phase 1 of the workflow.** Define what "done" means *before* writing code.
+> **Phase 1 of the workflow.** Define what "done" means _before_ writing code.
 
 **Status:** APPROVED (plan approved by owner 2026-07-12)
 **Owner:** @BudGitH

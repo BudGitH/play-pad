@@ -1,6 +1,6 @@
 # Feature: Claw Catch (claw-machine game #3)
 
-> **Phase 1 of the workflow.** Define what "done" means *before* writing code. A QA agent will hold the implementation to these criteria — vague requirements produce vague QA.
+> **Phase 1 of the workflow.** Define what "done" means _before_ writing code. A QA agent will hold the implementation to these criteria — vague requirements produce vague QA.
 
 **Status:** DRAFT
 **Owner:** @BudGitH
@@ -29,12 +29,14 @@
 - **Personas served:** **Solo Sam** (a lone visitor wanting a quick single-player break) and **Kid Pilot** (a young player who needs forgiving, obvious controls).
 - **Baseline (hard gate):** From the hub, the player opens Claw Catch, starts a round, moves the claw, drops it, and catches at least one prize that adds to their score — alone, no second person.
 - **Value (hard gate):** It beats "nothing to play alone" — a self-contained skill game with a clear goal (score), readable controls, and a satisfying grab. Lining up the straight drop (and the risk of a mid-carry slip) makes it skill-based and tense, not random.
-- **High satisfaction (scored, not gated):** The claw *feels* real (believable sway/settle on a flick); three themes invite replay; the capped refill keeps tension; "+N" pops feel rewarding.
+- **High satisfaction (scored, not gated):** The claw _feels_ real (believable sway/settle on a flick); three themes invite replay; the capped refill keeps tension; "+N" pops feel rewarding.
 
 ## Design routing
+
 > **UI surface?** yes (a whole new game screen) · **Reuse-only?** no (new Canvas stage + control deck) · **Tier** Prototype → **Path: lite**
 
 ## Design review
+
 - Checked against `docs/DESIGN-SYSTEM.md`: setup/results/HUD reuse the shared MD3 tokens and the exact Snap markup patterns (`.sel-chip`, `.theme-grid`, `.switch`, `.back-link`, results `.rank`). New surfaces — the canvas cabinet, the bottom control deck (joystick + grab button), and the prize-key panel — use only `--md-sys-*` tokens (colours, radii, elevation, motion). The canvas itself is a decorative stage; all interactive controls remain real DOM buttons with ≥48px hit targets and focus rings. Human OK: pending verification screenshots.
 
 ## User-visible behaviour
@@ -85,4 +87,5 @@ On **results**: final score, prizes caught, and the best single catch, with **Pl
 - **Quality:** Smooth on a mid mobile (single RAF loop, canvas redraw only; no per-frame DOM thrash). Functions small and single-purpose; difficulty/physics knobs centralised in config tables.
 
 ## Tech Lead feasibility
+
 - **Verdict:** PROCEED — Canvas 2D for the stage is a deliberate departure from the DOM-only existing games (to be recorded in `docs/DECISIONS.md`), justified by the swinging-cable / claw-arm rendering. No new dependencies, still `file://`-safe. Pendulum integration is standard and cheap. Effort: medium (one self-contained file).

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <!-- ============================================================================
   PlayPad — MOCKUP SCAFFOLD (features/<feature-name>/mockups.html)
   Phase 1b (full design path) · copied from features/_TEMPLATE/mockups.html
@@ -69,94 +69,166 @@
   allowed: "A's layout with D's detail panel" is a valid answer.
 ============================================================================ -->
 <html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>PlayPad — &lt;feature name&gt; — design options</title>
-<style>
-  /* == TOKENS — copy the values from docs/DESIGN-SYSTEM.md. ==
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PlayPad — &lt;feature name&gt; — design options</title>
+    <style>
+      /* == TOKENS — copy the values from docs/DESIGN-SYSTEM.md. ==
      Never invent values here: if a needed token is missing, add it to
      DESIGN-SYSTEM.md first and note it in docs/DECISIONS.md. */
-  :root{
-    --color-primary:#2456d6; --color-surface:#ffffff; --color-surface-alt:#f4f6fa;
-    --color-on-surface:#1a1d23; --color-muted:#5b6472; --color-border:#d8dde6;
-    --color-success:#1a7f4e; --color-error:#b3261e; --color-warning:#9a6b00;
-    --font-body:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-    --size-body:15px; --size-caption:13px; --size-heading:20px;
-    --space-xs:4px; --space-sm:8px; --space-md:16px; --space-lg:24px; --space-xl:40px;
-    --radius-sm:4px; --radius-md:8px;
-    --elev-sm:0 1px 2px rgba(16,24,40,.08); --elev-md:0 4px 12px rgba(16,24,40,.12);
-  }
-  body{font-family:var(--font-body);font-size:var(--size-body);color:var(--color-on-surface);
-       background:var(--color-surface-alt);margin:0;padding:var(--space-lg)}
-  .chooser{background:var(--color-surface);border:1px solid var(--color-border);
-       border-radius:var(--radius-md);padding:var(--space-md) var(--space-lg);margin-bottom:var(--space-lg)}
-  /* CSS-only tabs (no JS needed; radio inputs keep it keyboard-operable). */
-  .tabs input[type=radio]{position:absolute;opacity:0}
-  .tabs label{display:inline-block;padding:var(--space-sm) var(--space-md);cursor:pointer;
-       border:1px solid var(--color-border);border-bottom:none;background:var(--color-surface-alt);
-       border-radius:var(--radius-sm) var(--radius-sm) 0 0;font-weight:600;color:var(--color-muted)}
-  .tabs input[type=radio]:focus-visible + label{outline:2px solid var(--color-primary);outline-offset:2px}
-  .tabs input[type=radio]:checked + label{background:var(--color-surface);color:var(--color-primary)}
-  .panel{display:none;background:var(--color-surface);border:1px solid var(--color-border);
-       border-radius:0 var(--radius-md) var(--radius-md) var(--radius-md);padding:var(--space-lg)}
-  #t-a:checked ~ #p-a,#t-b:checked ~ #p-b,#t-c:checked ~ #p-c,#t-d:checked ~ #p-d,#t-x:checked ~ #p-x{display:block}
-  .tradeoff{background:var(--color-surface-alt);border-left:3px solid var(--color-primary);
-       padding:var(--space-sm) var(--space-md);margin-bottom:var(--space-md);font-size:var(--size-caption)}
-  .tradeoff b{color:var(--color-on-surface)}
-</style>
-</head>
-<body>
-
-<div class="chooser">
-  <h1 style="font-size:var(--size-heading);margin:0 0 var(--space-sm)">&lt;Feature name&gt; — 4 design options</h1>
-  <p style="margin:0;color:var(--color-muted)">
-    <b>How to choose:</b> pick the shape that matches how the target personas actually work —
-    volume, frequency, and device beat aesthetics. Mixing is allowed ("A's layout, D's detail panel").
-    All options use the same design tokens; you are choosing the <b>interaction shape</b>, not a theme.
-    Your choice + rationale goes in <code>design-review.md §5</code>.
-  </p>
-</div>
-
-<div class="tabs">
-  <input type="radio" name="opt" id="t-a" checked><label for="t-a">Option A — &lt;name&gt;</label>
-  <input type="radio" name="opt" id="t-b"><label for="t-b">Option B — &lt;name&gt;</label>
-  <input type="radio" name="opt" id="t-c"><label for="t-c">Option C — &lt;name&gt;</label>
-  <input type="radio" name="opt" id="t-d"><label for="t-d">Option D — &lt;name&gt;</label>
-  <input type="radio" name="opt" id="t-x"><label for="t-x">Chosen — full states</label>
-
-  <section class="panel" id="p-a" aria-label="Option A">
-    <div class="tradeoff">
-      <b>Strategy:</b> &lt;one line&gt; · <b>Best when:</b> &lt;one line&gt;<br>
-      <b>Trade-off:</b> &lt;what this shape costs&gt; · <b>Responsive:</b> &lt;what happens on mobile&gt;
+      :root {
+        --color-primary: #2456d6;
+        --color-surface: #ffffff;
+        --color-surface-alt: #f4f6fa;
+        --color-on-surface: #1a1d23;
+        --color-muted: #5b6472;
+        --color-border: #d8dde6;
+        --color-success: #1a7f4e;
+        --color-error: #b3261e;
+        --color-warning: #9a6b00;
+        --font-body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        --size-body: 15px;
+        --size-caption: 13px;
+        --size-heading: 20px;
+        --space-xs: 4px;
+        --space-sm: 8px;
+        --space-md: 16px;
+        --space-lg: 24px;
+        --space-xl: 40px;
+        --radius-sm: 4px;
+        --radius-md: 8px;
+        --elev-sm: 0 1px 2px rgba(16, 24, 40, 0.08);
+        --elev-md: 0 4px 12px rgba(16, 24, 40, 0.12);
+      }
+      body {
+        font-family: var(--font-body);
+        font-size: var(--size-body);
+        color: var(--color-on-surface);
+        background: var(--color-surface-alt);
+        margin: 0;
+        padding: var(--space-lg);
+      }
+      .chooser {
+        background: var(--color-surface);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-md);
+        padding: var(--space-md) var(--space-lg);
+        margin-bottom: var(--space-lg);
+      }
+      /* CSS-only tabs (no JS needed; radio inputs keep it keyboard-operable). */
+      .tabs input[type="radio"] {
+        position: absolute;
+        opacity: 0;
+      }
+      .tabs label {
+        display: inline-block;
+        padding: var(--space-sm) var(--space-md);
+        cursor: pointer;
+        border: 1px solid var(--color-border);
+        border-bottom: none;
+        background: var(--color-surface-alt);
+        border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+        font-weight: 600;
+        color: var(--color-muted);
+      }
+      .tabs input[type="radio"]:focus-visible + label {
+        outline: 2px solid var(--color-primary);
+        outline-offset: 2px;
+      }
+      .tabs input[type="radio"]:checked + label {
+        background: var(--color-surface);
+        color: var(--color-primary);
+      }
+      .panel {
+        display: none;
+        background: var(--color-surface);
+        border: 1px solid var(--color-border);
+        border-radius: 0 var(--radius-md) var(--radius-md) var(--radius-md);
+        padding: var(--space-lg);
+      }
+      #t-a:checked ~ #p-a,
+      #t-b:checked ~ #p-b,
+      #t-c:checked ~ #p-c,
+      #t-d:checked ~ #p-d,
+      #t-x:checked ~ #p-x {
+        display: block;
+      }
+      .tradeoff {
+        background: var(--color-surface-alt);
+        border-left: 3px solid var(--color-primary);
+        padding: var(--space-sm) var(--space-md);
+        margin-bottom: var(--space-md);
+        font-size: var(--size-caption);
+      }
+      .tradeoff b {
+        color: var(--color-on-surface);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="chooser">
+      <h1 style="font-size: var(--size-heading); margin: 0 0 var(--space-sm)">
+        &lt;Feature name&gt; — 4 design options
+      </h1>
+      <p style="margin: 0; color: var(--color-muted)">
+        <b>How to choose:</b> pick the shape that matches how the target personas actually work —
+        volume, frequency, and device beat aesthetics. Mixing is allowed ("A's layout, D's detail
+        panel"). All options use the same design tokens; you are choosing the
+        <b>interaction shape</b>, not a theme. Your choice + rationale goes in
+        <code>design-review.md §5</code>.
+      </p>
     </div>
-    <!-- GENERATE OPTION A HERE. Real fields from requirements.md, realistic
+
+    <div class="tabs">
+      <input type="radio" name="opt" id="t-a" checked /><label for="t-a"
+        >Option A — &lt;name&gt;</label
+      >
+      <input type="radio" name="opt" id="t-b" /><label for="t-b">Option B — &lt;name&gt;</label>
+      <input type="radio" name="opt" id="t-c" /><label for="t-c">Option C — &lt;name&gt;</label>
+      <input type="radio" name="opt" id="t-d" /><label for="t-d">Option D — &lt;name&gt;</label>
+      <input type="radio" name="opt" id="t-x" /><label for="t-x">Chosen — full states</label>
+
+      <section class="panel" id="p-a" aria-label="Option A">
+        <div class="tradeoff">
+          <b>Strategy:</b> &lt;one line&gt; · <b>Best when:</b> &lt;one line&gt;<br />
+          <b>Trade-off:</b> &lt;what this shape costs&gt; · <b>Responsive:</b> &lt;what happens on
+          mobile&gt;
+        </div>
+        <!-- GENERATE OPTION A HERE. Real fields from requirements.md, realistic
          volume (≥15 rows for lists), tokens only, semantic HTML, visible
          focus on every interactive element. -->
-  </section>
+      </section>
 
-  <section class="panel" id="p-b" aria-label="Option B">
-    <div class="tradeoff"><b>Strategy:</b> … · <b>Best when:</b> … <br><b>Trade-off:</b> … · <b>Responsive:</b> …</div>
-    <!-- GENERATE OPTION B HERE — a genuinely different IA archetype. -->
-  </section>
+      <section class="panel" id="p-b" aria-label="Option B">
+        <div class="tradeoff">
+          <b>Strategy:</b> … · <b>Best when:</b> … <br /><b>Trade-off:</b> … · <b>Responsive:</b> …
+        </div>
+        <!-- GENERATE OPTION B HERE — a genuinely different IA archetype. -->
+      </section>
 
-  <section class="panel" id="p-c" aria-label="Option C">
-    <div class="tradeoff"><b>Strategy:</b> … · <b>Best when:</b> … <br><b>Trade-off:</b> … · <b>Responsive:</b> …</div>
-    <!-- GENERATE OPTION C HERE. -->
-  </section>
+      <section class="panel" id="p-c" aria-label="Option C">
+        <div class="tradeoff">
+          <b>Strategy:</b> … · <b>Best when:</b> … <br /><b>Trade-off:</b> … · <b>Responsive:</b> …
+        </div>
+        <!-- GENERATE OPTION C HERE. -->
+      </section>
 
-  <section class="panel" id="p-d" aria-label="Option D">
-    <div class="tradeoff"><b>Strategy:</b> … · <b>Best when:</b> … <br><b>Trade-off:</b> … · <b>Responsive:</b> …</div>
-    <!-- GENERATE OPTION D HERE. -->
-  </section>
+      <section class="panel" id="p-d" aria-label="Option D">
+        <div class="tradeoff">
+          <b>Strategy:</b> … · <b>Best when:</b> … <br /><b>Trade-off:</b> … · <b>Responsive:</b> …
+        </div>
+        <!-- GENERATE OPTION D HERE. -->
+      </section>
 
-  <section class="panel" id="p-x" aria-label="Chosen option — full states">
-    <div class="tradeoff"><b>Filled AFTER the human decides (Rule 6).</b>
-      Expand the chosen option's <b>empty · loading · error · disabled</b> states.
-      This tab — not the happy path — is the spec Phase 2 tests encode.</div>
-    <!-- AFTER DECISION: render each state of the winning option here. -->
-  </section>
-</div>
-
-</body>
+      <section class="panel" id="p-x" aria-label="Chosen option — full states">
+        <div class="tradeoff">
+          <b>Filled AFTER the human decides (Rule 6).</b> Expand the chosen option's
+          <b>empty · loading · error · disabled</b> states. This tab — not the happy path — is the
+          spec Phase 2 tests encode.
+        </div>
+        <!-- AFTER DECISION: render each state of the winning option here. -->
+      </section>
+    </div>
+  </body>
 </html>

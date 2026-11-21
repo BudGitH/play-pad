@@ -1,333 +1,418 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>PlayPad — quick, playable mini-games</title>
-  <meta name="description" content="A colourful little hub of quick, playable browser mini-games. No install, no signup — just press play." />
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>PlayPad — quick, playable mini-games</title>
+    <meta
+      name="description"
+      content="A colourful little hub of quick, playable browser mini-games. No install, no signup — just press play."
+    />
 
-  <link rel="icon" href="icons/favicon.svg" type="image/svg+xml" />
-  <link rel="manifest" href="manifest.webmanifest" />
-  <meta name="theme-color" content="#08080c" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-title" content="PlayPad" />
+    <link rel="icon" href="icons/favicon.svg" type="image/svg+xml" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <meta name="theme-color" content="#08080c" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="PlayPad" />
 
-  <link rel="stylesheet" href="styles/tokens.css" />
-  <link rel="stylesheet" href="styles/base.css" />
+    <link rel="stylesheet" href="styles/tokens.css" />
+    <link rel="stylesheet" href="styles/base.css" />
 
-  <style>
-    /* ---- Page layout (catalog-specific; components live in base.css) ---- */
-    body { display: flex; flex-direction: column; }
-
-    /* Top app bar */
-    .app-bar {
-      position: sticky;
-      top: 0;
-      z-index: 20;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: calc(env(safe-area-inset-top) + 12px)
-               max(16px, env(safe-area-inset-right)) 12px
-               max(16px, env(safe-area-inset-left));
-      background: var(--md-sys-color-surface);
-      border-bottom: 1px solid transparent;
-      transition: border-color var(--md-sys-motion-duration-short3) ease,
-                  box-shadow var(--md-sys-motion-duration-short3) ease;
-    }
-    .app-bar--scrolled {
-      border-bottom-color: var(--md-sys-color-outline-variant);
-      box-shadow: var(--md-sys-elevation-level2);
-    }
-    .app-bar__logo { width: 36px; height: 36px; border-radius: 9px; }
-    .app-bar__title { letter-spacing: -0.02em; }
-
-    main {
-      flex: 1;
-      width: 100%;
-      max-width: 1120px;
-      margin: 0 auto;
-      padding-bottom: env(safe-area-inset-bottom);
-    }
-
-    /* Hero */
-    .hero {
-      padding: clamp(28px, 6vw, 56px)
-               max(20px, env(safe-area-inset-left)) 8px
-               max(20px, env(safe-area-inset-right));
-      max-width: 640px;
-    }
-    .hero h1 { margin: 0 0 12px; }
-    .hero p { max-width: 46ch; }
-
-    /* Section header */
-    .section-head {
-      display: flex;
-      align-items: baseline;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 20px max(20px, env(safe-area-inset-left)) 4px
-               max(20px, env(safe-area-inset-right));
-    }
-    .section-head .count { color: var(--md-sys-color-on-surface-variant); }
-
-    /* Rail edge padding aligns cards with the hero text */
-    .rail { --rail-edge: max(20px, env(safe-area-inset-left)); }
-    /* Centre the scroll arrows over the card media tile, not the title text */
-    .rail__arrow { top: calc(8px + 78px); }
-
-    /* Game card */
-    .game-card {
-      width: min(82vw, 340px);
-      overflow: hidden;
-      color: var(--md-sys-color-on-surface);
-    }
-    .game-card__media,
-    .game-card__body { position: relative; z-index: 1; }
-    .game-card__media {
-      height: 156px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background:
-        radial-gradient(circle at 78% 20%, rgba(255, 255, 255, 0.28), transparent 45%),
-        radial-gradient(circle at 18% 86%, rgba(0, 0, 0, 0.28), transparent 50%),
-        var(--card-accent, var(--md-sys-color-primary));
-    }
-    .game-card__icon {
-      font-size: 66px;
-      line-height: 1;
-      filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.38));
-    }
-    .game-card__body {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      padding: 16px;
-    }
-    .game-card__title { margin: 0; }
-    .game-card__desc {
-      margin: 0;
-      display: -webkit-box;
-      -webkit-line-clamp: 3;
-      line-clamp: 3;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-    }
-    .game-card__tags { display: flex; flex-wrap: wrap; gap: 6px; }
-    .game-card__meta {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-top: 4px;
-      min-height: 24px;
-    }
-    .game-card__players { color: var(--md-sys-color-on-surface-variant); }
-    .game-card__play {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      color: var(--md-sys-color-primary);
-      font-weight: 700;
-    }
-
-    /* "Coming soon" placeholder card */
-    .game-card--soon { opacity: 0.62; }
-    .game-card--soon .game-card__media { filter: saturate(0.7); }
-
-    footer {
-      padding: 28px max(20px, env(safe-area-inset-left))
-               calc(28px + env(safe-area-inset-bottom))
-               max(20px, env(safe-area-inset-right));
-      color: var(--md-sys-color-on-surface-variant);
-    }
-    footer a { color: var(--md-sys-color-primary); text-decoration: underline; }
-  </style>
-</head>
-<body>
-  <header class="app-bar" id="appBar" role="banner">
-    <img class="app-bar__logo" src="icons/favicon.svg" alt="" width="36" height="36" />
-    <span class="app-bar__title title-large brand-wordmark">PlayPad</span>
-  </header>
-
-  <main>
-    <section class="hero">
-      <h1 class="display-small">Press play.</h1>
-      <p class="body-large text-muted">
-        A little hub of quick, colourful mini-games. No install, no signup —
-        pick one and go.
-      </p>
-    </section>
-
-    <section class="rail" aria-labelledby="gamesHeading">
-      <div class="section-head">
-        <h2 class="headline-small" id="gamesHeading">Games</h2>
-        <span class="count label-large" id="gamesCount"></span>
-      </div>
-
-      <div class="rail__viewport">
-        <button class="icon-button rail__arrow rail__arrow--prev state-layer"
-                id="railPrev" type="button" aria-label="Scroll to previous games" hidden>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.2"
-                  stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </button>
-
-        <div class="rail__track" id="gameTrack"></div>
-
-        <button class="icon-button rail__arrow rail__arrow--next state-layer"
-                id="railNext" type="button" aria-label="Scroll to more games" hidden>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2.2"
-                  stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </button>
-      </div>
-    </section>
-  </main>
-
-  <footer class="body-small">
-    PlayPad · built with
-    <a href="https://m3.material.io" target="_blank" rel="noopener">Material Design 3</a>.
-    More games coming soon.
-  </footer>
-
-  <script src="games.js"></script>
-  <script>
-    (function () {
-      "use strict";
-
-      var GAMES = window.GAMES || [];
-      var track = document.getElementById("gameTrack");
-      var prev = document.getElementById("railPrev");
-      var next = document.getElementById("railNext");
-      var appBar = document.getElementById("appBar");
-      var countEl = document.getElementById("gamesCount");
-
-      // ---- escape for HTML CONTEXT (text + double-quoted attributes).
-      //      NOT a URL sanitiser — fields used as links also go through safeHref(). ----
-      function esc(s) {
-        return String(s == null ? "" : s)
-          .replace(/&/g, "&amp;").replace(/</g, "&lt;")
-          .replace(/>/g, "&gt;").replace(/"/g, "&quot;")
-          .replace(/'/g, "&#39;");
+    <style>
+      /* ---- Page layout (catalog-specific; components live in base.css) ---- */
+      body {
+        display: flex;
+        flex-direction: column;
       }
 
-      // ---- allow only relative or http(s) links; neutralise javascript:/data: etc. ----
-      function safeHref(p) {
-        // strip control chars first (a "java\nscript:" value would otherwise
-        // re-collapse to a live scheme during the browser's URL parse)
-        p = String(p == null ? "" : p).replace(/[\x00-\x1F\x7F]/g, "");
-        if (/^\s*[a-z][a-z0-9+.\-]*:/i.test(p)) {        // has an explicit scheme
-          return /^\s*https?:/i.test(p) ? p : "#";
+      /* Top app bar */
+      .app-bar {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: calc(env(safe-area-inset-top) + 12px) max(16px, env(safe-area-inset-right)) 12px
+          max(16px, env(safe-area-inset-left));
+        background: var(--md-sys-color-surface);
+        border-bottom: 1px solid transparent;
+        transition:
+          border-color var(--md-sys-motion-duration-short3) ease,
+          box-shadow var(--md-sys-motion-duration-short3) ease;
+      }
+      .app-bar--scrolled {
+        border-bottom-color: var(--md-sys-color-outline-variant);
+        box-shadow: var(--md-sys-elevation-level2);
+      }
+      .app-bar__logo {
+        width: 36px;
+        height: 36px;
+        border-radius: 9px;
+      }
+      .app-bar__title {
+        letter-spacing: -0.02em;
+      }
+
+      main {
+        flex: 1;
+        width: 100%;
+        max-width: 1120px;
+        margin: 0 auto;
+        padding-bottom: env(safe-area-inset-bottom);
+      }
+
+      /* Hero */
+      .hero {
+        padding: clamp(28px, 6vw, 56px) max(20px, env(safe-area-inset-left)) 8px
+          max(20px, env(safe-area-inset-right));
+        max-width: 640px;
+      }
+      .hero h1 {
+        margin: 0 0 12px;
+      }
+      .hero p {
+        max-width: 46ch;
+      }
+
+      /* Section header */
+      .section-head {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 20px max(20px, env(safe-area-inset-left)) 4px max(20px, env(safe-area-inset-right));
+      }
+      .section-head .count {
+        color: var(--md-sys-color-on-surface-variant);
+      }
+
+      /* Rail edge padding aligns cards with the hero text */
+      .rail {
+        --rail-edge: max(20px, env(safe-area-inset-left));
+      }
+      /* Centre the scroll arrows over the card media tile, not the title text */
+      .rail__arrow {
+        top: calc(8px + 78px);
+      }
+
+      /* Game card */
+      .game-card {
+        width: min(82vw, 340px);
+        overflow: hidden;
+        color: var(--md-sys-color-on-surface);
+      }
+      .game-card__media,
+      .game-card__body {
+        position: relative;
+        z-index: 1;
+      }
+      .game-card__media {
+        height: 156px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: radial-gradient(circle at 78% 20%, rgba(255, 255, 255, 0.28), transparent 45%),
+          radial-gradient(circle at 18% 86%, rgba(0, 0, 0, 0.28), transparent 50%),
+          var(--card-accent, var(--md-sys-color-primary));
+      }
+      .game-card__icon {
+        font-size: 66px;
+        line-height: 1;
+        filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.38));
+      }
+      .game-card__body {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 16px;
+      }
+      .game-card__title {
+        margin: 0;
+      }
+      .game-card__desc {
+        margin: 0;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+      .game-card__tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .game-card__meta {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 4px;
+        min-height: 24px;
+      }
+      .game-card__players {
+        color: var(--md-sys-color-on-surface-variant);
+      }
+      .game-card__play {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--md-sys-color-primary);
+        font-weight: 700;
+      }
+
+      /* "Coming soon" placeholder card */
+      .game-card--soon {
+        opacity: 0.62;
+      }
+      .game-card--soon .game-card__media {
+        filter: saturate(0.7);
+      }
+
+      footer {
+        padding: 28px max(20px, env(safe-area-inset-left)) calc(28px + env(safe-area-inset-bottom))
+          max(20px, env(safe-area-inset-right));
+        color: var(--md-sys-color-on-surface-variant);
+      }
+      footer a {
+        color: var(--md-sys-color-primary);
+        text-decoration: underline;
+      }
+    </style>
+  </head>
+  <body>
+    <header class="app-bar" id="appBar" role="banner">
+      <img class="app-bar__logo" src="icons/favicon.svg" alt="" width="36" height="36" />
+      <span class="app-bar__title title-large brand-wordmark">PlayPad</span>
+    </header>
+
+    <main>
+      <section class="hero">
+        <h1 class="display-small">Press play.</h1>
+        <p class="body-large text-muted">
+          A little hub of quick, colourful mini-games. No install, no signup — pick one and go.
+        </p>
+      </section>
+
+      <section class="rail" aria-labelledby="gamesHeading">
+        <div class="section-head">
+          <h2 class="headline-small" id="gamesHeading">Games</h2>
+          <span class="count label-large" id="gamesCount"></span>
+        </div>
+
+        <div class="rail__viewport">
+          <button
+            class="icon-button rail__arrow rail__arrow--prev state-layer"
+            id="railPrev"
+            type="button"
+            aria-label="Scroll to previous games"
+            hidden
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                d="M15 18l-6-6 6-6"
+                stroke="currentColor"
+                stroke-width="2.2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </button>
+
+          <div class="rail__track" id="gameTrack"></div>
+
+          <button
+            class="icon-button rail__arrow rail__arrow--next state-layer"
+            id="railNext"
+            type="button"
+            aria-label="Scroll to more games"
+            hidden
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                d="M9 18l6-6-6-6"
+                stroke="currentColor"
+                stroke-width="2.2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </button>
+        </div>
+      </section>
+    </main>
+
+    <footer class="body-small">
+      PlayPad · built with
+      <a href="https://m3.material.io" target="_blank" rel="noopener">Material Design 3</a>. More
+      games coming soon.
+    </footer>
+
+    <script src="games.js"></script>
+    <script>
+      (function () {
+        "use strict";
+
+        var GAMES = window.GAMES || [];
+        var track = document.getElementById("gameTrack");
+        var prev = document.getElementById("railPrev");
+        var next = document.getElementById("railNext");
+        var appBar = document.getElementById("appBar");
+        var countEl = document.getElementById("gamesCount");
+
+        // ---- escape for HTML CONTEXT (text + double-quoted attributes).
+        //      NOT a URL sanitiser — fields used as links also go through safeHref(). ----
+        function esc(s) {
+          return String(s == null ? "" : s)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;");
         }
-        return p;                                         // relative path — safe
-      }
 
-      function chip(label) {
-        return '<span class="chip">' + esc(label) + "</span>";
-      }
+        // ---- allow only relative or http(s) links; neutralise javascript:/data: etc. ----
+        function safeHref(p) {
+          // strip control chars first (a "java\nscript:" value would otherwise
+          // re-collapse to a live scheme during the browser's URL parse)
+          // eslint-disable-next-line no-control-regex -- intentional: strip control chars before scheme check (XSS guard)
+          p = String(p == null ? "" : p).replace(/[\x00-\x1F\x7F]/g, "");
+          if (/^\s*[a-z][a-z0-9+.-]*:/i.test(p)) {
+            // has an explicit scheme
+            return /^\s*https?:/i.test(p) ? p : "#";
+          }
+          return p; // relative path — safe
+        }
 
-      // ---- build one card ----
-      function cardHTML(g) {
-        var media =
-          '<div class="game-card__media" style="--card-accent:' + esc(g.accent) + '">' +
-            '<span class="game-card__icon" aria-hidden="true">' + esc(g.icon) + "</span>" +
-          "</div>";
+        function chip(label) {
+          return '<span class="chip">' + esc(label) + "</span>";
+        }
 
-        var tags = (g.tags || []).map(chip).join("");
+        // ---- build one card ----
+        function cardHTML(g) {
+          var media =
+            '<div class="game-card__media" style="--card-accent:' +
+            esc(g.accent) +
+            '">' +
+            '<span class="game-card__icon" aria-hidden="true">' +
+            esc(g.icon) +
+            "</span>" +
+            "</div>";
 
-        if (g.status === "soon") {
-          return (
-            '<div class="card game-card game-card--soon" aria-disabled="true">' +
+          var tags = (g.tags || []).map(chip).join("");
+
+          if (g.status === "soon") {
+            return (
+              '<div class="card game-card game-card--soon" aria-disabled="true">' +
               media +
               '<div class="game-card__body">' +
-                '<h3 class="game-card__title title-large">' + esc(g.title) + "</h3>" +
-                '<p class="game-card__desc body-medium text-muted">' + esc(g.description) + "</p>" +
-                '<div class="game-card__tags">' + tags + "</div>" +
+              '<h3 class="game-card__title title-large">' +
+              esc(g.title) +
+              "</h3>" +
+              '<p class="game-card__desc body-medium text-muted">' +
+              esc(g.description) +
+              "</p>" +
+              '<div class="game-card__tags">' +
+              tags +
               "</div>" +
-            "</div>"
+              "</div>" +
+              "</div>"
+            );
+          }
+
+          var players = g.players
+            ? '<span class="game-card__players label-medium">👥 ' + esc(g.players) + "</span>"
+            : "<span></span>";
+
+          return (
+            '<a class="card card--interactive state-layer game-card"' +
+            ' href="' +
+            esc(safeHref(g.path)) +
+            '"' +
+            ' aria-label="Play ' +
+            esc(g.title) +
+            '">' +
+            media +
+            '<div class="game-card__body">' +
+            '<h3 class="game-card__title title-large">' +
+            esc(g.title) +
+            "</h3>" +
+            '<p class="game-card__desc body-medium text-muted">' +
+            esc(g.description) +
+            "</p>" +
+            '<div class="game-card__tags">' +
+            tags +
+            "</div>" +
+            '<div class="game-card__meta">' +
+            players +
+            '<span class="game-card__play label-large">Play' +
+            ' <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+            '<path d="M8 5v14l11-7z" fill="currentColor"/></svg>' +
+            "</span>" +
+            "</div>" +
+            "</div>" +
+            "</a>"
           );
         }
 
-        var players = g.players
-          ? '<span class="game-card__players label-medium">👥 ' + esc(g.players) + "</span>"
-          : "<span></span>";
-
-        return (
-          '<a class="card card--interactive state-layer game-card"' +
-            ' href="' + esc(safeHref(g.path)) + '"' +
-            ' aria-label="Play ' + esc(g.title) + '">' +
-            media +
-            '<div class="game-card__body">' +
-              '<h3 class="game-card__title title-large">' + esc(g.title) + "</h3>" +
-              '<p class="game-card__desc body-medium text-muted">' + esc(g.description) + "</p>" +
-              '<div class="game-card__tags">' + tags + "</div>" +
-              '<div class="game-card__meta">' +
-                players +
-                '<span class="game-card__play label-large">Play' +
-                  ' <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
-                    '<path d="M8 5v14l11-7z" fill="currentColor"/></svg>' +
-                "</span>" +
-              "</div>" +
-            "</div>" +
-          "</a>"
-        );
-      }
-
-      // ---- render ----
-      function render() {
-        if (!GAMES.length) {
-          track.innerHTML =
-            '<p class="body-large text-muted" style="padding:24px">No games yet — check back soon.</p>';
-          return;
+        // ---- render ----
+        function render() {
+          if (!GAMES.length) {
+            track.innerHTML =
+              '<p class="body-large text-muted" style="padding:24px">No games yet — check back soon.</p>';
+            return;
+          }
+          track.innerHTML = GAMES.map(cardHTML).join("");
+          var live = GAMES.filter(function (g) {
+            return g.status !== "soon";
+          }).length;
+          countEl.textContent = live + (live === 1 ? " game" : " games");
         }
-        track.innerHTML = GAMES.map(cardHTML).join("");
-        var live = GAMES.filter(function (g) { return g.status !== "soon"; }).length;
-        countEl.textContent = live + (live === 1 ? " game" : " games");
-      }
 
-      // ---- rail arrows ----
-      function step() {
-        var first = track.querySelector(".game-card");
-        if (!first) return track.clientWidth * 0.8;
-        return first.getBoundingClientRect().width + 16; // card + gap
-      }
-      function updateArrows() {
-        var scrollable = track.scrollWidth - track.clientWidth > 4;
-        prev.hidden = next.hidden = !scrollable;
-        if (!scrollable) return;
-        prev.disabled = track.scrollLeft <= 1;
-        next.disabled = track.scrollLeft + track.clientWidth >= track.scrollWidth - 1;
-      }
-      prev.addEventListener("click", function () {
-        track.scrollBy({ left: -step(), behavior: "smooth" });
-      });
-      next.addEventListener("click", function () {
-        track.scrollBy({ left: step(), behavior: "smooth" });
-      });
-
-      // ---- scroll-driven UI (throttled with rAF) ----
-      var ticking = false;
-      function onScroll() {
-        if (ticking) return;
-        ticking = true;
-        requestAnimationFrame(function () {
-          updateArrows();
-          ticking = false;
+        // ---- rail arrows ----
+        function step() {
+          var first = track.querySelector(".game-card");
+          if (!first) return track.clientWidth * 0.8;
+          return first.getBoundingClientRect().width + 16; // card + gap
+        }
+        function updateArrows() {
+          var scrollable = track.scrollWidth - track.clientWidth > 4;
+          prev.hidden = next.hidden = !scrollable;
+          if (!scrollable) return;
+          prev.disabled = track.scrollLeft <= 1;
+          next.disabled = track.scrollLeft + track.clientWidth >= track.scrollWidth - 1;
+        }
+        prev.addEventListener("click", function () {
+          track.scrollBy({ left: -step(), behavior: "smooth" });
         });
-      }
-      track.addEventListener("scroll", onScroll, { passive: true });
-      window.addEventListener("resize", onScroll);
-      window.addEventListener("scroll", function () {
-        appBar.classList.toggle("app-bar--scrolled", window.scrollY > 4);
-      }, { passive: true });
+        next.addEventListener("click", function () {
+          track.scrollBy({ left: step(), behavior: "smooth" });
+        });
 
-      // ---- boot ----
-      render();
-      updateArrows();
-    })();
-  </script>
-</body>
+        // ---- scroll-driven UI (throttled with rAF) ----
+        var ticking = false;
+        function onScroll() {
+          if (ticking) return;
+          ticking = true;
+          requestAnimationFrame(function () {
+            updateArrows();
+            ticking = false;
+          });
+        }
+        track.addEventListener("scroll", onScroll, { passive: true });
+        window.addEventListener("resize", onScroll);
+        window.addEventListener(
+          "scroll",
+          function () {
+            appBar.classList.toggle("app-bar--scrolled", window.scrollY > 4);
+          },
+          { passive: true },
+        );
+
+        // ---- boot ----
+        render();
+        updateArrows();
+      })();
+    </script>
+  </body>
 </html>

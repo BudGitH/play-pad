@@ -11,19 +11,20 @@
 
 ## Gate summary
 
-| Lens (dimension) | Agent verdict | Findings | Blocking? |
-|---|---|---|---|
-| ACCURACY | PASS | 1 MED, 2 LOW | n |
-| QUALITY | PASS | 2 MED, 3 LOW | n |
-| COMPLIANCE | PASS | 1 MED, 2 LOW | n |
-| RISK (security) | PASS | 3 LOW | n |
-| **Tests** (in-page `__neon` probes + screenshots) | PASS | all AC probes green | n |
+| Lens (dimension)                                  | Agent verdict | Findings            | Blocking? |
+| ------------------------------------------------- | ------------- | ------------------- | --------- |
+| ACCURACY                                          | PASS          | 1 MED, 2 LOW        | n         |
+| QUALITY                                           | PASS          | 2 MED, 3 LOW        | n         |
+| COMPLIANCE                                        | PASS          | 1 MED, 2 LOW        | n         |
+| RISK (security)                                   | PASS          | 3 LOW               | n         |
+| **Tests** (in-page `__neon` probes + screenshots) | PASS          | all AC probes green | n         |
 
 No CRITICAL/HIGH from any lens → gate is clean. The MEDIUMs were fixed anyway (cheap, real). Remaining LOWs are logged below or deferred to `docs/IDEAS.md`.
 
 ## Findings merged & dispositions
 
 **Fixed this round (verified via `__neon`):**
+
 - **[ACCURACY MED] Run coins lost on quit during crash animation** — banking moved from the cancellable `showResults` timer into `onCrash()` (synchronous), `showResults` only paints. Verified: crash → immediate persist; quit during anim keeps the coins. (`index.html` `onCrash`/`showResults`)
 - **[QUALITY MED] Shop price colour raw `#b8860b` fails light-theme contrast** — now `var(--md-sys-color-tertiary)`.
 - **[QUALITY MED] Global keydown hijacked Space on focused HUD buttons** — added `ev.target.closest("button")` bail-out, mirroring the swipe handler's guard (LEARNINGS PLAY-003 joystick lesson).
@@ -32,11 +33,13 @@ No CRITICAL/HIGH from any lens → gate is clean. The MEDIUMs were fixed anyway 
 - **[RISK LOW] `Infinity`/`1e999` survived save sanitisation** — added `sanitizeCount()` (`Number.isFinite` + `clamp(0, 1e9)`) for coins & highScore. Verified: crafted `1e999`→0, negative→0, `__proto__` in unlocked rejected.
 
 **Deferred to `docs/IDEAS.md` (non-blocking):**
+
 - [QUALITY LOW] Promote repeated neon hex (`#ff2d95`/`#22e5ff`/`#ffd54a`, duplicated in CSS + the JS `NEON` object) to game-local custom properties so the two copies can't drift.
 - [RISK LOW] One-time SHA-256 check of the vendored `three.min.js` against the official `three@0.148.0` artifact (authenticity currently verified by header + REVISION marker + plausible size, not hash).
 - [COMPLIANCE LOW] `_headers` has no `must-revalidate` rule for per-game `index.html` (pre-existing gap shared by snap/claw-catch/super-decoder); address when the file is next touched.
 
 **Accepted / documented (no change):**
+
 - [RISK LOW] `window.__neon` hook ships in prod — intentional, documented in the game CLAUDE.md; grants nothing beyond DevTools on a client-only, local-save game.
 - [ACCURACY LOW] Super Sneakers can't clear a tall train below ~11.4 m/s — unreachable in organic play (tall trains gate in at distance ≥120m, i.e. speed ≥16.4). Documented in `test-plan.md`; the T12 probe runs at ramped speed.
 - [ACCURACY LOW / spec wording] Coin score bonus is +5, not +1 — deliberate; `requirements.md` wording clarified to "+5 score per coin".

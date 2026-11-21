@@ -10,22 +10,23 @@
 
 ## Coverage map (AC → test)
 
-| Acceptance criterion | Test(s) | Type |
-|---|---|---|
-| AC-1 (hub + loads clean) | T-load, T-registry | e2e |
-| AC-2 (themes/duration/difficulty) | T-theme-switch, T-config-persist | e2e |
-| AC-3 (move: joystick + keyboard, bounded) | T-move-keys, T-move-joystick, T-bounds | e2e |
-| AC-4 (flick swing + settle) | T-swing-flick, T-swing-settle | integration (state hook) |
-| AC-5 (grab sequence once, input-locked) | T-grab-sequence, T-grab-nodouble | integration |
-| AC-6 (catch on-target, miss off-target) | T-catch-hit, T-catch-miss | integration |
-| AC-7 (rarity scoring = shown value) | T-score-matches-key | integration |
-| AC-8 (capped refill) | T-refill-cap, T-refill-resume | integration |
-| AC-9 (round end + results actions) | T-round-end, T-results-actions | e2e |
-| AC-10 (reduced motion + responsive) | T-reduced-motion, T-phone-width | e2e |
+| Acceptance criterion                      | Test(s)                                | Type                     |
+| ----------------------------------------- | -------------------------------------- | ------------------------ |
+| AC-1 (hub + loads clean)                  | T-load, T-registry                     | e2e                      |
+| AC-2 (themes/duration/difficulty)         | T-theme-switch, T-config-persist       | e2e                      |
+| AC-3 (move: joystick + keyboard, bounded) | T-move-keys, T-move-joystick, T-bounds | e2e                      |
+| AC-4 (flick swing + settle)               | T-swing-flick, T-swing-settle          | integration (state hook) |
+| AC-5 (grab sequence once, input-locked)   | T-grab-sequence, T-grab-nodouble       | integration              |
+| AC-6 (catch on-target, miss off-target)   | T-catch-hit, T-catch-miss              | integration              |
+| AC-7 (rarity scoring = shown value)       | T-score-matches-key                    | integration              |
+| AC-8 (capped refill)                      | T-refill-cap, T-refill-resume          | integration              |
+| AC-9 (round end + results actions)        | T-round-end, T-results-actions         | e2e                      |
+| AC-10 (reduced motion + responsive)       | T-reduced-motion, T-phone-width        | e2e                      |
 
 ## Test cases
 
 ### Happy path
+
 - [ ] **T-load:** Open `games/claw-catch/` → setup screen renders; `preview_console_logs` shows no errors.
 - [ ] **T-registry:** Open hub `/` → a "Claw Catch" card renders with icon, accent, and "1" player from `window.GAMES`.
 - [ ] **T-theme-switch:** Click each of the 3 theme cards → `aria-pressed` moves; cabinet gradient + prize-key emoji/values update to the selected theme.
@@ -38,7 +39,9 @@
 - [ ] **T-results-actions:** Play again → new round; Change settings → setup; Back to PlayPad → hub.
 
 ### Edge cases (boundaries)
+
 > zero · one · many · max · empty · walls · overlap · background
+
 - [ ] **T-bounds:** Hold ArrowRight to the wall → `cartX` clamps at `maxX`; hold ArrowLeft → clamps at `minX`; claw never renders outside the cabinet.
 - [ ] **T-grab-empty:** Grab with empty bin → full sequence runs, score unchanged, no error.
 - [ ] **T-grab-nodouble:** Press grab twice quickly → only one sequence runs (second press ignored while `phase !== IDLE`).
@@ -50,10 +53,12 @@
 - [ ] **T-quit-midseq:** Quit during a grab sequence → returns to setup, `window.__claw.running===false`, no lingering overlay, RAF cancelled.
 
 ### Error paths
+
 - [ ] **T-no-html-injection:** All dynamic readouts (score, "+N", clock) set via `textContent`; grep the source for `innerHTML` on dynamic values → none on user/score paths.
 - [ ] **T-audio-optional:** With sound off, gameplay unaffected; with sound on but AudioContext blocked, a missed beep never throws.
 
 ### Non-functional checks
+
 - [ ] **Accuracy — T-score-matches-key:** For each prize value V shown in the prize key, a catch of that prize awards exactly V (assert `scoreDelta === prize.points`). Clock ends at exactly `0:00`. `bin.length <= binCap` invariant holds across a full round.
 - [ ] **Physics — T-swing-flick / T-swing-settle:** After a quick cart move then stop, `window.__claw.theta` is non-zero (|θ| above a small epsilon) immediately, and trends toward ~0 over ~1–2 s with no input (monotone-ish decay via damping).
 - [ ] **Risk:** No network requests (`preview_network` empty), no storage writes, no secrets in source.
@@ -70,6 +75,7 @@ python -m http.server 5500   # then open http://localhost:5500/games/claw-catch/
 ```
 
 ## Definition of done
+
 - [ ] All checks above pass (manually / via preview MCP).
 - [ ] Every acceptance criterion in `requirements.md` is covered.
 - [ ] Lite design path: surfaces match `DESIGN-SYSTEM.md` tokens; verification screenshots captured.

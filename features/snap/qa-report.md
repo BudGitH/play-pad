@@ -7,20 +7,20 @@
 **Feature:** Snap
 **Ticket:** PLAY-002
 **Run at:** 2026-06-21 (round 1)
-**Overall result:** ☑ PASS  ☐ FAIL
+**Overall result:** ☑ PASS ☐ FAIL
 
 ---
 
 ## Gate summary
 
-| Lens (dimension) | Agent verdict | Findings | Blocking? |
-|---|---|---|---|
-| ACCURACY | PASS | 0 | n |
-| QUALITY | PASS | 3 (LOW) | n |
-| COMPLIANCE | PASS | 0 | n |
-| RISK (security) | PASS | 0 | n |
-| ACCESSIBILITY | PASS | 1 (LOW) | n |
-| **Tests** | PASS | manual/preview — deterministic logic harness, 16 forced rounds, **0 rule violations**; layouts + theming verified | n |
+| Lens (dimension) | Agent verdict | Findings                                                                                                          | Blocking? |
+| ---------------- | ------------- | ----------------------------------------------------------------------------------------------------------------- | --------- |
+| ACCURACY         | PASS          | 0                                                                                                                 | n         |
+| QUALITY          | PASS          | 3 (LOW)                                                                                                           | n         |
+| COMPLIANCE       | PASS          | 0                                                                                                                 | n         |
+| RISK (security)  | PASS          | 0                                                                                                                 | n         |
+| ACCESSIBILITY    | PASS          | 1 (LOW)                                                                                                           | n         |
+| **Tests**        | PASS          | manual/preview — deterministic logic harness, 16 forced rounds, **0 rule violations**; layouts + theming verified | n         |
 
 **Independent functional verification (preview, fake-clock harness — rAF is throttled while the preview is `hidden`):**
 16 driven rounds (10 match / 6 non-match) with **zero** scoring-rule violations — match → first tap +1 (double-tap & later/other taps ignored); non-match → −1 floored at 0 with one-penalty-per-round lockout; non-tappers stayed 0; results showed "Player 1 wins / 5 pairs" with 4 ranked rows and an `#srStatus` announcement. 2/3/4-player button layouts and Nature/Princess/Superheroes theming all verified.
@@ -32,6 +32,7 @@
 > investigated and **refuted as a defect**.
 
 ### FINDING-2026-06-21-001
+
 - **Severity:** LOW
 - **Dimensions:** quality
 - **Where:** `games/snap/index.html` — round state (`lastRightSymbol`)
@@ -41,6 +42,7 @@
 - **Status:** RESOLVED
 
 ### FINDING-2026-06-21-002
+
 - **Severity:** LOW
 - **Dimensions:** quality
 - **Where:** `games/snap/index.html` — `TONES[]` constant
@@ -50,6 +52,7 @@
 - **Status:** RESOLVED
 
 ### FINDING-2026-06-21-003
+
 - **Severity:** LOW
 - **Dimensions:** accessibility, quality
 - **Where:** `games/snap/index.html` — `#quitBtn`
@@ -59,6 +62,7 @@
 - **Status:** RESOLVED
 
 ### FINDING-2026-06-21-004
+
 - **Severity:** LOW
 - **Dimensions:** quality
 - **Where:** `games/snap/index.html` — `bump()`
@@ -84,4 +88,5 @@ the quit button to the 48px touch target) and one was confirmed a non-issue. Com
 ---
 
 ### Loop control
+
 Overall result = **PASS** with zero open CRITICAL/HIGH. → Proceed to **Phase 5 (PRODUCT & UX VALIDATION)**.

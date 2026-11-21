@@ -23,18 +23,18 @@
 
 > The single source of visual truth. Build UI from these — **never hardcode raw values**. For light/dark, keep the token names and swap the values.
 
-| Group | Tokens (CSS custom property → role) | Notes |
-|---|---|---|
-| color (dark default) | `--md-sys-color-primary` #ff6b85 / `-on-primary` #5a0017 / `-primary-container` #7d1530 / `-on-primary-container` #ffd9df; matching `secondary` (#e5bdc4), `tertiary` (#f4c26b gold), `error` (#ffb4ab) sets | brand pink → primary, lightened for AA on dark |
-| color surfaces (dark) | `--md-sys-color-surface` #08080c; `-surface-container-lowest/low/ /high/highest` (#040407 → #292935); `-on-surface` #f4f4f7; `-on-surface-variant` #c5c5d0; `-outline` #908f99; `-outline-variant` #44444e | stepped tonal containers, seeded from the original game |
-| color (light) | same role names overridden under `@media (prefers-color-scheme: light)` — primary #b5103a on #ffffff, surface #fff8f7, on-surface #201a1b, etc. | one token name, two themes |
-| type | `--md-sys-typescale-{display,headline,title,body,label}-{large/small}-{size,line,weight}`; display/headline use `clamp()` to stay fluid | system font stack `--md-sys-typeface-plain` |
-| space | `--md-sys-spacing-{xs,sm,md,lg,xl,2xl}` = 4 / 8 / 16 / 24 / 32 / 48px | 4dp grid |
-| radius | `--md-sys-shape-corner-{none,xs,sm,md,lg,xl,full}` = 0 / 4 / 8 / 12 / 16 / 28 / 999px | cards use `lg` (16px) |
-| elevation | `--md-sys-elevation-level0..5` (ready-to-use box-shadow recipes) | cards rest at level1, hover level3 |
-| motion | easing `-standard` cubic-bezier(.2,0,0,1), `-emphasized` cubic-bezier(.2,.9,.25,1); durations `-short1..4` (50–200ms), `-medium1/2` (250/300ms), `-long1/2` (450/500ms) | emphasized reuses the original game's easing |
-| state | `--md-sys-state-{hover,focus,pressed,dragged}-opacity` = .08 / .10 / .10 / .16 | applied via the `.state-layer::before` overlay in base.css |
-| breakpoints | compact < 600px · medium 600–839px · expanded ≥ 840px | the game rail uses an auto-fit/scroll-snap layout |
+| Group                 | Tokens (CSS custom property → role)                                                                                                                                                                          | Notes                                                      |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------- |
+| color (dark default)  | `--md-sys-color-primary` #ff6b85 / `-on-primary` #5a0017 / `-primary-container` #7d1530 / `-on-primary-container` #ffd9df; matching `secondary` (#e5bdc4), `tertiary` (#f4c26b gold), `error` (#ffb4ab) sets | brand pink → primary, lightened for AA on dark             |
+| color surfaces (dark) | `--md-sys-color-surface` #08080c; `-surface-container-lowest/low/ /high/highest` (#040407 → #292935); `-on-surface` #f4f4f7; `-on-surface-variant` #c5c5d0; `-outline` #908f99; `-outline-variant` #44444e   | stepped tonal containers, seeded from the original game    |
+| color (light)         | same role names overridden under `@media (prefers-color-scheme: light)` — primary #b5103a on #ffffff, surface #fff8f7, on-surface #201a1b, etc.                                                              | one token name, two themes                                 |
+| type                  | `--md-sys-typescale-{display,headline,title,body,label}-{large/small}-{size,line,weight}`; display/headline use `clamp()` to stay fluid                                                                      | system font stack `--md-sys-typeface-plain`                |
+| space                 | `--md-sys-spacing-{xs,sm,md,lg,xl,2xl}` = 4 / 8 / 16 / 24 / 32 / 48px                                                                                                                                        | 4dp grid                                                   |
+| radius                | `--md-sys-shape-corner-{none,xs,sm,md,lg,xl,full}` = 0 / 4 / 8 / 12 / 16 / 28 / 999px                                                                                                                        | cards use `lg` (16px)                                      |
+| elevation             | `--md-sys-elevation-level0..5` (ready-to-use box-shadow recipes)                                                                                                                                             | cards rest at level1, hover level3                         |
+| motion                | easing `-standard` cubic-bezier(.2,0,0,1), `-emphasized` cubic-bezier(.2,.9,.25,1); durations `-short1..4` (50–200ms), `-medium1/2` (250/300ms), `-long1/2` (450/500ms)                                      | emphasized reuses the original game's easing               |
+| state                 | `--md-sys-state-{hover,focus,pressed,dragged}-opacity` = .08 / .10 / .10 / .16                                                                                                                               | applied via the `.state-layer::before` overlay in base.css |
+| breakpoints           | compact < 600px · medium 600–839px · expanded ≥ 840px                                                                                                                                                        | the game rail uses an auto-fit/scroll-snap layout          |
 
 The canonical, copy-paste source of truth is `styles/tokens.css` (light + dark); components must reference `--md-sys-*` variables, never raw values.
 
@@ -55,11 +55,13 @@ The canonical, copy-paste source of truth is `styles/tokens.css` (light + dark);
 Build every component with these states **where they apply**: `default · hover · focus · active · disabled · loading · empty · error`. Each state must be visible and use a token (not a raw value).
 
 **Do**
+
 - Use semantic tokens (`color.primary`, `space.md`) — never raw hex/px.
 - Give every interactive element a **visible focus** state (keyboard users).
 - Show empty, loading, and error states — not just the happy path.
 
 **Don't**
+
 - Invent spacing/colours outside the scale.
 - Signal state with colour alone (pair with icon/text).
 - Use a primary/destructive style for a secondary action.

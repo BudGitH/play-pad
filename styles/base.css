@@ -31,7 +31,11 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-h1, h2, h3, h4, p {
+h1,
+h2,
+h3,
+h4,
+p {
   margin: 0;
 }
 
@@ -115,7 +119,9 @@ button {
   letter-spacing: var(--md-sys-typescale-label-medium-tracking);
 }
 
-.text-muted { color: var(--md-sys-color-on-surface-variant); }
+.text-muted {
+  color: var(--md-sys-color-on-surface-variant);
+}
 
 /* Brand wordmark — the six-stop gradient clipped to text */
 .brand-wordmark {
@@ -147,13 +153,18 @@ button {
   background: currentColor;
   opacity: 0;
   pointer-events: none;
-  transition: opacity var(--md-sys-motion-duration-short3)
-    var(--md-sys-motion-easing-standard);
+  transition: opacity var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-standard);
   z-index: 0;
 }
-.state-layer:hover::before { opacity: var(--md-sys-state-hover-opacity); }
-.state-layer:focus-visible::before { opacity: var(--md-sys-state-focus-opacity); }
-.state-layer:active::before { opacity: var(--md-sys-state-pressed-opacity); }
+.state-layer:hover::before {
+  opacity: var(--md-sys-state-hover-opacity);
+}
+.state-layer:focus-visible::before {
+  opacity: var(--md-sys-state-focus-opacity);
+}
+.state-layer:active::before {
+  opacity: var(--md-sys-state-pressed-opacity);
+}
 
 /* ---- Card --------------------------------------------------------------- */
 .card {
@@ -211,11 +222,15 @@ button {
   font-weight: var(--md-sys-typescale-label-large-weight);
   letter-spacing: var(--md-sys-typescale-label-large-tracking);
   isolation: isolate;
-  transition: box-shadow var(--md-sys-motion-duration-short3)
-    var(--md-sys-motion-easing-standard);
+  transition: box-shadow var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-standard);
 }
-.button > * { position: relative; z-index: 1; }
-.button:active { transform: scale(0.98); }
+.button > * {
+  position: relative;
+  z-index: 1;
+}
+.button:active {
+  transform: scale(0.98);
+}
 .button[disabled],
 .button[aria-disabled="true"] {
   opacity: 0.38;
@@ -254,11 +269,16 @@ button {
   background: var(--md-sys-color-surface-container-high);
   color: var(--md-sys-color-on-surface);
   isolation: isolate;
-  transition: box-shadow var(--md-sys-motion-duration-short3)
-    var(--md-sys-motion-easing-standard);
+  transition: box-shadow var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-standard);
 }
-.icon-button svg { position: relative; z-index: 1; }
-.icon-button[disabled] { opacity: 0.38; pointer-events: none; }
+.icon-button svg {
+  position: relative;
+  z-index: 1;
+}
+.icon-button[disabled] {
+  opacity: 0.38;
+  pointer-events: none;
+}
 
 /* ---- Horizontal game rail (scroll-based selection) ---------------------- */
 .rail {
@@ -281,13 +301,20 @@ button {
   scrollbar-width: thin;
   scrollbar-color: var(--md-sys-color-outline-variant) transparent;
 }
-.rail__track::-webkit-scrollbar { height: 8px; }
-.rail__track::-webkit-scrollbar-track { background: transparent; }
+.rail__track::-webkit-scrollbar {
+  height: 8px;
+}
+.rail__track::-webkit-scrollbar-track {
+  background: transparent;
+}
 .rail__track::-webkit-scrollbar-thumb {
   background: var(--md-sys-color-outline-variant);
   border-radius: var(--md-sys-shape-corner-full);
 }
-.rail__track > * { scroll-snap-align: start; flex: 0 0 auto; }
+.rail__track > * {
+  scroll-snap-align: start;
+  flex: 0 0 auto;
+}
 
 /* Desktop arrow affordances — hidden where there's no hover/fine pointer */
 .rail__arrow {
@@ -297,22 +324,35 @@ button {
   z-index: 5;
   box-shadow: var(--md-sys-elevation-level2);
 }
-.rail__arrow--prev { left: var(--md-sys-spacing-xs); }
-.rail__arrow--next { right: var(--md-sys-spacing-xs); }
-.rail__arrow[hidden] { display: none; }
+.rail__arrow--prev {
+  left: var(--md-sys-spacing-xs);
+}
+.rail__arrow--next {
+  right: var(--md-sys-spacing-xs);
+}
+.rail__arrow[hidden] {
+  display: none;
+}
 /* Hide the arrows where cards span (near-)full width or touch is the norm —
    there, overlaying a card would cover its content; swipe/scroll is natural. */
 @media (pointer: coarse), (max-width: 720px) {
-  .rail__arrow { display: none; }
+  .rail__arrow {
+    display: none;
+  }
 }
 
 /* ---- Visually-hidden (for screen-reader-only labels) -------------------- */
 .visually-hidden {
   position: absolute !important;
-  width: 1px; height: 1px;
-  margin: -1px; padding: 0; border: 0;
-  clip: rect(0 0 0 0); clip-path: inset(50%);
-  overflow: hidden; white-space: nowrap;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 /* ---- Reduced motion ----------------------------------------------------- */

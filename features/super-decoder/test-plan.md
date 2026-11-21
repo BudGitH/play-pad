@@ -10,28 +10,28 @@
 
 ## Coverage map (AC → test)
 
-| AC | Test(s) | Type |
-|---|---|---|
-| AC-1 Hub integration | T-INT-1 (hub-render), T-INT-2 (link-loads-game) | integration |
-| AC-2 Setup gates start | T-SETUP-1 (default Start enabled) | e2e |
-| AC-3 Difficulty = session length | T-SESS-1 (3/5/8 → totalCodes) | e2e |
-| AC-4 Per-code rules constant | T-RULES-1 (4/6/10 invariants across difficulties) | e2e |
-| AC-5 Per-turn placement | T-PLACE-1 (active-slot advances), T-PLACE-2 (refill on tap-clear) | e2e |
-| AC-6 Submit gate | T-SUBMIT-1 (button disabled until 4) | e2e |
-| AC-7 Feedback algorithm | T-ALGO-1..5 (the five fixtures below) | unit (via `scoreGuess`) |
-| AC-8 Feedback order | T-ORDER-1 (renders blacks-first, never in slot order) | unit + DOM |
-| AC-9 Solve advances | T-SOLVE-1 (force secret, match, advance) | e2e |
-| AC-10 Fail advances | T-FAIL-1 (10 wrong → next code, streak reset) | e2e |
-| AC-11 Scoring formula | T-SCORE-1 (solve in 1 = 100 + streak), T-SCORE-2 (fail = 0) | unit + e2e |
-| AC-12 Quit safety | T-QUIT-1 (mid-stagger), T-QUIT-2 (mid-countdown) | e2e |
-| AC-13 48px quit target | T-A11Y-1 (getBoundingClientRect ≥ 48×48) | e2e |
-| AC-14 Countdown teardown | T-QUIT-2 (above) covers this | e2e |
-| AC-15 Reduced-motion safe | T-RM-1 (stub matchMedia + full play) | e2e |
-| AC-16 Focus visible on palette | T-A11Y-2 (focus a palette button, screenshot ring) | e2e |
-| AC-17 A11y labels | T-A11Y-3 (assert aria-label on every palette + slot) | e2e |
-| AC-18 Results show summary | T-RESULTS-1 (totals after full session) | e2e |
-| AC-19 Play again resets | T-RESET-1 (score/streak/codeIndex all 0/0/1) | e2e |
-| AC-20 Shape redundancy | T-CB-1 (palette + peg glyphs render per colour index) | e2e |
+| AC                               | Test(s)                                                           | Type                    |
+| -------------------------------- | ----------------------------------------------------------------- | ----------------------- |
+| AC-1 Hub integration             | T-INT-1 (hub-render), T-INT-2 (link-loads-game)                   | integration             |
+| AC-2 Setup gates start           | T-SETUP-1 (default Start enabled)                                 | e2e                     |
+| AC-3 Difficulty = session length | T-SESS-1 (3/5/8 → totalCodes)                                     | e2e                     |
+| AC-4 Per-code rules constant     | T-RULES-1 (4/6/10 invariants across difficulties)                 | e2e                     |
+| AC-5 Per-turn placement          | T-PLACE-1 (active-slot advances), T-PLACE-2 (refill on tap-clear) | e2e                     |
+| AC-6 Submit gate                 | T-SUBMIT-1 (button disabled until 4)                              | e2e                     |
+| AC-7 Feedback algorithm          | T-ALGO-1..5 (the five fixtures below)                             | unit (via `scoreGuess`) |
+| AC-8 Feedback order              | T-ORDER-1 (renders blacks-first, never in slot order)             | unit + DOM              |
+| AC-9 Solve advances              | T-SOLVE-1 (force secret, match, advance)                          | e2e                     |
+| AC-10 Fail advances              | T-FAIL-1 (10 wrong → next code, streak reset)                     | e2e                     |
+| AC-11 Scoring formula            | T-SCORE-1 (solve in 1 = 100 + streak), T-SCORE-2 (fail = 0)       | unit + e2e              |
+| AC-12 Quit safety                | T-QUIT-1 (mid-stagger), T-QUIT-2 (mid-countdown)                  | e2e                     |
+| AC-13 48px quit target           | T-A11Y-1 (getBoundingClientRect ≥ 48×48)                          | e2e                     |
+| AC-14 Countdown teardown         | T-QUIT-2 (above) covers this                                      | e2e                     |
+| AC-15 Reduced-motion safe        | T-RM-1 (stub matchMedia + full play)                              | e2e                     |
+| AC-16 Focus visible on palette   | T-A11Y-2 (focus a palette button, screenshot ring)                | e2e                     |
+| AC-17 A11y labels                | T-A11Y-3 (assert aria-label on every palette + slot)              | e2e                     |
+| AC-18 Results show summary       | T-RESULTS-1 (totals after full session)                           | e2e                     |
+| AC-19 Play again resets          | T-RESET-1 (score/streak/codeIndex all 0/0/1)                      | e2e                     |
+| AC-20 Shape redundancy           | T-CB-1 (palette + peg glyphs render per colour index)             | e2e                     |
 
 ## Test cases
 
@@ -77,9 +77,10 @@
 
 ## How to run
 
-No automated harness at Prototype tier. Drive these scenarios using the **`playpad` preview launch config** + `preview_*` MCP tools (see `docs/CONVENTIONS.md` → *Dev commands*).
+No automated harness at Prototype tier. Drive these scenarios using the **`playpad` preview launch config** + `preview_*` MCP tools (see `docs/CONVENTIONS.md` → _Dev commands_).
 
 Helper: `window.__decoder` exposes
+
 ```
 { phase, codeIndex, totalCodes, attemptsLeft, secret, rows, score, streak,
   code, pendingTimeouts, lastBeep,

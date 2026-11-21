@@ -3,26 +3,33 @@
      HTML comments like this one are invisible in the rendered PR — they're guidance for the author. -->
 
 ## What
+
 <!-- One or two sentences, plain language. -->
 
 ## Why
-Ticket: PLAY-____
+
+Ticket: PLAY-\_\_\_\_
+
 <!-- Business or technical motivation. A PR with no ticket needs a one-line justification. -->
 
 ## Authored by
-- [ ] Human  - [ ] Agent  - [ ] Pair (human-directed agent)
+
+- [ ] Human - [ ] Agent - [ ] Pair (human-directed agent)
 <!-- Mandatory (PR-STANDARD §2.5). Reviewers calibrate differently for agent-authored code:
      Correctness gets traced against acceptance criteria, not skimmed — plausible-but-wrong
      is the characteristic agent failure mode. Undisclosed agent authorship invalidates review. -->
 
 ## How
+
 <!-- Key implementation decisions — anything a reviewer would otherwise reverse-engineer. -->
 
 ## Type of change
-- [ ] Bug fix (non-breaking)  - [ ] Feature (non-breaking)
-- [ ] Breaking change (migration notes below)  - [ ] Refactor / no behavior change
+
+- [ ] Bug fix (non-breaking) - [ ] Feature (non-breaking)
+- [ ] Breaking change (migration notes below) - [ ] Refactor / no behavior change
 
 ## How was this tested?
+
 - [ ] Unit tests added/updated (list key cases)
 - [ ] Integration / E2E
 - [ ] Manual verification (exact steps + environment)
@@ -31,21 +38,26 @@ Ticket: PLAY-____
      covered WITH pasted tool evidence. No report = full manual rubric. -->
 
 ## Screenshots / recordings
+
 <!-- Required for ANY UI change: before AND after. -->
 
 ## Breaking changes & migration
+
 <!-- What breaks, who's affected, migration path. "None" if N/A.
      Schema/data migration in this PR? Rubric dimension 9 applies: expand/contract ordering,
      lock duration, resumable backfill, TESTED down-migration. -->
 
 ## Rollback plan
+
 <!-- "Revert the commit" is only a valid answer if there's no migration.
      Flag off? Data reversal needed? Say exactly how. -->
 
 ## Reviewer notes
+
 <!-- Where to start reading. Known trade-offs. What you want challenged. -->
 
 ## Author checklist
+
 - [ ] Self-reviewed the full diff line by line — **for agent-authored code, the HUMAN does this pass**
 - [ ] No commented-out code, debug prints, or secrets
 - [ ] Tests pass locally and in CI
@@ -53,6 +65,7 @@ Ticket: PLAY-____
 - [ ] Feature-flagged if risky or incomplete
 
 ## PlayPad checks
+
 - [ ] Runs from `python -m http.server` (and file://) with no console errors
 - [ ] Tested at mobile width and in dark mode (UI changes)
 - [ ] New assets are redistributable and credited

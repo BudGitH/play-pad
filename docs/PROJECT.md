@@ -4,7 +4,7 @@
 
 _This file is **stable**. It changes when the vision changes, not when the code changes. Keep it short and true._
 
-**Project tier:** Standard (public open-source, MIT — upgraded 2026-11-21)  ·  **Design direction:** see `docs/DESIGN-SYSTEM.md`
+**Project tier:** Standard (public open-source, MIT — upgraded 2026-11-21) · **Design direction:** see `docs/DESIGN-SYSTEM.md`
 
 ---
 
@@ -29,14 +29,17 @@ Casual, mobile-first players looking for a 1–2 minute break; small groups shar
 ## Scope
 
 **In scope (now):**
+
 - _TBD_
 
 **Explicitly out of scope (for now):**
+
 - _TBD_
 
 ## Success criteria
 
 How we'll know this is working:
+
 - A visitor can spot and start a game within seconds; players come back to try other games; a new game can be added to the catalog with a one-line registry change. (Editable — tune as the catalog grows.)
 
 ---

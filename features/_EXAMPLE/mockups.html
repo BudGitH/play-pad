@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <!-- ============================================================================
   WORKED EXAMPLE — features/_EXAMPLE/mockups.html (read-only reference)
   A filled mockup file for the "Clear-search button" example feature, so you
@@ -10,80 +10,220 @@
   only, and the fifth "Chosen — full states" tab filled after the decision.
 ============================================================================ -->
 <html lang="en">
-<head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>PlayPad — Clear-search button — design options (worked example)</title>
-<style>
-  :root{--color-primary:#2456d6;--color-surface:#fff;--color-surface-alt:#f4f6fa;
-  --color-on-surface:#1a1d23;--color-muted:#5b6472;--color-border:#d8dde6;--color-error:#b3261e;
-  --font-body:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;--size-body:15px;--size-caption:13px;
-  --space-sm:8px;--space-md:16px;--space-lg:24px;--radius-sm:4px;--radius-md:8px}
-  body{font-family:var(--font-body);font-size:var(--size-body);color:var(--color-on-surface);
-  background:var(--color-surface-alt);margin:0;padding:var(--space-lg)}
-  .tabs input[type=radio]{position:absolute;opacity:0}
-  .tabs label{display:inline-block;padding:var(--space-sm) var(--space-md);cursor:pointer;
-  border:1px solid var(--color-border);border-bottom:none;background:var(--color-surface-alt);
-  border-radius:var(--radius-sm) var(--radius-sm) 0 0;font-weight:600;color:var(--color-muted)}
-  .tabs input:focus-visible+label{outline:2px solid var(--color-primary);outline-offset:2px}
-  .tabs input:checked+label{background:var(--color-surface);color:var(--color-primary)}
-  .panel{display:none;background:var(--color-surface);border:1px solid var(--color-border);
-  border-radius:0 var(--radius-md) var(--radius-md) var(--radius-md);padding:var(--space-lg)}
-  #a:checked~#pa,#b:checked~#pb,#c:checked~#pc,#d:checked~#pd,#x:checked~#px{display:block}
-  .tradeoff{background:var(--color-surface-alt);border-left:3px solid var(--color-primary);
-  padding:var(--space-sm) var(--space-md);margin-bottom:var(--space-md);font-size:var(--size-caption)}
-  .search{display:flex;align-items:center;gap:var(--space-sm);border:1px solid var(--color-border);
-  border-radius:var(--radius-sm);padding:var(--space-sm) var(--space-md);background:var(--color-surface);max-width:360px}
-  .search input{border:none;outline:none;font:inherit;flex:1}
-  .clearbtn{border:none;background:none;cursor:pointer;font-size:16px;color:var(--color-muted);
-  padding:2px 6px;border-radius:var(--radius-sm)}
-  .clearbtn:focus-visible{outline:2px solid var(--color-primary)}
-  .hint{font-size:var(--size-caption);color:var(--color-muted);margin-top:var(--space-sm)}
-</style>
-</head>
-<body>
-<h1 style="font-size:20px">Clear-search button — 4 options <span style="color:var(--color-muted);font-size:14px">(worked example)</span></h1>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PlayPad — Clear-search button — design options (worked example)</title>
+    <style>
+      :root {
+        --color-primary: #2456d6;
+        --color-surface: #fff;
+        --color-surface-alt: #f4f6fa;
+        --color-on-surface: #1a1d23;
+        --color-muted: #5b6472;
+        --color-border: #d8dde6;
+        --color-error: #b3261e;
+        --font-body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        --size-body: 15px;
+        --size-caption: 13px;
+        --space-sm: 8px;
+        --space-md: 16px;
+        --space-lg: 24px;
+        --radius-sm: 4px;
+        --radius-md: 8px;
+      }
+      body {
+        font-family: var(--font-body);
+        font-size: var(--size-body);
+        color: var(--color-on-surface);
+        background: var(--color-surface-alt);
+        margin: 0;
+        padding: var(--space-lg);
+      }
+      .tabs input[type="radio"] {
+        position: absolute;
+        opacity: 0;
+      }
+      .tabs label {
+        display: inline-block;
+        padding: var(--space-sm) var(--space-md);
+        cursor: pointer;
+        border: 1px solid var(--color-border);
+        border-bottom: none;
+        background: var(--color-surface-alt);
+        border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+        font-weight: 600;
+        color: var(--color-muted);
+      }
+      .tabs input:focus-visible + label {
+        outline: 2px solid var(--color-primary);
+        outline-offset: 2px;
+      }
+      .tabs input:checked + label {
+        background: var(--color-surface);
+        color: var(--color-primary);
+      }
+      .panel {
+        display: none;
+        background: var(--color-surface);
+        border: 1px solid var(--color-border);
+        border-radius: 0 var(--radius-md) var(--radius-md) var(--radius-md);
+        padding: var(--space-lg);
+      }
+      #a:checked ~ #pa,
+      #b:checked ~ #pb,
+      #c:checked ~ #pc,
+      #d:checked ~ #pd,
+      #x:checked ~ #px {
+        display: block;
+      }
+      .tradeoff {
+        background: var(--color-surface-alt);
+        border-left: 3px solid var(--color-primary);
+        padding: var(--space-sm) var(--space-md);
+        margin-bottom: var(--space-md);
+        font-size: var(--size-caption);
+      }
+      .search {
+        display: flex;
+        align-items: center;
+        gap: var(--space-sm);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-sm);
+        padding: var(--space-sm) var(--space-md);
+        background: var(--color-surface);
+        max-width: 360px;
+      }
+      .search input {
+        border: none;
+        outline: none;
+        font: inherit;
+        flex: 1;
+      }
+      .clearbtn {
+        border: none;
+        background: none;
+        cursor: pointer;
+        font-size: 16px;
+        color: var(--color-muted);
+        padding: 2px 6px;
+        border-radius: var(--radius-sm);
+      }
+      .clearbtn:focus-visible {
+        outline: 2px solid var(--color-primary);
+      }
+      .hint {
+        font-size: var(--size-caption);
+        color: var(--color-muted);
+        margin-top: var(--space-sm);
+      }
+    </style>
+  </head>
+  <body>
+    <h1 style="font-size: 20px">
+      Clear-search button — 4 options
+      <span style="color: var(--color-muted); font-size: 14px">(worked example)</span>
+    </h1>
 
-<div class="tabs">
-  <input type="radio" name="o" id="a" checked><label for="a">A — Inline ✕</label>
-  <input type="radio" name="o" id="b"><label for="b">B — Button beside</label>
-  <input type="radio" name="o" id="c"><label for="c">C — Filter chip</label>
-  <input type="radio" name="o" id="d"><label for="d">D — Esc shortcut</label>
-  <input type="radio" name="o" id="x"><label for="x">Chosen — full states</label>
+    <div class="tabs">
+      <input type="radio" name="o" id="a" checked /><label for="a">A — Inline ✕</label>
+      <input type="radio" name="o" id="b" /><label for="b">B — Button beside</label>
+      <input type="radio" name="o" id="c" /><label for="c">C — Filter chip</label>
+      <input type="radio" name="o" id="d" /><label for="d">D — Esc shortcut</label>
+      <input type="radio" name="o" id="x" /><label for="x">Chosen — full states</label>
 
-  <section class="panel" id="pa" aria-label="Option A">
-    <div class="tradeoff"><b>Strategy:</b> ✕ appears inside the field when text exists · <b>Best when:</b> touch-first, minimal chrome<br>
-    <b>Trade-off:</b> small tap target near text · <b>Responsive:</b> identical at all widths</div>
-    <div class="search"><input value="blue mug" aria-label="Search items"><button class="clearbtn" aria-label="Clear search">✕</button></div>
-  </section>
+      <section class="panel" id="pa" aria-label="Option A">
+        <div class="tradeoff">
+          <b>Strategy:</b> ✕ appears inside the field when text exists ·
+          <b>Best when:</b> touch-first, minimal chrome<br />
+          <b>Trade-off:</b> small tap target near text · <b>Responsive:</b> identical at all widths
+        </div>
+        <div class="search">
+          <input value="blue mug" aria-label="Search items" /><button
+            class="clearbtn"
+            aria-label="Clear search"
+          >
+            ✕
+          </button>
+        </div>
+      </section>
 
-  <section class="panel" id="pb" aria-label="Option B">
-    <div class="tradeoff"><b>Strategy:</b> separate labelled Clear button · <b>Best when:</b> discoverability matters most<br>
-    <b>Trade-off:</b> takes horizontal space · <b>Responsive:</b> wraps below field on narrow screens</div>
-    <div style="display:flex;gap:var(--space-sm)"><div class="search"><input value="blue mug" aria-label="Search items"></div>
-    <button class="clearbtn" style="border:1px solid var(--color-border)">Clear</button></div>
-  </section>
+      <section class="panel" id="pb" aria-label="Option B">
+        <div class="tradeoff">
+          <b>Strategy:</b> separate labelled Clear button · <b>Best when:</b> discoverability
+          matters most<br />
+          <b>Trade-off:</b> takes horizontal space · <b>Responsive:</b> wraps below field on narrow
+          screens
+        </div>
+        <div style="display: flex; gap: var(--space-sm)">
+          <div class="search"><input value="blue mug" aria-label="Search items" /></div>
+          <button class="clearbtn" style="border: 1px solid var(--color-border)">Clear</button>
+        </div>
+      </section>
 
-  <section class="panel" id="pc" aria-label="Option C">
-    <div class="tradeoff"><b>Strategy:</b> active search shown as a removable chip under the field · <b>Best when:</b> search will later combine with filters<br>
-    <b>Trade-off:</b> heavier for a single query · <b>Responsive:</b> chips wrap</div>
-    <div class="search"><input placeholder="Search…" aria-label="Search items"></div>
-    <div class="hint"><span style="border:1px solid var(--color-border);border-radius:12px;padding:2px 10px">blue mug <button class="clearbtn" aria-label="Remove search filter">✕</button></span></div>
-  </section>
+      <section class="panel" id="pc" aria-label="Option C">
+        <div class="tradeoff">
+          <b>Strategy:</b> active search shown as a removable chip under the field ·
+          <b>Best when:</b> search will later combine with filters<br />
+          <b>Trade-off:</b> heavier for a single query · <b>Responsive:</b> chips wrap
+        </div>
+        <div class="search"><input placeholder="Search…" aria-label="Search items" /></div>
+        <div class="hint">
+          <span
+            style="border: 1px solid var(--color-border); border-radius: 12px; padding: 2px 10px"
+            >blue mug <button class="clearbtn" aria-label="Remove search filter">✕</button></span
+          >
+        </div>
+      </section>
 
-  <section class="panel" id="pd" aria-label="Option D">
-    <div class="tradeoff"><b>Strategy:</b> keyboard-first — Esc clears, hint text teaches it · <b>Best when:</b> desktop power users<br>
-    <b>Trade-off:</b> invisible on touch devices — fails the Casual Browser persona · <b>Responsive:</b> hint hidden on touch</div>
-    <div class="search"><input value="blue mug" aria-label="Search items"></div><div class="hint">Press <b>Esc</b> to clear</div>
-  </section>
+      <section class="panel" id="pd" aria-label="Option D">
+        <div class="tradeoff">
+          <b>Strategy:</b> keyboard-first — Esc clears, hint text teaches it ·
+          <b>Best when:</b> desktop power users<br />
+          <b>Trade-off:</b> invisible on touch devices — fails the Casual Browser persona ·
+          <b>Responsive:</b> hint hidden on touch
+        </div>
+        <div class="search"><input value="blue mug" aria-label="Search items" /></div>
+        <div class="hint">Press <b>Esc</b> to clear</div>
+      </section>
 
-  <section class="panel" id="px" aria-label="Chosen option full states">
-    <div class="tradeoff"><b>Chosen: Option A</b> (see design-review.md §5) — states expanded below; Phase 2 tests encode THIS tab.</div>
-    <p class="hint">Empty (no text → no ✕):</p><div class="search"><input placeholder="Search…" aria-label="Search items"></div>
-    <p class="hint">Active:</p><div class="search"><input value="blue mug" aria-label="Search items"><button class="clearbtn" aria-label="Clear search">✕</button></div>
-    <p class="hint">Focus-visible on ✕ (keyboard):</p><div class="search"><input value="blue mug" aria-label="Search items"><button class="clearbtn" style="outline:2px solid var(--color-primary)" aria-label="Clear search">✕</button></div>
-    <p class="hint">Error (list failed to restore):</p><div class="search" style="border-color:var(--color-error)"><input value="blue mug" aria-label="Search items"><button class="clearbtn" aria-label="Clear search">✕</button></div>
-    <p class="hint" style="color:var(--color-error)">Couldn't reload items — retry</p>
-  </section>
-</div>
-</body>
+      <section class="panel" id="px" aria-label="Chosen option full states">
+        <div class="tradeoff">
+          <b>Chosen: Option A</b> (see design-review.md §5) — states expanded below; Phase 2 tests
+          encode THIS tab.
+        </div>
+        <p class="hint">Empty (no text → no ✕):</p>
+        <div class="search"><input placeholder="Search…" aria-label="Search items" /></div>
+        <p class="hint">Active:</p>
+        <div class="search">
+          <input value="blue mug" aria-label="Search items" /><button
+            class="clearbtn"
+            aria-label="Clear search"
+          >
+            ✕
+          </button>
+        </div>
+        <p class="hint">Focus-visible on ✕ (keyboard):</p>
+        <div class="search">
+          <input value="blue mug" aria-label="Search items" /><button
+            class="clearbtn"
+            style="outline: 2px solid var(--color-primary)"
+            aria-label="Clear search"
+          >
+            ✕
+          </button>
+        </div>
+        <p class="hint">Error (list failed to restore):</p>
+        <div class="search" style="border-color: var(--color-error)">
+          <input value="blue mug" aria-label="Search items" /><button
+            class="clearbtn"
+            aria-label="Clear search"
+          >
+            ✕
+          </button>
+        </div>
+        <p class="hint" style="color: var(--color-error)">Couldn't reload items — retry</p>
+      </section>
+    </div>
+  </body>
 </html>

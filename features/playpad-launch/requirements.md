@@ -1,6 +1,6 @@
 # Feature: PlayPad launch — catalog hub + MD3 design system + Colour Rush rebuild
 
-> **Phase 1 of the workflow.** Define what "done" means *before* writing code. A QA agent will hold the implementation to these criteria — vague requirements produce vague QA.
+> **Phase 1 of the workflow.** Define what "done" means _before_ writing code. A QA agent will hold the implementation to these criteria — vague requirements produce vague QA.
 >
 > _Note: this is the **inaugural release**, documented as one feature because the hub, the shared design system, the brand assets, and the first game shipped together as v1. Authored alongside the build; accurate to what shipped._
 
@@ -15,11 +15,11 @@
 ## What & why
 
 - **What:** Turn a single loose prototype into **PlayPad** — a branded, Material Design 3 hub whose front door is a horizontal, scroll-based game selection, plus a shared MD3 design system, a favicon/app icon, and **Colour Rush rebuilt from the ground up** in the new look. Adding future games is a one-line registry change.
-- **Why:** People want a quick, no-install micro-break game and there was no tidy front door — just one HTML file opened directly. See `docs/PROJECT.md` and `docs/IDEAS.md` → *Now*.
+- **Why:** People want a quick, no-install micro-break game and there was no tidy front door — just one HTML file opened directly. See `docs/PROJECT.md` and `docs/IDEAS.md` → _Now_.
 
 ## Business requirements & success metrics
 
-- **Business outcome:** PlayPad presents a real catalog (≥1 playable game today) behind one cohesive brand, and the architecture makes adding the *next* game trivial.
+- **Business outcome:** PlayPad presents a real catalog (≥1 playable game today) behind one cohesive brand, and the architecture makes adding the _next_ game trivial.
 - **Success metric:** a visitor can spot and start a game within seconds; the catalog grows with a **one-object** registry edit (no hub changes). (Baseline: 0 — there was no catalog.)
 - **Must-have business rules:**
   - The original `Old prototype/index.html` is a **reference only** — never modified or linked as a shipping game.
@@ -28,7 +28,7 @@
 
 ## Target personas & success bar
 
-> All five from `docs/PRODUCT-PANEL.md` are in scope — the inaugural release *is* the whole product surface (browse the hub + play a game + add a game).
+> All five from `docs/PRODUCT-PANEL.md` are in scope — the inaugural release _is_ the whole product surface (browse the hub + play a game + add a game).
 
 - **Personas served:** Maya (Commuter Casual), Dan (Office Micro-breaker), Priya & kid (Sofa Co-op), Sam (Keyboard / AT), You (Builder-Owner).
 - **Baseline (hard gate):** each persona can complete their primary goal — start a game fast (Maya/Dan), play together on one screen (Priya & kid), browse+launch via keyboard/AT (Sam), add a game with one registry line (You).
@@ -45,11 +45,11 @@
 
 ## User-visible behaviour
 
-Open the site → **PlayPad** app bar (dot logo + gradient wordmark) over a hero and a **horizontal row of game cards**. Each live card shows an accent media tile + icon, title, blurb, tags, player count, and a Play affordance; activating it opens the game. A dimmed "More to come" card signals growth. **Colour Rush**: pick 2–4 players and a unique colour each, choose round length/speed/sound, Start; a 3-2-1-GO countdown, then tap *your* colour as dots scatter; a timer/progress bar runs the round; results rank the players and offer Play again / Change settings / Back to PlayPad. Light/dark follow the OS.
+Open the site → **PlayPad** app bar (dot logo + gradient wordmark) over a hero and a **horizontal row of game cards**. Each live card shows an accent media tile + icon, title, blurb, tags, player count, and a Play affordance; activating it opens the game. A dimmed "More to come" card signals growth. **Colour Rush**: pick 2–4 players and a unique colour each, choose round length/speed/sound, Start; a 3-2-1-GO countdown, then tap _your_ colour as dots scatter; a timer/progress bar runs the round; results rank the players and offer Play again / Change settings / Back to PlayPad. Light/dark follow the OS.
 
 ## Acceptance criteria
 
-- [ ] AC-1: Opening `index.html` renders the PlayPad app bar (logo + wordmark) and a *Games* section built from `window.GAMES`; the live-game count is shown.
+- [ ] AC-1: Opening `index.html` renders the PlayPad app bar (logo + wordmark) and a _Games_ section built from `window.GAMES`; the live-game count is shown.
 - [ ] AC-2: Each **live** registry entry renders a card (title, description, tags, players, Play); activating it (click **or** keyboard Enter) navigates to its `path`.
 - [ ] AC-3: The selection is a **horizontal scroll-snap row**; when it overflows on a fine-pointer/wide viewport, prev/next arrows scroll by one card and disable at the start/end; on touch or ≤720px the arrows hide and native swipe/scroll works. No stray horizontal page scroll.
 - [ ] AC-4: A `status:"soon"` entry renders a **dimmed, non-interactive** card (`aria-disabled`, not in the tab order).

@@ -14,14 +14,15 @@
 
 Rules split into two kinds, and each is policed differently:
 
-- **Mechanically checkable** (~11 of the §18 non-negotiables: no `any`, no `console.log`, no empty catch, function length, nesting, no commented-out code, secrets, coverage, dep CVEs, commit format, no committed `.env`) — these live in **`docs/ENFORCEMENT.md`** and are wired to configs/hooks/CI at Standard+ tier. **In plain terms:** a prose rule decays silently — it just stops being followed one busy session, and you find out during an incident; a lint rule fails in two seconds with a file and line, and the commit doesn't happen. So checkable rules go in config; this document *defines* what those configs must check.
-- **Judgement rules** (naming quality, whether an abstraction is justified, whether a comment explains *why*, design fit) — no tool can check these. They are what this document and the Phase-4 QUALITY lens spend human/agent attention on. QA does **not** re-review by eye what a tool already enforced.
+- **Mechanically checkable** (~11 of the §18 non-negotiables: no `any`, no `console.log`, no empty catch, function length, nesting, no commented-out code, secrets, coverage, dep CVEs, commit format, no committed `.env`) — these live in **`docs/ENFORCEMENT.md`** and are wired to configs/hooks/CI at Standard+ tier. **In plain terms:** a prose rule decays silently — it just stops being followed one busy session, and you find out during an incident; a lint rule fails in two seconds with a file and line, and the commit doesn't happen. So checkable rules go in config; this document _defines_ what those configs must check.
+- **Judgement rules** (naming quality, whether an abstraction is justified, whether a comment explains _why_, design fit) — no tool can check these. They are what this document and the Phase-4 QUALITY lens spend human/agent attention on. QA does **not** re-review by eye what a tool already enforced.
 
 If this document and a generated config ever disagree, this document wins — fix the config and note it in `docs/DECISIONS.md`.
 
 ## Why this standard is shaped this way (consensus)
 
 Four senior perspectives shaped it:
+
 1. **Commenting is mandatory and structured**, not discretionary — a four-tier system (file / function / block / inline).
 2. **Debug infrastructure is built into the code**, not bolted on — a reusable trace utility any module can opt into.
 3. **Audit trails are a first-class pattern** for anything that mutates data, money, or permissions.
@@ -226,16 +227,16 @@ Never write `x = x + 1  # increment x`.
 
 ### Standardised comment tags (every tag needs a ticket ref)
 
-| Tag | Meaning |
-|---|---|
-| `TODO(PLAY-###)` | Planned work, not started |
-| `FIXME(PLAY-###)` | Known bug / incorrect behaviour |
-| `HACK(PLAY-###)` | Intentional shortcut to revisit |
-| `WORKAROUND(PLAY-###)` | Compensating for an external bug/limit |
-| `KNOWN_ISSUE(PLAY-###)` | Documented, accepted-for-now defect |
-| `PERF(PLAY-###)` | Performance concern / optimisation target |
-| `SECURITY(PLAY-###)` | Security-relevant note |
-| `DECISION(PLAY-###)` | Non-obvious product/architecture decision |
+| Tag                     | Meaning                                   |
+| ----------------------- | ----------------------------------------- |
+| `TODO(PLAY-###)`        | Planned work, not started                 |
+| `FIXME(PLAY-###)`       | Known bug / incorrect behaviour           |
+| `HACK(PLAY-###)`        | Intentional shortcut to revisit           |
+| `WORKAROUND(PLAY-###)`  | Compensating for an external bug/limit    |
+| `KNOWN_ISSUE(PLAY-###)` | Documented, accepted-for-now defect       |
+| `PERF(PLAY-###)`        | Performance concern / optimisation target |
+| `SECURITY(PLAY-###)`    | Security-relevant note                    |
+| `DECISION(PLAY-###)`    | Non-obvious product/architecture decision |
 
 Audit: `grep -rn "TODO\|FIXME\|HACK\|WORKAROUND\|KNOWN_ISSUE" src/` — review periodically.
 
@@ -276,7 +277,7 @@ At the top of every module/service/route file, state in plain English: **Respons
 ## 5. Error handling: fail loudly, fail early
 
 - **Validate inputs at the boundary.** Reject invalid data the moment it enters; don't let it travel deeper.
-- **Never swallow errors.** No empty `catch {}` / `except: pass`. To ignore, comment *why*.
+- **Never swallow errors.** No empty `catch {}` / `except: pass`. To ignore, comment _why_.
 - **Throw specific, descriptive errors.** Include what failed, expected, received, and how to fix.
 - **Custom error classes** for domain failures (`InsufficientBalanceError` ≫ `Error("failed")`).
 - **Distinguish expected failures from crashes.** Handle the expected gracefully; let true bugs crash with full context.
@@ -415,7 +416,7 @@ def submit_order(order_id: str, actor: User) -> Order:
     return order
 ```
 
-The trail answers, without reading code: *what happened to resource X?* (by `resource_id`), *what did user Y do?* (by `actor_id` + time), *who changed this and when?* (by `action`), *everything in this request?* (by `request_id`).
+The trail answers, without reading code: _what happened to resource X?_ (by `resource_id`), _what did user Y do?_ (by `actor_id` + time), _who changed this and when?_ (by `action`), _everything in this request?_ (by `request_id`).
 
 ### 6C. Diagnostic endpoint (staging/dev)
 
@@ -425,9 +426,10 @@ Expose `GET /internal/diagnostics/{correlation_id}` returning the combined debug
 
 ## 7. Security review gates & post-run compliance
 
-Here, **the QA panel is the pipeline** (`docs/WORKFLOW.md`). The checks below are what the RISK and COMPLIANCE lenses enforce, and what the Post-Run Findings Report records. If you *do* have CI, wire these as automated gates too.
+Here, **the QA panel is the pipeline** (`docs/WORKFLOW.md`). The checks below are what the RISK and COMPLIANCE lenses enforce, and what the Post-Run Findings Report records. If you _do_ have CI, wire these as automated gates too.
 
 ### 7A. Gate checklist (run by QA, or CI if present)
+
 - **Secret scanning** — zero secrets (keys, tokens, passwords, private keys) in the diff.
 - **SAST / static review** — zero HIGH/CRITICAL; MEDIUM needs a comment with fix plan + ticket.
 - **Dependency audit** — no known ≥ HIGH vulns in direct deps.
@@ -439,12 +441,15 @@ Here, **the QA panel is the pipeline** (`docs/WORKFLOW.md`). The checks below ar
 - **Config/IaC** — no placeholder/default secrets in real config; IaC scanned.
 
 ### 7B. Post-Run Findings Report (every QA run)
+
 Mandatory, immutable, timestamped, retained with the feature. Canonical form: `features/<name>/qa-report.md`. Captures gate summary, each finding (with classification + recurrence), recursive-findings alert, and a human summary. A run without a report is a failed run.
 
 ### 7C. Recursive findings tracker
+
 See `docs/findings-ledger.md`: stable finding IDs, recurrence counting, escalation **2× = ticket, 3× = tech-debt priority, 4× = STOP-SHIP**, and a `RECURRENCE(...)` comment at the fix site documenting root cause + systemic fix + the codebase scan you ran.
 
 ### 7D. Blocker classification matrix
+
 Every finding is classified across four dimensions; a finding may score on several. Apply the strictest response.
 
 - **ACCURACY** — wrong output: calc errors, bad transforms, truncation, rounding, off-by-one, wrong rule.
@@ -452,14 +457,15 @@ Every finding is classified across four dimensions; a finding may score on sever
 - **COMPLIANCE** — missing audit trail, PII in logs, retention/consent gaps, missing required docs.
 - **RISK** — injection, XSS/CSRF, auth bypass, insecure deserialization, secrets, missing validation/rate-limit, DoS.
 
-| Severity | ACCURACY | QUALITY | COMPLIANCE | RISK |
-|---|---|---|---|---|
-| CRITICAL | hotfix ≤ 4h | stop-ship | stop-ship | stop-ship |
-| HIGH | blocks feature | blocks feature | blocks feature | blocks feature |
-| MEDIUM | fix before next release | ticket, ≤ 2 cycles | ticket, ≤ 1 cycle | ticket, ≤ 1 cycle |
-| LOW | backlog | tech-debt register | compliance register | risk register |
+| Severity | ACCURACY                | QUALITY            | COMPLIANCE          | RISK              |
+| -------- | ----------------------- | ------------------ | ------------------- | ----------------- |
+| CRITICAL | hotfix ≤ 4h             | stop-ship          | stop-ship           | stop-ship         |
+| HIGH     | blocks feature          | blocks feature     | blocks feature      | blocks feature    |
+| MEDIUM   | fix before next release | ticket, ≤ 2 cycles | ticket, ≤ 1 cycle   | ticket, ≤ 1 cycle |
+| LOW      | backlog                 | tech-debt register | compliance register | risk register     |
 
 When resolving, comment the classification + fix + verification:
+
 ```python
 # FIX(PLAY-###): resolved FINDING-YYYYMMDD-002 — raw SQL concatenation.
 #   Classification: QUALITY + RISK · Severity: MEDIUM
@@ -468,22 +474,24 @@ When resolving, comment the classification + fix + verification:
 
 ### 7E. Security-specific comment tags (mandatory where they apply)
 
-| Tag | Purpose |
-|---|---|
-| `SECURITY_GATE(PLAY-###)` | Marks a security-critical check (authn/authz/validation/rate-limit). Changes need security review. |
-| `TRUST_BOUNDARY` | Where data crosses a trust boundary (user→system, system→external, public→private). Everything crossing is validated/sanitised. |
-| `DATA_FLOW(<class>)` | Flow of sensitive data — class ∈ PII \| FINANCIAL \| CREDENTIAL \| INTERNAL. |
-| `THREAT_REF(<id>)` | Links code to a threat-model entry. |
-| `CRYPTO_NOTE` | Documents a crypto choice (algorithm, key length, rotation). Crypto without this is flagged. |
+| Tag                       | Purpose                                                                                                                         |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `SECURITY_GATE(PLAY-###)` | Marks a security-critical check (authn/authz/validation/rate-limit). Changes need security review.                              |
+| `TRUST_BOUNDARY`          | Where data crosses a trust boundary (user→system, system→external, public→private). Everything crossing is validated/sanitised. |
+| `DATA_FLOW(<class>)`      | Flow of sensitive data — class ∈ PII \| FINANCIAL \| CREDENTIAL \| INTERNAL.                                                    |
+| `THREAT_REF(<id>)`        | Links code to a threat-model entry.                                                                                             |
+| `CRYPTO_NOTE`             | Documents a crypto choice (algorithm, key length, rotation). Crypto without this is flagged.                                    |
 
 The RISK lens verifies: authn/authz functions carry `SECURITY_GATE`; external-input handlers carry `TRUST_BOUNDARY`; PII/financial flows carry `DATA_FLOW`.
 
 ### 7F. Security review block (sensitive files)
+
 Files handling auth, payments, PII, or external integrations add to their Tier-1 header: last/next security review dates, trust boundaries (with line refs), sensitive data flows, threat-model refs, security assumptions, and known security debt.
 
 ---
 
 ## 8. Code structure & organisation
+
 - **Group by feature/domain, not by type.** `orders/` (routes, service, models, tests together) ≫ `controllers/` with 40 files.
 - **One concept per file.** Split a growing `utils.ts` into `date-utils`, `currency-utils`, etc.
 - **Barrel/index files re-export only** — no logic.
@@ -491,14 +499,17 @@ Files handling auth, payments, PII, or external integrations add to their Tier-1
 - **Clear module boundaries; no circular deps** — extract the shared concern into a third module.
 
 ## 9. SOLID
+
 SRP (one reason to change), OCP (open to extension, closed to modification), LSP (subtypes substitutable), ISP (many specific interfaces > one general), DIP (depend on abstractions, not concretions).
 
 ## 10. Simplicity & anti-complexity
+
 - **KISS** — solve the problem in front of you; prefer boring, well-understood patterns. If a junior can't grok a function in 60s, refactor.
-- **DRY with judgement** — extract when the same logic appears 3+ times *and* must change together. Don't force unrelated look-alikes into one abstraction.
+- **DRY with judgement** — extract when the same logic appears 3+ times _and_ must change together. Don't force unrelated look-alikes into one abstraction.
 - **Minimise nesting** — max 2–3 levels; guard clauses; lookup maps / `switch` over long `if/else` chains.
 
 ## 11. Testing
+
 - **Every public function has ≥ 1 test.** No exceptions.
 - **Test behaviour, not implementation** — resilient to refactoring.
 - **Name tests as sentences:** `test_calculate_total_excludes_out_of_stock_items()`.
@@ -507,11 +518,13 @@ SRP (one reason to change), OCP (open to extension, closed to modification), LSP
 - **Placement:** unit tests beside the code; integration/e2e under a top-level `tests/`.
 
 ## 12. Logging & observability
+
 - **Structured (JSON) logs**, never `console.log("...")`. Levels: DEBUG (local detail), INFO (business events), WARN (recoverable), ERROR (needs investigation).
 - **Correlation IDs** on every request/job, in every line. **Log at boundaries**, not inside tight loops.
 - **Never log secrets/PII** — redact in logger config. **Connect logs to traces** via the `trace_id` from the DebugTracer.
 
 ## 13. Frontend-specific
+
 - **One component, one responsibility.** Props are the API — strict types, sensible defaults, documented. 15+ props ⇒ decompose.
 - **Lift state to the lowest common ancestor; derived state is computed, never stored.** Colocate styles/tests/types.
 - **Perf:** memoise the expensive bits (profile first); lazy-load heavy routes; size images correctly.
@@ -520,6 +533,7 @@ SRP (one reason to change), OCP (open to extension, closed to modification), LSP
 - **Comment every effect/lifecycle hook** (trigger, action, side effects) and state-placement decisions.
 
 ## 14. Backend-specific
+
 - **Consistent URL patterns + response envelope** (`{ data, error, meta }`); **version your APIs**; **meaningful status codes** (never 200-with-error-body); **validate payloads at the boundary** (Zod/Pydantic/JSON Schema).
 - **DB:** migrations only (versioned, reversible); clear snake_case names; index WHERE/JOIN/ORDER columns; transactions for multi-step writes; **parameterise all queries**.
 - **Async/jobs:** **idempotent**; timeouts on every external call; dead-letter queues for failures.
@@ -527,15 +541,18 @@ SRP (one reason to change), OCP (open to extension, closed to modification), LSP
 - **Comment** every middleware (intercepts/modifies/failure), every non-trivial query, and every scheduled job (schedule, idempotency, overlap behaviour).
 
 ## 15. Version control
+
 - **One logical change per commit.** Message: `type(scope): description`. **Never commit secrets/.env** — enforce via `.gitignore` + hooks.
 - **Short-lived branches; PRs need a reviewer; PR descriptions say what + why and link the ticket.**
 
 ## 16. Configuration & environment
+
 - **No hardcoded environment-specific values** — env vars / config. Sensible defaults with clear overrides. Document every variable in `.env.example` (name, type, default, purpose, range).
 
 ---
 
 ## 17. Code review checklist
+
 Comments: Tier-1 header? Tier-2 docstrings? Tier-3 block comments? tags have tickets? comments fresh? contract comments at boundaries? business rules traced?
 Code: names clear? one responsibility? fully typed (no `any`)? nesting ≤ 3?
 Errors: caught, logged with context, surfaced? no empty catches?
@@ -550,40 +567,20 @@ Deps: justified, maintained, licence-OK, no HIGH/CRITICAL CVEs?
 ## 18. Non-negotiable rules (block a feature from closing)
 
 **Commenting & docs**
+
 1. Every file has a Tier-1 header.
 2. Every public function has a Tier-2 doc block.
 3. Every logical block has a Tier-3 comment.
 4. No comment tag without a ticket reference.
 5. Stale comments are bugs — update comments when you change code.
 
-**Code quality**
-6. No unnamed/abbreviated variables in production code.
-7. No function > 40 lines without justification.
-8. No empty catch/except blocks.
-9. No `any` / missing type hints on public interfaces.
-10. No commented-out code on the main branch.
-11. No `console.log`/`print` in production code — use a structured logger.
+**Code quality** 6. No unnamed/abbreviated variables in production code. 7. No function > 40 lines without justification. 8. No empty catch/except blocks. 9. No `any` / missing type hints on public interfaces. 10. No commented-out code on the main branch. 11. No `console.log`/`print` in production code — use a structured logger.
 
-**Audit & debug**
-12. No data mutation / payment / permission change without an audit record.
-13. Complex operations use the DebugTracer.
+**Audit & debug** 12. No data mutation / payment / permission change without an audit record. 13. Complex operations use the DebugTracer.
 
-**Security & compliance**
-14. No hardcoded secrets, URLs, or environment-specific values.
-15. All QA gates (RISK + COMPLIANCE lenses, or CI) pass before a feature closes.
-16. A Post-Run Findings Report is produced for every QA run.
-17. Zero unresolved HIGH/CRITICAL findings.
-18. Recurring findings at `TICKET_REQUIRED`+ have a linked ticket with root-cause analysis.
-19. `STOP_SHIP` (4th recurrence) blocks all releases until the systemic fix is verified.
-20. Authn/authz functions carry a `SECURITY_GATE` tag.
-21. Every trust boundary carries a `TRUST_BOUNDARY` tag with its validation method.
-22. Every PII/financial flow carries a `DATA_FLOW` tag with classification.
-23. Sensitive files (auth/payments/PII/integrations) carry a Security Review Block.
-24. No new dependency with a known HIGH/CRITICAL CVE without documented risk acceptance + remediation date.
+**Security & compliance** 14. No hardcoded secrets, URLs, or environment-specific values. 15. All QA gates (RISK + COMPLIANCE lenses, or CI) pass before a feature closes. 16. A Post-Run Findings Report is produced for every QA run. 17. Zero unresolved HIGH/CRITICAL findings. 18. Recurring findings at `TICKET_REQUIRED`+ have a linked ticket with root-cause analysis. 19. `STOP_SHIP` (4th recurrence) blocks all releases until the systemic fix is verified. 20. Authn/authz functions carry a `SECURITY_GATE` tag. 21. Every trust boundary carries a `TRUST_BOUNDARY` tag with its validation method. 22. Every PII/financial flow carries a `DATA_FLOW` tag with classification. 23. Sensitive files (auth/payments/PII/integrations) carry a Security Review Block. 24. No new dependency with a known HIGH/CRITICAL CVE without documented risk acceptance + remediation date.
 
-**Process**
-25. No untested public functions.
-26. Every feature links to a ticket and has a description.
+**Process** 25. No untested public functions. 26. Every feature links to a ticket and has a description.
 
 ---
 

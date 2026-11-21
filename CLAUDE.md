@@ -1,4 +1,5 @@
 <!-- brain-version: 4 -->
+
 # PlayPad — Project Brain
 
 > A colourful little hub of quick, playable browser mini-games.
@@ -7,7 +8,7 @@ PlayPad is a static, build-free web hub that presents a growing catalog of bite-
 
 > This file is **auto-loaded at the start of every Claude session**. It is the orchestrator: it tells you what to read, how to build, and how to keep itself current. Treat its protocols as standing instructions, not suggestions.
 
-**New here? 30-second orientation:** this project keeps its knowledge in `docs/` and builds every feature through a short loop (below). To start: read the four files in the next section, then follow "How we build every feature." All the depth — tiers, design, QA, the review panel — is pulled in *only when a feature needs it*; you don't have to learn it up front. **Project tier:** Standard (public open-source, MIT).
+**New here? 30-second orientation:** this project keeps its knowledge in `docs/` and builds every feature through a short loop (below). To start: read the four files in the next section, then follow "How we build every feature." All the depth — tiers, design, QA, the review panel — is pulled in _only when a feature needs it_; you don't have to learn it up front. **Project tier:** Standard (public open-source, MIT).
 
 ---
 
@@ -30,16 +31,18 @@ The full procedure is in `docs/WORKFLOW.md`. **Do not skip phases — the discip
 
 1. **REQUIREMENTS** — copy `features/_TEMPLATE/` to `features/<feature-name>/` (see `features/_EXAMPLE/` for a worked example) and fill `requirements.md`: acceptance criteria + business requirements + target personas + feature tier. The **Senior Tech Lead** does a quick feasibility check (advisory).
    - **1b — DESIGN (UI changes only):** small tweaks → a lite check against `docs/DESIGN-SYSTEM.md`; significant UI → **4 concrete HTML mockup options** in `features/<name>/mockups.html`, the **Design Roundtable** weighs them, and **you choose**. See `docs/WORKFLOW.md`.
-2. **TESTS** — fill `test-plan.md` and write the actual tests that encode "done". Tests come *before* the implementation is finished.
+2. **TESTS** — fill `test-plan.md` and write the actual tests that encode "done". Tests come _before_ the implementation is finished.
 3. **IMPLEMENT** — build until the tests pass, strictly following `docs/CODE_QUALITY.md`.
 4. **QA — recursive multi-lens panel.** Spawn a **panel of independent QA agents in parallel**, one per dimension:
+
    - **ACCURACY** — does it produce correct output? (calculations, edge cases, business rules)
    - **QUALITY** — does it meet `CODE_QUALITY.md`? (naming, comments, tests, complexity)
    - **COMPLIANCE** — audit trail, PII handling, required docs, the four-tier comment system
    - **RISK** — security: injection, authn/authz, secrets, input validation at trust boundaries
 
-   Hand each agent the `requirements.md`, `test-plan.md`, and the slice of `CODE_QUALITY.md` for its lens. Each returns classified findings (severity × dimension). **Merge + dedupe** them into `features/<feature-name>/qa-report.md` (the Post-Run Findings Report). If anything blocks (any CRITICAL/HIGH), **FIX and re-spawn the panel.** Loop until the report is clean. *The panel is the pipeline — no external CI is required.*
-5. **PRODUCT & UX VALIDATION.** After technical QA passes, prove the feature is *worth shipping*. Spawn — from `docs/PRODUCT-PANEL.md` — the **Senior PM** (does it meet the business requirement? → `PASS`/`NEEDS_REVISION`, loop until PASS), then the feature's **1–3 target personas** (do they complete their goal, is it worth it, would they return? — scoring **baseline / value / satisfaction**). Any baseline/value-blocking critical goes to a **round table** (PM + UX designer + the raising persona) → plan → fix (back to step 3) → re-validate. Record in `features/<feature-name>/product-validation.md`. **Gate:** baseline **and** value must be met (satisfaction is scored, not gated); the round table is capped at **3 rounds**, then escalates to you. *Personas reason from requirements + code + screenshots; if a preview is running, one driver captures it for them — no external tool is required.*
+   Hand each agent the `requirements.md`, `test-plan.md`, and the slice of `CODE_QUALITY.md` for its lens. Each returns classified findings (severity × dimension). **Merge + dedupe** them into `features/<feature-name>/qa-report.md` (the Post-Run Findings Report). If anything blocks (any CRITICAL/HIGH), **FIX and re-spawn the panel.** Loop until the report is clean. _The panel is the pipeline — no external CI is required._
+
+5. **PRODUCT & UX VALIDATION.** After technical QA passes, prove the feature is _worth shipping_. Spawn — from `docs/PRODUCT-PANEL.md` — the **Senior PM** (does it meet the business requirement? → `PASS`/`NEEDS_REVISION`, loop until PASS), then the feature's **1–3 target personas** (do they complete their goal, is it worth it, would they return? — scoring **baseline / value / satisfaction**). Any baseline/value-blocking critical goes to a **round table** (PM + UX designer + the raising persona) → plan → fix (back to step 3) → re-validate. Record in `features/<feature-name>/product-validation.md`. **Gate:** baseline **and** value must be met (satisfaction is scored, not gated); the round table is capped at **3 rounds**, then escalates to you. _Personas reason from requirements + code + screenshots; if a preview is running, one driver captures it for them — no external tool is required._
 6. **CAPTURE** — record what you learned and update the brain (next section).
 
 ---
@@ -87,7 +90,7 @@ After any meaningful change, **before you finish**:
 
 **Stack:** Vanilla HTML/CSS/JS, no build step (static; runs from file:// or any static host)
 
-The canonical commands live in `docs/CONVENTIONS.md` → *Dev commands* (Phase 4 QA runs them). Quick reference:
+The canonical commands live in `docs/CONVENTIONS.md` → _Dev commands_ (Phase 4 QA runs them). Quick reference:
 
 - **Run the app:** open `index.html` directly, or `python -m http.server 5500` → http://localhost:5500/ (preview config: `.claude/launch.json` → `playpad`).
 - **Deploy:** merge to `main` → Cloudflare Pages deploys automatically. Manual fallback: `git pull`, then `tools\build-dist.ps1` → upload `dist/`.

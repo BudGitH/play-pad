@@ -1,12 +1,12 @@
 # Feature: <feature name>
 
-> **Phase 1 of the workflow.** Define what "done" means *before* writing code. A QA agent will hold the implementation to these criteria — vague requirements produce vague QA.
+> **Phase 1 of the workflow.** Define what "done" means _before_ writing code. A QA agent will hold the implementation to these criteria — vague requirements produce vague QA.
 
 **Status:** DRAFT
 **Owner:** @BudGitH
-**Ticket:** PLAY-___
+**Ticket:** PLAY-_\_\_
 **Created:** 2026-11-21
-**Feature tier:** Standard _(defaults to the project tier; may be raised for this feature; lowering needs a one-line note in `docs/DECISIONS.md`)_
+**Feature tier:** Standard _(defaults to the project tier; may be raised for this feature; lowering needs a one-line note in `docs/DECISIONS.md`)\_
 
 ---
 
@@ -33,12 +33,14 @@
 - **High satisfaction (scored, not gated):** _what would make them love it / keep coming back._
 
 ## Design routing
+
 > Decides whether the design step (Phase 1b) runs. Skip for non-UI features. **UI surface?** (does the user see/interact with anything new) × **reuse-only?** (built entirely from existing `DESIGN-SYSTEM.md` tokens/components) × **tier** → path.
 
 - UI surface? **_yes/no_** · Reuse-only? **_yes/no_** · Tier **_..._** → **Path: _none / lite / full_**
 - **Crosses FE/BE seam?** **_yes/no_** — _if yes: `docs/API-CONTRACT.md` rows updated (link them). If the project has no contract file yet, create it first from the skeleton in `docs/ARCHITECTURE.md` → Boundaries & contracts — the seam gets a contract before it gets acceptance criteria._
 
 ## Design review
+
 > **Lite path:** record the quick check here. **Full path:** see `features/<name>/design-review.md`. **None:** "n/a — no UI surface".
 
 - _Checked against `DESIGN-SYSTEM.md`: … · Human OK: …_
@@ -73,6 +75,7 @@ _What does the user see/do? Describe the happy path in plain language._
 - **Quality:** _performance budget, complexity limits beyond the standard._
 
 ## Tech Lead feasibility
+
 > Phase-1 exit check (advisory by default). **Blocks only if:** the requirement is impossible/contradictory, the approach is one Phase-4 RISK would certainly fail, or it conflicts with `docs/ARCHITECTURE.md`. Prototype tier → a one-line note, never blocks.
 
 - **Verdict:** _PROCEED / PROCEED_WITH_NOTES / FEASIBILITY_BLOCK_ — _notes / effort flag._

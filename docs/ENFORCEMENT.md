@@ -1,8 +1,9 @@
 # PlayPad — Enforcement Ledger
 
-> **The principle:** every rule a machine can check moves out of prose and into config. Prose standards decay silently — a rule on line 554 of a long document quietly stops applying around session 12, and nobody can say when the discipline broke because there was never a moment it visibly broke. A lint rule cannot silently die: it fails in two seconds, with a file and line, and the commit doesn't happen. `docs/CODE_QUALITY.md` remains authoritative for **judgement** rules (naming quality, whether an abstraction is justified, whether a comment explains *why*); this ledger tracks the **mechanically checkable** subset and whether each is actually wired to a tool.
+> **The principle:** every rule a machine can check moves out of prose and into config. Prose standards decay silently — a rule on line 554 of a long document quietly stops applying around session 12, and nobody can say when the discipline broke because there was never a moment it visibly broke. A lint rule cannot silently die: it fails in two seconds, with a file and line, and the commit doesn't happen. `docs/CODE_QUALITY.md` remains authoritative for **judgement** rules (naming quality, whether an abstraction is justified, whether a comment explains _why_); this ledger tracks the **mechanically checkable** subset and whether each is actually wired to a tool.
 >
 > **Status semantics (exactly three):**
+>
 > - `ENFORCED` — a tool checks it automatically; the config file + rule name are recorded. QA does **not** re-review these by eye — it runs the tool and pastes output.
 > - `NOT_CONFIGURED` — checkable in principle, no tool wired yet. QA static-reviews it AND raises one standing `MEDIUM` finding per run ("checkable but unenforced") so the gap surfaces through `docs/findings-ledger.md` and escalates like any recurring finding: 2nd recurrence forces a ticket. The ledger closes its own gaps through the existing machinery.
 > - `N/A` — doesn't apply to this stack (e.g. `no-explicit-any` in a Python-only project).
@@ -17,34 +18,34 @@
 
 ## Rule → check mapping
 
-The rule numbers refer to `docs/CODE_QUALITY.md` §18 (non-negotiables) and its sections. Fill the *Tool / config* column per stack when generating; typical carriers are noted as hints, not requirements.
+The rule numbers refer to `docs/CODE_QUALITY.md` §18 (non-negotiables) and its sections. Fill the _Tool / config_ column per stack when generating; typical carriers are noted as hints, not requirements.
 
-| # | Rule (mechanically checkable) | Typical carrier | Tool / config (this project) | Status |
-|---|---|---|---|---|
-| 9 | No `any` / missing type hints on public interfaces | TS `no-explicit-any` / mypy strict | — (vanilla JS, no types) | N/A |
-| 11 | No `console.log` / `print` in production code | lint `no-console` / flake8 T201 | `eslint.config.mjs` `no-console` (error; warn/error allowed) — standalone `.js` only | ENFORCED |
-| 8 | No empty catch/except blocks | lint `no-empty` / B110 | `eslint.config.mjs` `no-empty` (error) — standalone `.js` only | ENFORCED |
-| 7 | No function > 40 lines without justification | lint `max-lines-per-function` | `eslint.config.mjs` (warn — legacy games pre-date it) | ENFORCED (warn) |
-| §10 | Nesting ≤ 3 levels | lint `max-depth` / complexity | `eslint.config.mjs` `max-depth` (warn) | ENFORCED (warn) |
-| 10 | No commented-out code on main | lint plugin / review grep | review only | NOT_CONFIGURED |
-| 14 | No hardcoded secrets | pre-commit secret scan (value-shaped pattern from SKILL Step 5.4) | `tools/secret-scan.mjs` via `.githooks/pre-commit` + CI | ENFORCED |
-| 25 | No untested public functions | coverage threshold on changed files | no test harness yet | NOT_CONFIGURED |
-| 24 | No new dep with HIGH/CRITICAL CVE (undocumented) | `npm audit` / `pip-audit` in hook or CI | `npm audit --audit-level=high` in CI (dev deps only) | ENFORCED |
-| §15 | Commit message format `type(scope): desc` | commit-msg hook / commitlint | squash-merge title reviewed in PR | NOT_CONFIGURED |
-| §15 | Never commit `.env` / secrets files | `.gitignore` + pre-commit path check | `.gitignore` (`.env*`, `*.pem`, `*.key`) | ENFORCED |
-| §12 | Type-strictness baseline (`strict: true` or equivalent) | tsconfig / mypy config | — (vanilla JS) | N/A |
+| #   | Rule (mechanically checkable)                           | Typical carrier                                                   | Tool / config (this project)                                                               | Status          |
+| --- | ------------------------------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------ | --------------- |
+| 9   | No `any` / missing type hints on public interfaces      | TS `no-explicit-any` / mypy strict                                | — (vanilla JS, no types)                                                                   | N/A             |
+| 11  | No `console.log` / `print` in production code           | lint `no-console` / flake8 T201                                   | `eslint.config.mjs` `no-console` (error; warn/error allowed) — `.js` + inline HTML scripts | ENFORCED        |
+| 8   | No empty catch/except blocks                            | lint `no-empty` / B110                                            | `eslint.config.mjs` `no-empty` (error) — `.js` + inline HTML scripts                       | ENFORCED        |
+| 7   | No function > 40 lines without justification            | lint `max-lines-per-function`                                     | `eslint.config.mjs` (warn — legacy games pre-date it)                                      | ENFORCED (warn) |
+| §10 | Nesting ≤ 3 levels                                      | lint `max-depth` / complexity                                     | `eslint.config.mjs` `max-depth` (warn)                                                     | ENFORCED (warn) |
+| 10  | No commented-out code on main                           | lint plugin / review grep                                         | review only                                                                                | NOT_CONFIGURED  |
+| 14  | No hardcoded secrets                                    | pre-commit secret scan (value-shaped pattern from SKILL Step 5.4) | `tools/secret-scan.mjs` via `.githooks/pre-commit` + CI                                    | ENFORCED        |
+| 25  | No untested public functions                            | coverage threshold on changed files                               | no test harness yet                                                                        | NOT_CONFIGURED  |
+| 24  | No new dep with HIGH/CRITICAL CVE (undocumented)        | `npm audit` / `pip-audit` in hook or CI                           | `npm audit --audit-level=high` in CI (dev deps only)                                       | ENFORCED        |
+| §15 | Commit message format `type(scope): desc`               | commit-msg hook / commitlint                                      | squash-merge title reviewed in PR                                                          | NOT_CONFIGURED  |
+| §15 | Never commit `.env` / secrets files                     | `.gitignore` + pre-commit path check                              | `.gitignore` (`.env*`, `*.pem`, `*.key`)                                                   | ENFORCED        |
+| §12 | Type-strictness baseline (`strict: true` or equivalent) | tsconfig / mypy config                                            | — (vanilla JS)                                                                             | N/A             |
 
-*Add rows when `CODE_QUALITY.md` gains a checkable rule; delete nothing — flip to `N/A` instead, so the decision is visible.*
+_Add rows when `CODE_QUALITY.md` gains a checkable rule; delete nothing — flip to `N/A` instead, so the decision is visible._
 
 ## Generated artifacts (fill as they're created)
 
-| Artifact | Path | Created | Notes |
-|---|---|---|---|
-| Linter config | `eslint.config.mjs` | 2026-11-21 | Lints standalone `.js`; inline `<script>` in game HTML not yet covered (gap — see IDEAS) |
-| Formatter config | `.prettierrc.json`, `.prettierignore` | 2026-11-21 | `npm run format` available; NOT gated in CI until a one-off repo-wide format PR lands |
-| Type config | — | — | N/A (vanilla JS) |
-| Pre-commit hook | `.githooks/pre-commit` (enable: `git config core.hooksPath .githooks`) | 2026-11-21 | Documented bypass: `--no-verify` is legitimate ONLY via the emergency lane in `docs/PR-STANDARD.md` §5 |
-| CI workflow | `.github/workflows/ci.yml` | 2026-11-21 | Requested by owner at Standard tier for public PRs: secret scan + lint + audit. Fork-safe (`pull_request`, read-only, no secrets) |
+| Artifact         | Path                                                                   | Created    | Notes                                                                                                                             |
+| ---------------- | ---------------------------------------------------------------------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| Linter config    | `eslint.config.mjs`                                                    | 2026-11-21 | Lints `.js` + inline HTML `<script>` (eslint-plugin-html); `no-unused-vars` warn until legacy cleanup                             |
+| Formatter config | `.prettierrc.json`, `.prettierignore`                                  | 2026-11-21 | Repo formatted once; `format:check` gated via `npm run check`                                                                     |
+| Type config      | —                                                                      | —          | N/A (vanilla JS)                                                                                                                  |
+| Pre-commit hook  | `.githooks/pre-commit` (enable: `git config core.hooksPath .githooks`) | 2026-11-21 | Documented bypass: `--no-verify` is legitimate ONLY via the emergency lane in `docs/PR-STANDARD.md` §5                            |
+| CI workflow      | `.github/workflows/ci.yml`                                             | 2026-11-21 | Requested by owner at Standard tier for public PRs: secret scan + lint + audit. Fork-safe (`pull_request`, read-only, no secrets) |
 
 ## The QA contract (what Phase 4's QUALITY lens does with this file)
 
@@ -54,4 +55,5 @@ The rule numbers refer to `docs/CODE_QUALITY.md` §18 (non-negotiables) and its 
 4. If a tool errors at startup → `UNAVAILABLE`, static review + a MEDIUM finding (same rule as dev commands in WORKFLOW Phase 4). **A missing tool never blocks a feature** — only a real failed check does.
 
 ---
+
 _Health check (every ~5 features, Standard+): no row should sit `NOT_CONFIGURED` for 5+ features once the stack is known. Last reviewed: 2026-11-21 by @BudGitH._

@@ -1,20 +1,20 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="mobile-web-app-capable" content="yes" />
-  <title>Super Decoder — PlayPad</title>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <title>Super Decoder — PlayPad</title>
 
-  <link rel="icon" href="../../icons/favicon.svg" type="image/svg+xml" />
-  <meta name="theme-color" content="#08080c" />
+    <link rel="icon" href="../../icons/favicon.svg" type="image/svg+xml" />
+    <meta name="theme-color" content="#08080c" />
 
-  <!-- Shared PlayPad design system -->
-  <link rel="stylesheet" href="../../styles/tokens.css" />
-  <link rel="stylesheet" href="../../styles/base.css" />
+    <!-- Shared PlayPad design system -->
+    <link rel="stylesheet" href="../../styles/tokens.css" />
+    <link rel="stylesheet" href="../../styles/base.css" />
 
-  <!--
+    <!--
     Super Decoder — a solo Mastermind-style code-breaking game (PlayPad game #4, PLAY-004).
     Self-contained, build-free. The player cracks a hidden 4-peg colour code in up to 10 guesses,
     with classic two-pass feedback pegs (black = right colour + position, white = right colour
@@ -31,1259 +31,1993 @@
        call sites (LEARNINGS rev2 row 13) — quit-mid-feedback can't leak orphan timers
      - the beep() Web Audio helper (LEARNINGS row 3 — drive timing from JS, not animationend)
   -->
-  <style>
-    /* Local decorative tokens — the three peg-colour palettes. The 6×3 hex values below are the
+    <style>
+      /* Local decorative tokens — the three peg-colour palettes. The 6×3 hex values below are the
        ONLY raw colour values in this file (every other surface uses tokens), so the palettes are
        inspectable in one place and recolour-able theme-by-theme. */
-    :root {
-      --sd-accent: var(--md-sys-color-primary);
-      --sd-row-h: clamp(46px, 8vw, 64px);
-      --sd-slot: clamp(34px, 7vw, 48px);
-      --sd-fb: clamp(10px, 2vw, 13px);
-      --sd-palette-h: clamp(64px, 12vw, 84px);
-    }
+      :root {
+        --sd-accent: var(--md-sys-color-primary);
+        --sd-row-h: clamp(46px, 8vw, 64px);
+        --sd-slot: clamp(34px, 7vw, 48px);
+        --sd-fb: clamp(10px, 2vw, 13px);
+        --sd-palette-h: clamp(64px, 12vw, 84px);
+      }
 
-    /* ---- App shell (full-screen immersive game) — reused from Claw Catch ---- */
-    html, body { margin: 0; height: 100%; width: 100%; }
-    body {
-      position: fixed; inset: 0; overflow: hidden;
-      background: var(--md-sys-color-surface);
-      color: var(--md-sys-color-on-surface);
-      -webkit-user-select: none; user-select: none;
-      overscroll-behavior: none; touch-action: manipulation;
-    }
-    .screen { position: absolute; inset: 0; display: none; }
-    .screen.active { display: block; }
-    #game.active {
-      display: flex; flex-direction: column;
-      background: var(--md-sys-color-surface);
-    }
-    #setup, #results {
-      overflow-y: auto; -webkit-overflow-scrolling: touch;
-      background: var(--md-sys-color-surface);
-    }
+      /* ---- App shell (full-screen immersive game) — reused from Claw Catch ---- */
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        width: 100%;
+      }
+      body {
+        position: fixed;
+        inset: 0;
+        overflow: hidden;
+        background: var(--md-sys-color-surface);
+        color: var(--md-sys-color-on-surface);
+        -webkit-user-select: none;
+        user-select: none;
+        overscroll-behavior: none;
+        touch-action: manipulation;
+      }
+      .screen {
+        position: absolute;
+        inset: 0;
+        display: none;
+      }
+      .screen.active {
+        display: block;
+      }
+      #game.active {
+        display: flex;
+        flex-direction: column;
+        background: var(--md-sys-color-surface);
+      }
+      #setup,
+      #results {
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        background: var(--md-sys-color-surface);
+      }
 
-    .back-link {
-      display: inline-flex; align-items: center; gap: 6px;
-      color: var(--md-sys-color-on-surface-variant);
-      padding: 8px 12px 8px 4px; margin: 0 0 6px -4px;
-      border-radius: var(--md-sys-shape-corner-full);
-      font-size: var(--md-sys-typescale-label-large-size);
-      font-weight: var(--md-sys-typescale-label-large-weight);
-    }
-    .back-link:hover { color: var(--md-sys-color-on-surface); }
+      .back-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--md-sys-color-on-surface-variant);
+        padding: 8px 12px 8px 4px;
+        margin: 0 0 6px -4px;
+        border-radius: var(--md-sys-shape-corner-full);
+        font-size: var(--md-sys-typescale-label-large-size);
+        font-weight: var(--md-sys-typescale-label-large-weight);
+      }
+      .back-link:hover {
+        color: var(--md-sys-color-on-surface);
+      }
 
-    /* ---------- SETUP (chrome cloned from Claw Catch) ---------- */
-    .setup-inner { max-width: 560px; margin: 0 auto; padding: max(20px, env(safe-area-inset-top)) 22px 48px; }
-    .brand { margin: 2px 0 6px; }
-    .brand h1 { margin: 0; }
-    .tagline { color: var(--md-sys-color-on-surface-variant); margin: 0 0 26px; max-width: 48ch; }
-    .tagline em { color: var(--md-sys-color-on-surface); font-style: normal; font-weight: 600; }
+      /* ---------- SETUP (chrome cloned from Claw Catch) ---------- */
+      .setup-inner {
+        max-width: 560px;
+        margin: 0 auto;
+        padding: max(20px, env(safe-area-inset-top)) 22px 48px;
+      }
+      .brand {
+        margin: 2px 0 6px;
+      }
+      .brand h1 {
+        margin: 0;
+      }
+      .tagline {
+        color: var(--md-sys-color-on-surface-variant);
+        margin: 0 0 26px;
+        max-width: 48ch;
+      }
+      .tagline em {
+        color: var(--md-sys-color-on-surface);
+        font-style: normal;
+        font-weight: 600;
+      }
 
-    .block { margin-bottom: 26px; }
-    .block > .label {
-      display: flex; justify-content: space-between; align-items: baseline;
-      text-transform: uppercase; color: var(--md-sys-color-on-surface-variant);
-      margin: 0 2px 12px;
-      font-size: var(--md-sys-typescale-label-medium-size);
-      font-weight: var(--md-sys-typescale-label-medium-weight);
-      letter-spacing: var(--md-sys-typescale-label-medium-tracking);
-    }
-    .label .hint { text-transform: none; letter-spacing: 0; font-weight: 500; }
+      .block {
+        margin-bottom: 26px;
+      }
+      .block > .label {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        text-transform: uppercase;
+        color: var(--md-sys-color-on-surface-variant);
+        margin: 0 2px 12px;
+        font-size: var(--md-sys-typescale-label-medium-size);
+        font-weight: var(--md-sys-typescale-label-medium-weight);
+        letter-spacing: var(--md-sys-typescale-label-medium-tracking);
+      }
+      .label .hint {
+        text-transform: none;
+        letter-spacing: 0;
+        font-weight: 500;
+      }
 
-    .chips { display: flex; gap: 10px; flex-wrap: wrap; }
-    .sel-chip {
-      position: relative; flex: 1 1 0; min-width: 62px; padding: 14px 8px;
-      border-radius: var(--md-sys-shape-corner-md);
-      background: var(--md-sys-color-surface-container);
-      border: 1.5px solid var(--md-sys-color-outline-variant);
-      color: var(--md-sys-color-on-surface);
-      font-size: 16px; font-weight: 600; text-align: center;
-      transition: transform var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-emphasized),
-                  border-color var(--md-sys-motion-duration-short3),
-                  background var(--md-sys-motion-duration-short3);
-    }
-    .sel-chip small { display: block; font-size: 11px; font-weight: 500; color: var(--md-sys-color-on-surface-variant); margin-top: 2px; }
-    .sel-chip[aria-pressed="true"] {
-      border-color: var(--md-sys-color-primary);
-      background: var(--md-sys-color-secondary-container);
-      color: var(--md-sys-color-on-secondary-container);
-    }
-    .sel-chip[aria-pressed="true"] small { color: var(--md-sys-color-on-secondary-container); }
-    .sel-chip:active { transform: scale(0.96); }
-    .sel-chip:focus-visible { outline: 3px solid var(--md-sys-color-primary); outline-offset: 2px; }
+      .chips {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .sel-chip {
+        position: relative;
+        flex: 1 1 0;
+        min-width: 62px;
+        padding: 14px 8px;
+        border-radius: var(--md-sys-shape-corner-md);
+        background: var(--md-sys-color-surface-container);
+        border: 1.5px solid var(--md-sys-color-outline-variant);
+        color: var(--md-sys-color-on-surface);
+        font-size: 16px;
+        font-weight: 600;
+        text-align: center;
+        transition:
+          transform var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-emphasized),
+          border-color var(--md-sys-motion-duration-short3),
+          background var(--md-sys-motion-duration-short3);
+      }
+      .sel-chip small {
+        display: block;
+        font-size: 11px;
+        font-weight: 500;
+        color: var(--md-sys-color-on-surface-variant);
+        margin-top: 2px;
+      }
+      .sel-chip[aria-pressed="true"] {
+        border-color: var(--md-sys-color-primary);
+        background: var(--md-sys-color-secondary-container);
+        color: var(--md-sys-color-on-secondary-container);
+      }
+      .sel-chip[aria-pressed="true"] small {
+        color: var(--md-sys-color-on-secondary-container);
+      }
+      .sel-chip:active {
+        transform: scale(0.96);
+      }
+      .sel-chip:focus-visible {
+        outline: 3px solid var(--md-sys-color-primary);
+        outline-offset: 2px;
+      }
 
-    /* Theme picker — three palettes side by side; the preview is a 6-dot strip of the actual
+      /* Theme picker — three palettes side by side; the preview is a 6-dot strip of the actual
        colours so the player sees what they're picking. */
-    .theme-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-    .theme-card {
-      display: flex; flex-direction: column; align-items: center; gap: 8px;
-      padding: 14px 8px 12px;
-      border-radius: var(--md-sys-shape-corner-lg);
-      background: var(--md-sys-color-surface-container);
-      border: 1.5px solid var(--md-sys-color-outline-variant);
-      color: var(--md-sys-color-on-surface);
-      transition: transform var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-emphasized),
-                  border-color var(--md-sys-motion-duration-short3),
-                  background var(--md-sys-motion-duration-short3);
-    }
-    .theme-card .preview {
-      width: 100%; max-width: 88px; aspect-ratio: 3 / 4;
-      border-radius: var(--md-sys-shape-corner-md);
-      display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; padding: 8px;
-      box-shadow: var(--md-sys-elevation-level1);
-      background: var(--md-sys-color-surface-container-highest);
-    }
-    .theme-card .preview span { display: block; aspect-ratio: 1; border-radius: 50%; box-shadow: inset 0 -2px 4px rgba(0,0,0,0.25), inset 0 2px 3px rgba(255,255,255,0.35); }
-    .theme-card .tname { font-size: 14px; font-weight: 700; }
-    .theme-card:active { transform: scale(0.96); }
-    .theme-card[aria-pressed="true"] {
-      border-color: var(--md-sys-color-primary);
-      background: var(--md-sys-color-secondary-container);
-      color: var(--md-sys-color-on-secondary-container);
-    }
-    .theme-card:focus-visible { outline: 3px solid var(--md-sys-color-primary); outline-offset: 2px; }
+      .theme-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+      }
+      .theme-card {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        padding: 14px 8px 12px;
+        border-radius: var(--md-sys-shape-corner-lg);
+        background: var(--md-sys-color-surface-container);
+        border: 1.5px solid var(--md-sys-color-outline-variant);
+        color: var(--md-sys-color-on-surface);
+        transition:
+          transform var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-emphasized),
+          border-color var(--md-sys-motion-duration-short3),
+          background var(--md-sys-motion-duration-short3);
+      }
+      .theme-card .preview {
+        width: 100%;
+        max-width: 88px;
+        aspect-ratio: 3 / 4;
+        border-radius: var(--md-sys-shape-corner-md);
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 6px;
+        padding: 8px;
+        box-shadow: var(--md-sys-elevation-level1);
+        background: var(--md-sys-color-surface-container-highest);
+      }
+      .theme-card .preview span {
+        display: block;
+        aspect-ratio: 1;
+        border-radius: 50%;
+        box-shadow:
+          inset 0 -2px 4px rgba(0, 0, 0, 0.25),
+          inset 0 2px 3px rgba(255, 255, 255, 0.35);
+      }
+      .theme-card .tname {
+        font-size: 14px;
+        font-weight: 700;
+      }
+      .theme-card:active {
+        transform: scale(0.96);
+      }
+      .theme-card[aria-pressed="true"] {
+        border-color: var(--md-sys-color-primary);
+        background: var(--md-sys-color-secondary-container);
+        color: var(--md-sys-color-on-secondary-container);
+      }
+      .theme-card:focus-visible {
+        outline: 3px solid var(--md-sys-color-primary);
+        outline-offset: 2px;
+      }
 
-    /* Sound toggle (MD3 switch) — reused */
-    .toggle-row {
-      display: flex; align-items: center; justify-content: space-between;
-      background: var(--md-sys-color-surface-container);
-      border: 1.5px solid var(--md-sys-color-outline-variant);
-      border-radius: var(--md-sys-shape-corner-md); padding: 14px 16px;
-    }
-    .toggle-row .t-label { font-size: 15px; font-weight: 600; }
-    .toggle-row .t-sub { font-size: 12px; color: var(--md-sys-color-on-surface-variant); margin-top: 2px; }
-    .switch {
-      width: 52px; height: 32px; border-radius: var(--md-sys-shape-corner-full);
-      background: var(--md-sys-color-surface-container-highest);
-      border: 2px solid var(--md-sys-color-outline);
-      position: relative; flex: none;
-      transition: background var(--md-sys-motion-duration-short3), border-color var(--md-sys-motion-duration-short3);
-    }
-    .switch::after {
-      content: ""; position: absolute; top: 6px; left: 6px;
-      width: 16px; height: 16px; border-radius: 50%;
-      background: var(--md-sys-color-outline);
-      transition: transform var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-emphasized),
-                  width var(--md-sys-motion-duration-short4), height var(--md-sys-motion-duration-short4),
-                  top var(--md-sys-motion-duration-short4), left var(--md-sys-motion-duration-short4),
-                  background var(--md-sys-motion-duration-short4);
-    }
-    .switch[aria-pressed="true"] { background: var(--md-sys-color-primary); border-color: var(--md-sys-color-primary); }
-    .switch[aria-pressed="true"]::after { top: 3px; left: 3px; width: 24px; height: 24px; background: var(--md-sys-color-on-primary); transform: translateX(20px); }
+      /* Sound toggle (MD3 switch) — reused */
+      .toggle-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: var(--md-sys-color-surface-container);
+        border: 1.5px solid var(--md-sys-color-outline-variant);
+        border-radius: var(--md-sys-shape-corner-md);
+        padding: 14px 16px;
+      }
+      .toggle-row .t-label {
+        font-size: 15px;
+        font-weight: 600;
+      }
+      .toggle-row .t-sub {
+        font-size: 12px;
+        color: var(--md-sys-color-on-surface-variant);
+        margin-top: 2px;
+      }
+      .switch {
+        width: 52px;
+        height: 32px;
+        border-radius: var(--md-sys-shape-corner-full);
+        background: var(--md-sys-color-surface-container-highest);
+        border: 2px solid var(--md-sys-color-outline);
+        position: relative;
+        flex: none;
+        transition:
+          background var(--md-sys-motion-duration-short3),
+          border-color var(--md-sys-motion-duration-short3);
+      }
+      .switch::after {
+        content: "";
+        position: absolute;
+        top: 6px;
+        left: 6px;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: var(--md-sys-color-outline);
+        transition:
+          transform var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-emphasized),
+          width var(--md-sys-motion-duration-short4),
+          height var(--md-sys-motion-duration-short4),
+          top var(--md-sys-motion-duration-short4),
+          left var(--md-sys-motion-duration-short4),
+          background var(--md-sys-motion-duration-short4);
+      }
+      .switch[aria-pressed="true"] {
+        background: var(--md-sys-color-primary);
+        border-color: var(--md-sys-color-primary);
+      }
+      .switch[aria-pressed="true"]::after {
+        top: 3px;
+        left: 3px;
+        width: 24px;
+        height: 24px;
+        background: var(--md-sys-color-on-primary);
+        transform: translateX(20px);
+      }
 
-    /* Start button — reused */
-    .start-btn {
-      width: 100%; padding: 18px; border: 0; margin-top: 8px;
-      border-radius: var(--md-sys-shape-corner-full);
-      font-size: 18px; font-weight: 700; letter-spacing: 0.01em;
-      color: var(--md-sys-color-on-primary); background: var(--md-sys-color-primary);
-      box-shadow: var(--md-sys-elevation-level1);
-      transition: transform var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-emphasized),
-                  opacity var(--md-sys-motion-duration-short3), box-shadow var(--md-sys-motion-duration-short3);
-    }
-    .start-btn:active { transform: scale(0.98); }
-    .start-note { text-align: center; color: var(--md-sys-color-on-surface-variant); font-size: 12.5px; margin-top: 12px; line-height: 1.5; }
+      /* Start button — reused */
+      .start-btn {
+        width: 100%;
+        padding: 18px;
+        border: 0;
+        margin-top: 8px;
+        border-radius: var(--md-sys-shape-corner-full);
+        font-size: 18px;
+        font-weight: 700;
+        letter-spacing: 0.01em;
+        color: var(--md-sys-color-on-primary);
+        background: var(--md-sys-color-primary);
+        box-shadow: var(--md-sys-elevation-level1);
+        transition:
+          transform var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-emphasized),
+          opacity var(--md-sys-motion-duration-short3),
+          box-shadow var(--md-sys-motion-duration-short3);
+      }
+      .start-btn:active {
+        transform: scale(0.98);
+      }
+      .start-note {
+        text-align: center;
+        color: var(--md-sys-color-on-surface-variant);
+        font-size: 12.5px;
+        margin-top: 12px;
+        line-height: 1.5;
+      }
 
-    /* ============================================================
+      /* ============================================================
         GAME — board + palette deck
        ============================================================ */
-    #stage {
-      position: relative; flex: 1 1 auto; min-height: 0;
-      display: flex; flex-direction: column;
-      background: var(--md-sys-color-surface);
-    }
+      #stage {
+        position: relative;
+        flex: 1 1 auto;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        background: var(--md-sys-color-surface);
+      }
 
-    /* HUD pill — clock-style strip with code progress + score + streak + quit. */
-    #hud {
-      position: relative;
-      display: flex; align-items: center; gap: 6px;
-      margin: max(8px, env(safe-area-inset-top)) auto 4px;
-      padding: 4px 6px 4px 14px; border-radius: var(--md-sys-shape-corner-full);
-      background: var(--md-sys-color-surface-container-high);
-      color: var(--md-sys-color-on-surface);
-      box-shadow: var(--md-sys-elevation-level1);
-      max-width: calc(100% - 20px);
-    }
-    #hudCode { font-size: 14px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
-    #hudAttempts, #hudScore, #hudStreak { font-size: 12.5px; opacity: 0.85; font-variant-numeric: tabular-nums; }
-    #hudAttempts b, #hudScore b, #hudStreak b { font-weight: 800; opacity: 1; }
-    #hud .sep { width: 1px; height: 14px; background: var(--md-sys-color-outline-variant); margin: 0 2px; }
+      /* HUD pill — clock-style strip with code progress + score + streak + quit. */
+      #hud {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin: max(8px, env(safe-area-inset-top)) auto 4px;
+        padding: 4px 6px 4px 14px;
+        border-radius: var(--md-sys-shape-corner-full);
+        background: var(--md-sys-color-surface-container-high);
+        color: var(--md-sys-color-on-surface);
+        box-shadow: var(--md-sys-elevation-level1);
+        max-width: calc(100% - 20px);
+      }
+      #hudCode {
+        font-size: 14px;
+        font-weight: 800;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: 0.02em;
+      }
+      #hudAttempts,
+      #hudScore,
+      #hudStreak {
+        font-size: 12.5px;
+        opacity: 0.85;
+        font-variant-numeric: tabular-nums;
+      }
+      #hudAttempts b,
+      #hudScore b,
+      #hudStreak b {
+        font-weight: 800;
+        opacity: 1;
+      }
+      #hud .sep {
+        width: 1px;
+        height: 14px;
+        background: var(--md-sys-color-outline-variant);
+        margin: 0 2px;
+      }
 
-    /* 48px hit targets (WCAG 2.5.8) with a 36px visual circle — copied verbatim from Claw Catch
+      /* 48px hit targets (WCAG 2.5.8) with a 36px visual circle — copied verbatim from Claw Catch
        per LEARNINGS row 12 (load-bearing block). */
-    #quitBtn {
-      flex: none; position: relative; width: 48px; height: 48px; border: 0;
-      background: transparent; color: var(--md-sys-color-on-surface); font-size: 17px; line-height: 1;
-      display: grid; place-items: center; border-radius: 50%;
-    }
-    #quitBtn::before { content: ""; position: absolute; width: 36px; height: 36px; border-radius: 50%; background: var(--md-sys-color-surface-container-highest); z-index: -1; }
-    #quitBtn:focus-visible { outline: 3px solid var(--md-sys-color-primary); outline-offset: 2px; }
+      #quitBtn {
+        flex: none;
+        position: relative;
+        width: 48px;
+        height: 48px;
+        border: 0;
+        background: transparent;
+        color: var(--md-sys-color-on-surface);
+        font-size: 17px;
+        line-height: 1;
+        display: grid;
+        place-items: center;
+        border-radius: 50%;
+      }
+      #quitBtn::before {
+        content: "";
+        position: absolute;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: var(--md-sys-color-surface-container-highest);
+        z-index: -1;
+      }
+      #quitBtn:focus-visible {
+        outline: 3px solid var(--md-sys-color-primary);
+        outline-offset: 2px;
+      }
 
-    /* Banner (between codes) — shows the secret + outcome before the next code begins. */
-    #banner {
-      position: absolute; left: 50%; top: 56px; transform: translateX(-50%);
-      max-width: calc(100% - 24px);
-      padding: 12px 16px; border-radius: var(--md-sys-shape-corner-lg);
-      background: var(--md-sys-color-surface-container-highest);
-      border: 1.5px solid var(--md-sys-color-outline-variant);
-      color: var(--md-sys-color-on-surface);
-      box-shadow: var(--md-sys-elevation-level2);
-      z-index: 50; display: none; text-align: center;
-    }
-    #banner.show { display: block; }
-    #banner.win  { border-color: var(--md-sys-color-primary); background: var(--md-sys-color-secondary-container); color: var(--md-sys-color-on-secondary-container); }
-    #banner.lose { border-color: var(--md-sys-color-outline); }
-    #banner .bTitle { font-weight: 800; font-size: 15px; margin-bottom: 6px; }
-    #banner .bCode { display: inline-flex; gap: 8px; align-items: center; justify-content: center; }
-    #banner .bPeg { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; box-shadow: inset 0 -3px 5px rgba(0,0,0,0.30), inset 0 2px 3px rgba(255,255,255,0.4); }
+      /* Banner (between codes) — shows the secret + outcome before the next code begins. */
+      #banner {
+        position: absolute;
+        left: 50%;
+        top: 56px;
+        transform: translateX(-50%);
+        max-width: calc(100% - 24px);
+        padding: 12px 16px;
+        border-radius: var(--md-sys-shape-corner-lg);
+        background: var(--md-sys-color-surface-container-highest);
+        border: 1.5px solid var(--md-sys-color-outline-variant);
+        color: var(--md-sys-color-on-surface);
+        box-shadow: var(--md-sys-elevation-level2);
+        z-index: 50;
+        display: none;
+        text-align: center;
+      }
+      #banner.show {
+        display: block;
+      }
+      #banner.win {
+        border-color: var(--md-sys-color-primary);
+        background: var(--md-sys-color-secondary-container);
+        color: var(--md-sys-color-on-secondary-container);
+      }
+      #banner.lose {
+        border-color: var(--md-sys-color-outline);
+      }
+      #banner .bTitle {
+        font-weight: 800;
+        font-size: 15px;
+        margin-bottom: 6px;
+      }
+      #banner .bCode {
+        display: inline-flex;
+        gap: 8px;
+        align-items: center;
+        justify-content: center;
+      }
+      #banner .bPeg {
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        box-shadow:
+          inset 0 -3px 5px rgba(0, 0, 0, 0.3),
+          inset 0 2px 3px rgba(255, 255, 255, 0.4);
+      }
 
-    /* The scrollable board — fills the space between HUD and deck. Rows render top to bottom;
+      /* The scrollable board — fills the space between HUD and deck. Rows render top to bottom;
        row 1 (the first guess) is at the TOP, row 10 (last attempt) at the BOTTOM closest to
        the palette. The active row auto-scrolls into view. */
-    #boardWrap {
-      flex: 1 1 auto; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch;
-      padding: 4px clamp(10px, 4vw, 24px) 10px;
-      scroll-behavior: smooth;
-    }
-    .board {
-      display: flex; flex-direction: column; gap: 6px; max-width: 460px; margin: 0 auto;
-    }
-    .row {
-      display: grid; grid-template-columns: 24px 1fr auto; align-items: center; gap: 10px;
-      padding: 6px 8px;
-      border-radius: var(--md-sys-shape-corner-md);
-      border: 1.5px solid transparent;
-      background: var(--md-sys-color-surface-container-low);
-      min-height: var(--sd-row-h);
-    }
-    .row.history { background: var(--md-sys-color-surface-container); }
-    .row.empty .slots .slot { background: var(--md-sys-color-surface-container-highest); opacity: 0.55; }
-    .row.active {
-      background: var(--md-sys-color-surface-container-high);
-      border-color: var(--md-sys-color-primary);
-      box-shadow: 0 0 0 4px color-mix(in srgb, var(--md-sys-color-primary) 16%, transparent);
-    }
-    .row .rowNum {
-      font-size: 11px; font-weight: 700; color: var(--md-sys-color-on-surface-variant);
-      text-align: center;
-      font-variant-numeric: tabular-nums;
-    }
-    .row .slots {
-      display: flex; gap: clamp(6px, 1.6vw, 10px); justify-content: center;
-    }
-    .slot {
-      position: relative; flex: none;
-      width: var(--sd-slot); height: var(--sd-slot);
-      border-radius: 50%;
-      background: var(--md-sys-color-surface-container-highest);
-      border: 1.5px solid var(--md-sys-color-outline-variant);
-      padding: 0; cursor: pointer;
-      display: grid; place-items: center;
-      transition: transform var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-emphasized),
-                  border-color var(--md-sys-motion-duration-short3),
-                  background var(--md-sys-motion-duration-short3);
-    }
-    .slot:disabled { cursor: default; }
-    .slot:focus-visible { outline: 3px solid var(--md-sys-color-primary); outline-offset: 3px; }
-    .row.active .slot.activeSlot {
-      border-color: var(--md-sys-color-primary);
-      box-shadow: 0 0 0 3px color-mix(in srgb, var(--md-sys-color-primary) 22%, transparent);
-      animation: slotPulse 1.2s var(--md-sys-motion-easing-emphasized) infinite;
-    }
-    @keyframes slotPulse {
-      0%, 100% { transform: scale(1); }
-      50%      { transform: scale(1.06); }
-    }
-    .peg {
-      width: 78%; height: 78%; border-radius: 50%;
-      box-shadow: inset 0 -3px 5px rgba(0,0,0,0.30), inset 0 2px 3px rgba(255,255,255,0.4);
-      transform-origin: center;
-      transition: none;
-      display: grid; place-items: center;
-    }
-    /* Colour-blind shape glyph — white with a dark halo so it reads on every palette colour
+      #boardWrap {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        padding: 4px clamp(10px, 4vw, 24px) 10px;
+        scroll-behavior: smooth;
+      }
+      .board {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        max-width: 460px;
+        margin: 0 auto;
+      }
+      .row {
+        display: grid;
+        grid-template-columns: 24px 1fr auto;
+        align-items: center;
+        gap: 10px;
+        padding: 6px 8px;
+        border-radius: var(--md-sys-shape-corner-md);
+        border: 1.5px solid transparent;
+        background: var(--md-sys-color-surface-container-low);
+        min-height: var(--sd-row-h);
+      }
+      .row.history {
+        background: var(--md-sys-color-surface-container);
+      }
+      .row.empty .slots .slot {
+        background: var(--md-sys-color-surface-container-highest);
+        opacity: 0.55;
+      }
+      .row.active {
+        background: var(--md-sys-color-surface-container-high);
+        border-color: var(--md-sys-color-primary);
+        box-shadow: 0 0 0 4px color-mix(in srgb, var(--md-sys-color-primary) 16%, transparent);
+      }
+      .row .rowNum {
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--md-sys-color-on-surface-variant);
+        text-align: center;
+        font-variant-numeric: tabular-nums;
+      }
+      .row .slots {
+        display: flex;
+        gap: clamp(6px, 1.6vw, 10px);
+        justify-content: center;
+      }
+      .slot {
+        position: relative;
+        flex: none;
+        width: var(--sd-slot);
+        height: var(--sd-slot);
+        border-radius: 50%;
+        background: var(--md-sys-color-surface-container-highest);
+        border: 1.5px solid var(--md-sys-color-outline-variant);
+        padding: 0;
+        cursor: pointer;
+        display: grid;
+        place-items: center;
+        transition:
+          transform var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-emphasized),
+          border-color var(--md-sys-motion-duration-short3),
+          background var(--md-sys-motion-duration-short3);
+      }
+      .slot:disabled {
+        cursor: default;
+      }
+      .slot:focus-visible {
+        outline: 3px solid var(--md-sys-color-primary);
+        outline-offset: 3px;
+      }
+      .row.active .slot.activeSlot {
+        border-color: var(--md-sys-color-primary);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--md-sys-color-primary) 22%, transparent);
+        animation: slotPulse 1.2s var(--md-sys-motion-easing-emphasized) infinite;
+      }
+      @keyframes slotPulse {
+        0%,
+        100% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.06);
+        }
+      }
+      .peg {
+        width: 78%;
+        height: 78%;
+        border-radius: 50%;
+        box-shadow:
+          inset 0 -3px 5px rgba(0, 0, 0, 0.3),
+          inset 0 2px 3px rgba(255, 255, 255, 0.4);
+        transform-origin: center;
+        transition: none;
+        display: grid;
+        place-items: center;
+      }
+      /* Colour-blind shape glyph — white with a dark halo so it reads on every palette colour
        (light or dark). Sits inside the peg / palette button / banner peg. */
-    .pegSym {
-      font-size: clamp(14px, 3.8vw, 20px); line-height: 1;
-      color: #fff; text-shadow: 0 0 2px rgba(0,0,0,0.9), 0 1px 1px rgba(0,0,0,0.55);
-      pointer-events: none; -webkit-user-select: none; user-select: none;
-    }
-    .colorBtn .pegSym { font-size: clamp(20px, 6vw, 30px); }
-    #banner .bPeg .pegSym { font-size: 12px; }
-    .peg.drop { animation: pegDrop 180ms var(--md-sys-motion-easing-emphasized); }
-    @keyframes pegDrop {
-      0%   { transform: translateY(-14px) scale(0.6); opacity: 0; }
-      60%  { transform: translateY(0)     scale(1.08); opacity: 1; }
-      100% { transform: translateY(0)     scale(1.0); opacity: 1; }
-    }
+      .pegSym {
+        font-size: clamp(14px, 3.8vw, 20px);
+        line-height: 1;
+        color: #fff;
+        text-shadow:
+          0 0 2px rgba(0, 0, 0, 0.9),
+          0 1px 1px rgba(0, 0, 0, 0.55);
+        pointer-events: none;
+        -webkit-user-select: none;
+        user-select: none;
+      }
+      .colorBtn .pegSym {
+        font-size: clamp(20px, 6vw, 30px);
+      }
+      #banner .bPeg .pegSym {
+        font-size: 12px;
+      }
+      .peg.drop {
+        animation: pegDrop 180ms var(--md-sys-motion-easing-emphasized);
+      }
+      @keyframes pegDrop {
+        0% {
+          transform: translateY(-14px) scale(0.6);
+          opacity: 0;
+        }
+        60% {
+          transform: translateY(0) scale(1.08);
+          opacity: 1;
+        }
+        100% {
+          transform: translateY(0) scale(1);
+          opacity: 1;
+        }
+      }
 
-    /* Feedback peg cluster — a stable 2×2 grid of mini dots. Order is blacks → whites → greys
+      /* Feedback peg cluster — a stable 2×2 grid of mini dots. Order is blacks → whites → greys
        (never the same order as the guess), so it cannot leak position info (AC-8). Mini-pegs
        start as `.fb.hidden`; submitGuess() reveals them one-by-one via setTimeout. */
-    .feedback {
-      display: grid; grid-template-columns: repeat(2, 1fr); gap: 3px;
-      width: calc(var(--sd-fb) * 2 + 3px);
-    }
-    .fb {
-      width: var(--sd-fb); height: var(--sd-fb); border-radius: 50%;
-      background: var(--md-sys-color-surface-container-highest);
-      border: 1.5px solid var(--md-sys-color-outline-variant);
-      transform: scale(0.4); opacity: 0;
-      transition: transform 140ms var(--md-sys-motion-easing-emphasized), opacity 140ms;
-    }
-    .fb.shown { transform: scale(1); opacity: 1; }
-    .fb.black { background: var(--md-sys-color-on-surface); border-color: var(--md-sys-color-on-surface); }
-    .fb.white { background: #ffffff; border-color: var(--md-sys-color-outline); }
+      .feedback {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 3px;
+        width: calc(var(--sd-fb) * 2 + 3px);
+      }
+      .fb {
+        width: var(--sd-fb);
+        height: var(--sd-fb);
+        border-radius: 50%;
+        background: var(--md-sys-color-surface-container-highest);
+        border: 1.5px solid var(--md-sys-color-outline-variant);
+        transform: scale(0.4);
+        opacity: 0;
+        transition:
+          transform 140ms var(--md-sys-motion-easing-emphasized),
+          opacity 140ms;
+      }
+      .fb.shown {
+        transform: scale(1);
+        opacity: 1;
+      }
+      .fb.black {
+        background: var(--md-sys-color-on-surface);
+        border-color: var(--md-sys-color-on-surface);
+      }
+      .fb.white {
+        background: #ffffff;
+        border-color: var(--md-sys-color-outline);
+      }
 
-    /* ---------- DECK (palette + clear + submit) ---------- */
-    #deck {
-      flex: none;
-      display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: clamp(8px, 2vw, 14px);
-      padding: 10px clamp(10px, 4vw, 24px) calc(10px + env(safe-area-inset-bottom));
-      background: var(--md-sys-color-surface-container);
-      border-top: 1px solid var(--md-sys-color-outline-variant);
-    }
-    #palette {
-      grid-column: 1 / -1;
-      display: grid; grid-template-columns: repeat(6, 1fr); gap: clamp(6px, 1.6vw, 10px);
-      width: 100%;
-    }
-    .colorBtn {
-      position: relative; aspect-ratio: 1; min-height: 48px; border: 0; padding: 0;
-      border-radius: 50%; cursor: pointer; touch-action: manipulation;
-      display: grid; place-items: center;
-      box-shadow: inset 0 -4px 7px rgba(0,0,0,0.30), inset 0 3px 4px rgba(255,255,255,0.4),
-                  var(--md-sys-elevation-level1);
-      transition: transform var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-emphasized);
-    }
-    .colorBtn:active { transform: scale(0.92); }
-    /* Double-stroke focus ring — readable against both dark and light palette colours
+      /* ---------- DECK (palette + clear + submit) ---------- */
+      #deck {
+        flex: none;
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        align-items: center;
+        gap: clamp(8px, 2vw, 14px);
+        padding: 10px clamp(10px, 4vw, 24px) calc(10px + env(safe-area-inset-bottom));
+        background: var(--md-sys-color-surface-container);
+        border-top: 1px solid var(--md-sys-color-outline-variant);
+      }
+      #palette {
+        grid-column: 1 / -1;
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        gap: clamp(6px, 1.6vw, 10px);
+        width: 100%;
+      }
+      .colorBtn {
+        position: relative;
+        aspect-ratio: 1;
+        min-height: 48px;
+        border: 0;
+        padding: 0;
+        border-radius: 50%;
+        cursor: pointer;
+        touch-action: manipulation;
+        display: grid;
+        place-items: center;
+        box-shadow:
+          inset 0 -4px 7px rgba(0, 0, 0, 0.3),
+          inset 0 3px 4px rgba(255, 255, 255, 0.4),
+          var(--md-sys-elevation-level1);
+        transition: transform var(--md-sys-motion-duration-short2)
+          var(--md-sys-motion-easing-emphasized);
+      }
+      .colorBtn:active {
+        transform: scale(0.92);
+      }
+      /* Double-stroke focus ring — readable against both dark and light palette colours
        (LEARNINGS row 4: a single coloured outline can vanish on certain backgrounds). */
-    .colorBtn:focus-visible {
-      outline: 3px solid var(--md-sys-color-on-surface);
-      outline-offset: 3px;
-      box-shadow: inset 0 -4px 7px rgba(0,0,0,0.30), inset 0 3px 4px rgba(255,255,255,0.4),
-                  0 0 0 3px var(--md-sys-color-surface),
-                  var(--md-sys-elevation-level1);
-    }
-    #actions {
-      grid-column: 1 / -1;
-      display: grid; grid-template-columns: auto 1fr; gap: clamp(8px, 2vw, 14px);
-      margin-top: 8px;
-    }
-    .actionBtn {
-      min-height: 48px; padding: 10px 18px; border: 0;
-      border-radius: var(--md-sys-shape-corner-full);
-      font-size: 15px; font-weight: 700; letter-spacing: 0.01em; cursor: pointer;
-      transition: transform var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-emphasized),
-                  opacity var(--md-sys-motion-duration-short2);
-    }
-    .actionBtn:active { transform: scale(0.96); }
-    .actionBtn:focus-visible { outline: 3px solid var(--md-sys-color-primary); outline-offset: 2px; }
-    #clearBtn {
-      background: var(--md-sys-color-surface-container-highest);
-      color: var(--md-sys-color-on-surface);
-      border: 1.5px solid var(--md-sys-color-outline-variant);
-    }
-    #submitBtn {
-      background: var(--md-sys-color-primary); color: var(--md-sys-color-on-primary);
-      box-shadow: var(--md-sys-elevation-level2);
-    }
-    #submitBtn:disabled { background: var(--md-sys-color-surface-container-highest); color: var(--md-sys-color-on-surface-variant); box-shadow: none; cursor: not-allowed; }
-
-    /* ---------- COUNTDOWN (reused look from Claw Catch) ---------- */
-    #countdown { position: absolute; inset: 0; z-index: 60; display: none; align-items: center; justify-content: center; background: color-mix(in srgb, var(--md-sys-color-surface) 60%, transparent); pointer-events: none; }
-    #countdown.active { display: flex; }
-    #countdown .cnum { font-size: 30vmin; font-weight: 800; line-height: 1; background: var(--brand-gradient); -webkit-background-clip: text; background-clip: text; color: transparent; }
-    #countdown .cnum.go { font-size: 18vmin; letter-spacing: 0.04em; }
-    .cnum.beat { animation: beat 0.7s var(--md-sys-motion-easing-emphasized); }
-    @keyframes beat { 0% { transform: scale(0.4); opacity: 0; } 30% { opacity: 1; } 100% { transform: scale(1.25); opacity: 0; } }
-
-    /* ---------- RESULTS — reused from Snap / Claw Catch ---------- */
-    .res-inner { max-width: 520px; margin: 0 auto; padding: max(28px, env(safe-area-inset-top)) 22px 40px; text-align: center; }
-    .res-inner .crown { font-size: 46px; }
-    .res-inner h2 { margin: 6px 0 4px; }
-    .res-inner .sub { color: var(--md-sys-color-on-surface-variant); font-size: 14px; margin: 0 0 26px; }
-    .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 22px; }
-    .stat {
-      background: var(--md-sys-color-surface-container);
-      border: 1.5px solid var(--md-sys-color-outline-variant);
-      border-radius: var(--md-sys-shape-corner-lg); padding: 16px 8px;
-    }
-    .stat .big { font-size: 30px; font-weight: 800; font-variant-numeric: tabular-nums; }
-    .stat .cap { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--md-sys-color-on-surface-variant); margin-top: 4px; }
-    .stat.hero { border-color: var(--md-sys-color-primary); background: var(--md-sys-color-surface-container-high); }
-    .stat.hero .big { color: var(--md-sys-color-tertiary); }
-    .res-actions { display: flex; gap: 12px; margin-top: 4px; }
-    .res-actions .button { flex: 1; }
-    .res-foot { margin-top: 18px; }
-
-    /* Reduced-motion: suppress decorative pulse / drop / beat. Functional timing is driven by
-       JS setTimeouts (LEARNINGS row 3) so play remains paced even under reduce. */
-    @media (prefers-reduced-motion: reduce) {
-      .peg.drop { animation: none; }
-      .row.active .slot.activeSlot { animation: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--md-sys-color-primary) 30%, transparent); }
-      .cnum.beat { animation: none; }
-      .fb { transition: opacity 80ms linear; transform: none; }
-      .sel-chip, .theme-card, .colorBtn, .actionBtn, .switch::after { transition: none; }
-    }
-  </style>
-</head>
-<body>
-
-<!-- ========== SETUP ========== -->
-<section id="setup" class="screen active">
-  <div class="setup-inner">
-    <a class="back-link state-layer" href="../../index.html" aria-label="Back to PlayPad">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-      PlayPad
-    </a>
-    <div class="brand"><h1 class="display-small brand-wordmark">Super Decoder</h1></div>
-    <p class="tagline body-medium">Crack a hidden 4-colour code in <em>up to 10 guesses</em>. Black peg = right colour, right spot. White peg = right colour, wrong spot. Codes may repeat a colour.</p>
-
-    <div class="block">
-      <div class="label"><span>Palette theme</span></div>
-      <div class="theme-grid" id="themeGrid"></div>
-    </div>
-
-    <div class="block">
-      <div class="label"><span>Difficulty</span><span class="hint">codes to crack this session</span></div>
-      <div class="chips" id="difficultyChips"></div>
-    </div>
-
-    <div class="block">
-      <div class="toggle-row">
-        <div><div class="t-label">Sound</div><div class="t-sub">Peg drops, feedback ticks, a chime on a solve</div></div>
-        <button class="switch" id="soundToggle" aria-pressed="true" aria-label="Sound"></button>
-      </div>
-    </div>
-
-    <button class="start-btn state-layer" id="startBtn">Start</button>
-    <p class="start-note" id="startNote">One player · tap a slot, then a colour · ⌫ clears the row · SUBMIT when all four are placed.</p>
-  </div>
-</section>
-
-<!-- ========== GAME ========== -->
-<section id="game" class="screen">
-  <div id="stage">
-    <div id="hud">
-      <span id="hudCode">Code 1 / 3</span>
-      <span class="sep"></span>
-      <span id="hudAttempts">Tries <b>10</b></span>
-      <span class="sep"></span>
-      <span id="hudScore">Score <b>0</b></span>
-      <span class="sep"></span>
-      <span id="hudStreak">Streak <b>0</b></span>
-      <button id="quitBtn" aria-label="Quit game">✕</button>
-    </div>
-
-    <div id="boardWrap">
-      <div class="board" id="board" role="grid" aria-label="Guess board"></div>
-    </div>
-
-    <div id="deck">
-      <div id="palette" role="group" aria-label="Colour palette"></div>
-      <div id="actions">
-        <button class="actionBtn" id="clearBtn" aria-label="Clear current row">⌫ Clear</button>
-        <button class="actionBtn" id="submitBtn" aria-label="Submit guess" disabled>SUBMIT</button>
-      </div>
-    </div>
-
-    <div id="banner" role="status" aria-live="polite">
-      <div class="bTitle" id="bannerTitle"></div>
-      <div class="bCode" id="bannerCode"></div>
-    </div>
-    <div id="countdown"><div class="cnum" id="cnum">3</div></div>
-  </div>
-</section>
-
-<!-- Screen-reader-only live region for transient announcements not in the banner. -->
-<p id="srStatus" class="visually-hidden" role="status" aria-live="polite"></p>
-
-<!-- ========== RESULTS ========== -->
-<section id="results" class="screen">
-  <div class="res-inner">
-    <div class="crown">🔐</div>
-    <h2 id="resTitle" class="headline-small">Session over</h2>
-    <p class="sub" id="resSub"></p>
-    <div class="stat-grid">
-      <div class="stat hero"><div class="big" id="statScore">0</div><div class="cap">Score</div></div>
-      <div class="stat"><div class="big" id="statSolved">0</div><div class="cap">Solved</div></div>
-      <div class="stat"><div class="big" id="statBest">—</div><div class="cap">Best solve</div></div>
-    </div>
-    <div class="res-actions">
-      <button class="button button--outlined state-layer" id="changeBtn">Change settings</button>
-      <button class="button button--filled state-layer" id="againBtn">Play again</button>
-    </div>
-    <div class="res-foot">
-      <a class="back-link state-layer" href="../../index.html" aria-label="Back to PlayPad">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-        Back to PlayPad
-      </a>
-    </div>
-  </div>
-</section>
-
-<script>
-(function(){
-  "use strict";
-
-  // ============================================================
-  //  CONFIG — themes, difficulty (= session length), constants
-  // ============================================================
-
-  // The ONLY raw colour values in this file are these 6×3 palette hexes. Every other surface
-  // uses MD3 tokens. Each theme is just a different colourway — gameplay is identical.
-  var THEMES = [
-    { id:"classic", name:"Classic",
-      colors:[ "#ef4444","#f97316","#facc15","#22c55e","#3b82f6","#a855f7" ],
-      names:[ "red","orange","yellow","green","blue","purple" ] },
-    { id:"pastel",  name:"Pastel",
-      colors:[ "#fda4af","#fdba74","#fde047","#86efac","#93c5fd","#c4b5fd" ],
-      names:[ "rose","peach","lemon","mint","sky","lilac" ] },
-    { id:"neon",    name:"Neon",
-      colors:[ "#ff1493","#00ffff","#adff2f","#ff00ff","#1e90ff","#ffbf00" ],
-      names:[ "hot pink","cyan","lime","magenta","electric blue","amber" ] }
-  ];
-
-  // Difficulty = SESSION LENGTH (per the user's brief). Per-code rules stay constant.
-  var DIFFICULTIES = [
-    { l:"Easy",   sub:"3 codes",  totalCodes: 3 },
-    { l:"Normal", sub:"5 codes",  totalCodes: 5 },
-    { l:"Hard",   sub:"8 codes",  totalCodes: 8 }
-  ];
-  var DEFAULT_DIFFICULTY_INDEX = 0;
-
-  // Constant per-code rules (AC-4).
-  var PEG_COUNT      = 4;     // pegs in the secret + each guess
-  var COLOR_COUNT    = 6;     // palette size
-  var ATTEMPTS_MAX   = 10;    // guesses per code
-
-  // A distinct SHAPE per colour INDEX (stable across themes) so the game never relies on colour
-  // alone — a colour-blind player can read the code by shape (CODE_QUALITY §13: "colour is not the
-  // only signal", AC-20). Geometric Unicode glyphs render reliably as DOM text on every engine
-  // (the canvas-emoji caveat in LEARNINGS applies to <canvas>, not DOM — this game is DOM).
-  var SYMBOLS = ["●", "▲", "■", "◆", "★", "✚"];
-
-  // Hoisted so the keydown handler doesn't recompile the regex on every keypress.
-  var DIGIT_KEY_RE = /^[1-6]$/;
-
-  // Animation cadence — JS-driven (LEARNINGS row 3 / rev2 row 9) so reduce-motion still paces it.
-  var COUNTDOWN_SEQUENCE = ["3", "2", "1", "GO"];
-  var COUNTDOWN_DIGIT_MS = 600;
-  var FEEDBACK_STAGGER_MS = 140;    // gap between revealing successive feedback pegs
-  var POST_FEEDBACK_MS    = 220;    // tiny hold after last peg before activating next row
-  var POST_RESULT_HOLD_MS = 700;    // hold after solve/fail before showing the banner
-  var BANNER_MS           = 1700;   // banner display before next code (or results)
-  var NEXT_CODE_TICK_MS   = 500;    // short tick countdown between codes
-
-  // Scoring (AC-11): solved-in-1 = 100, down to 10 on guess 10; streak bonus = streak * 5.
-  function pointsForSolve(attemptsUsed){
-    return Math.max(10, (ATTEMPTS_MAX - attemptsUsed + 1) * 10);
-  }
-  var STREAK_BONUS = 5;
-
-  // Phase machine — string values so devtools shows meaning at a glance.
-  var Phase = {
-    IDLE:       "IDLE",        // setup screen / not playing
-    PLACING:    "PLACING",     // active row: player is placing pegs
-    SUBMITTING: "SUBMITTING",  // guess submitted, feedback being revealed
-    BETWEEN:    "BETWEEN",     // banner showing between codes
-    DONE:       "DONE"         // session complete (results visible)
-  };
-
-  // ============================================================
-  //  STATE
-  // ============================================================
-  var themeIndex      = 0;
-  var difficultyIndex = DEFAULT_DIFFICULTY_INDEX;
-  var soundOn         = true;
-
-  var session = { totalCodes: 3, codeIndex: 0, solved: 0, totalScore: 0, streak: 0, bestAttempts: null };
-  var code    = { secret: [], attemptsLeft: ATTEMPTS_MAX, rows: [], current: [null,null,null,null], activeSlot: 0 };
-  var phase   = Phase.IDLE;
-
-  // Every scheduled setTimeout id lives here so the show() chokepoint can clear them on quit /
-  // session-end (LEARNINGS rev2 row 13 — every cross-screen teardown lives inside show()).
-  var pendingTimeouts = [];
-
-  // Optional override for the next code's secret — used by the test hook (forceSecret).
-  var forcedSecret = null;
-
-  // Audio (best-effort; failures swallowed by design).
-  var audioCtx = null;
-  var reduceMotion = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
-
-  // ============================================================
-  //  HELPERS
-  // ============================================================
-  function $(id){ return document.getElementById(id); }
-  function el(tag, cls){ var e = document.createElement(tag); if(cls) e.className = cls; return e; }
-  function clamp(v, lo, hi){ return v < lo ? lo : (v > hi ? hi : v); }
-  function announce(msg){ $("srStatus").textContent = msg; }
-  function curTheme(){ return THEMES[themeIndex]; }
-
-  // The current secret as spoken colour names, for screen-reader announcements (the visual
-  // banner reveal is sighted-only otherwise — a value-blocking gap raised by the AT persona).
-  function secretWords(){
-    return code.secret.map(function(c){ return curTheme().names[c]; }).join(", ");
-  }
-
-  // Build a coloured peg element carrying its colour-blind shape glyph (SYMBOLS[colorIdx]).
-  // Used for every rendered peg: board slots, palette buttons, and the banner secret reveal.
-  function makePeg(colorIdx){
-    var peg = el("div","peg");
-    peg.style.background = curTheme().colors[colorIdx];
-    var sym = el("span","pegSym"); sym.textContent = SYMBOLS[colorIdx];
-    peg.appendChild(sym);
-    return peg;
-  }
-
-  // setTimeout wrapper — every timer is tracked so show() can cancel them all.
-  function later(fn, ms){
-    var id = setTimeout(function(){
-      // Self-deregister so the pending list stays tight.
-      var i = pendingTimeouts.indexOf(id);
-      if(i >= 0) pendingTimeouts.splice(i, 1);
-      fn();
-    }, ms);
-    pendingTimeouts.push(id);
-    return id;
-  }
-  function clearAllPending(){
-    for(var i = 0; i < pendingTimeouts.length; i++) clearTimeout(pendingTimeouts[i]);
-    pendingTimeouts.length = 0;
-  }
-
-  // THE chokepoint. Every screen change goes through here, so every cross-screen cleanup
-  // belongs here too (LEARNINGS rev2 row 13). Cancels stagger timers, hides the countdown
-  // overlay and the banner, and resets transient phase state — no caller can forget.
-  function show(s){
-    ["setup","game","results"].forEach(function(x){ $(x).classList.toggle("active", x === s); });
-    clearAllPending();
-    $("countdown").classList.remove("active");
-    $("banner").classList.remove("show", "win", "lose");
-    if(s !== "game"){
-      // Leaving the game screen — reset the in-flight code so any return enters a clean state.
-      phase = (s === "results") ? Phase.DONE : Phase.IDLE;
-      code.activeSlot = 0;
-      code.current = [null, null, null, null];
-    }
-  }
-
-  // ============================================================
-  //  AUDIO — initialised on first user gesture; failures ignored
-  // ============================================================
-  function initAudio(){
-    if(audioCtx) return;
-    try { var AC = window.AudioContext || window.webkitAudioContext; audioCtx = new AC(); } catch(e){ audioCtx = null; }
-  }
-  // Test hook captures the last beep so reduce-motion tests can assert sound still fires.
-  var _lastBeep = null;
-  function beep(freq, dur, type, gain){
-    _lastBeep = { freq: freq, dur: dur, type: type || "sine", gain: gain || 0.16, t: Date.now() };
-    if(!soundOn || !audioCtx) return;
-    try{
-      var o = audioCtx.createOscillator(), g = audioCtx.createGain();
-      o.type = _lastBeep.type; o.frequency.value = freq;
-      o.connect(g); g.connect(audioCtx.destination);
-      var t = audioCtx.currentTime;
-      g.gain.setValueAtTime(_lastBeep.gain, t);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-      o.start(t); o.stop(t + dur);
-    }catch(e){ /* ignore */ }
-  }
-  function soundPlace()      { beep(880, 0.06, "square",   0.10); }
-  function soundClear()      { beep(220, 0.10, "triangle", 0.10); }
-  function soundSubmit()     { beep(330, 0.05, "sine",     0.14);
-                               later(function(){ beep(440, 0.10, "sine", 0.14); }, 60); }
-  function soundBlackPeg()   { beep(660, 0.08, "triangle", 0.14); }
-  function soundWhitePeg()   { beep(330, 0.08, "triangle", 0.10); }
-  function soundEmptyPeg()   { beep(180, 0.05, "sine",     0.05); }
-  function soundSolve(){
-    // C–E–G arpeggio — short and bright.
-    [523.25, 659.25, 784.0].forEach(function(f, i){ later(function(){ beep(f, 0.14, "sine", 0.18); }, i * 90); });
-  }
-  function soundFailCode(){ beep(220, 0.16, "sawtooth", 0.10); later(function(){ beep(165, 0.22, "sawtooth", 0.10); }, 140); }
-  function soundSessionEnd(){
-    [523.25, 659.25, 784.0, 1046.5].forEach(function(f, i){ later(function(){ beep(f, 0.18, "sine", 0.18); }, i * 110); });
-  }
-  function soundTick(){ beep(520, 0.07, "sine", 0.12); }
-  function soundGo()  { beep(880, 0.16, "sine", 0.20); }
-
-  // ============================================================
-  //  SETUP RENDERERS
-  // ============================================================
-  function buildChips(container, items, getActive, onPick){
-    container.innerHTML = "";
-    items.forEach(function(it){
-      var b = el("button","sel-chip");
-      if(it.sub){ b.textContent = it.main; var s = el("small"); s.textContent = it.sub; b.appendChild(s); }
-      else      { b.textContent = it.main; }
-      b.setAttribute("aria-pressed", getActive(it) ? "true" : "false");
-      b.addEventListener("click", function(){ onPick(it); });
-      container.appendChild(b);
-    });
-  }
-
-  function renderThemeCards(){
-    var wrap = $("themeGrid"); wrap.innerHTML = "";
-    THEMES.forEach(function(t, i){
-      var b = el("button","theme-card");
-      b.setAttribute("aria-pressed", i === themeIndex ? "true" : "false");
-      b.setAttribute("aria-label", t.name + " theme");
-      var prev = el("div","preview");
-      // Show all 6 colours as a 2×3 dot grid so the palette is visible at a glance.
-      t.colors.forEach(function(c){
-        var dot = el("span"); dot.style.background = c; prev.appendChild(dot);
-      });
-      var nm = el("div","tname"); nm.textContent = t.name;
-      b.appendChild(prev); b.appendChild(nm);
-      b.addEventListener("click", function(){ themeIndex = i; renderThemeCards(); });
-      wrap.appendChild(b);
-    });
-  }
-
-  function renderDifficultyChips(){
-    buildChips($("difficultyChips"),
-      DIFFICULTIES.map(function(d, i){ return { main: d.l, sub: d.sub, i: i }; }),
-      function(it){ return it.i === difficultyIndex; },
-      function(it){ difficultyIndex = it.i; renderDifficultyChips(); });
-  }
-
-  $("soundToggle").addEventListener("click", function(){
-    soundOn = !soundOn; this.setAttribute("aria-pressed", soundOn ? "true" : "false");
-  });
-  $("startBtn").addEventListener("click", function(){
-    initAudio(); if(audioCtx && audioCtx.state === "suspended") audioCtx.resume();
-    startSession();
-  });
-
-  // ============================================================
-  //  GAME — board renderer
-  // ============================================================
-
-  // Renders ALL 10 rows up-front; subsequent updates mutate per-row state. The active row gets
-  // `tabindex=0` on its slots and click handlers; history/empty rows are disabled.
-  function renderBoard(){
-    var board = $("board"); board.innerHTML = "";
-    for(var r = 0; r < ATTEMPTS_MAX; r++){
-      var row = el("div","row");
-      row.setAttribute("role","row");
-      row.setAttribute("data-row", String(r));
-      var num = el("div","rowNum"); num.textContent = String(r + 1); row.appendChild(num);
-
-      var slots = el("div","slots");
-      for(var s = 0; s < PEG_COUNT; s++){
-        var slot = el("button","slot");
-        slot.setAttribute("data-row", String(r));
-        slot.setAttribute("data-slot", String(s));
-        slot.setAttribute("aria-label", "Row " + (r + 1) + " slot " + (s + 1) + ": empty");
-        slot.tabIndex = -1;
-        slot.disabled = true;
-        slots.appendChild(slot);
+      .colorBtn:focus-visible {
+        outline: 3px solid var(--md-sys-color-on-surface);
+        outline-offset: 3px;
+        box-shadow:
+          inset 0 -4px 7px rgba(0, 0, 0, 0.3),
+          inset 0 3px 4px rgba(255, 255, 255, 0.4),
+          0 0 0 3px var(--md-sys-color-surface),
+          var(--md-sys-elevation-level1);
       }
-      row.appendChild(slots);
-
-      var fb = el("div","feedback");
-      fb.setAttribute("aria-label", "Feedback for row " + (r + 1));
-      for(var f = 0; f < PEG_COUNT; f++){
-        var dot = el("div","fb");
-        fb.appendChild(dot);
+      #actions {
+        grid-column: 1 / -1;
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: clamp(8px, 2vw, 14px);
+        margin-top: 8px;
       }
-      row.appendChild(fb);
-
-      board.appendChild(row);
-    }
-    // Mirror existing rows from this code (if any — e.g. resume on resize — currently always
-    // empty at code start, but cheap to support).
-    for(var i = 0; i < code.rows.length; i++) renderHistoryRow(i);
-    // Render the active row's current draft state too.
-    refreshActiveRow();
-  }
-
-  function rowEl(r){ return $("board").querySelector('.row[data-row="' + r + '"]'); }
-
-  // Paint the 4 locked, non-interactive guess pegs into a row's slots. Shared by the history
-  // render and the submit-lock so the peg-building loop lives in exactly one place. rowIdx is
-  // 0-based and used only for the per-slot aria-label.
-  function paintGuessPegs(rowElement, guess, rowIdx){
-    var slots = rowElement.querySelectorAll(".slot");
-    for(var i = 0; i < PEG_COUNT; i++){
-      var slot = slots[i];
-      slot.disabled = true; slot.tabIndex = -1;
-      slot.innerHTML = "";
-      slot.classList.remove("activeSlot");
-      slot.appendChild(makePeg(guess[i]));
-      slot.setAttribute("aria-label", "Row " + (rowIdx + 1) + " slot " + (i + 1) + ": " + curTheme().names[guess[i]]);
-    }
-  }
-
-  // Render a locked history row: filled pegs + feedback cluster. Called after a row resolves.
-  function renderHistoryRow(rowIdx){
-    var r = rowEl(rowIdx); if(!r) return;
-    r.classList.add("history");
-    r.classList.remove("active","empty");
-    var entry = code.rows[rowIdx];
-    paintGuessPegs(r, entry.guess, rowIdx);
-    var fbs = r.querySelectorAll(".fb");
-    paintFeedbackCluster(fbs, entry.black, entry.white, /*reveal*/true);
-  }
-
-  // Paint a 2×2 feedback cluster from counts. Order is stable: blacks → whites → greys,
-  // never the same order as the guess (AC-8).
-  function paintFeedbackCluster(dots, black, white, reveal){
-    for(var i = 0; i < dots.length; i++){
-      dots[i].classList.remove("black","white","shown");
-      if(i < black)               dots[i].classList.add("black");
-      else if(i < black + white)  dots[i].classList.add("white");
-      // else: leave as the default grey (no class)
-      if(reveal) dots[i].classList.add("shown");
-    }
-  }
-
-  // The currently active row reflects code.current; called on every place/clear.
-  function refreshActiveRow(){
-    var rowIdx = code.rows.length;
-    if(rowIdx >= ATTEMPTS_MAX) return;
-    // Mark all rows correctly: history above, active = rowIdx, empty below.
-    for(var r = 0; r < ATTEMPTS_MAX; r++){
-      var rEl = rowEl(r);
-      rEl.classList.remove("active","empty","history");
-      if(r < rowIdx)  rEl.classList.add("history");
-      else if(r === rowIdx) rEl.classList.add("active");
-      else            rEl.classList.add("empty");
-    }
-    // Active-row slots become interactive.
-    var active = rowEl(rowIdx);
-    var slots = active.querySelectorAll(".slot");
-    for(var i = 0; i < PEG_COUNT; i++){
-      var slot = slots[i];
-      var v = code.current[i];
-      slot.disabled = false;
-      slot.tabIndex = 0;
-      slot.innerHTML = "";
-      slot.classList.toggle("activeSlot", i === code.activeSlot);
-      if(v !== null && v !== undefined){
-        var peg = makePeg(v);
-        if(slot.dataset.justFilled === "1"){ peg.classList.add("drop"); delete slot.dataset.justFilled; }
-        slot.appendChild(peg);
-        slot.setAttribute("aria-label", "Row " + (rowIdx + 1) + " slot " + (i + 1) + ": " + curTheme().names[v] + " (tap to clear)");
-      } else {
-        slot.setAttribute("aria-label", "Row " + (rowIdx + 1) + " slot " + (i + 1) + ": empty");
+      .actionBtn {
+        min-height: 48px;
+        padding: 10px 18px;
+        border: 0;
+        border-radius: var(--md-sys-shape-corner-full);
+        font-size: 15px;
+        font-weight: 700;
+        letter-spacing: 0.01em;
+        cursor: pointer;
+        transition:
+          transform var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-emphasized),
+          opacity var(--md-sys-motion-duration-short2);
       }
-    }
-    $("submitBtn").disabled = code.current.some(function(x){ return x === null || x === undefined; });
-    // Scroll the active row into view (board container scrolls).
-    if(active.scrollIntoView) active.scrollIntoView({ block:"nearest", behavior: reduceMotion ? "auto" : "smooth" });
-  }
-
-  // Render the colour palette buttons for the current theme.
-  function renderPalette(){
-    var p = $("palette"); p.innerHTML = "";
-    var t = curTheme();
-    for(var i = 0; i < COLOR_COUNT; i++){
-      var b = el("button","colorBtn");
-      b.style.background = t.colors[i];
-      b.setAttribute("data-color", String(i));
-      b.setAttribute("aria-label", "Place " + t.names[i]);
-      var sym = el("span","pegSym"); sym.textContent = SYMBOLS[i]; b.appendChild(sym);
-      b.addEventListener("click", onPaletteClick);
-      p.appendChild(b);
-    }
-  }
-
-  function updateHud(){
-    $("hudCode").textContent     = "Code " + (session.codeIndex + 1) + " / " + session.totalCodes;
-    $("hudAttempts").innerHTML   = "Tries <b>" + code.attemptsLeft + "</b>";
-    $("hudScore").innerHTML      = "Score <b>" + session.totalScore + "</b>";
-    $("hudStreak").innerHTML     = "Streak <b>" + session.streak + "</b>";
-  }
-
-  // ============================================================
-  //  PER-TURN INTERACTION — place, clear, submit
-  // ============================================================
-
-  // Tap a colour → fill the active slot, advance to the next empty slot.
-  function onPaletteClick(ev){
-    if(phase !== Phase.PLACING) return;
-    var colorIdx = +ev.currentTarget.getAttribute("data-color");
-    placeColor(colorIdx);
-  }
-  function placeColor(colorIdx){
-    if(phase !== Phase.PLACING) return;
-    var slot = code.activeSlot;
-    if(slot < 0 || slot >= PEG_COUNT) return;
-    code.current[slot] = colorIdx;
-    // Find next empty slot, wrap if needed; stay put if the row is full.
-    var next = nextEmptySlotFrom(slot + 1);
-    if(next < 0) next = slot;   // no empty slots → keep active at last filled (so a tap-clear still works there)
-    code.activeSlot = next;
-    // Hint the renderer to animate just the slot we filled.
-    var active = rowEl(code.rows.length);
-    if(active){
-      var slotEl = active.querySelectorAll(".slot")[slot];
-      if(slotEl) slotEl.dataset.justFilled = "1";
-    }
-    refreshActiveRow();
-    soundPlace();
-  }
-  function nextEmptySlotFrom(start){
-    for(var i = 0; i < PEG_COUNT; i++){
-      var idx = (start + i) % PEG_COUNT;
-      if(code.current[idx] === null || code.current[idx] === undefined) return idx;
-    }
-    return -1;
-  }
-
-  // Tap a filled slot → clear it and make it active. Disambiguates from "tap empty slot to
-  // activate" since empty slots get activated regardless.
-  function onSlotClick(ev){
-    if(phase !== Phase.PLACING) return;
-    var slotEl = ev.target.closest(".slot"); if(!slotEl) return;
-    var rowIdx = +slotEl.getAttribute("data-row");
-    if(rowIdx !== code.rows.length) return;        // not the active row
-    var slotIdx = +slotEl.getAttribute("data-slot");
-    if(code.current[slotIdx] !== null && code.current[slotIdx] !== undefined){
-      code.current[slotIdx] = null;
-      code.activeSlot = slotIdx;
-      soundClear();
-    } else {
-      code.activeSlot = slotIdx;
-    }
-    refreshActiveRow();
-  }
-
-  // ⌫ Clear — wipe the whole current row.
-  function clearCurrentRow(){
-    if(phase !== Phase.PLACING) return;
-    code.current = [null, null, null, null];
-    code.activeSlot = 0;
-    refreshActiveRow();
-    soundClear();
-  }
-
-  // ============================================================
-  //  FEEDBACK ALGORITHM — pure two-pass, duplicate-safe (AC-7)
-  // ============================================================
-  function scoreGuess(secret, guess){
-    var black = 0, white = 0;
-    var sUsed = [false, false, false, false];
-    var gUsed = [false, false, false, false];
-    // Pass 1: exact matches (correct colour + correct position).
-    for(var i = 0; i < PEG_COUNT; i++){
-      if(guess[i] === secret[i]){ black++; sUsed[i] = true; gUsed[i] = true; }
-    }
-    // Pass 2: colour-only matches against unused-on-both-sides slots.
-    for(var g = 0; g < PEG_COUNT; g++){
-      if(gUsed[g]) continue;
-      for(var sIdx = 0; sIdx < PEG_COUNT; sIdx++){
-        if(sUsed[sIdx]) continue;
-        if(guess[g] === secret[sIdx]){ white++; sUsed[sIdx] = true; gUsed[g] = true; break; }
+      .actionBtn:active {
+        transform: scale(0.96);
       }
-    }
-    return { black: black, white: white };
-  }
-
-  // ============================================================
-  //  SUBMIT → reveal feedback → branch
-  // ============================================================
-  function submitGuess(){
-    if(phase !== Phase.PLACING) return;
-    if(code.current.some(function(x){ return x === null || x === undefined; })) return;
-    phase = Phase.SUBMITTING;
-    var guess = code.current.slice();
-    var fb = scoreGuess(code.secret, guess);
-    var rowIdx = code.rows.length;
-    code.rows.push({ guess: guess, black: fb.black, white: fb.white });
-    code.attemptsLeft = ATTEMPTS_MAX - code.rows.length;
-    code.current = [null, null, null, null];
-    code.activeSlot = 0;
-    updateHud();
-    soundSubmit();
-
-    // Lock the row (history styling + slot disable) but render the FEEDBACK pegs one at a time
-    // with JS-driven staggers. Reduced-motion still hits the same cadence so play is paced;
-    // only the per-peg pop animation is suppressed via CSS (LEARNINGS row 3 / rev2 row 9).
-    var r = rowEl(rowIdx);
-    r.classList.remove("active","empty");
-    r.classList.add("history");
-    paintGuessPegs(r, guess, rowIdx);
-    var fbs = r.querySelectorAll(".fb");
-    // Pre-set the classes (black/white/grey) but keep them hidden; reveal one by one.
-    paintFeedbackCluster(fbs, fb.black, fb.white, /*reveal*/false);
-    for(var p = 0; p < PEG_COUNT; p++){
-      (function(idx){
-        later(function(){
-          fbs[idx].classList.add("shown");
-          if(fbs[idx].classList.contains("black")) soundBlackPeg();
-          else if(fbs[idx].classList.contains("white")) soundWhitePeg();
-          else soundEmptyPeg();
-        }, FEEDBACK_STAGGER_MS * (idx + 1));
-      })(p);
-    }
-
-    // After the last peg + a tiny hold, branch.
-    later(function(){
-      var solved = (fb.black === PEG_COUNT);
-      var outOfAttempts = (code.attemptsLeft <= 0);
-      if(solved){ resolveCode(true, rowIdx + 1); }
-      else if(outOfAttempts){ resolveCode(false, rowIdx + 1); }
-      else {
-        // Next attempt — reactivate next row.
-        phase = Phase.PLACING;
-        refreshActiveRow();
-        announce("Row " + (rowIdx + 1) + ": " + fb.black + " black, " + fb.white + " white. Tries remaining: " + code.attemptsLeft + ".");
+      .actionBtn:focus-visible {
+        outline: 3px solid var(--md-sys-color-primary);
+        outline-offset: 2px;
       }
-    }, FEEDBACK_STAGGER_MS * PEG_COUNT + POST_FEEDBACK_MS);
-  }
+      #clearBtn {
+        background: var(--md-sys-color-surface-container-highest);
+        color: var(--md-sys-color-on-surface);
+        border: 1.5px solid var(--md-sys-color-outline-variant);
+      }
+      #submitBtn {
+        background: var(--md-sys-color-primary);
+        color: var(--md-sys-color-on-primary);
+        box-shadow: var(--md-sys-elevation-level2);
+      }
+      #submitBtn:disabled {
+        background: var(--md-sys-color-surface-container-highest);
+        color: var(--md-sys-color-on-surface-variant);
+        box-shadow: none;
+        cursor: not-allowed;
+      }
 
-  // ============================================================
-  //  RESOLVE A CODE — score, banner, advance
-  // ============================================================
-  function resolveCode(solved, attemptsUsed){
-    phase = Phase.BETWEEN;
-    var gained = 0;
-    if(solved){
-      gained = pointsForSolve(attemptsUsed) + session.streak * STREAK_BONUS;
-      session.totalScore += gained;
-      session.solved += 1;
-      session.streak += 1;
-      if(session.bestAttempts === null || attemptsUsed < session.bestAttempts) session.bestAttempts = attemptsUsed;
-      soundSolve();
-      announce("Code solved in " + attemptsUsed + " " + (attemptsUsed === 1 ? "try" : "tries") + ". The code was " + secretWords() + ". Plus " + gained + " points.");
-    } else {
-      session.streak = 0;
-      soundFailCode();
-      announce("Code failed. The code was " + secretWords() + ". Streak reset.");
-    }
-    updateHud();
-
-    later(function(){
-      showBanner(solved, gained);
-      later(function(){
-        hideBanner();
-        session.codeIndex += 1;
-        if(session.codeIndex >= session.totalCodes) {
-          endSession();
-        } else {
-          beginNextCode();
+      /* ---------- COUNTDOWN (reused look from Claw Catch) ---------- */
+      #countdown {
+        position: absolute;
+        inset: 0;
+        z-index: 60;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        background: color-mix(in srgb, var(--md-sys-color-surface) 60%, transparent);
+        pointer-events: none;
+      }
+      #countdown.active {
+        display: flex;
+      }
+      #countdown .cnum {
+        font-size: 30vmin;
+        font-weight: 800;
+        line-height: 1;
+        background: var(--brand-gradient);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+      #countdown .cnum.go {
+        font-size: 18vmin;
+        letter-spacing: 0.04em;
+      }
+      .cnum.beat {
+        animation: beat 0.7s var(--md-sys-motion-easing-emphasized);
+      }
+      @keyframes beat {
+        0% {
+          transform: scale(0.4);
+          opacity: 0;
         }
-      }, BANNER_MS);
-    }, POST_RESULT_HOLD_MS);
-  }
-
-  function showBanner(solved, gained){
-    var b = $("banner");
-    b.classList.add("show");
-    b.classList.add(solved ? "win" : "lose");
-    var title = solved ? ("Solved! +" + gained + " pts") : ("Failed — the code was:");
-    if(solved && gained > pointsForSolve(code.rows.length)){
-      title = "Solved! +" + gained + " pts (streak bonus)";
-    }
-    $("bannerTitle").textContent = title;
-    var bc = $("bannerCode"); bc.innerHTML = "";
-    // The peg row is decorative (the spoken text comes via announce()); label it so AT inspecting
-    // the banner still gets the code in words rather than four unlabelled dots.
-    bc.setAttribute("aria-label", "The code was " + secretWords());
-    var t = curTheme();
-    code.secret.forEach(function(c){
-      var dot = el("div","bPeg"); dot.style.background = t.colors[c];
-      var sym = el("span","pegSym"); sym.textContent = SYMBOLS[c]; dot.appendChild(sym);
-      bc.appendChild(dot);
-    });
-  }
-  function hideBanner(){
-    var b = $("banner");
-    b.classList.remove("show","win","lose");
-  }
-
-  function beginNextCode(){
-    // A short tick countdown so the player has a beat between codes.
-    later(function(){
-      newCode();
-      phase = Phase.PLACING;
-      refreshActiveRow();
-    }, NEXT_CODE_TICK_MS);
-    soundTick();
-  }
-
-  // ============================================================
-  //  CODE / SESSION LIFECYCLE
-  // ============================================================
-  function rollSecret(){
-    if(forcedSecret && forcedSecret.length === PEG_COUNT){
-      var s = forcedSecret.slice(); forcedSecret = null; return s;
-    }
-    var out = new Array(PEG_COUNT);
-    for(var i = 0; i < PEG_COUNT; i++) out[i] = Math.floor(Math.random() * COLOR_COUNT);
-    return out;
-  }
-
-  function newCode(){
-    code.secret       = rollSecret();
-    code.attemptsLeft = ATTEMPTS_MAX;
-    code.rows         = [];
-    code.current      = [null, null, null, null];
-    code.activeSlot   = 0;
-    renderBoard();
-    updateHud();
-  }
-
-  function startSession(){
-    session.totalCodes   = DIFFICULTIES[difficultyIndex].totalCodes;
-    session.codeIndex    = 0;
-    session.solved       = 0;
-    session.totalScore   = 0;
-    session.streak       = 0;
-    session.bestAttempts = null;
-
-    show("game");
-    renderPalette();
-    newCode();
-    beginCountdown();
-  }
-
-  // ---------- countdown overlay (reused look from Claw Catch) ----------
-  function beginCountdown(){
-    var step = 0;
-    $("countdown").classList.add("active");
-    renderCountdownDigit(COUNTDOWN_SEQUENCE[0]); soundTick();
-    function tick(){
-      step++;
-      if(step < COUNTDOWN_SEQUENCE.length){
-        var val = COUNTDOWN_SEQUENCE[step];
-        renderCountdownDigit(val);
-        (val === "GO") ? soundGo() : soundTick();
-        later(tick, COUNTDOWN_DIGIT_MS);
-      } else {
-        $("countdown").classList.remove("active");
-        phase = Phase.PLACING;
-        refreshActiveRow();
+        30% {
+          opacity: 1;
+        }
+        100% {
+          transform: scale(1.25);
+          opacity: 0;
+        }
       }
-    }
-    later(tick, COUNTDOWN_DIGIT_MS);
-  }
-  function renderCountdownDigit(val){
-    var cn = $("cnum"); cn.textContent = val; cn.className = "cnum" + (val === "GO" ? " go" : "");
-    void cn.offsetWidth; cn.classList.add("beat");
-  }
 
-  function endSession(){
-    phase = Phase.DONE;
-    soundSessionEnd();
-    $("statScore").textContent = String(session.totalScore);
-    $("statSolved").textContent = session.solved + " / " + session.totalCodes;
-    $("statBest").textContent = (session.bestAttempts === null) ? "—" : (session.bestAttempts + (session.bestAttempts === 1 ? " try" : " tries"));
-    if(session.solved === session.totalCodes && session.totalCodes > 0){
-      $("resTitle").textContent = "Perfect session!";
-      $("resSub").textContent = "Every code cracked. Score " + session.totalScore + ".";
-    } else if(session.solved === 0){
-      $("resTitle").textContent = "No solves";
-      $("resSub").textContent = "Try Easy (3 codes) — the codes can repeat a colour, so use the white pegs as your clue.";
-    } else {
-      $("resTitle").textContent = "Session over";
-      $("resSub").textContent = "Solved " + session.solved + " of " + session.totalCodes + " for " + session.totalScore + " points.";
-    }
-    announce($("resTitle").textContent + ". " + $("resSub").textContent);
-    show("results");
-  }
-
-  function quitToSetup(){ show("setup"); }
-
-  // ============================================================
-  //  EVENT WIRING
-  // ============================================================
-  $("board").addEventListener("click", onSlotClick);
-  $("clearBtn").addEventListener("click", clearCurrentRow);
-  $("submitBtn").addEventListener("click", submitGuess);
-  $("quitBtn").addEventListener("click", quitToSetup);
-
-  // Keyboard shortcuts — number keys 1-6 place colours into the active slot; Backspace clears
-  // the active slot; Enter submits. Only active during PLACING.
-  window.addEventListener("keydown", function(ev){
-    if(phase !== Phase.PLACING) return;
-    if(ev.key && DIGIT_KEY_RE.test(ev.key)){ placeColor(parseInt(ev.key, 10) - 1); ev.preventDefault(); return; }
-    if(ev.code === "Backspace"){
-      // Clear the active slot only (not the whole row).
-      var s = code.activeSlot;
-      if(code.current[s] !== null && code.current[s] !== undefined){
-        code.current[s] = null; refreshActiveRow(); soundClear();
-      } else {
-        // step back to previous slot
-        code.activeSlot = (s - 1 + PEG_COUNT) % PEG_COUNT;
-        refreshActiveRow();
+      /* ---------- RESULTS — reused from Snap / Claw Catch ---------- */
+      .res-inner {
+        max-width: 520px;
+        margin: 0 auto;
+        padding: max(28px, env(safe-area-inset-top)) 22px 40px;
+        text-align: center;
       }
-      ev.preventDefault();
-    } else if(ev.code === "Enter"){
-      if(!$("submitBtn").disabled){ submitGuess(); }
-      ev.preventDefault();
-    }
-  });
-
-  $("againBtn").addEventListener("click", function(){
-    initAudio(); if(audioCtx && audioCtx.state === "suspended") audioCtx.resume();
-    startSession();
-  });
-  $("changeBtn").addEventListener("click", function(){ show("setup"); });
-
-  // global gesture guards (reused from Claw Catch)
-  document.addEventListener("gesturestart", function(e){ e.preventDefault(); });
-  document.addEventListener("dblclick", function(e){ e.preventDefault(); });
-
-  // ============================================================
-  //  DEBUG HOOK (for the Phase-2 test plan; harmless in production)
-  // ============================================================
-  window.__decoder = {
-    // Read-only state mirrors (re-bound on every access via getters).
-    get phase()        { return phase; },
-    get codeIndex()    { return session.codeIndex; },
-    get totalCodes()   { return session.totalCodes; },
-    get solved()       { return session.solved; },
-    get score()        { return session.totalScore; },
-    get streak()       { return session.streak; },
-    get attemptsLeft() { return code.attemptsLeft; },
-    get secret()       { return code.secret.slice(); },
-    get rows()         { return code.rows.slice(); },
-    get code()         { return { current: code.current.slice(), activeSlot: code.activeSlot }; },
-    get pendingTimeouts() { return pendingTimeouts.slice(); },
-    get lastBeep()     { return _lastBeep; },
-    // Deterministic helpers for tests.
-    scoreGuess: scoreGuess,
-    fillSlot: function(slotIdx, colorIdx){
-      if(phase !== Phase.PLACING) return false;
-      if(slotIdx < 0 || slotIdx >= PEG_COUNT) return false;
-      code.activeSlot = slotIdx;
-      placeColor(colorIdx);
-      return true;
-    },
-    clearActive: clearCurrentRow,
-    submit: function(){ submitGuess(); },
-    forceSecret: function(arr){
-      // Validate to the same contract as rollSecret — exactly PEG_COUNT in-range integer indices —
-      // so the test hook can never push an out-of-range value into colors[v].
-      if(!Array.isArray(arr) || arr.length !== PEG_COUNT) return false;
-      if(!arr.every(function(n){ return Number.isInteger(n) && n >= 0 && n < COLOR_COUNT; })) return false;
-      forcedSecret = arr.slice();
-      // If a code is already in flight (fresh row), swap the secret in immediately. Otherwise it
-      // kicks in on the NEXT newCode() call.
-      if(phase === Phase.PLACING && code.rows.length === 0){
-        code.secret = forcedSecret.slice(); forcedSecret = null;
+      .res-inner .crown {
+        font-size: 46px;
       }
-      return true;
-    }
-  };
+      .res-inner h2 {
+        margin: 6px 0 4px;
+      }
+      .res-inner .sub {
+        color: var(--md-sys-color-on-surface-variant);
+        font-size: 14px;
+        margin: 0 0 26px;
+      }
+      .stat-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+        margin-bottom: 22px;
+      }
+      .stat {
+        background: var(--md-sys-color-surface-container);
+        border: 1.5px solid var(--md-sys-color-outline-variant);
+        border-radius: var(--md-sys-shape-corner-lg);
+        padding: 16px 8px;
+      }
+      .stat .big {
+        font-size: 30px;
+        font-weight: 800;
+        font-variant-numeric: tabular-nums;
+      }
+      .stat .cap {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--md-sys-color-on-surface-variant);
+        margin-top: 4px;
+      }
+      .stat.hero {
+        border-color: var(--md-sys-color-primary);
+        background: var(--md-sys-color-surface-container-high);
+      }
+      .stat.hero .big {
+        color: var(--md-sys-color-tertiary);
+      }
+      .res-actions {
+        display: flex;
+        gap: 12px;
+        margin-top: 4px;
+      }
+      .res-actions .button {
+        flex: 1;
+      }
+      .res-foot {
+        margin-top: 18px;
+      }
 
-  // ---------- boot ----------
-  renderThemeCards();
-  renderDifficultyChips();
-  // Palette + board are rendered when a session starts (newCode/renderPalette).
-})();
-</script>
-</body>
+      /* Reduced-motion: suppress decorative pulse / drop / beat. Functional timing is driven by
+       JS setTimeouts (LEARNINGS row 3) so play remains paced even under reduce. */
+      @media (prefers-reduced-motion: reduce) {
+        .peg.drop {
+          animation: none;
+        }
+        .row.active .slot.activeSlot {
+          animation: none;
+          box-shadow: 0 0 0 3px color-mix(in srgb, var(--md-sys-color-primary) 30%, transparent);
+        }
+        .cnum.beat {
+          animation: none;
+        }
+        .fb {
+          transition: opacity 80ms linear;
+          transform: none;
+        }
+        .sel-chip,
+        .theme-card,
+        .colorBtn,
+        .actionBtn,
+        .switch::after {
+          transition: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- ========== SETUP ========== -->
+    <section id="setup" class="screen active">
+      <div class="setup-inner">
+        <a class="back-link state-layer" href="../../index.html" aria-label="Back to PlayPad">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path
+              d="M15 18l-6-6 6-6"
+              stroke="currentColor"
+              stroke-width="2.2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+          PlayPad
+        </a>
+        <div class="brand"><h1 class="display-small brand-wordmark">Super Decoder</h1></div>
+        <p class="tagline body-medium">
+          Crack a hidden 4-colour code in <em>up to 10 guesses</em>. Black peg = right colour, right
+          spot. White peg = right colour, wrong spot. Codes may repeat a colour.
+        </p>
+
+        <div class="block">
+          <div class="label"><span>Palette theme</span></div>
+          <div class="theme-grid" id="themeGrid"></div>
+        </div>
+
+        <div class="block">
+          <div class="label">
+            <span>Difficulty</span><span class="hint">codes to crack this session</span>
+          </div>
+          <div class="chips" id="difficultyChips"></div>
+        </div>
+
+        <div class="block">
+          <div class="toggle-row">
+            <div>
+              <div class="t-label">Sound</div>
+              <div class="t-sub">Peg drops, feedback ticks, a chime on a solve</div>
+            </div>
+            <button class="switch" id="soundToggle" aria-pressed="true" aria-label="Sound"></button>
+          </div>
+        </div>
+
+        <button class="start-btn state-layer" id="startBtn">Start</button>
+        <p class="start-note" id="startNote">
+          One player · tap a slot, then a colour · ⌫ clears the row · SUBMIT when all four are
+          placed.
+        </p>
+      </div>
+    </section>
+
+    <!-- ========== GAME ========== -->
+    <section id="game" class="screen">
+      <div id="stage">
+        <div id="hud">
+          <span id="hudCode">Code 1 / 3</span>
+          <span class="sep"></span>
+          <span id="hudAttempts">Tries <b>10</b></span>
+          <span class="sep"></span>
+          <span id="hudScore">Score <b>0</b></span>
+          <span class="sep"></span>
+          <span id="hudStreak">Streak <b>0</b></span>
+          <button id="quitBtn" aria-label="Quit game">✕</button>
+        </div>
+
+        <div id="boardWrap">
+          <div class="board" id="board" role="grid" aria-label="Guess board"></div>
+        </div>
+
+        <div id="deck">
+          <div id="palette" role="group" aria-label="Colour palette"></div>
+          <div id="actions">
+            <button class="actionBtn" id="clearBtn" aria-label="Clear current row">⌫ Clear</button>
+            <button class="actionBtn" id="submitBtn" aria-label="Submit guess" disabled>
+              SUBMIT
+            </button>
+          </div>
+        </div>
+
+        <div id="banner" role="status" aria-live="polite">
+          <div class="bTitle" id="bannerTitle"></div>
+          <div class="bCode" id="bannerCode"></div>
+        </div>
+        <div id="countdown"><div class="cnum" id="cnum">3</div></div>
+      </div>
+    </section>
+
+    <!-- Screen-reader-only live region for transient announcements not in the banner. -->
+    <p id="srStatus" class="visually-hidden" role="status" aria-live="polite"></p>
+
+    <!-- ========== RESULTS ========== -->
+    <section id="results" class="screen">
+      <div class="res-inner">
+        <div class="crown">🔐</div>
+        <h2 id="resTitle" class="headline-small">Session over</h2>
+        <p class="sub" id="resSub"></p>
+        <div class="stat-grid">
+          <div class="stat hero">
+            <div class="big" id="statScore">0</div>
+            <div class="cap">Score</div>
+          </div>
+          <div class="stat">
+            <div class="big" id="statSolved">0</div>
+            <div class="cap">Solved</div>
+          </div>
+          <div class="stat">
+            <div class="big" id="statBest">—</div>
+            <div class="cap">Best solve</div>
+          </div>
+        </div>
+        <div class="res-actions">
+          <button class="button button--outlined state-layer" id="changeBtn">
+            Change settings
+          </button>
+          <button class="button button--filled state-layer" id="againBtn">Play again</button>
+        </div>
+        <div class="res-foot">
+          <a class="back-link state-layer" href="../../index.html" aria-label="Back to PlayPad">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                d="M15 18l-6-6 6-6"
+                stroke="currentColor"
+                stroke-width="2.2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            Back to PlayPad
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <script>
+      (function () {
+        "use strict";
+
+        // ============================================================
+        //  CONFIG — themes, difficulty (= session length), constants
+        // ============================================================
+
+        // The ONLY raw colour values in this file are these 6×3 palette hexes. Every other surface
+        // uses MD3 tokens. Each theme is just a different colourway — gameplay is identical.
+        var THEMES = [
+          {
+            id: "classic",
+            name: "Classic",
+            colors: ["#ef4444", "#f97316", "#facc15", "#22c55e", "#3b82f6", "#a855f7"],
+            names: ["red", "orange", "yellow", "green", "blue", "purple"],
+          },
+          {
+            id: "pastel",
+            name: "Pastel",
+            colors: ["#fda4af", "#fdba74", "#fde047", "#86efac", "#93c5fd", "#c4b5fd"],
+            names: ["rose", "peach", "lemon", "mint", "sky", "lilac"],
+          },
+          {
+            id: "neon",
+            name: "Neon",
+            colors: ["#ff1493", "#00ffff", "#adff2f", "#ff00ff", "#1e90ff", "#ffbf00"],
+            names: ["hot pink", "cyan", "lime", "magenta", "electric blue", "amber"],
+          },
+        ];
+
+        // Difficulty = SESSION LENGTH (per the user's brief). Per-code rules stay constant.
+        var DIFFICULTIES = [
+          { l: "Easy", sub: "3 codes", totalCodes: 3 },
+          { l: "Normal", sub: "5 codes", totalCodes: 5 },
+          { l: "Hard", sub: "8 codes", totalCodes: 8 },
+        ];
+        var DEFAULT_DIFFICULTY_INDEX = 0;
+
+        // Constant per-code rules (AC-4).
+        var PEG_COUNT = 4; // pegs in the secret + each guess
+        var COLOR_COUNT = 6; // palette size
+        var ATTEMPTS_MAX = 10; // guesses per code
+
+        // A distinct SHAPE per colour INDEX (stable across themes) so the game never relies on colour
+        // alone — a colour-blind player can read the code by shape (CODE_QUALITY §13: "colour is not the
+        // only signal", AC-20). Geometric Unicode glyphs render reliably as DOM text on every engine
+        // (the canvas-emoji caveat in LEARNINGS applies to <canvas>, not DOM — this game is DOM).
+        var SYMBOLS = ["●", "▲", "■", "◆", "★", "✚"];
+
+        // Hoisted so the keydown handler doesn't recompile the regex on every keypress.
+        var DIGIT_KEY_RE = /^[1-6]$/;
+
+        // Animation cadence — JS-driven (LEARNINGS row 3 / rev2 row 9) so reduce-motion still paces it.
+        var COUNTDOWN_SEQUENCE = ["3", "2", "1", "GO"];
+        var COUNTDOWN_DIGIT_MS = 600;
+        var FEEDBACK_STAGGER_MS = 140; // gap between revealing successive feedback pegs
+        var POST_FEEDBACK_MS = 220; // tiny hold after last peg before activating next row
+        var POST_RESULT_HOLD_MS = 700; // hold after solve/fail before showing the banner
+        var BANNER_MS = 1700; // banner display before next code (or results)
+        var NEXT_CODE_TICK_MS = 500; // short tick countdown between codes
+
+        // Scoring (AC-11): solved-in-1 = 100, down to 10 on guess 10; streak bonus = streak * 5.
+        function pointsForSolve(attemptsUsed) {
+          return Math.max(10, (ATTEMPTS_MAX - attemptsUsed + 1) * 10);
+        }
+        var STREAK_BONUS = 5;
+
+        // Phase machine — string values so devtools shows meaning at a glance.
+        var Phase = {
+          IDLE: "IDLE", // setup screen / not playing
+          PLACING: "PLACING", // active row: player is placing pegs
+          SUBMITTING: "SUBMITTING", // guess submitted, feedback being revealed
+          BETWEEN: "BETWEEN", // banner showing between codes
+          DONE: "DONE", // session complete (results visible)
+        };
+
+        // ============================================================
+        //  STATE
+        // ============================================================
+        var themeIndex = 0;
+        var difficultyIndex = DEFAULT_DIFFICULTY_INDEX;
+        var soundOn = true;
+
+        var session = {
+          totalCodes: 3,
+          codeIndex: 0,
+          solved: 0,
+          totalScore: 0,
+          streak: 0,
+          bestAttempts: null,
+        };
+        var code = {
+          secret: [],
+          attemptsLeft: ATTEMPTS_MAX,
+          rows: [],
+          current: [null, null, null, null],
+          activeSlot: 0,
+        };
+        var phase = Phase.IDLE;
+
+        // Every scheduled setTimeout id lives here so the show() chokepoint can clear them on quit /
+        // session-end (LEARNINGS rev2 row 13 — every cross-screen teardown lives inside show()).
+        var pendingTimeouts = [];
+
+        // Optional override for the next code's secret — used by the test hook (forceSecret).
+        var forcedSecret = null;
+
+        // Audio (best-effort; failures swallowed by design).
+        var audioCtx = null;
+        var reduceMotion = !!(
+          window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        );
+
+        // ============================================================
+        //  HELPERS
+        // ============================================================
+        function $(id) {
+          return document.getElementById(id);
+        }
+        function el(tag, cls) {
+          var e = document.createElement(tag);
+          if (cls) e.className = cls;
+          return e;
+        }
+        function clamp(v, lo, hi) {
+          return v < lo ? lo : v > hi ? hi : v;
+        }
+        function announce(msg) {
+          $("srStatus").textContent = msg;
+        }
+        function curTheme() {
+          return THEMES[themeIndex];
+        }
+
+        // The current secret as spoken colour names, for screen-reader announcements (the visual
+        // banner reveal is sighted-only otherwise — a value-blocking gap raised by the AT persona).
+        function secretWords() {
+          return code.secret
+            .map(function (c) {
+              return curTheme().names[c];
+            })
+            .join(", ");
+        }
+
+        // Build a coloured peg element carrying its colour-blind shape glyph (SYMBOLS[colorIdx]).
+        // Used for every rendered peg: board slots, palette buttons, and the banner secret reveal.
+        function makePeg(colorIdx) {
+          var peg = el("div", "peg");
+          peg.style.background = curTheme().colors[colorIdx];
+          var sym = el("span", "pegSym");
+          sym.textContent = SYMBOLS[colorIdx];
+          peg.appendChild(sym);
+          return peg;
+        }
+
+        // setTimeout wrapper — every timer is tracked so show() can cancel them all.
+        function later(fn, ms) {
+          var id = setTimeout(function () {
+            // Self-deregister so the pending list stays tight.
+            var i = pendingTimeouts.indexOf(id);
+            if (i >= 0) pendingTimeouts.splice(i, 1);
+            fn();
+          }, ms);
+          pendingTimeouts.push(id);
+          return id;
+        }
+        function clearAllPending() {
+          for (var i = 0; i < pendingTimeouts.length; i++) clearTimeout(pendingTimeouts[i]);
+          pendingTimeouts.length = 0;
+        }
+
+        // THE chokepoint. Every screen change goes through here, so every cross-screen cleanup
+        // belongs here too (LEARNINGS rev2 row 13). Cancels stagger timers, hides the countdown
+        // overlay and the banner, and resets transient phase state — no caller can forget.
+        function show(s) {
+          ["setup", "game", "results"].forEach(function (x) {
+            $(x).classList.toggle("active", x === s);
+          });
+          clearAllPending();
+          $("countdown").classList.remove("active");
+          $("banner").classList.remove("show", "win", "lose");
+          if (s !== "game") {
+            // Leaving the game screen — reset the in-flight code so any return enters a clean state.
+            phase = s === "results" ? Phase.DONE : Phase.IDLE;
+            code.activeSlot = 0;
+            code.current = [null, null, null, null];
+          }
+        }
+
+        // ============================================================
+        //  AUDIO — initialised on first user gesture; failures ignored
+        // ============================================================
+        function initAudio() {
+          if (audioCtx) return;
+          try {
+            var AC = window.AudioContext || window.webkitAudioContext;
+            audioCtx = new AC();
+          } catch (e) {
+            audioCtx = null;
+          }
+        }
+        // Test hook captures the last beep so reduce-motion tests can assert sound still fires.
+        var _lastBeep = null;
+        function beep(freq, dur, type, gain) {
+          _lastBeep = {
+            freq: freq,
+            dur: dur,
+            type: type || "sine",
+            gain: gain || 0.16,
+            t: Date.now(),
+          };
+          if (!soundOn || !audioCtx) return;
+          try {
+            var o = audioCtx.createOscillator(),
+              g = audioCtx.createGain();
+            o.type = _lastBeep.type;
+            o.frequency.value = freq;
+            o.connect(g);
+            g.connect(audioCtx.destination);
+            var t = audioCtx.currentTime;
+            g.gain.setValueAtTime(_lastBeep.gain, t);
+            g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+            o.start(t);
+            o.stop(t + dur);
+          } catch (e) {
+            /* ignore */
+          }
+        }
+        function soundPlace() {
+          beep(880, 0.06, "square", 0.1);
+        }
+        function soundClear() {
+          beep(220, 0.1, "triangle", 0.1);
+        }
+        function soundSubmit() {
+          beep(330, 0.05, "sine", 0.14);
+          later(function () {
+            beep(440, 0.1, "sine", 0.14);
+          }, 60);
+        }
+        function soundBlackPeg() {
+          beep(660, 0.08, "triangle", 0.14);
+        }
+        function soundWhitePeg() {
+          beep(330, 0.08, "triangle", 0.1);
+        }
+        function soundEmptyPeg() {
+          beep(180, 0.05, "sine", 0.05);
+        }
+        function soundSolve() {
+          // C–E–G arpeggio — short and bright.
+          [523.25, 659.25, 784.0].forEach(function (f, i) {
+            later(function () {
+              beep(f, 0.14, "sine", 0.18);
+            }, i * 90);
+          });
+        }
+        function soundFailCode() {
+          beep(220, 0.16, "sawtooth", 0.1);
+          later(function () {
+            beep(165, 0.22, "sawtooth", 0.1);
+          }, 140);
+        }
+        function soundSessionEnd() {
+          [523.25, 659.25, 784.0, 1046.5].forEach(function (f, i) {
+            later(function () {
+              beep(f, 0.18, "sine", 0.18);
+            }, i * 110);
+          });
+        }
+        function soundTick() {
+          beep(520, 0.07, "sine", 0.12);
+        }
+        function soundGo() {
+          beep(880, 0.16, "sine", 0.2);
+        }
+
+        // ============================================================
+        //  SETUP RENDERERS
+        // ============================================================
+        function buildChips(container, items, getActive, onPick) {
+          container.innerHTML = "";
+          items.forEach(function (it) {
+            var b = el("button", "sel-chip");
+            if (it.sub) {
+              b.textContent = it.main;
+              var s = el("small");
+              s.textContent = it.sub;
+              b.appendChild(s);
+            } else {
+              b.textContent = it.main;
+            }
+            b.setAttribute("aria-pressed", getActive(it) ? "true" : "false");
+            b.addEventListener("click", function () {
+              onPick(it);
+            });
+            container.appendChild(b);
+          });
+        }
+
+        function renderThemeCards() {
+          var wrap = $("themeGrid");
+          wrap.innerHTML = "";
+          THEMES.forEach(function (t, i) {
+            var b = el("button", "theme-card");
+            b.setAttribute("aria-pressed", i === themeIndex ? "true" : "false");
+            b.setAttribute("aria-label", t.name + " theme");
+            var prev = el("div", "preview");
+            // Show all 6 colours as a 2×3 dot grid so the palette is visible at a glance.
+            t.colors.forEach(function (c) {
+              var dot = el("span");
+              dot.style.background = c;
+              prev.appendChild(dot);
+            });
+            var nm = el("div", "tname");
+            nm.textContent = t.name;
+            b.appendChild(prev);
+            b.appendChild(nm);
+            b.addEventListener("click", function () {
+              themeIndex = i;
+              renderThemeCards();
+            });
+            wrap.appendChild(b);
+          });
+        }
+
+        function renderDifficultyChips() {
+          buildChips(
+            $("difficultyChips"),
+            DIFFICULTIES.map(function (d, i) {
+              return { main: d.l, sub: d.sub, i: i };
+            }),
+            function (it) {
+              return it.i === difficultyIndex;
+            },
+            function (it) {
+              difficultyIndex = it.i;
+              renderDifficultyChips();
+            },
+          );
+        }
+
+        $("soundToggle").addEventListener("click", function () {
+          soundOn = !soundOn;
+          this.setAttribute("aria-pressed", soundOn ? "true" : "false");
+        });
+        $("startBtn").addEventListener("click", function () {
+          initAudio();
+          if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+          startSession();
+        });
+
+        // ============================================================
+        //  GAME — board renderer
+        // ============================================================
+
+        // Renders ALL 10 rows up-front; subsequent updates mutate per-row state. The active row gets
+        // `tabindex=0` on its slots and click handlers; history/empty rows are disabled.
+        function renderBoard() {
+          var board = $("board");
+          board.innerHTML = "";
+          for (var r = 0; r < ATTEMPTS_MAX; r++) {
+            var row = el("div", "row");
+            row.setAttribute("role", "row");
+            row.setAttribute("data-row", String(r));
+            var num = el("div", "rowNum");
+            num.textContent = String(r + 1);
+            row.appendChild(num);
+
+            var slots = el("div", "slots");
+            for (var s = 0; s < PEG_COUNT; s++) {
+              var slot = el("button", "slot");
+              slot.setAttribute("data-row", String(r));
+              slot.setAttribute("data-slot", String(s));
+              slot.setAttribute("aria-label", "Row " + (r + 1) + " slot " + (s + 1) + ": empty");
+              slot.tabIndex = -1;
+              slot.disabled = true;
+              slots.appendChild(slot);
+            }
+            row.appendChild(slots);
+
+            var fb = el("div", "feedback");
+            fb.setAttribute("aria-label", "Feedback for row " + (r + 1));
+            for (var f = 0; f < PEG_COUNT; f++) {
+              var dot = el("div", "fb");
+              fb.appendChild(dot);
+            }
+            row.appendChild(fb);
+
+            board.appendChild(row);
+          }
+          // Mirror existing rows from this code (if any — e.g. resume on resize — currently always
+          // empty at code start, but cheap to support).
+          for (var i = 0; i < code.rows.length; i++) renderHistoryRow(i);
+          // Render the active row's current draft state too.
+          refreshActiveRow();
+        }
+
+        function rowEl(r) {
+          return $("board").querySelector('.row[data-row="' + r + '"]');
+        }
+
+        // Paint the 4 locked, non-interactive guess pegs into a row's slots. Shared by the history
+        // render and the submit-lock so the peg-building loop lives in exactly one place. rowIdx is
+        // 0-based and used only for the per-slot aria-label.
+        function paintGuessPegs(rowElement, guess, rowIdx) {
+          var slots = rowElement.querySelectorAll(".slot");
+          for (var i = 0; i < PEG_COUNT; i++) {
+            var slot = slots[i];
+            slot.disabled = true;
+            slot.tabIndex = -1;
+            slot.innerHTML = "";
+            slot.classList.remove("activeSlot");
+            slot.appendChild(makePeg(guess[i]));
+            slot.setAttribute(
+              "aria-label",
+              "Row " + (rowIdx + 1) + " slot " + (i + 1) + ": " + curTheme().names[guess[i]],
+            );
+          }
+        }
+
+        // Render a locked history row: filled pegs + feedback cluster. Called after a row resolves.
+        function renderHistoryRow(rowIdx) {
+          var r = rowEl(rowIdx);
+          if (!r) return;
+          r.classList.add("history");
+          r.classList.remove("active", "empty");
+          var entry = code.rows[rowIdx];
+          paintGuessPegs(r, entry.guess, rowIdx);
+          var fbs = r.querySelectorAll(".fb");
+          paintFeedbackCluster(fbs, entry.black, entry.white, /*reveal*/ true);
+        }
+
+        // Paint a 2×2 feedback cluster from counts. Order is stable: blacks → whites → greys,
+        // never the same order as the guess (AC-8).
+        function paintFeedbackCluster(dots, black, white, reveal) {
+          for (var i = 0; i < dots.length; i++) {
+            dots[i].classList.remove("black", "white", "shown");
+            if (i < black) dots[i].classList.add("black");
+            else if (i < black + white) dots[i].classList.add("white");
+            // else: leave as the default grey (no class)
+            if (reveal) dots[i].classList.add("shown");
+          }
+        }
+
+        // The currently active row reflects code.current; called on every place/clear.
+        function refreshActiveRow() {
+          var rowIdx = code.rows.length;
+          if (rowIdx >= ATTEMPTS_MAX) return;
+          // Mark all rows correctly: history above, active = rowIdx, empty below.
+          for (var r = 0; r < ATTEMPTS_MAX; r++) {
+            var rEl = rowEl(r);
+            rEl.classList.remove("active", "empty", "history");
+            if (r < rowIdx) rEl.classList.add("history");
+            else if (r === rowIdx) rEl.classList.add("active");
+            else rEl.classList.add("empty");
+          }
+          // Active-row slots become interactive.
+          var active = rowEl(rowIdx);
+          var slots = active.querySelectorAll(".slot");
+          for (var i = 0; i < PEG_COUNT; i++) {
+            var slot = slots[i];
+            var v = code.current[i];
+            slot.disabled = false;
+            slot.tabIndex = 0;
+            slot.innerHTML = "";
+            slot.classList.toggle("activeSlot", i === code.activeSlot);
+            if (v !== null && v !== undefined) {
+              var peg = makePeg(v);
+              if (slot.dataset.justFilled === "1") {
+                peg.classList.add("drop");
+                delete slot.dataset.justFilled;
+              }
+              slot.appendChild(peg);
+              slot.setAttribute(
+                "aria-label",
+                "Row " +
+                  (rowIdx + 1) +
+                  " slot " +
+                  (i + 1) +
+                  ": " +
+                  curTheme().names[v] +
+                  " (tap to clear)",
+              );
+            } else {
+              slot.setAttribute(
+                "aria-label",
+                "Row " + (rowIdx + 1) + " slot " + (i + 1) + ": empty",
+              );
+            }
+          }
+          $("submitBtn").disabled = code.current.some(function (x) {
+            return x === null || x === undefined;
+          });
+          // Scroll the active row into view (board container scrolls).
+          if (active.scrollIntoView)
+            active.scrollIntoView({ block: "nearest", behavior: reduceMotion ? "auto" : "smooth" });
+        }
+
+        // Render the colour palette buttons for the current theme.
+        function renderPalette() {
+          var p = $("palette");
+          p.innerHTML = "";
+          var t = curTheme();
+          for (var i = 0; i < COLOR_COUNT; i++) {
+            var b = el("button", "colorBtn");
+            b.style.background = t.colors[i];
+            b.setAttribute("data-color", String(i));
+            b.setAttribute("aria-label", "Place " + t.names[i]);
+            var sym = el("span", "pegSym");
+            sym.textContent = SYMBOLS[i];
+            b.appendChild(sym);
+            b.addEventListener("click", onPaletteClick);
+            p.appendChild(b);
+          }
+        }
+
+        function updateHud() {
+          $("hudCode").textContent = "Code " + (session.codeIndex + 1) + " / " + session.totalCodes;
+          $("hudAttempts").innerHTML = "Tries <b>" + code.attemptsLeft + "</b>";
+          $("hudScore").innerHTML = "Score <b>" + session.totalScore + "</b>";
+          $("hudStreak").innerHTML = "Streak <b>" + session.streak + "</b>";
+        }
+
+        // ============================================================
+        //  PER-TURN INTERACTION — place, clear, submit
+        // ============================================================
+
+        // Tap a colour → fill the active slot, advance to the next empty slot.
+        function onPaletteClick(ev) {
+          if (phase !== Phase.PLACING) return;
+          var colorIdx = +ev.currentTarget.getAttribute("data-color");
+          placeColor(colorIdx);
+        }
+        function placeColor(colorIdx) {
+          if (phase !== Phase.PLACING) return;
+          var slot = code.activeSlot;
+          if (slot < 0 || slot >= PEG_COUNT) return;
+          code.current[slot] = colorIdx;
+          // Find next empty slot, wrap if needed; stay put if the row is full.
+          var next = nextEmptySlotFrom(slot + 1);
+          if (next < 0) next = slot; // no empty slots → keep active at last filled (so a tap-clear still works there)
+          code.activeSlot = next;
+          // Hint the renderer to animate just the slot we filled.
+          var active = rowEl(code.rows.length);
+          if (active) {
+            var slotEl = active.querySelectorAll(".slot")[slot];
+            if (slotEl) slotEl.dataset.justFilled = "1";
+          }
+          refreshActiveRow();
+          soundPlace();
+        }
+        function nextEmptySlotFrom(start) {
+          for (var i = 0; i < PEG_COUNT; i++) {
+            var idx = (start + i) % PEG_COUNT;
+            if (code.current[idx] === null || code.current[idx] === undefined) return idx;
+          }
+          return -1;
+        }
+
+        // Tap a filled slot → clear it and make it active. Disambiguates from "tap empty slot to
+        // activate" since empty slots get activated regardless.
+        function onSlotClick(ev) {
+          if (phase !== Phase.PLACING) return;
+          var slotEl = ev.target.closest(".slot");
+          if (!slotEl) return;
+          var rowIdx = +slotEl.getAttribute("data-row");
+          if (rowIdx !== code.rows.length) return; // not the active row
+          var slotIdx = +slotEl.getAttribute("data-slot");
+          if (code.current[slotIdx] !== null && code.current[slotIdx] !== undefined) {
+            code.current[slotIdx] = null;
+            code.activeSlot = slotIdx;
+            soundClear();
+          } else {
+            code.activeSlot = slotIdx;
+          }
+          refreshActiveRow();
+        }
+
+        // ⌫ Clear — wipe the whole current row.
+        function clearCurrentRow() {
+          if (phase !== Phase.PLACING) return;
+          code.current = [null, null, null, null];
+          code.activeSlot = 0;
+          refreshActiveRow();
+          soundClear();
+        }
+
+        // ============================================================
+        //  FEEDBACK ALGORITHM — pure two-pass, duplicate-safe (AC-7)
+        // ============================================================
+        function scoreGuess(secret, guess) {
+          var black = 0,
+            white = 0;
+          var sUsed = [false, false, false, false];
+          var gUsed = [false, false, false, false];
+          // Pass 1: exact matches (correct colour + correct position).
+          for (var i = 0; i < PEG_COUNT; i++) {
+            if (guess[i] === secret[i]) {
+              black++;
+              sUsed[i] = true;
+              gUsed[i] = true;
+            }
+          }
+          // Pass 2: colour-only matches against unused-on-both-sides slots.
+          for (var g = 0; g < PEG_COUNT; g++) {
+            if (gUsed[g]) continue;
+            for (var sIdx = 0; sIdx < PEG_COUNT; sIdx++) {
+              if (sUsed[sIdx]) continue;
+              if (guess[g] === secret[sIdx]) {
+                white++;
+                sUsed[sIdx] = true;
+                gUsed[g] = true;
+                break;
+              }
+            }
+          }
+          return { black: black, white: white };
+        }
+
+        // ============================================================
+        //  SUBMIT → reveal feedback → branch
+        // ============================================================
+        function submitGuess() {
+          if (phase !== Phase.PLACING) return;
+          if (
+            code.current.some(function (x) {
+              return x === null || x === undefined;
+            })
+          )
+            return;
+          phase = Phase.SUBMITTING;
+          var guess = code.current.slice();
+          var fb = scoreGuess(code.secret, guess);
+          var rowIdx = code.rows.length;
+          code.rows.push({ guess: guess, black: fb.black, white: fb.white });
+          code.attemptsLeft = ATTEMPTS_MAX - code.rows.length;
+          code.current = [null, null, null, null];
+          code.activeSlot = 0;
+          updateHud();
+          soundSubmit();
+
+          // Lock the row (history styling + slot disable) but render the FEEDBACK pegs one at a time
+          // with JS-driven staggers. Reduced-motion still hits the same cadence so play is paced;
+          // only the per-peg pop animation is suppressed via CSS (LEARNINGS row 3 / rev2 row 9).
+          var r = rowEl(rowIdx);
+          r.classList.remove("active", "empty");
+          r.classList.add("history");
+          paintGuessPegs(r, guess, rowIdx);
+          var fbs = r.querySelectorAll(".fb");
+          // Pre-set the classes (black/white/grey) but keep them hidden; reveal one by one.
+          paintFeedbackCluster(fbs, fb.black, fb.white, /*reveal*/ false);
+          for (var p = 0; p < PEG_COUNT; p++) {
+            (function (idx) {
+              later(
+                function () {
+                  fbs[idx].classList.add("shown");
+                  if (fbs[idx].classList.contains("black")) soundBlackPeg();
+                  else if (fbs[idx].classList.contains("white")) soundWhitePeg();
+                  else soundEmptyPeg();
+                },
+                FEEDBACK_STAGGER_MS * (idx + 1),
+              );
+            })(p);
+          }
+
+          // After the last peg + a tiny hold, branch.
+          later(
+            function () {
+              var solved = fb.black === PEG_COUNT;
+              var outOfAttempts = code.attemptsLeft <= 0;
+              if (solved) {
+                resolveCode(true, rowIdx + 1);
+              } else if (outOfAttempts) {
+                resolveCode(false, rowIdx + 1);
+              } else {
+                // Next attempt — reactivate next row.
+                phase = Phase.PLACING;
+                refreshActiveRow();
+                announce(
+                  "Row " +
+                    (rowIdx + 1) +
+                    ": " +
+                    fb.black +
+                    " black, " +
+                    fb.white +
+                    " white. Tries remaining: " +
+                    code.attemptsLeft +
+                    ".",
+                );
+              }
+            },
+            FEEDBACK_STAGGER_MS * PEG_COUNT + POST_FEEDBACK_MS,
+          );
+        }
+
+        // ============================================================
+        //  RESOLVE A CODE — score, banner, advance
+        // ============================================================
+        function resolveCode(solved, attemptsUsed) {
+          phase = Phase.BETWEEN;
+          var gained = 0;
+          if (solved) {
+            gained = pointsForSolve(attemptsUsed) + session.streak * STREAK_BONUS;
+            session.totalScore += gained;
+            session.solved += 1;
+            session.streak += 1;
+            if (session.bestAttempts === null || attemptsUsed < session.bestAttempts)
+              session.bestAttempts = attemptsUsed;
+            soundSolve();
+            announce(
+              "Code solved in " +
+                attemptsUsed +
+                " " +
+                (attemptsUsed === 1 ? "try" : "tries") +
+                ". The code was " +
+                secretWords() +
+                ". Plus " +
+                gained +
+                " points.",
+            );
+          } else {
+            session.streak = 0;
+            soundFailCode();
+            announce("Code failed. The code was " + secretWords() + ". Streak reset.");
+          }
+          updateHud();
+
+          later(function () {
+            showBanner(solved, gained);
+            later(function () {
+              hideBanner();
+              session.codeIndex += 1;
+              if (session.codeIndex >= session.totalCodes) {
+                endSession();
+              } else {
+                beginNextCode();
+              }
+            }, BANNER_MS);
+          }, POST_RESULT_HOLD_MS);
+        }
+
+        function showBanner(solved, gained) {
+          var b = $("banner");
+          b.classList.add("show");
+          b.classList.add(solved ? "win" : "lose");
+          var title = solved ? "Solved! +" + gained + " pts" : "Failed — the code was:";
+          if (solved && gained > pointsForSolve(code.rows.length)) {
+            title = "Solved! +" + gained + " pts (streak bonus)";
+          }
+          $("bannerTitle").textContent = title;
+          var bc = $("bannerCode");
+          bc.innerHTML = "";
+          // The peg row is decorative (the spoken text comes via announce()); label it so AT inspecting
+          // the banner still gets the code in words rather than four unlabelled dots.
+          bc.setAttribute("aria-label", "The code was " + secretWords());
+          var t = curTheme();
+          code.secret.forEach(function (c) {
+            var dot = el("div", "bPeg");
+            dot.style.background = t.colors[c];
+            var sym = el("span", "pegSym");
+            sym.textContent = SYMBOLS[c];
+            dot.appendChild(sym);
+            bc.appendChild(dot);
+          });
+        }
+        function hideBanner() {
+          var b = $("banner");
+          b.classList.remove("show", "win", "lose");
+        }
+
+        function beginNextCode() {
+          // A short tick countdown so the player has a beat between codes.
+          later(function () {
+            newCode();
+            phase = Phase.PLACING;
+            refreshActiveRow();
+          }, NEXT_CODE_TICK_MS);
+          soundTick();
+        }
+
+        // ============================================================
+        //  CODE / SESSION LIFECYCLE
+        // ============================================================
+        function rollSecret() {
+          if (forcedSecret && forcedSecret.length === PEG_COUNT) {
+            var s = forcedSecret.slice();
+            forcedSecret = null;
+            return s;
+          }
+          var out = new Array(PEG_COUNT);
+          for (var i = 0; i < PEG_COUNT; i++) out[i] = Math.floor(Math.random() * COLOR_COUNT);
+          return out;
+        }
+
+        function newCode() {
+          code.secret = rollSecret();
+          code.attemptsLeft = ATTEMPTS_MAX;
+          code.rows = [];
+          code.current = [null, null, null, null];
+          code.activeSlot = 0;
+          renderBoard();
+          updateHud();
+        }
+
+        function startSession() {
+          session.totalCodes = DIFFICULTIES[difficultyIndex].totalCodes;
+          session.codeIndex = 0;
+          session.solved = 0;
+          session.totalScore = 0;
+          session.streak = 0;
+          session.bestAttempts = null;
+
+          show("game");
+          renderPalette();
+          newCode();
+          beginCountdown();
+        }
+
+        // ---------- countdown overlay (reused look from Claw Catch) ----------
+        function beginCountdown() {
+          var step = 0;
+          $("countdown").classList.add("active");
+          renderCountdownDigit(COUNTDOWN_SEQUENCE[0]);
+          soundTick();
+          function tick() {
+            step++;
+            if (step < COUNTDOWN_SEQUENCE.length) {
+              var val = COUNTDOWN_SEQUENCE[step];
+              renderCountdownDigit(val);
+              val === "GO" ? soundGo() : soundTick();
+              later(tick, COUNTDOWN_DIGIT_MS);
+            } else {
+              $("countdown").classList.remove("active");
+              phase = Phase.PLACING;
+              refreshActiveRow();
+            }
+          }
+          later(tick, COUNTDOWN_DIGIT_MS);
+        }
+        function renderCountdownDigit(val) {
+          var cn = $("cnum");
+          cn.textContent = val;
+          cn.className = "cnum" + (val === "GO" ? " go" : "");
+          void cn.offsetWidth;
+          cn.classList.add("beat");
+        }
+
+        function endSession() {
+          phase = Phase.DONE;
+          soundSessionEnd();
+          $("statScore").textContent = String(session.totalScore);
+          $("statSolved").textContent = session.solved + " / " + session.totalCodes;
+          $("statBest").textContent =
+            session.bestAttempts === null
+              ? "—"
+              : session.bestAttempts + (session.bestAttempts === 1 ? " try" : " tries");
+          if (session.solved === session.totalCodes && session.totalCodes > 0) {
+            $("resTitle").textContent = "Perfect session!";
+            $("resSub").textContent = "Every code cracked. Score " + session.totalScore + ".";
+          } else if (session.solved === 0) {
+            $("resTitle").textContent = "No solves";
+            $("resSub").textContent =
+              "Try Easy (3 codes) — the codes can repeat a colour, so use the white pegs as your clue.";
+          } else {
+            $("resTitle").textContent = "Session over";
+            $("resSub").textContent =
+              "Solved " +
+              session.solved +
+              " of " +
+              session.totalCodes +
+              " for " +
+              session.totalScore +
+              " points.";
+          }
+          announce($("resTitle").textContent + ". " + $("resSub").textContent);
+          show("results");
+        }
+
+        function quitToSetup() {
+          show("setup");
+        }
+
+        // ============================================================
+        //  EVENT WIRING
+        // ============================================================
+        $("board").addEventListener("click", onSlotClick);
+        $("clearBtn").addEventListener("click", clearCurrentRow);
+        $("submitBtn").addEventListener("click", submitGuess);
+        $("quitBtn").addEventListener("click", quitToSetup);
+
+        // Keyboard shortcuts — number keys 1-6 place colours into the active slot; Backspace clears
+        // the active slot; Enter submits. Only active during PLACING.
+        window.addEventListener("keydown", function (ev) {
+          if (phase !== Phase.PLACING) return;
+          if (ev.key && DIGIT_KEY_RE.test(ev.key)) {
+            placeColor(parseInt(ev.key, 10) - 1);
+            ev.preventDefault();
+            return;
+          }
+          if (ev.code === "Backspace") {
+            // Clear the active slot only (not the whole row).
+            var s = code.activeSlot;
+            if (code.current[s] !== null && code.current[s] !== undefined) {
+              code.current[s] = null;
+              refreshActiveRow();
+              soundClear();
+            } else {
+              // step back to previous slot
+              code.activeSlot = (s - 1 + PEG_COUNT) % PEG_COUNT;
+              refreshActiveRow();
+            }
+            ev.preventDefault();
+          } else if (ev.code === "Enter") {
+            if (!$("submitBtn").disabled) {
+              submitGuess();
+            }
+            ev.preventDefault();
+          }
+        });
+
+        $("againBtn").addEventListener("click", function () {
+          initAudio();
+          if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+          startSession();
+        });
+        $("changeBtn").addEventListener("click", function () {
+          show("setup");
+        });
+
+        // global gesture guards (reused from Claw Catch)
+        document.addEventListener("gesturestart", function (e) {
+          e.preventDefault();
+        });
+        document.addEventListener("dblclick", function (e) {
+          e.preventDefault();
+        });
+
+        // ============================================================
+        //  DEBUG HOOK (for the Phase-2 test plan; harmless in production)
+        // ============================================================
+        window.__decoder = {
+          // Read-only state mirrors (re-bound on every access via getters).
+          get phase() {
+            return phase;
+          },
+          get codeIndex() {
+            return session.codeIndex;
+          },
+          get totalCodes() {
+            return session.totalCodes;
+          },
+          get solved() {
+            return session.solved;
+          },
+          get score() {
+            return session.totalScore;
+          },
+          get streak() {
+            return session.streak;
+          },
+          get attemptsLeft() {
+            return code.attemptsLeft;
+          },
+          get secret() {
+            return code.secret.slice();
+          },
+          get rows() {
+            return code.rows.slice();
+          },
+          get code() {
+            return { current: code.current.slice(), activeSlot: code.activeSlot };
+          },
+          get pendingTimeouts() {
+            return pendingTimeouts.slice();
+          },
+          get lastBeep() {
+            return _lastBeep;
+          },
+          // Deterministic helpers for tests.
+          scoreGuess: scoreGuess,
+          fillSlot: function (slotIdx, colorIdx) {
+            if (phase !== Phase.PLACING) return false;
+            if (slotIdx < 0 || slotIdx >= PEG_COUNT) return false;
+            code.activeSlot = slotIdx;
+            placeColor(colorIdx);
+            return true;
+          },
+          clearActive: clearCurrentRow,
+          submit: function () {
+            submitGuess();
+          },
+          forceSecret: function (arr) {
+            // Validate to the same contract as rollSecret — exactly PEG_COUNT in-range integer indices —
+            // so the test hook can never push an out-of-range value into colors[v].
+            if (!Array.isArray(arr) || arr.length !== PEG_COUNT) return false;
+            if (
+              !arr.every(function (n) {
+                return Number.isInteger(n) && n >= 0 && n < COLOR_COUNT;
+              })
+            )
+              return false;
+            forcedSecret = arr.slice();
+            // If a code is already in flight (fresh row), swap the secret in immediately. Otherwise it
+            // kicks in on the NEXT newCode() call.
+            if (phase === Phase.PLACING && code.rows.length === 0) {
+              code.secret = forcedSecret.slice();
+              forcedSecret = null;
+            }
+            return true;
+          },
+        };
+
+        // ---------- boot ----------
+        renderThemeCards();
+        renderDifficultyChips();
+        // Palette + board are rendered when a session starts (newCode/renderPalette).
+      })();
+    </script>
+  </body>
 </html>

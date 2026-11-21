@@ -3,6 +3,7 @@ name: New game idea
 about: Suggest a mini-game
 labels: game-idea
 ---
+
 **Game name:**
 **One-line pitch:**
 **How you play (controls, goal):**

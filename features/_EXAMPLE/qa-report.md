@@ -5,28 +5,29 @@
 **Feature:** Clear-search button
 **Ticket:** PLAY-001
 **Run at:** 2026-06-21 (round 1)
-**Overall result:** ☑ PASS  ☐ FAIL
+**Overall result:** ☑ PASS ☐ FAIL
 
 ---
 
 ## Gate summary
 
-| Lens (dimension) | Verdict | Findings | Blocking? |
-|---|---|---|---|
-| ACCURACY | PASS | 0 | n |
-| QUALITY | PASS | 1 (LOW) | n |
-| COMPLIANCE | PASS | 0 | n |
-| RISK (security) | PASS | 0 | n |
-| **Tests** | PASS | 3/3 passing | n |
+| Lens (dimension) | Verdict | Findings    | Blocking? |
+| ---------------- | ------- | ----------- | --------- |
+| ACCURACY         | PASS    | 0           | n         |
+| QUALITY          | PASS    | 1 (LOW)     | n         |
+| COMPLIANCE       | PASS    | 0           | n         |
+| RISK (security)  | PASS    | 0           | n         |
+| **Tests**        | PASS    | 3/3 passing | n         |
 
 ## Findings
 
 ### FINDING-2026-06-21-001
+
 - **Severity:** LOW
 - **Dimensions:** quality
 - **Where:** `SearchBox` — the clear handler repeated the "reset scroll" line already in `onQueryChange`.
 - **What:** minor duplication; not a defect.
-- **Recommendation:** call the shared `resetList()` helper. *(Applied.)*
+- **Recommendation:** call the shared `resetList()` helper. _(Applied.)_
 - **Recurrence:** new — logged to `docs/findings-ledger.md`.
 - **Status:** RESOLVED
 
@@ -37,4 +38,5 @@ The clear button works: it shows only when there's text, restores the full list,
 ---
 
 ### Loop control
+
 PASS → at Prototype tier the persona panel is skipped (self-confirm baseline) → Phase 6 CAPTURE: logged one learning ("reuse `resetList()`") and removed the idea from `IDEAS.md`.

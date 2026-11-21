@@ -22,7 +22,7 @@
 
 - **Run the app:** open `index.html` in a browser (or `npx serve .` / VS Code Live Server for a localhost)
 - **Run tests:** `TBD` (no test tooling at Prototype tier; QA is the in-workflow panel)
-- **Lint / format:** `npm run lint` (ESLint) · `npm run format` (Prettier, not yet gated) · `npm run secrets` (secret scan) · all: `npm run check`. One-time: `npm install` (dev tooling only — the site has no runtime deps).
+- **Lint / format:** `npm run lint` (ESLint) · `npm run format` (Prettier, gated) · `npm run secrets` (secret scan) · all: `npm run check`. One-time: `npm install` (dev tooling only — the site has no runtime deps).
 - **Type check:** N/A (vanilla JS)
 - **Hooks:** `git config core.hooksPath .githooks` once per clone (secret scan + lint on commit)
 - **CI:** `.github/workflows/ci.yml` runs secrets + lint + `npm audit` on every PR

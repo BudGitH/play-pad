@@ -69,8 +69,13 @@
 
   /* ---- Brand palette (the six-stop gradient + full game palette) --------- */
   --brand-gradient: linear-gradient(
-    92deg, #ff375f, #ff9f0a 30%, #ffd60a 48%,
-    #30d158 66%, #0a84ff 84%, #bf5af2
+    92deg,
+    #ff375f,
+    #ff9f0a 30%,
+    #ffd60a 48%,
+    #30d158 66%,
+    #0a84ff 84%,
+    #bf5af2
   );
   --brand-red: #ff453a;
   --brand-blue: #0a84ff;
@@ -82,9 +87,8 @@
   --brand-cyan: #64d2ff;
 
   /* ---- Typescale (Roboto-ish system stack; size / line / weight) --------- */
-  --md-sys-typeface-plain:
-    -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI",
-    Roboto, Helvetica, Arial, system-ui, sans-serif;
+  --md-sys-typeface-plain: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto,
+    Helvetica, Arial, system-ui, sans-serif;
 
   --md-sys-typescale-display-large-size: clamp(40px, 8vw, 57px);
   --md-sys-typescale-display-large-line: 1.12;
@@ -168,16 +172,11 @@
 
   /* ---- Elevation (shadow recipes, levels 0–5) --------------------------- */
   --md-sys-elevation-level0: none;
-  --md-sys-elevation-level1:
-    0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px 1px rgba(0, 0, 0, 0.15);
-  --md-sys-elevation-level2:
-    0 1px 2px rgba(0, 0, 0, 0.3), 0 2px 6px 2px rgba(0, 0, 0, 0.15);
-  --md-sys-elevation-level3:
-    0 1px 3px rgba(0, 0, 0, 0.3), 0 4px 8px 3px rgba(0, 0, 0, 0.15);
-  --md-sys-elevation-level4:
-    0 2px 3px rgba(0, 0, 0, 0.3), 0 6px 10px 4px rgba(0, 0, 0, 0.15);
-  --md-sys-elevation-level5:
-    0 4px 4px rgba(0, 0, 0, 0.3), 0 8px 12px 6px rgba(0, 0, 0, 0.15);
+  --md-sys-elevation-level1: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px 1px rgba(0, 0, 0, 0.15);
+  --md-sys-elevation-level2: 0 1px 2px rgba(0, 0, 0, 0.3), 0 2px 6px 2px rgba(0, 0, 0, 0.15);
+  --md-sys-elevation-level3: 0 1px 3px rgba(0, 0, 0, 0.3), 0 4px 8px 3px rgba(0, 0, 0, 0.15);
+  --md-sys-elevation-level4: 0 2px 3px rgba(0, 0, 0, 0.3), 0 6px 10px 4px rgba(0, 0, 0, 0.15);
+  --md-sys-elevation-level5: 0 4px 4px rgba(0, 0, 0, 0.3), 0 8px 12px 6px rgba(0, 0, 0, 0.15);
 
   /* ---- Motion ------------------------------------------------------------ */
   --md-sys-motion-easing-standard: cubic-bezier(0.2, 0, 0, 1);
@@ -198,8 +197,8 @@
 
   /* ---- State-layer opacities -------------------------------------------- */
   --md-sys-state-hover-opacity: 0.08;
-  --md-sys-state-focus-opacity: 0.10;
-  --md-sys-state-pressed-opacity: 0.10;
+  --md-sys-state-focus-opacity: 0.1;
+  --md-sys-state-pressed-opacity: 0.1;
   --md-sys-state-dragged-opacity: 0.16;
 
   color-scheme: dark;

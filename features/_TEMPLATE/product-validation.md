@@ -1,17 +1,18 @@
 # Product Validation: <feature name>
 
-> **Phase 5 output.** Produced *after* technical QA (`qa-report.md`) is PASS. This is the **product gate**: the feature is not "done" until this is PASS. Built from the Senior PM review (5A), the persona panel (5B), and any round-table sessions (5C). All roles are spawned from `docs/PRODUCT-PANEL.md` — no external skill or tool required.
+> **Phase 5 output.** Produced _after_ technical QA (`qa-report.md`) is PASS. This is the **product gate**: the feature is not "done" until this is PASS. Built from the Senior PM review (5A), the persona panel (5B), and any round-table sessions (5C). All roles are spawned from `docs/PRODUCT-PANEL.md` — no external skill or tool required.
 
 **Feature:** <feature name>
-**Ticket:** PLAY-___
+**Ticket:** PLAY-\_\_\_
 **Run at:** 2026-11-21 (round 1)
-**Overall product gate:** ☐ PASS  ☐ BLOCKED  ☐ BLOCKED — ESCALATED
+**Overall product gate:** ☐ PASS ☐ BLOCKED ☐ BLOCKED — ESCALATED
 
 ---
 
 ## The gate (how this PASSES)
 
 **Three-tier bar — two tiers gate, one is scored:**
+
 - **Baseline met** — does what the business requirements say **and** each target persona completes their primary goal. **Hard gate.**
 - **Value creation** — personas judge it worth using over the status quo. **Hard gate.**
 - **High satisfaction** — scored, pursued via `docs/IDEAS.md` over time. **Never a release gate.**
@@ -27,11 +28,12 @@
 
 ## 5A — Senior PM review (business requirements)
 
-| Round | Verdict | Blocking issues | Notes |
-|---|---|---|---|
-| 1 | _PASS / NEEDS_REVISION_ | _n_ | _..._ |
+| Round | Verdict                 | Blocking issues | Notes |
+| ----- | ----------------------- | --------------- | ----- |
+| 1     | _PASS / NEEDS_REVISION_ | _n_             | _..._ |
 
 **Issues (latest round):**
+
 - **[CRITICAL/HIGH/MEDIUM]** _what's wrong_ → violates _which business requirement_ → _recommended change_.
 
 **Evidence anchor:** _one quote from `requirements.md` / `PROJECT.md` the verdict turns on._
@@ -40,14 +42,14 @@
 
 ## 5B — Persona panel (usability & value)
 
-**Evaluation mode:** ☐ artifacts (requirements + code + screenshots)  ☐ live (one driver captured the running app)
+**Evaluation mode:** ☐ artifacts (requirements + code + screenshots) ☐ live (one driver captured the running app)
 ☐ **Unverified — no live run** (no preview/browser available this session)
 
-> Only the feature's **target personas** (from `requirements.md` → *Target personas*) are spawned — not the whole roster.
+> Only the feature's **target personas** (from `requirements.md` → _Target personas_) are spawned — not the whole roster.
 
-| Persona | Baseline | Value | Satisfaction | Critical? | Key feedback |
-|---|---|---|---|---|---|
-| _name_ | _met / not_ | _met / partial / unmet_ | _1–5_ | _y/n_ | _..._ |
+| Persona | Baseline    | Value                   | Satisfaction | Critical? | Key feedback |
+| ------- | ----------- | ----------------------- | ------------ | --------- | ------------ |
+| _name_  | _met / not_ | _met / partial / unmet_ | _1–5_        | _y/n_     | _..._        |
 
 **Non-blocking feedback → `docs/IDEAS.md`:** _list the value/satisfaction improvements parked for later._
 
@@ -58,6 +60,7 @@
 > One block per **blocking** critical. Attendees: Senior PM + Senior UX Designer + the persona(s) who raised it.
 
 ### RT-1 — <the blocking item>
+
 - **Raised by:** _persona(s)._
 - **Problem:** _the baseline/value miss, concretely._
 - **Plan:** _the agreed change._
@@ -74,6 +77,7 @@ _2–3 plain sentences: does it meet the business goal, would the target users v
 ---
 
 ### Loop control
+
 If the gate is BLOCKED → fix (Phase 3) and re-run the blocked stage, adding a new round above. On PASS → proceed to **Phase 6 (CAPTURE)**: log product/UX learnings, move non-blocking feedback to `docs/IDEAS.md`, update `docs/findings-ledger.md`.
 
 ---
@@ -82,8 +86,9 @@ If the gate is BLOCKED → fix (Phase 3) and re-run the blocked stage, adding a 
 
 > **PM-led.** Same gate and round-table mechanics, but against real usage. Trigger when the feature ships. Skip until then.
 
-**UAT run at:** ____   **Led by:** Senior PM
+**UAT run at:** \_\_\_\_ **Led by:** Senior PM
+
 - **What was checked with users / real usage:** _..._
 - **Feedback gathered:** _..._
 - **Round table (PM + UX + affected persona[s]):** _plan → implement (Phase 3) → re-validate; same ≤ 3-round loop._
-- **Outcome:** ☐ confirmed in the wild  ☐ changes looped back through Phase 3
+- **Outcome:** ☐ confirmed in the wild ☐ changes looped back through Phase 3

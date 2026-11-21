@@ -1,6 +1,6 @@
 # Feature: Super Decoder
 
-> **Phase 1 of the workflow.** Define what "done" means *before* writing code.
+> **Phase 1 of the workflow.** Define what "done" means _before_ writing code.
 
 **Status:** VALIDATED (QA clean · PM PASS · persona gate PASS — see `qa-report.md`, `product-validation.md`)
 **Owner:** @BudGitH
@@ -17,7 +17,7 @@
 
 ## Business requirements & success metrics
 
-- **Business outcome:** PlayPad's catalog now serves the *logic / puzzle* mood, in addition to reflex and arcade. A solo player who's in a "brain-on" mood can find a game in seconds, complete it without sign-up or install, and see why a return visit might be worth it.
+- **Business outcome:** PlayPad's catalog now serves the _logic / puzzle_ mood, in addition to reflex and arcade. A solo player who's in a "brain-on" mood can find a game in seconds, complete it without sign-up or install, and see why a return visit might be worth it.
 - **Success metric:** Adding a 4th game is a **one-object change to `games.js`** (per `PROJECT.md` success criteria). A new player can launch Super Decoder from the hub and solve their first code on Easy in under 3 minutes without external help.
 - **Must-have business rules:**
   - Game is fully self-contained — no backend, no network, no storage. (Per `CONVENTIONS.md`.)
@@ -29,7 +29,7 @@
 > Personas drawn from the existing PlayPad persona roster (see `docs/PRODUCT-PANEL.md`-style brief).
 
 - **Personas served (from `docs/PRODUCT-PANEL.md` roster):**
-  - **Dan — "Office Micro-breaker"** (primary) — desk worker taking a short, low-stakes *mental reset* on a laptop between meetings. A deduction puzzle is squarely his job-to-be-done; cares about clear feedback and a round that fits the break.
+  - **Dan — "Office Micro-breaker"** (primary) — desk worker taking a short, low-stakes _mental reset_ on a laptop between meetings. A deduction puzzle is squarely his job-to-be-done; cares about clear feedback and a round that fits the break.
   - **Maya — "Commuter Casual"** — mobile-first, one-handed, short frequent sessions. Tests instant start and whether the peg/palette taps work one-handed on a phone.
   - **Sam — "Keyboard / AT user"** — navigates by keyboard + screen reader, and (relevant here) represents the colour-vision-accessibility floor. Tests full keyboard operability, focus, labels, and the non-colour (shape) signal.
 - **Baseline (hard gate, all three):** can reach the game from the hub, set difficulty, place pegs into a guess row, submit, read feedback, and finish a session (solve or fail) with a score + "play again". For Sam: doable entirely by keyboard with audible/visible feedback and a non-colour way to tell pegs apart.

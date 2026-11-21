@@ -30,12 +30,11 @@ Photographic PBR materials from **ambientCG** (ambientcg.com), CC0. Resized to 5
 
 ## Audio (`assets/audio/`)
 
-| File                                                                | Used for        | Author                                                 | Source                                                             | Licence |
-| ------------------------------------------------------------------- | --------------- | ------------------------------------------------------ | ------------------------------------------------------------------ | ------- |
-| `music.ogg`                                                         | Background loop | omfgdude ("Chill lofi inspired"), loop edit by qubodup | opengameart.org/content/chill-lofi-inspired-loop-edit (re-encoded) | CC0     |
-| `coin.ogg` `jump.ogg` `slide.ogg` `crash.ogg` `power.ogg` `buy.ogg` | Sound effects   | Kenney                                                 | opengameart.org/content/sci-fi-sounds (Kenney.nl)                  | CC0     |
+| File        | Used for        | Author                                                 | Source                                                             | Licence |
+| ----------- | --------------- | ------------------------------------------------------ | ------------------------------------------------------------------ | ------- |
+| `music.ogg` | Background loop | omfgdude ("Chill lofi inspired"), loop edit by qubodup | opengameart.org/content/chill-lofi-inspired-loop-edit (re-encoded) | CC0     |
 
-Bark and bump sounds are synthesised in code (Web Audio), no files.
+**Every sound effect** — footsteps, landing, swooshes, the coin chime, skid, wind, dog steps / pants / barks, stings, fanfare, UI ticks — is synthesised at runtime with Web Audio (oscillators + filtered noise): no audio files, no licences.
 
 ## Libraries
 
@@ -44,4 +43,4 @@ Bark and bump sounds are synthesised in code (Web Audio), no files.
 | `../three.min.js`  | three.js authors | three.js r0.147.0 (UMD build) | MIT     |
 | `../GLTFLoader.js` | three.js authors | three.js r0.147.0 examples    | MIT     |
 
-_CC0 needs no credit, but Quaternius, ambientCG, omfgdude / qubodup and Kenney appreciate one — shown in small print on the game's setup screen._
+_CC0 needs no credit, but Quaternius, ambientCG, omfgdude / qubodup appreciate one — shown in small print on the game's setup screen._

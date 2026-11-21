@@ -469,6 +469,88 @@ async function main() {
     `hits ${over.hits0}→${over.hits}`,
   );
 
+  // AC12: game feel — every effect fires its sound and its particles
+  await S(page, () => {
+    const s = window.__stride;
+    s.clearObstacles();
+    s.setGap(3.8);
+    s.three.player.invulnT = 0;
+  });
+  const feelBefore = await S(page, () => ({
+    a: window.__stride.audio.played,
+    e: window.__stride.fx.emitted,
+  }));
+  const feel = await S(page, () => {
+    const s = window.__stride;
+    s.step(1500); // footfalls
+    s.input("jump");
+    s.step(900); // take-off + landing
+    const first = s.state.lane === 0 ? "right" : "left"; // never push against a wall: both moves must switch lanes
+    s.input(first);
+    s.step(300);
+    s.input(first === "left" ? "right" : "left");
+    s.step(300); // lane swooshes
+    s.input("slide");
+    s.step(500); // skid
+    s.forceSpawn("coinRow", s.state.lane, -3);
+    s.step(1500); // a run of coins: the chime climbs
+    const mid = { a: s.audio, e: s.fx };
+    s.three.player.invulnT = 0;
+    s.hit(); // stumble: thud + bark + debris + stars
+    s.step(120);
+    return { mid, after: { a: s.audio, fx: s.fx } };
+  });
+  const d = (k) => (feel.after.a.played[k] || 0) - (feelBefore.a[k] || 0);
+  check(
+    "AC12",
+    "audio fires for footsteps, jump, landing, swooshes, skid, coins, thud and barks (wind bed on, music tempo follows speed)",
+    d("step") >= 3 &&
+      d("jump") >= 1 &&
+      d("land") >= 1 &&
+      d("swoosh") >= 2 &&
+      d("slide") >= 1 &&
+      d("coin") >= 3 &&
+      d("bump") >= 1 &&
+      d("bark") >= 1 &&
+      feel.mid.a.streak >= 3 &&
+      feel.after.a.wind === true &&
+      feel.after.a.musicRate >= 1,
+    JSON.stringify({
+      step: d("step"),
+      land: d("land"),
+      swoosh: d("swoosh"),
+      coin: d("coin"),
+      streak: feel.mid.a.streak,
+      bump: d("bump"),
+      wind: feel.after.a.wind,
+    }),
+  );
+  check(
+    "AC12",
+    "particles: dust, sparkles and impact debris are emitted and alive (pool never overflows)",
+    feel.after.fx.emitted - feelBefore.e > 40 &&
+      feel.after.fx.soft > 0 &&
+      feel.after.fx.glow > 0 &&
+      feel.after.fx.soft <= 360 &&
+      feel.after.fx.glow <= 200,
+    JSON.stringify(feel.after.fx),
+  );
+  const tiers = await S(page, () => {
+    const s = window.__stride,
+      out = {};
+    ["low", "medium", "high"].forEach((t) => {
+      s.setQuality(t);
+      out[t] = s.fx.mult;
+    });
+    return out;
+  });
+  check(
+    "AC12",
+    "particle density scales with the quality tier (low < medium < high)",
+    tiers.low < tiers.medium && tiers.medium < tiers.high,
+    JSON.stringify(tiers),
+  );
+
   // AC2: legibility — mean luminance of the rendered frame, and obstacle shapes visible
   const lum = await S(page, () => {
     const s = window.__stride,

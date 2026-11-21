@@ -1061,7 +1061,7 @@
         </p>
         <p class="start-note" style="opacity: 0.7; font-size: 11px; margin-top: 6px">
           Characters &amp; dogs by Quaternius · textures by ambientCG · music by omfgdude (loop edit
-          by qubodup) · SFX by Kenney — all CC0
+          by qubodup) — all CC0; sound effects are synthesised in code
         </p>
       </div>
     </section>
@@ -1410,36 +1410,62 @@
         var save = SaveManager.data;
 
         /* ══════════════════════ AudioManager ══════════════════════
-     Real vendored audio (CC0 chill lo-fi loop + Kenney SFX, see assets/CREDITS.md) with an automatic
-     SYNTH FALLBACK: if a file is missing or fails to decode (offline dev, partial deploy, file://) the
-     oscillator voice fires instead — audio never breaks play. Music is a looping <audio> element; SFX
-     are decoded Web Audio buffers for low latency. Bark + bump are synth-only (tiny, one-shot). */
+     Every sound effect is SYNTHESISED with Web Audio (oscillators + filtered noise, so nothing to download, no
+     licences, and it works from file://): footsteps, a landing thump, lane swooshes, a pitch-climbing coin chime,
+     a skid, a wind bed that grows with speed, dog steps / pants / barks panned to where they run, countdown ticks,
+     stings and a fanfare. Only the music is a file (a looping <audio> element; synth bass loop as its fallback).
+     A compressor on the master bus keeps a busy moment from clipping. `played` counts every trigger (test hook). */
         var AudioManager = (function () {
           var ctx = null,
-            master = null;
+            master = null,
+            sfx = null,
+            noiseBuf = null,
+            wind = null;
           var musicT = 0,
             musicStepI = 0;
           var BASS = [110, 110, 146.8, 110, 130.8, 130.8, 164.8, 98]; // soft A-minor-ish fallback loop
-          var buffers = {}; // name -> decoded AudioBuffer (undefined = use synth)
-          var sfxRequested = false;
           var musicEl = null,
-            musicFailed = false;
-          var SFX = { coin: 0.6, jump: 0.45, slide: 0.5, crash: 0.8, power: 0.7, buy: 0.6 }; // name -> gain
+            musicFailed = false,
+            musicPlaying = false,
+            MUSIC_VOL = 0.34,
+            duckF = 1;
+          var played = {},
+            lastAt = {},
+            streak = 0,
+            lastCoinT = -9,
+            stepSide = 1;
+          var PENTA = [1, 9 / 8, 5 / 4, 3 / 2, 5 / 3]; // major pentatonic: any run of coins sounds like a tune
 
+          function mark(name) {
+            played[name] = (played[name] || 0) + 1;
+          }
           function ensure() {
             if (ctx) return true;
             try {
               var AC = window.AudioContext || window.webkitAudioContext;
               if (!AC) return false;
               ctx = new AC();
+              var comp = ctx.createDynamicsCompressor();
+              comp.threshold.value = -16;
+              comp.ratio.value = 6;
+              comp.attack.value = 0.004;
+              comp.release.value = 0.2;
               master = ctx.createGain();
-              master.gain.value = save.muted ? 0 : 0.5;
-              master.connect(ctx.destination);
+              master.gain.value = save.muted ? 0 : 0.7;
+              sfx = ctx.createGain();
+              sfx.gain.value = 1;
+              sfx.connect(master);
+              master.connect(comp);
+              comp.connect(ctx.destination);
+              // one second of white noise shared by every noise voice
+              var n = Math.floor(ctx.sampleRate * 1.5);
+              noiseBuf = ctx.createBuffer(1, n, ctx.sampleRate);
+              var d = noiseBuf.getChannelData(0);
+              for (var i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
             } catch (e) {
               ctx = null;
               return false;
             }
-            loadSfx();
             return true;
           }
           function resume() {
@@ -1449,98 +1475,76 @@
               /* best-effort browser API; failure is non-fatal */
             }
           }
-          function loadSfx() {
-            if (sfxRequested || !ctx || !CAN_FETCH) return;
-            sfxRequested = true;
-            Object.keys(SFX).forEach(function (name) {
-              try {
-                fetch("assets/audio/" + name + ".ogg")
-                  .then(function (r) {
-                    if (!r.ok) throw 0;
-                    return r.arrayBuffer();
-                  })
-                  .then(function (a) {
-                    return ctx.decodeAudioData(a);
-                  })
-                  .then(function (b) {
-                    buffers[name] = b;
-                  })
-                  .catch(function () {
-                    /* leave undefined → synth fallback */
-                  });
-              } catch {
-                /* best-effort browser API; failure is non-fatal */
-              }
-            });
+          // Voices call this first: counts the trigger, rate-limits, and says whether sound can play right now.
+          function voice(name, minGap) {
+            mark(name);
+            if (save.muted || !ensure()) return false;
+            var t = ctx.currentTime;
+            if (minGap && t - (lastAt[name] || -9) < minGap) return false;
+            lastAt[name] = t;
+            return true;
           }
-          function playBuf(name) {
-            var b = buffers[name];
-            if (!b || !ctx || save.muted) return false;
-            try {
-              var s = ctx.createBufferSource();
-              s.buffer = b;
-              var g = ctx.createGain();
-              g.gain.value = SFX[name] || 0.6;
-              s.connect(g);
-              g.connect(master);
-              s.start();
-              return true;
-            } catch (e) {
-              return false;
-            }
+          function dest(pan) {
+            if (!pan || !ctx.createStereoPanner) return sfx;
+            var p = ctx.createStereoPanner();
+            p.pan.value = clamp(pan, -1, 1);
+            p.connect(sfx);
+            return p;
           }
-          function blip(freq, dur, type, gain, endFreq, delay) {
-            if (!ensure()) return;
+          // Oscillator with an exponential pitch glide and a fast attack / exponential decay.
+          function osc(type, f0, f1, t, dur, peak, out, att) {
             try {
-              var t = ctx.currentTime + (delay || 0);
               var o = ctx.createOscillator(),
                 g = ctx.createGain();
-              o.type = type || "sine";
-              o.frequency.setValueAtTime(freq, t);
-              if (endFreq) o.frequency.exponentialRampToValueAtTime(endFreq, t + dur);
-              g.gain.setValueAtTime(gain || 0.2, t);
+              o.type = type;
+              o.frequency.setValueAtTime(f0, t);
+              if (f1 && f1 !== f0) o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+              g.gain.setValueAtTime(0.0001, t);
+              g.gain.exponentialRampToValueAtTime(peak, t + (att || 0.006));
               g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
               o.connect(g);
-              g.connect(master);
+              g.connect(out);
               o.start(t);
-              o.stop(t + dur + 0.02);
+              o.stop(t + dur + 0.03);
             } catch {
               /* best-effort browser API; failure is non-fatal */
             }
           }
-          function noise(dur, gain, freq) {
-            if (!ensure()) return;
+          // Filtered noise burst (type: lowpass / bandpass / highpass) with a cutoff sweep f0 -> f1.
+          function nz(type, f0, f1, q, t, dur, peak, out, att) {
             try {
-              var t = ctx.currentTime,
-                n = Math.floor(ctx.sampleRate * dur);
-              var buf = ctx.createBuffer(1, n, ctx.sampleRate),
-                d = buf.getChannelData(0);
-              for (var i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n);
-              var src = ctx.createBufferSource();
-              src.buffer = buf;
-              var f = ctx.createBiquadFilter();
-              f.type = "lowpass";
-              f.frequency.value = freq || 900;
-              var g = ctx.createGain();
-              g.gain.value = gain || 0.3;
-              src.connect(f);
+              var s = ctx.createBufferSource(),
+                f = ctx.createBiquadFilter(),
+                g = ctx.createGain();
+              s.buffer = noiseBuf;
+              f.type = type;
+              f.Q.value = q || 0.7;
+              f.frequency.setValueAtTime(f0, t);
+              if (f1 && f1 !== f0) f.frequency.exponentialRampToValueAtTime(f1, t + dur);
+              g.gain.setValueAtTime(0.0001, t);
+              g.gain.exponentialRampToValueAtTime(peak, t + (att || 0.008));
+              g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+              s.connect(f);
               f.connect(g);
-              g.connect(master);
-              src.start(t);
+              g.connect(out);
+              s.start(t, Math.random() * 0.8);
+              s.stop(t + dur + 0.03);
             } catch {
               /* best-effort browser API; failure is non-fatal */
             }
           }
-          // Real SFX first, synth voice as fallback — `synth` is the oscillator recipe.
-          function sfx(name, synth) {
-            if (!playBuf(name)) synth();
+          // A bell-ish note: sine + a quiet 2nd and 3rd partial, a soft strike.
+          function bell(freq, t, dur, peak, out) {
+            osc("sine", freq, freq, t, dur, peak, out, 0.004);
+            osc("sine", freq * 2.01, freq * 2.01, t, dur * 0.55, peak * 0.35, out, 0.004);
+            osc("triangle", freq * 3.02, freq * 3.02, t, dur * 0.3, peak * 0.12, out, 0.004);
           }
           function initMusic() {
             if (musicEl || musicFailed) return;
             try {
               musicEl = new Audio("assets/audio/music.ogg");
               musicEl.loop = true;
-              musicEl.volume = save.muted ? 0 : 0.34;
+              musicEl.volume = save.muted ? 0 : MUSIC_VOL * duckF;
               musicEl.addEventListener("error", function () {
                 musicFailed = true;
                 musicEl = null;
@@ -1550,7 +1554,6 @@
               musicEl = null;
             }
           }
-          var musicPlaying = false;
           function tryPlay() {
             if (!musicEl || save.muted) return;
             try {
@@ -1568,7 +1571,10 @@
               /* best-effort browser API; failure is non-fatal */
             }
           }
-          return {
+          function setMusicVol() {
+            if (musicEl) musicEl.volume = save.muted ? 0 : clamp(MUSIC_VOL * duckF, 0, 1);
+          }
+          var A = {
             unlock: function () {
               ensure();
               resume();
@@ -1577,12 +1583,12 @@
               save.muted = m;
               SaveManager.persist();
               try {
-                if (master) master.gain.value = m ? 0 : 0.5;
+                if (master) master.gain.value = m ? 0 : 0.7;
               } catch {
                 /* best-effort browser API; failure is non-fatal */
               }
+              setMusicVol();
               if (musicEl) {
-                musicEl.volume = m ? 0 : 0.34;
                 if (m) stopEl();
                 else if (musicPlaying) tryPlay();
               }
@@ -1595,79 +1601,294 @@
             pauseMusic: function () {
               musicPlaying = false;
               stopEl();
+              A.windStop();
             }, // run ended: forget intent
-            suspendMusic: stopEl, // tab hidden: keep intent
+            suspendMusic: function () {
+              stopEl();
+              A.windStop();
+            }, // tab hidden / paused: keep intent
             resumeMusicIfPlaying: function () {
               if (musicPlaying) tryPlay();
             },
-            coin: function () {
-              sfx("coin", function () {
-                blip(1318, 0.09, "sine", 0.14);
-                blip(1760, 0.14, "sine", 0.12);
-              });
+            // music dynamics: tempo creeps up with speed, level ducks under stings
+            musicRate: function (k) {
+              if (!musicEl) return;
+              try {
+                musicEl.playbackRate = 1 + 0.07 * clamp(k, 0, 1);
+              } catch {
+                /* best-effort browser API; failure is non-fatal */
+              }
+            },
+            musicDuck: function (f) {
+              duckF = clamp(f, 0, 1);
+              setMusicVol();
+            },
+            /* ---------- movement ---------- */
+            step: function (k) {
+              if (!voice("step", 0.08)) return;
+              var t = ctx.currentTime,
+                v = 0.55 + 0.45 * clamp(k, 0, 1),
+                out = dest((stepSide = -stepSide) * 0.12);
+              nz(
+                "lowpass",
+                700 * (0.85 + Math.random() * 0.3),
+                220,
+                0.8,
+                t,
+                0.09,
+                0.1 * v,
+                out,
+                0.004,
+              );
+              osc("sine", 120, 52, t, 0.09, 0.13 * v, out, 0.003);
+            },
+            land: function (s) {
+              if (!voice("land", 0.1)) return;
+              var t = ctx.currentTime,
+                v = clamp(s, 0.3, 1.2);
+              osc("sine", 150, 42, t, 0.2, 0.34 * v, sfx, 0.004);
+              nz("lowpass", 1100, 180, 0.8, t, 0.16, 0.22 * v, sfx, 0.004);
             },
             jump: function () {
-              sfx("jump", function () {
-                blip(300, 0.16, "triangle", 0.1, 560);
-              });
+              if (!voice("jump", 0.06)) return;
+              var t = ctx.currentTime;
+              osc("triangle", 240, 520, t, 0.13, 0.13, sfx, 0.01);
+              nz("bandpass", 500, 1700, 1.1, t, 0.2, 0.09, sfx, 0.02);
+            },
+            swoosh: function (dir) {
+              if (!voice("swoosh", 0.07)) return;
+              var t = ctx.currentTime;
+              nz("bandpass", 350, 1500, 1.0, t, 0.15, 0.12, dest(dir * 0.55), 0.03);
             },
             slide: function () {
-              sfx("slide", function () {
-                noise(0.22, 0.14, 700);
-              });
+              if (!voice("slide", 0.1)) return;
+              var t = ctx.currentTime;
+              nz("bandpass", 1900, 650, 1.3, t, 0.6, 0.14, sfx, 0.02);
+              osc("sine", 78, 58, t, 0.55, 0.12, sfx, 0.05);
             },
-            crash: function () {
-              sfx("crash", function () {
-                noise(0.4, 0.3, 700);
-                blip(200, 0.45, "triangle", 0.2, 60);
-              });
-            },
-            bump: function () {
-              blip(150, 0.2, "triangle", 0.25, 70);
-              noise(0.14, 0.2, 500);
-            },
-            bark: function () {
-              blip(420, 0.09, "sawtooth", 0.1, 260);
-              blip(380, 0.11, "sawtooth", 0.1, 220, 0.13);
+            /* ---------- collecting ---------- */
+            coin: function () {
+              mark("coin");
+              if (save.muted || !ensure()) return;
+              var t = ctx.currentTime;
+              if (t - lastCoinT > 1.0) streak = 0; // a gap of a second resets the tune
+              lastCoinT = t;
+              var idx = Math.min(streak++, 14),
+                f = 880 * PENTA[idx % 5] * Math.pow(2, Math.floor(idx / 5));
+              bell(f, t, 0.22, 0.17, dest((Math.random() - 0.5) * 0.3));
             },
             power: function () {
-              sfx("power", function () {
-                blip(660, 0.1, "triangle", 0.16);
-                blip(880, 0.1, "triangle", 0.16);
-                blip(1320, 0.18, "triangle", 0.16);
+              if (!voice("power", 0.1)) return;
+              var t = ctx.currentTime;
+              [523.25, 659.25, 783.99, 1046.5].forEach(function (f, i) {
+                bell(f, t + i * 0.07, 0.35, 0.13, sfx);
               });
+              nz("highpass", 5000, 7000, 0.8, t + 0.05, 0.4, 0.05, sfx, 0.1);
             },
             pop: function () {
-              blip(520, 0.12, "triangle", 0.2, 260);
+              if (!voice("pop", 0.1)) return;
+              var t = ctx.currentTime;
+              osc("sine", 760, 170, t, 0.14, 0.28, sfx, 0.003);
+              nz("highpass", 3500, 5000, 0.7, t, 0.06, 0.12, sfx, 0.002);
+            },
+            closeCall: function () {
+              if (!voice("closeCall", 0.2)) return;
+              var t = ctx.currentTime,
+                pan = (Math.random() < 0.5 ? -1 : 1) * 0.5;
+              nz("bandpass", 600, 2600, 1.0, t, 0.24, 0.17, dest(pan), 0.04);
+              bell(1568, t + 0.12, 0.3, 0.1, dest(pan));
+              bell(2093, t + 0.2, 0.3, 0.07, dest(pan));
+            },
+            /* ---------- trouble ---------- */
+            bump: function () {
+              if (!voice("bump", 0.12)) return;
+              var t = ctx.currentTime;
+              osc("sine", 130, 46, t, 0.28, 0.38, sfx, 0.004);
+              nz("lowpass", 1300, 260, 0.8, t, 0.22, 0.3, sfx, 0.004);
+              osc("sawtooth", 200, 120, t + 0.02, 0.18, 0.06, sfx, 0.03); // the "oof"
+            },
+            crash: function () {
+              // caught: a falling minor sting under the dogs piling in
+              if (!voice("crash", 0.3)) return;
+              var t = ctx.currentTime;
+              osc("sawtooth", 392, 130, t, 0.9, 0.09, sfx, 0.02);
+              osc("sawtooth", 466, 155, t, 0.9, 0.06, sfx, 0.02);
+              osc("sine", 110, 40, t, 0.5, 0.4, sfx, 0.004);
+              nz("lowpass", 1800, 200, 0.8, t, 0.5, 0.3, sfx, 0.004);
+            },
+            bark: function (level, pan) {
+              if (!voice("bark", 0.12)) return;
+              var t = ctx.currentTime,
+                v = clamp(level == null ? 0.7 : level, 0.15, 1),
+                out = dest(pan || 0),
+                base = 330 * (0.9 + Math.random() * 0.25);
+              [0, 0.17].forEach(function (d) {
+                try {
+                  var o = ctx.createOscillator(),
+                    f1 = ctx.createBiquadFilter(),
+                    f2 = ctx.createBiquadFilter(),
+                    g = ctx.createGain(),
+                    tt = t + d;
+                  o.type = "sawtooth";
+                  o.frequency.setValueAtTime(base * 1.15, tt);
+                  o.frequency.exponentialRampToValueAtTime(base * 0.62, tt + 0.15);
+                  f1.type = "bandpass";
+                  f1.frequency.value = 750;
+                  f1.Q.value = 3.5;
+                  f2.type = "bandpass";
+                  f2.frequency.value = 1700;
+                  f2.Q.value = 4;
+                  g.gain.setValueAtTime(0.0001, tt);
+                  g.gain.exponentialRampToValueAtTime(0.34 * v, tt + 0.012);
+                  g.gain.exponentialRampToValueAtTime(0.0001, tt + 0.17);
+                  o.connect(f1);
+                  o.connect(f2);
+                  f1.connect(g);
+                  f2.connect(g);
+                  g.connect(out);
+                  o.start(tt);
+                  o.stop(tt + 0.2);
+                } catch {
+                  /* best-effort browser API; failure is non-fatal */
+                }
+                nz("bandpass", 1500, 900, 1.2, tt, 0.1, 0.06 * v, out, 0.005);
+              });
+            },
+            dogStep: function (level, pan) {
+              if (!voice("dogStep", 0.07)) return;
+              var t = ctx.currentTime,
+                v = clamp(level, 0.1, 1),
+                out = dest(pan || 0);
+              nz("lowpass", 520, 190, 0.8, t, 0.06, 0.07 * v, out, 0.003);
+              osc("sine", 95, 60, t, 0.06, 0.05 * v, out, 0.003);
+            },
+            pant: function (level) {
+              if (!voice("pant", 0.35)) return;
+              nz(
+                "bandpass",
+                2600,
+                3300,
+                1.5,
+                ctx.currentTime,
+                0.26,
+                0.045 * clamp(level, 0.1, 1),
+                sfx,
+                0.09,
+              );
+            },
+            /* ---------- UI / game flow ---------- */
+            tick: function (go) {
+              if (!voice("tick", 0.05)) return;
+              var t = ctx.currentTime;
+              if (go) {
+                bell(880, t, 0.4, 0.2, sfx);
+                bell(1320, t + 0.01, 0.4, 0.12, sfx);
+              } else bell(440, t, 0.18, 0.16, sfx);
             },
             buy: function () {
-              sfx("buy", function () {
-                blip(880, 0.08, "sine", 0.16);
-                blip(1174, 0.08, "sine", 0.16);
-                blip(1568, 0.2, "sine", 0.16);
+              if (!voice("buy", 0.1)) return;
+              var t = ctx.currentTime;
+              [659.25, 880, 1174.66].forEach(function (f, i) {
+                bell(f, t + i * 0.07, 0.3, 0.14, sfx);
               });
             },
             denied: function () {
-              blip(180, 0.2, "square", 0.1, 120);
+              if (!voice("denied", 0.1)) return;
+              osc("square", 190, 120, ctx.currentTime, 0.2, 0.08, sfx, 0.01);
+            },
+            click: function () {
+              if (!voice("click", 0.04)) return;
+              osc("sine", 900, 620, ctx.currentTime, 0.05, 0.09, sfx, 0.003);
+            },
+            fanfare: function () {
+              if (!voice("fanfare", 0.5)) return;
+              var t = ctx.currentTime;
+              [523.25, 659.25, 783.99, 1046.5, 1318.5].forEach(function (f, i) {
+                bell(f, t + i * 0.11, 0.55, 0.15, sfx);
+              });
+              nz("highpass", 5200, 8000, 0.8, t + 0.3, 0.6, 0.05, sfx, 0.15);
+            },
+            /* ---------- wind bed: a continuous whoosh whose level and colour follow the speed ---------- */
+            windStart: function () {
+              mark("windStart");
+              if (wind || save.muted || !ensure()) return;
+              try {
+                var s = ctx.createBufferSource(),
+                  f = ctx.createBiquadFilter(),
+                  g = ctx.createGain();
+                s.buffer = noiseBuf;
+                s.loop = true;
+                f.type = "bandpass";
+                f.frequency.value = 500;
+                f.Q.value = 0.5;
+                g.gain.value = 0;
+                s.connect(f);
+                f.connect(g);
+                g.connect(sfx);
+                s.start();
+                wind = { s: s, f: f, g: g };
+              } catch {
+                wind = null;
+              }
+            },
+            windLevel: function (k) {
+              if (!wind) return;
+              var t = ctx.currentTime;
+              wind.g.gain.setTargetAtTime(0.01 + 0.07 * k * k, t, 0.15);
+              wind.f.frequency.setTargetAtTime(380 + 1500 * k, t, 0.2);
+            },
+            windStop: function () {
+              if (!wind) return;
+              var w = wind;
+              wind = null;
+              try {
+                w.g.gain.setTargetAtTime(0, ctx.currentTime, 0.08);
+                setTimeout(function () {
+                  try {
+                    w.s.stop();
+                  } catch {
+                    /* already stopped */
+                  }
+                }, 400);
+              } catch {
+                /* best-effort browser API; failure is non-fatal */
+              }
             },
             debug: function () {
               return {
-                sfxLoaded: Object.keys(buffers),
                 musicReal: !!musicEl && !musicFailed,
                 musicPlaying: !!(musicEl && !musicEl.paused),
+                musicRate: musicEl ? musicEl.playbackRate : null,
                 ctx: ctx ? ctx.state : "none",
+                wind: !!wind,
+                streak: streak,
+                played: JSON.parse(JSON.stringify(played)),
               };
             },
-            /* Fallback bass loop — only runs when the real music file didn't load, so there's still a
-         soft beat offline. Driven from the fixed-step tick (pause-safe). */
+            resetStreak: function () {
+              streak = 0;
+              lastCoinT = -9;
+            },
+            /* Fallback bass loop — only runs when the real music file didn't load, so there's still a soft
+         beat offline. Driven from the fixed-step tick (pause-safe). */
             musicTick: function (dt, speed) {
-              if (!ctx || (musicEl && !musicFailed)) return;
+              if (!ctx || (musicEl && !musicFailed) || save.muted) return;
               musicT += dt;
               var beat = 60 / (84 + speed * 1.5);
               if (musicT >= beat) {
                 musicT -= beat;
-                blip(BASS[musicStepI % 8], 0.22, "triangle", 0.07);
-                if (musicStepI % 2 === 1) noise(0.03, 0.03, 5000);
+                osc(
+                  "triangle",
+                  BASS[musicStepI % 8],
+                  BASS[musicStepI % 8],
+                  ctx.currentTime,
+                  0.22,
+                  0.07,
+                  sfx,
+                  0.01,
+                );
+                if (musicStepI % 2 === 1)
+                  nz("highpass", 5000, 5000, 0.7, ctx.currentTime, 0.03, 0.03, sfx, 0.003);
                 musicStepI++;
               }
             },
@@ -1676,6 +1897,7 @@
               musicStepI = 0;
             },
           };
+          return A;
         })();
 
         /* ══════════════════════ UIManager ══════════════════════
@@ -1879,9 +2101,9 @@
 
         /* ---------- quality tiers (session-scoped, no save-schema change) ---------- */
         var TIERS = {
-          high: { dpr: 2, shadows: true, shadowSize: 1024, normals: true, fogFar: 175 },
-          medium: { dpr: 1.5, shadows: true, shadowSize: 512, normals: true, fogFar: 160 },
-          low: { dpr: 1, shadows: false, shadowSize: 512, normals: false, fogFar: 140 },
+          high: { dpr: 2, shadows: true, shadowSize: 1024, normals: true, fogFar: 175, fx: 1 },
+          medium: { dpr: 1.5, shadows: true, shadowSize: 512, normals: true, fogFar: 160, fx: 0.7 },
+          low: { dpr: 1, shadows: false, shadowSize: 512, normals: false, fogFar: 140, fx: 0.4 },
         };
         var TIER_ORDER = ["high", "medium", "low"];
         var quality = { tier: "medium", dpr: 1, shadows: true, avgMs: 16.7, auto: true };
@@ -2966,6 +3188,7 @@
             dirLight.shadow.map = null;
           }
           scene.fog.far = t.fogFar;
+          if (typeof FX !== "undefined" && FX) FX.setTier(t.fx); // fewer particles on weaker tiers
           // IBL on the tiers that can afford it; the hemisphere light carries the ambient on low
           scene.environment = t.normals ? envTex : null;
           hemiLight.intensity = t.normals && envTex ? 0.35 : 0.95;
@@ -2980,6 +3203,610 @@
           if (renderer.domElement.clientWidth > 1) resize();
         }
         if (renderer) applyQuality(detectTier(), false);
+
+        /* ══════════════════════ FX: pooled particles ══════════════════════
+     Two ring-buffer pools drawn as THREE.Points with a tiny shader (per-particle size, colour and alpha): a
+     normal-blend pool for dust / debris and an additive pool for sparkles / glints / motes — two draw calls in
+     total, no allocation per emit (typed arrays only). Particles live in WORLD space, so `tick(dt, move)` also
+     scrolls them toward the camera with the road: dust stays where the foot left it. Everything non-essential is
+     skipped under prefers-reduced-motion; the tier scales the counts. */
+        var FX = (function () {
+          var NS = 360,
+            NG = 200;
+          var api = { emitted: 0, mult: 1 };
+          var soft = null,
+            glow = null,
+            moteAcc = 0;
+          var fr = Math.random; // visual randomness only: kept off the seeded gameplay RNG
+          function spriteTex(kind) {
+            var c = mkCanvas(64, 64),
+              x = c.getContext("2d"),
+              g = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+            if (kind === "soft") {
+              g.addColorStop(0, "rgba(255,255,255,0.95)");
+              g.addColorStop(0.5, "rgba(255,255,255,0.45)");
+              g.addColorStop(1, "rgba(255,255,255,0)");
+              x.fillStyle = g;
+              x.fillRect(0, 0, 64, 64);
+            } else {
+              // glint: a soft core with a four-point star
+              g.addColorStop(0, "rgba(255,255,255,1)");
+              g.addColorStop(0.22, "rgba(255,255,255,0.65)");
+              g.addColorStop(1, "rgba(255,255,255,0)");
+              x.fillStyle = g;
+              x.fillRect(0, 0, 64, 64);
+              x.fillStyle = "rgba(255,255,255,0.9)";
+              x.beginPath();
+              x.moveTo(32, 2);
+              x.lineTo(36, 28);
+              x.lineTo(62, 32);
+              x.lineTo(36, 36);
+              x.lineTo(32, 62);
+              x.lineTo(28, 36);
+              x.lineTo(2, 32);
+              x.lineTo(28, 28);
+              x.closePath();
+              x.fill();
+            }
+            return new THREE.CanvasTexture(c);
+          }
+          function makePool(n, additive, kind) {
+            var geo = new THREE.BufferGeometry();
+            var P = {
+              n: n,
+              head: 0,
+              pos: new Float32Array(n * 3),
+              col: new Float32Array(n * 3),
+              size: new Float32Array(n),
+              alpha: new Float32Array(n),
+              ex: new Float32Array(n * 10), // age, life, s0, s1, a0, grav, drag, vx, vy, vz
+            };
+            geo.setAttribute("position", new THREE.BufferAttribute(P.pos, 3));
+            geo.setAttribute("aColor", new THREE.BufferAttribute(P.col, 3));
+            geo.setAttribute("aSize", new THREE.BufferAttribute(P.size, 1));
+            geo.setAttribute("aAlpha", new THREE.BufferAttribute(P.alpha, 1));
+            var gl = renderer.getContext(),
+              maxPt = Math.min(64, gl.getParameter(gl.ALIASED_POINT_SIZE_RANGE)[1] || 64);
+            P.mat = new THREE.ShaderMaterial({
+              uniforms: {
+                map: { value: spriteTex(kind) },
+                uScale: { value: 800 },
+                uMax: { value: maxPt },
+              },
+              vertexShader:
+                "attribute float aSize; attribute float aAlpha; attribute vec3 aColor; uniform float uScale; uniform float uMax; varying float vA; varying vec3 vC;\n" +
+                "void main() { vec4 mv = modelViewMatrix * vec4( position, 1.0 ); gl_Position = projectionMatrix * mv;\n" +
+                "  gl_PointSize = clamp( aSize * uScale / max( 0.1, -mv.z ), 0.0, uMax ); vA = aAlpha; vC = aColor; }",
+              fragmentShader:
+                "uniform sampler2D map; varying float vA; varying vec3 vC;\n" +
+                "void main() { vec4 t = texture2D( map, gl_PointCoord ); gl_FragColor = vec4( vC, vA * t.a ); }",
+              transparent: true,
+              depthWrite: false,
+              blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending,
+            });
+            P.pts = new THREE.Points(geo, P.mat);
+            P.pts.frustumCulled = false;
+            P.pts.renderOrder = 6;
+            scene.add(P.pts);
+            P.alphaMul = additive ? 1 : 1.8; // dust is faint by nature: boost it so it reads on the asphalt
+            P.sizeMul = additive ? 1 : 1.6;
+            return P;
+          }
+          function emit(P, x, y, z, vx, vy, vz, life, s0, s1, a0, grav, drag, r, g, b) {
+            var i = P.head,
+              k = i * 10;
+            P.head = (i + 1) % P.n;
+            P.pos[i * 3] = x;
+            P.pos[i * 3 + 1] = y;
+            P.pos[i * 3 + 2] = z;
+            P.col[i * 3] = r;
+            P.col[i * 3 + 1] = g;
+            P.col[i * 3 + 2] = b;
+            P.ex[k] = 0;
+            P.ex[k + 1] = life;
+            P.ex[k + 2] = s0;
+            P.ex[k + 3] = s1;
+            P.ex[k + 4] = a0;
+            P.ex[k + 5] = grav;
+            P.ex[k + 6] = drag;
+            P.ex[k + 7] = vx;
+            P.ex[k + 8] = vy;
+            P.ex[k + 9] = vz;
+            P.size[i] = s0;
+            P.alpha[i] = 0;
+            api.emitted++;
+          }
+          function step(P, dt, move) {
+            var ex = P.ex,
+              pos = P.pos,
+              i,
+              k;
+            for (i = 0; i < P.n; i++) {
+              k = i * 10;
+              var age = ex[k],
+                life = ex[k + 1];
+              if (age >= life) continue;
+              age += dt;
+              ex[k] = age;
+              if (age >= life) {
+                P.size[i] = 0;
+                P.alpha[i] = 0;
+                continue;
+              }
+              var t = age / life,
+                f = Math.max(0, 1 - ex[k + 6] * dt);
+              ex[k + 7] *= f;
+              ex[k + 8] = ex[k + 8] * f - ex[k + 5] * dt;
+              ex[k + 9] *= f;
+              pos[i * 3] += ex[k + 7] * dt;
+              pos[i * 3 + 1] = Math.max(0.03, pos[i * 3 + 1] + ex[k + 8] * dt);
+              pos[i * 3 + 2] += ex[k + 9] * dt + move;
+              P.size[i] = (ex[k + 2] + (ex[k + 3] - ex[k + 2]) * t) * P.sizeMul;
+              P.alpha[i] = Math.min(0.92, ex[k + 4] * P.alphaMul) * (1 - t) * Math.min(1, t * 12); // quick fade-in, long fade-out
+            }
+            P.pts.geometry.attributes.position.needsUpdate = true;
+            P.pts.geometry.attributes.aSize.needsUpdate = true;
+            P.pts.geometry.attributes.aAlpha.needsUpdate = true;
+            P.pts.geometry.attributes.aColor.needsUpdate = true;
+          }
+          function live(P) {
+            var c = 0;
+            for (var i = 0; i < P.n; i++) if (P.ex[i * 10] < P.ex[i * 10 + 1]) c++;
+            return c;
+          }
+          function cnt(n) {
+            return Math.max(1, Math.round(n * api.mult));
+          }
+          var D = { r: 0.93, g: 0.87, b: 0.77 }; // pale warm dust: reads against grey asphalt
+          if (renderer) {
+            soft = makePool(NS, false, "soft");
+            glow = makePool(NS > 0 ? NG : 0, true, "glint");
+          }
+          var on = function () {
+            return !!soft;
+          };
+          function ring(P, x, y, z, n, speed, up, life, s0, s1, a0, grav, drag, r, g, b) {
+            for (var i = 0; i < n; i++) {
+              var a = (i / n) * Math.PI * 2 + fr() * 0.4,
+                sp = speed * (0.6 + fr() * 0.7);
+              emit(
+                P,
+                x,
+                y,
+                z,
+                Math.cos(a) * sp,
+                up * (0.5 + fr()),
+                Math.sin(a) * sp,
+                life * (0.7 + fr() * 0.5),
+                s0,
+                s1,
+                a0,
+                grav,
+                drag,
+                r,
+                g,
+                b,
+              );
+            }
+          }
+          function rgb(hex) {
+            return [((hex >> 16) & 255) / 255, ((hex >> 8) & 255) / 255, (hex & 255) / 255];
+          }
+          return Object.assign(api, {
+            setCamera: function (heightPx, fovDeg) {
+              if (!on()) return;
+              var s = heightPx / (2 * Math.tan((fovDeg * Math.PI) / 360));
+              soft.mat.uniforms.uScale.value = glow.mat.uniforms.uScale.value = s;
+            },
+            setTier: function (m) {
+              api.mult = m;
+            },
+            reset: function () {
+              if (!on()) return;
+              [soft, glow].forEach(function (P) {
+                P.ex.fill(0);
+                P.size.fill(0);
+                P.alpha.fill(0);
+              });
+              moteAcc = 0;
+            },
+            tick: function (dt, move) {
+              if (!on()) return;
+              if (!prefersReduced && phase !== "idle") {
+                // sunlit motes drifting past: slow glints that give the street depth and the run speed
+                moteAcc += dt * 12 * api.mult;
+                while (moteAcc >= 1) {
+                  moteAcc -= 1;
+                  emit(
+                    glow,
+                    (fr() - 0.5) * 15,
+                    0.5 + fr() * 4.5,
+                    -8 - fr() * 55,
+                    (fr() - 0.5) * 0.3,
+                    0.1 + fr() * 0.2,
+                    0,
+                    3.5 + fr() * 2.5,
+                    0.06 + fr() * 0.05,
+                    0.03,
+                    0.55,
+                    0,
+                    0,
+                    1,
+                    0.9,
+                    0.62,
+                  );
+                }
+              }
+              step(soft, dt, move);
+              step(glow, dt, move);
+            },
+            footstep: function (x, k) {
+              if (!on() || prefersReduced) return;
+              for (var i = 0, n = cnt(2); i < n; i++)
+                emit(
+                  soft,
+                  x + (fr() - 0.5) * 0.35,
+                  0.05,
+                  0.25,
+                  (fr() - 0.5) * 0.7,
+                  0.5 + fr() * 0.5,
+                  0.6 + fr() * 0.8 * k,
+                  0.45 + fr() * 0.25,
+                  0.1,
+                  0.38,
+                  0.3,
+                  -0.6,
+                  2.2,
+                  D.r,
+                  D.g,
+                  D.b,
+                );
+            },
+            jump: function (x) {
+              if (!on() || prefersReduced) return;
+              ring(
+                soft,
+                x,
+                0.06,
+                0.1,
+                cnt(6),
+                1.3,
+                0.8,
+                0.5,
+                0.14,
+                0.55,
+                0.33,
+                -0.3,
+                2.5,
+                D.r,
+                D.g,
+                D.b,
+              );
+            },
+            landing: function (x, s) {
+              if (!on() || prefersReduced) return;
+              ring(
+                soft,
+                x,
+                0.06,
+                0.1,
+                cnt(12),
+                2.4 * s,
+                0.9,
+                0.62,
+                0.16,
+                0.75,
+                0.42,
+                -0.3,
+                3,
+                D.r,
+                D.g,
+                D.b,
+              );
+            },
+            skid: function (x) {
+              if (!on() || prefersReduced) return;
+              emit(
+                soft,
+                x + (fr() - 0.5) * 0.4,
+                0.06,
+                0.55,
+                (fr() - 0.5) * 0.5,
+                0.4 + fr() * 0.4,
+                0.4,
+                0.5,
+                0.14,
+                0.55,
+                0.32,
+                -0.3,
+                2,
+                0.86,
+                0.82,
+                0.76,
+              );
+              if (fr() < 0.7)
+                emit(
+                  glow,
+                  x + (fr() - 0.5) * 0.3,
+                  0.08,
+                  0.5,
+                  (fr() - 0.5) * 1.4,
+                  1.2 + fr() * 1.5,
+                  1.2 + fr(),
+                  0.28 + fr() * 0.15,
+                  0.11,
+                  0.02,
+                  0.9,
+                  9,
+                  0,
+                  1,
+                  0.78,
+                  0.3,
+                );
+            },
+            lane: function (x, dir) {
+              if (!on() || prefersReduced) return;
+              for (var i = 0, n = cnt(4); i < n; i++)
+                emit(
+                  soft,
+                  x - dir * 0.2,
+                  0.06,
+                  0.2,
+                  -dir * (0.6 + fr()),
+                  0.4 + fr() * 0.4,
+                  0.4,
+                  0.4,
+                  0.1,
+                  0.4,
+                  0.28,
+                  -0.5,
+                  2.5,
+                  D.r,
+                  D.g,
+                  D.b,
+                );
+            },
+            coin: function (x, y, z) {
+              if (!on()) return;
+              var n = cnt(prefersReduced ? 3 : 8);
+              for (var i = 0; i < n; i++) {
+                var a = fr() * Math.PI * 2,
+                  sp = 1.2 + fr() * 2.2;
+                emit(
+                  glow,
+                  x,
+                  y,
+                  z,
+                  Math.cos(a) * sp,
+                  Math.sin(a) * sp * 0.8 + 0.8,
+                  (fr() - 0.5) * 1.2,
+                  0.32 + fr() * 0.25,
+                  0.22,
+                  0.02,
+                  1,
+                  4,
+                  1.5,
+                  1,
+                  0.82,
+                  0.25,
+                );
+              }
+              emit(glow, x, y, z, 0, 0.3, 0, 0.2, 0.55, 0.1, 0.9, 0, 0, 1, 0.95, 0.6);
+            },
+            power: function (x, y, z, hex) {
+              if (!on()) return;
+              var c = rgb(hex);
+              ring(
+                glow,
+                x,
+                y,
+                z,
+                cnt(prefersReduced ? 8 : 26),
+                3.2,
+                1.2,
+                0.7,
+                0.3,
+                0.02,
+                1,
+                2,
+                1.6,
+                c[0],
+                c[1],
+                c[2],
+              );
+              if (!prefersReduced)
+                ring(
+                  glow,
+                  x,
+                  y - 0.5,
+                  z,
+                  cnt(14),
+                  1.6,
+                  3.2,
+                  0.9,
+                  0.2,
+                  0.02,
+                  0.9,
+                  -1.5,
+                  0.8,
+                  1,
+                  1,
+                  1,
+                );
+            },
+            pop: function (x, y, z) {
+              if (!on()) return;
+              ring(
+                glow,
+                x,
+                y,
+                z,
+                cnt(prefersReduced ? 8 : 20),
+                3.6,
+                0.8,
+                0.5,
+                0.2,
+                0.02,
+                0.95,
+                3,
+                2,
+                0.78,
+                0.93,
+                1,
+              );
+              ring(
+                soft,
+                x,
+                y,
+                z,
+                cnt(prefersReduced ? 0 : 8),
+                2.2,
+                0.4,
+                0.5,
+                0.3,
+                0.8,
+                0.22,
+                0,
+                2,
+                0.85,
+                0.95,
+                1,
+              );
+            },
+            impact: function (x, z, head) {
+              if (!on() || prefersReduced) return;
+              ring(
+                soft,
+                x,
+                0.15,
+                z - 0.3,
+                cnt(14),
+                4.2,
+                3.6,
+                0.7,
+                0.14,
+                0.2,
+                0.85,
+                12,
+                1.2,
+                0.5,
+                0.42,
+                0.36,
+              ); // debris chunks
+              ring(
+                soft,
+                x,
+                0.1,
+                z - 0.3,
+                cnt(8),
+                2.2,
+                1.2,
+                0.75,
+                0.3,
+                1.1,
+                0.5,
+                -0.4,
+                2.2,
+                D.r,
+                D.g,
+                D.b,
+              ); // dust cloud
+              for (var i = 0, n = cnt(6); i < n; i++) {
+                // dizzy stars burst out of the head and fall away
+                var a = (i / n) * Math.PI * 2;
+                emit(
+                  glow,
+                  x,
+                  head,
+                  0.1,
+                  Math.cos(a) * 1.5,
+                  1.6,
+                  Math.sin(a) * 1.5,
+                  0.85,
+                  0.28,
+                  0.1,
+                  1,
+                  3.5,
+                  1,
+                  1,
+                  0.9,
+                  0.3,
+                );
+              }
+            },
+            pile: function (x) {
+              if (!on() || prefersReduced) return;
+              ring(
+                soft,
+                x,
+                0.2,
+                0.6,
+                cnt(22),
+                3,
+                1.6,
+                1.0,
+                0.3,
+                1.3,
+                0.55,
+                -0.2,
+                1.8,
+                D.r,
+                D.g,
+                D.b,
+              );
+            },
+            streaks: function (x) {
+              if (!on() || prefersReduced) return;
+              for (var i = 0, n = cnt(8); i < n; i++)
+                emit(
+                  glow,
+                  x + (i % 2 ? 1 : -1) * (0.9 + fr() * 0.8),
+                  0.5 + fr() * 1.4,
+                  -1 - fr(),
+                  0,
+                  0,
+                  14 + fr() * 6,
+                  0.35,
+                  0.12,
+                  0.03,
+                  0.8,
+                  0,
+                  0,
+                  1,
+                  1,
+                  1,
+                );
+            },
+            dogDust: function (x, z) {
+              if (!on() || prefersReduced) return;
+              emit(
+                soft,
+                x + (fr() - 0.5) * 0.4,
+                0.05,
+                z + 0.5,
+                (fr() - 0.5) * 0.4,
+                0.4,
+                0.4,
+                0.5,
+                0.12,
+                0.45,
+                0.28,
+                -0.5,
+                2.2,
+                D.r,
+                D.g,
+                D.b,
+              );
+            },
+            debug: function () {
+              return on()
+                ? { soft: live(soft), glow: live(glow), emitted: api.emitted, mult: api.mult }
+                : null;
+            },
+          });
+        })();
+
+        FX.setTier(TIERS[quality.tier].fx);
 
         /* ══════════════════════ Characters: runner + dogs ══════════════════════
      Real CC0 animated models (Quaternius human + dog, converted FBX → GLB once; see assets/CREDITS.md) with
@@ -3877,6 +4704,8 @@
           sliding: false,
           slideT: 0,
           fastFall: false,
+          stride: 0, // footfall phase (0..1) so audio + dust land on the run cycle's steps
+          skidT: 0,
           invulnT: 0,
           airTime: 0.78,
           buf: null,
@@ -3961,6 +4790,7 @@
             player.sliding = false;
             player.slideT = 0;
             player.fastFall = false;
+            player.stride = player.skidT = 0;
             player.invulnT = 0;
             player.buf = null;
             player.bufT = 0;
@@ -3993,6 +4823,7 @@
             player.airTime = (2 * v) / GRAVITY;
             if (runnerView) runnerView.play("jump", { restart: true, airTime: player.airTime });
             AudioManager.jump();
+            FX.jump(player.x);
           },
           // A jump pressed a hair before landing is remembered for INPUT_BUFFER seconds (an in-air slide is a fast-fall,
           // which already skids on landing).
@@ -4005,6 +4836,8 @@
                 player.lane = nl;
                 player.laneChangeT = 0.3;
                 markDodges(player.prevLane, player.lane);
+                AudioManager.swoosh(a === "left" ? -1 : 1);
+                FX.lane(player.x, a === "left" ? -1 : 1);
               }
               return;
             }
@@ -4036,9 +4869,12 @@
               player.vy -= GRAVITY * dt;
               player.y += player.vy * dt;
               if (player.y <= 0) {
+                var land = clamp(-player.vy / 10, 0.35, 1.2); // landing strength from the fall speed
                 player.y = 0;
                 player.vy = 0;
                 player.onGround = true;
+                AudioManager.land(land);
+                FX.landing(player.x, land);
                 if (runnerView) runnerView.play(player.fastFall ? "slide" : "run");
                 if (player.fastFall) {
                   player.fastFall = false;
@@ -4054,8 +4890,24 @@
             }
             player.x += (LANE_X[player.lane] - player.x) * Math.min(1, dt * 14);
             PlayerController.place();
+            var k = clamp((speed - SPEED_BASE) / (SPEED_MAX - SPEED_BASE), 0, 1);
+            if (phase === "running") {
+              if (player.onGround && !player.sliding) {
+                player.stride += dt * 3.17 * (0.9 + 0.85 * k); // the run clip's footfalls per second
+                if (player.stride >= 1) {
+                  player.stride -= 1;
+                  AudioManager.step(k);
+                  FX.footstep(player.x, k);
+                }
+              } else if (player.sliding && player.onGround) {
+                player.skidT += dt;
+                if (player.skidT >= 0.05) {
+                  player.skidT = 0;
+                  FX.skid(player.x);
+                }
+              }
+            }
             if (runnerView) {
-              var k = clamp((speed - SPEED_BASE) / (SPEED_MAX - SPEED_BASE), 0, 1);
               runnerView.update(dt, { speed01: k });
               if (!runnerView.root.visible && runnerView.ready) runnerView.root.visible = true;
               var vx = LANE_X[player.lane] - player.x;
@@ -4921,6 +5773,7 @@
           if (!prefersReduced) camPunch = 4; // FOV punch
           if (kind === "shield") chase.gap = Math.min(GAP_CALM, chase.gap + 0.8);
           AudioManager.power();
+          FX.power(player.x, player.y + 1.0, 0, PICK[kind].color);
           UIManager.toast(PICK[kind].label);
           announce(PICK[kind].label);
         }
@@ -4953,6 +5806,8 @@
           speedMul: 1,
           hits: 0,
           barkT: 0,
+          dogT: 0, // seconds to the next dog footfall sound / dust puff
+          dogI: 0, // which dog of the pack makes it
           lunge: 0,
         };
         var packGroup = null;
@@ -4987,6 +5842,7 @@
             chase.speedMul = 1;
             chase.hits = 0;
             chase.barkT = 0;
+            chase.dogT = 0;
             chase.lunge = 0;
             for (var i = 0; i < 3; i++) {
               dogPos[i].x = PACK_X[i];
@@ -5008,9 +5864,18 @@
               chase.gap = Math.min(GAP_CALM, chase.gap + GAP_RECOVER * dt);
               chase.speedMul = Math.min(1, chase.speedMul + (dt * (1 - 0.55)) / 2.2); // 0.55 -> 1 over 2.2 s
               chase.barkT -= dt;
+              var close = clamp((GAP_CALM + 0.4 - chase.gap) / (GAP_CALM + 0.4 - 1.2), 0, 1); // 0 far .. 1 on your heels
               if (chase.gap < GAP_DANGER && chase.barkT <= 0) {
                 chase.barkT = 1.1;
-                AudioManager.bark();
+                AudioManager.bark(0.45 + 0.55 * close, clamp((dogPos[0].x - player.x) / 3, -1, 1));
+              }
+              chase.dogT -= dt;
+              if (chase.dogT <= 0 && chase.gap < GAP_CALM + 0.3) {
+                chase.dogT = 0.17;
+                var d0 = dogPos[(chase.dogI = (chase.dogI + 1) % 3)];
+                AudioManager.dogStep(0.15 + 0.85 * close, clamp((d0.x - player.x) / 3, -1, 1));
+                FX.dogDust(d0.x, d0.z);
+                if (close > 0.55) AudioManager.pant(close);
               }
             }
             chase.lunge = Math.max(0, chase.lunge - dt);
@@ -5111,6 +5976,7 @@
                 Math.abs(c.y - (player.y + 0.95)) < 1.2
               ) {
                 coinCollectFx(c.x, c.y, c.z);
+                FX.coin(c.x, c.y, c.z);
                 activeCoins.splice(i, 1);
                 runCoins++;
                 score += COIN_SCORE;
@@ -5131,7 +5997,8 @@
         function closeCall() {
           score += CLOSE_CALL_SCORE;
           chase.gap = Math.min(GAP_CALM, chase.gap + 0.8);
-          AudioManager.pop();
+          AudioManager.closeCall();
+          FX.streaks(player.x);
           UIManager.toast("Close call! +" + CLOSE_CALL_SCORE);
           closeCalls++;
         }
@@ -5145,6 +6012,7 @@
             player.invulnT = 1.3;
             chase.gap = Math.min(GAP_CALM, chase.gap + 1.0);
             AudioManager.pop();
+            FX.pop(player.x, player.y + 1.0, 0);
             UIManager.toast("🫧 Bubble saved you!");
             announce("Bubble saved you");
             return;
@@ -5162,6 +6030,7 @@
             chase.gap = Math.max(GAP_HIT + 0.5, chase.gap - 0.9);
             chase.speedMul = Math.min(chase.speedMul, 0.8);
             AudioManager.bump();
+            FX.lane(player.x, player.lane > player.prevLane ? 1 : -1);
             hurtFx(false);
             UIManager.toast("Bumped!");
             return;
@@ -5183,7 +6052,8 @@
           }
           if (runnerView) runnerView.stumble();
           AudioManager.bump();
-          AudioManager.bark();
+          AudioManager.bark(0.9, 0);
+          FX.impact(player.x, 0, player.y + 1.7);
           hurtFx(true);
           UIManager.toast("Ouch! The dogs are close");
           announce("You tripped. The dogs are close.");
@@ -5372,6 +6242,7 @@
           PlayerController.reset();
           worldReset();
           Chase.reset();
+          FX.reset();
           AudioManager.musicReset();
           UIManager.hud();
           powerupsTick(0);
@@ -5392,6 +6263,8 @@
           prewarmObstacles(); // build every obstacle variant's geometry now, not mid-run on first spawn
           phase = "countdown";
           AudioManager.unlock();
+          AudioManager.musicDuck(1);
+          AudioManager.resetStreak();
           AudioManager.playMusic();
           // Fast start: retries skip straight to a "GO!" flash; the first run is a snappy 3-2-1 at 300 ms/step.
           // Any input skips the rest instantly.
@@ -5419,7 +6292,7 @@
                 el.classList.remove("beat");
                 void el.offsetWidth; // restart the decorative beat animation
                 el.classList.add("beat");
-                AudioManager.jump();
+                AudioManager.tick(v === "GO!");
                 if (v === "GO!") countdownIds.push(later(beginRunning, goDelay));
               }, i * STEP_MS),
             );
@@ -5429,6 +6302,7 @@
           if (phase !== "countdown" || paused) return;
           $("countdown").classList.remove("active");
           phase = "running";
+          AudioManager.windStart();
           if (runnerView && player.onGround && !player.sliding)
             runnerView.play("run", { restart: true });
           announce("Run started. Arrow keys to move, jump and slide.");
@@ -5502,7 +6376,10 @@
           crashT = 1.5;
           hurtFx(true);
           AudioManager.crash();
-          AudioManager.bark();
+          AudioManager.bark(1, 0);
+          AudioManager.windStop();
+          AudioManager.musicDuck(0.25);
+          FX.pile(player.x);
           if (runnerView) {
             runnerView.play("caught");
             runnerView.root.visible = runnerView.ready;
@@ -5547,6 +6424,7 @@
           $("statBank").textContent = save.coins;
           $("statBest").textContent = save.highScore;
           $("newBest").classList.toggle("show", isBest);
+          if (isBest) AudioManager.fanfare();
           $("resSub").textContent = "The pack caught up with you.";
           announce(
             "Run over. Score " +
@@ -5573,6 +6451,10 @@
             worldTick(move);
             stepWorldObjects(move);
             writeCoins(dt, move);
+            var sk = clamp((speed - SPEED_BASE) / (SPEED_MAX - SPEED_BASE), 0, 1);
+            FX.tick(dt, move);
+            AudioManager.windLevel(sk);
+            AudioManager.musicRate(sk);
             directorTick();
             CollisionEngine.tick(dt);
             powerupsTick(dt);
@@ -5584,6 +6466,7 @@
             speed = Math.max(0, speed - 30 * dt);
             var mv = speed * dt;
             worldTick(mv);
+            FX.tick(dt, mv);
             stepWorldObjects(mv);
             writeCoins(dt, mv);
             if (!player.onGround) {
@@ -5603,6 +6486,7 @@
             player.invulnT = inv;
             player.laneChangeT = lc;
             player.bufT = bt;
+            FX.tick(dt, 0);
             Chase.tick(dt);
           }
         }
@@ -5661,6 +6545,7 @@
             obMats.lamp.emissiveIntensity = prefersReduced
               ? 0.9
               : 0.5 + 0.5 * Math.abs(Math.sin(elapsed * 7)); // warning beacons
+          FX.setCamera(renderer.domElement.height, camera.fov);
           skyGroup.position.copy(camera.position);
           // the sun key follows the runner so shadows stay crisp in every lane
           dirLight.position.set(player.x - 9, 14, 11);
@@ -5911,6 +6796,9 @@
           syncMuteUi();
         });
         syncMuteUi();
+        document.addEventListener("click", function (ev) {
+          if (ev.target.closest && ev.target.closest("button, .start-btn")) AudioManager.click(); // tiny UI tick
+        });
         UIManager.show("setup");
 
         /* ══════════════════════ boot: models + photo textures load in the background ══════════════════════ */
@@ -5973,6 +6861,9 @@
           },
           get audio() {
             return AudioManager.debug();
+          },
+          get fx() {
+            return FX.debug();
           },
           get skin() {
             var v = runnerView;

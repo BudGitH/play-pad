@@ -49,7 +49,8 @@ See `design-review.md`.
 5. **Obstacles — real street set pieces (a town street with road works and a market day):** jump over a **road-works barrier** (cones, sandbags, beacon), a **delivery pallet of produce** or a **market fruit cart**; slide under **scaffolding** (LOW HEADROOM sign) or a **market-stall awning**; go around a **delivery van**, **food truck**, **box truck** or **city bus**. Coins, magnet, spring-sneakers, bubble.
 6. **Mechanics:** input buffering, forgiving side-scrape (bounce back to your lane, never fatal), stumble → recover, close-call bonus that pushes the dogs back, jump-cancel of a slide, fast-fall.
 7. **HUD:** score, coins, mute, quit, dog-proximity meter, power-up chips, toasts. Pause / resume / countdown behaviour unchanged.
-8. **Audio:** chill lo-fi loop (CC0), Kenney SFX, synth bark + bump.
+8. **Game feel — particles:** pooled dust (footfalls, jump, landing ring), slide skid sparks, coin sparkles, power-up bursts, bubble pop, stumble debris + dizzy stars, dog dust, close-call streaks, sunlit ambient motes (counts scale with the quality tier; mostly off under reduced motion).
+9. **Audio:** a chill lo-fi loop (CC0 file) whose tempo follows the speed and which ducks under the "caught" sting; every effect synthesised (footsteps on the run cycle, landing thump, lane swooshes panned to the direction, a pitch-climbing pentatonic coin chime, skid, a wind bed that grows with speed, dog steps / pants / barks panned to where they run, countdown ticks, stings, a new-best fanfare, UI ticks).
 
 ## Acceptance criteria
 
@@ -64,6 +65,7 @@ See `design-review.md`.
 - **AC9 Existing contract kept:** pause on hide / blur, instant start, quality tiers, ≤ 170 draw calls on high, no per-frame allocation in hot paths, WebGL-missing notice, reduced-motion respected.
 - **AC10 Smoke:** `npm run smoke` passes (hub + all games, round starts on phone + desktop).
 - **AC11 Model fidelity (owner request mid-run: "high fidelity, improved visual quality"):** within a CC0 stylised pack — smooth (auto-smoothed) normals, a face, trainers and outfit palettes on the runner; eyes, nose and fur shading on the dogs; vehicles with rounded bodies, clearcoat paint, glass, wheels with hubs, lights and a livery; organic trees; every obstacle a recognisable real-world object. Verified by close-up renders and the probes (draw-call / triangle budgets unchanged in kind). **Not** a photoreal or high-polygon character: the rigged CC0 set available offline is stylised low-poly, polished rather than replaced.
+- **AC12 Game feel — particles + audio (owner request: "particle effects to make it playable and fun with good audio"):** every gameplay event has both a visual and a sound. Verified by trigger counters and live particle counts (`__stride.audio.played`, `__stride.fx`): footsteps, jump, landing, lane swooshes, skid, coin chimes that climb with the streak, stumble thud + bark + debris; the wind bed is on while running and the music tempo follows speed; the two particle pools never overflow and thin out on lower quality tiers. **Not verifiable headless:** how the mix actually _sounds_ (levels, balance, taste) — that needs a human ear on a real device; screenshots show the particles are visible, not that they look "fun".
 
 ## Edge cases & error states
 
@@ -83,7 +85,7 @@ See `design-review.md`.
 
 - **Accuracy:** deterministic fixed-step sim; collision spec table is the single source of truth.
 - **Risk:** no new network surface; assets same-origin; save data sanitised; no `innerHTML` with untrusted strings.
-- **Compliance:** CC0 attributions (Quaternius, ambientCG, Kenney, OGA track) in `assets/CREDITS.md`; no PII.
+- **Compliance:** CC0 attributions (Quaternius, ambientCG, OGA track) in `assets/CREDITS.md`; no PII.
 - **Quality:** four-tier comments on new modules; fallbacks documented in the game-local `CLAUDE.md`.
 - **Performance:** 60 fps target on a mid phone (medium tier), draw-call budget high ≤ 170 / low ≤ 110, textures 512 px.
 

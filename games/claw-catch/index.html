@@ -8,7 +8,12 @@
     <title>Claw Catch — PlayPad</title>
 
     <link rel="icon" href="../../icons/favicon.svg" type="image/svg+xml" />
-    <meta name="theme-color" content="#08080c" />
+    <meta name="theme-color" content="#fff8f7" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#08080c" media="(prefers-color-scheme: dark)" />
+
+    <!-- Applies the player's saved light/dark choice (set on the hub) before first paint.
+         Classic script, no defer: it must run before the stylesheets below paint. -->
+    <script src="../../scripts/theme.js"></script>
 
     <!-- Shared PlayPad design system -->
     <link rel="stylesheet" href="../../styles/tokens.css" />
@@ -41,17 +46,17 @@
         --claw-bulb: #ffd27a;
       }
       /* Per-theme cabinet colours for DOM chrome (the deck's trim picks them up). */
-      #game[data-theme="critters"] {
+      #game[data-cabinet="critters"] {
         --claw-frame: #0d3b21;
         --claw-frame-hi: #2fa35a;
         --claw-wall: #0a2a18;
       }
-      #game[data-theme="sweets"] {
+      #game[data-cabinet="sweets"] {
         --claw-frame: #5e1a55;
         --claw-frame-hi: #e070b8;
         --claw-wall: #3a0f35;
       }
-      #game[data-theme="space"] {
+      #game[data-cabinet="space"] {
         --claw-frame: #10183f;
         --claw-frame-hi: #4d6bff;
         --claw-wall: #0a0f2a;
@@ -1351,6 +1356,7 @@
         var PILE_TANGENT_MU = 0.35; // Coulomb friction between touching prizes
         var LAND_TICK_V = 400; // px/s — landing faster than this ticks + puffs dust
         var MAX_PARTICLES = 40;
+        var TALL_EXTRA_ROWS = 2.2; // extra heap rows (× tall-ness) so a portrait tray fills up
         var MAX_CANVAS_PX = 4.2e6; // backing-store budget (≈ a 1366×640 stage at 2×)
 
         // Drop sequence phases (named strings so devtools shows meaning).
@@ -1884,16 +1890,24 @@
           var cabT = shortLand ? 2 : 4,
             cabB = H - (shortLand ? 3 : 6);
           var bez = clamp(cabW * 0.028, 8, 14);
-          var prizeR = clamp(Math.min(cabW * 0.05, H * 0.07), 20, 44);
           var railY = Math.max(40, hudB + (shortLand ? 10 : 14));
-          var clawS = clamp(prizeR * 1.3, 26, 52);
           var innerL = cabL + bez,
             innerR = cabR - bez,
             innerB = cabB - bez;
+          var chuteW = clamp(cabW * 0.14, 50, 96);
+          // How tall and narrow the glass is: 0 = a wide desktop / landscape stage … 1 = a phone in
+          // portrait. A tall tray gets bigger prizes and a deeper heap so it reads as full and lively
+          // (instead of a thin row at the bottom of a long, empty glass).
+          var tall = clamp(
+            ((innerB - 36 - railY) / (innerR - innerL - chuteW - 14) - 0.85) / 0.45,
+            0,
+            1,
+          );
+          var prizeR = clamp(Math.min(cabW * 0.05, H * 0.07) * (1 + 0.4 * tall), 20, 44 + 6 * tall);
+          var clawS = clamp(prizeR * 1.3, 26, 52);
           var lipH = Math.round(Math.max(prizeR * 0.95, 32));
           var lipTop = innerB - lipH;
           var floorY = lipTop + prizeR * 0.35; // prize bottoms rest 0.35R below the lip's top edge
-          var chuteW = clamp(cabW * 0.14, 50, 96);
           var cartHalf = clamp(cabW * 0.05, 20, 30);
           var trayL = innerL + chuteW + 8,
             trayR = innerR - 6;
@@ -1941,9 +1955,14 @@
             cartSpeed: clamp(cabW * 0.62, 320, 760),
             returnSpeed: clamp(cabW * 1.1, 600, 1300),
             perRow: 0,
+            tall: tall,
           };
           lay.perRow = Math.max(3, Math.floor(lay.trayW / (2 * prizeR * 0.92)));
-          cfg.binCap = clamp(Math.round(cfg.diff.rows * lay.perRow), 12, 36);
+          cfg.binCap = clamp(
+            Math.round((cfg.diff.rows + TALL_EXTRA_ROWS * tall) * lay.perRow),
+            12,
+            36,
+          );
           cfg.grabRadius = prizeR * 1.7 * cfg.diff.grabRadiusMul;
           cartX = clamp(cartX, lay.minX, lay.maxX);
           buildGfx();
@@ -2301,7 +2320,11 @@
             p = bin[i];
             p.rad = p.radK * R;
             p.x = clamp(lay.trayL + clamp(p.nx, 0, 1) * span, lay.trayL + p.rad, lay.trayR - p.rad);
-            p.y = Math.min(lay.floorY - p.hy * R, lay.floorY - p.rad);
+            // never above the claw's rest depth (a deep portrait heap rotated into a short landscape tray)
+            p.y = Math.max(
+              Math.min(lay.floorY - p.hy * R, lay.floorY - p.rad),
+              lay.railY + lay.lRest + p.rad,
+            );
             p.vx = p.vy = p.av = 0;
           }
           if (carried) carried.rad = carried.radK * R;
@@ -2309,7 +2332,7 @@
           cartX = lay.minX + clamp(normCart, 0, 1) * cs;
           returnStartX = lay.minX + clamp(normReturn, 0, 1) * cs;
           trimToCap();
-          settlePile(45);
+          settlePile(90);
         }
         // When the cap shrinks (a smaller screen), drop the extras from the TOP of the pile.
         function trimToCap() {
@@ -2424,19 +2447,48 @@
 
         // Start the round with a MOUNTAIN, not a row: ~85% of the cap, stacked in rows bottom-up, each
         // row inset by half a prize. The physics then settles it (pre-run here, so frame 1 is a calm heap).
+        // Row sizes (bottom-up) for a heap of `total` prizes in a tray `fullRow` prizes wide. A wide tray
+        // gets a pyramid ~3 rows deep. A narrow one can't fit that many in a pyramid, so it gets a block of
+        // alternating full rows (B, B-1, B, …) topped with a taper — a mound, never a one-prize tower.
+        function heapRows(total, fullRow) {
+          var base = clamp(Math.ceil(total / 3) + 1, 3, fullRow);
+          var rows = [],
+            sum = 0,
+            k;
+          if ((base * (base + 1)) / 2 >= total) {
+            for (k = 0; sum < total; k++) {
+              rows.push(Math.min(total - sum, Math.max(1, base - k)));
+              sum += rows[k];
+            }
+            return rows;
+          }
+          for (var block = 1; block < 14; block++) {
+            rows = [];
+            for (k = 0; k < block; k++) rows.push(fullRow - (k % 2));
+            for (var m = rows[block - 1] - 1; m >= 1; m--) rows.push(m);
+            sum = rows.reduce(function (a, b) {
+              return a + b;
+            }, 0);
+            if (sum >= total) break;
+          }
+          while (sum > total) {
+            rows[rows.length - 1]--;
+            sum--;
+            if (rows[rows.length - 1] === 0) rows.pop();
+          }
+          return rows;
+        }
+
         function fillInitialBin() {
           bin = [];
           var R = lay.prizeR,
             target = Math.max(3, Math.round(cfg.binCap * 0.85));
           var fullRow = Math.max(3, Math.floor(lay.trayW / (2.04 * R)));
-          // A mound is ~3 rows deep: size the base row to the stock (never wider than the tray).
-          var rowN = clamp(Math.ceil(target / 3) + 1, 3, fullRow);
+          var rows = heapRows(target, fullRow);
           var cx = (lay.trayL + lay.trayR) / 2,
             step = 2.04 * R;
-          var row = 0,
-            placed = 0;
-          while (placed < target && row < 10) {
-            var n = Math.min(target - placed, Math.max(1, rowN - row));
+          for (var row = 0; row < rows.length; row++) {
+            var n = rows[row];
             var x0 = cx - ((n - 1) * step) / 2;
             for (var i = 0; i < n; i++) {
               bin.push(
@@ -2445,9 +2497,7 @@
                   lay.floorY - R - row * R * 1.74 - Math.random() * R * 0.1,
                 ),
               );
-              placed++;
             }
-            row++;
           }
           settlePile(110);
         }
@@ -2557,7 +2607,7 @@
         function startGame() {
           cfg.diff = DIFFICULTIES[difficultyIndex];
           cfg.refillMs = cfg.diff.refillMs;
-          $("game").setAttribute("data-theme", curTheme().id);
+          $("game").setAttribute("data-cabinet", curTheme().id);
           show("game");
           setupCanvas();
           // Canvas has zero size until the game screen is visible — lay out on the next frame to be safe.

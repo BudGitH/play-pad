@@ -1,7 +1,12 @@
-// Smoke test: the hub and every live game load without errors.
+// Smoke test: the hub and every live game load without errors, and every live game can
+// start a round on a phone and on a desktop.
 // Catches a broken game before it reaches the live site (merging to main deploys).
 // Run locally: npm run smoke
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { runInNewContext } from "node:vm";
 import { test, expect } from "@playwright/test";
+import { ROUND_DRIVERS, ROUND_TIMEOUT_MS } from "./round-drivers.mjs";
 
 /** Phone, large phone, tablet and laptop widths the hub layout is checked at. */
 const HUB_VIEWPORTS = [
@@ -22,7 +27,32 @@ function watchForProblems(page) {
     const sameOrigin = res.url().startsWith(new URL(page.url() || "http://localhost").origin);
     if (sameOrigin && res.status() >= 400) problems.push(`HTTP ${res.status()}: ${res.url()}`);
   });
+  page.on("requestfailed", (req) => {
+    const sameOrigin = req.url().startsWith(new URL(page.url() || "http://localhost").origin);
+    const reason = req.failure()?.errorText ?? "unknown";
+    // ERR_ABORTED is the browser cancelling a request itself (navigation, media seeking), not a failure.
+    if (sameOrigin && reason !== "net::ERR_ABORTED") {
+      problems.push(`request failed (${reason}): ${req.url()}`);
+    }
+  });
   return problems;
+}
+
+/**
+ * Fail if the page scrolls sideways. Also checks the layout viewport really is the device
+ * width: a page with no viewport meta renders at ~980px on a phone, which would hide overflow.
+ */
+async function expectNoSidewaysScroll(page, viewport) {
+  const m = await page.evaluate(() => ({
+    scrollWidth: document.documentElement.scrollWidth,
+    innerWidth: window.innerWidth,
+  }));
+  expect(m.innerWidth, "layout width equals the device width (viewport meta tag)").toBe(
+    viewport.width,
+  );
+  expect(m.scrollWidth, "page is wider than the screen (sideways scroll)").toBeLessThanOrEqual(
+    m.innerWidth,
+  );
 }
 
 /** Read the game registry (window.GAMES) the hub renders from. */
@@ -57,11 +87,7 @@ for (const { width, height } of HUB_VIEWPORTS) {
     await page.goto("/");
     await page.waitForLoadState("networkidle");
 
-    const overflow = await page.evaluate(() => ({
-      scrollWidth: document.documentElement.scrollWidth,
-      innerWidth: window.innerWidth,
-    }));
-    expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.innerWidth);
+    await expectNoSidewaysScroll(page, { width, height });
     expect(problems).toEqual([]);
   });
 }
@@ -150,3 +176,95 @@ test("every live game opens without errors", async ({ page }) => {
     });
   }
 });
+
+// ---------------------------------------------------------------------------------------
+// Start a round in every live game, on a phone and on a desktop.
+// The games come straight from games.js (read at collection time so each gets its own named
+// test); the per-game "how do I start it / when is it in-round" lives in round-drivers.mjs.
+// ---------------------------------------------------------------------------------------
+
+/** The two form factors a round is started on (touch → real taps; desktop → mouse clicks). */
+const ROUND_VIEWPORTS = [
+  { name: "phone 390x844", width: 390, height: 844, touch: true },
+  { name: "desktop 1366x800", width: 1366, height: 800, touch: false },
+];
+
+/** Party games pre-select this many players, so a fresh visitor can hit Start straight away. */
+const PLAYER_COUNT_CHIP = '#playerChips [aria-pressed="true"]';
+
+/** Read the live entries of games.js (a classic script that sets window.GAMES) without a browser. */
+function readLiveGamesFromRegistry() {
+  const sandbox = { window: {} };
+  runInNewContext(readFileSync(join(import.meta.dirname, "..", "games.js"), "utf8"), sandbox);
+  const games = JSON.parse(JSON.stringify(sandbox.window.GAMES));
+  return games.filter((g) => g.status === "live");
+}
+
+/** A counter the game must keep advancing while a round runs (proves the loop is alive). */
+async function expectHeartbeat(page, readCounter) {
+  const before = await readCounter(page);
+  await expect.poll(() => readCounter(page), { timeout: ROUND_TIMEOUT_MS }).toBeGreaterThan(before);
+}
+
+/** Open a game, start a round through its real UI and wait until it is genuinely in-round. */
+async function startRoundInGame(page, game, vp) {
+  const problems = watchForProblems(page);
+  const res = await page.goto(`/${game.path}`);
+  expect(res.status()).toBe(200);
+  await page.waitForLoadState("networkidle");
+  await expect(page).toHaveTitle(new RegExp(game.title));
+  await expectNoSidewaysScroll(page, vp); // the setup screen
+
+  const driver = ROUND_DRIVERS[game.id];
+  if (!driver) {
+    // A new game nobody wrote a driver for yet: fall back to "opens without errors".
+    test.info().annotations.push({
+      type: "no round driver",
+      description: `add "${game.id}" to tests/round-drivers.mjs to start a round in it`,
+    });
+    expect(problems).toEqual([]);
+    return;
+  }
+  test.info().annotations.push({ type: "in-round signal", description: driver.signal });
+
+  const start = page.getByRole("button", { name: driver.start, exact: true });
+  if (driver.players) {
+    await expect(page.locator(PLAYER_COUNT_CHIP)).toHaveText(driver.players);
+  }
+  await expect(start).toBeEnabled();
+  await (vp.touch ? start.tap() : start.click());
+
+  await driver.waitForRound(page);
+  if (driver.heartbeat) await expectHeartbeat(page, driver.heartbeat);
+  await expectNoSidewaysScroll(page, vp); // the in-round screen
+  expect(problems).toEqual([]);
+}
+
+const LIVE_GAMES = readLiveGamesFromRegistry();
+
+test("games.js lists live games to run rounds in (a game with no driver is flagged)", async () => {
+  // An empty or unreadable registry would silently generate zero round tests, so guard it.
+  expect(LIVE_GAMES.length).toBeGreaterThan(0);
+  // Not a hard gate (a new game falls back to the open check) — this keeps the gap visible.
+  for (const game of LIVE_GAMES.filter((g) => !ROUND_DRIVERS[g.id])) {
+    test.info().annotations.push({ type: "no round driver", description: game.id });
+  }
+});
+
+for (const vp of ROUND_VIEWPORTS) {
+  test.describe(`start a round at ${vp.name}`, () => {
+    // Neon Rush compiles its shaders in software on CI (no GPU), which is slow; leave headroom.
+    test.describe.configure({ timeout: 45_000 });
+    test.use({
+      viewport: { width: vp.width, height: vp.height },
+      isMobile: vp.touch,
+      hasTouch: vp.touch,
+    });
+
+    for (const game of LIVE_GAMES) {
+      test(`${game.title} reaches its in-round state`, async ({ page }) => {
+        await startRoundInGame(page, game, vp);
+      });
+    }
+  });
+}

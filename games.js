@@ -29,7 +29,9 @@
      best        { key, field, label? } — where the game keeps its best score:
                  localStorage key + the numeric field inside that JSON object.
                  Shows a "Best 12,480" badge once the stored value is a finite
-                 number from 1 to 1e9. label defaults to "Best".
+                 number from 1 to 1e9. label defaults to "Best". The field must be a
+                 TOP-LEVEL number: a game that keeps a best per mode also saves a
+                 `bestOverall` (the max) for the hub to read.
    ========================================================================== */
 window.GAMES = [
   {
@@ -70,6 +72,7 @@ window.GAMES = [
     icon: "🕹️",
     players: "1",
     status: "live",
+    best: { key: "playpad.clawCatch.v1", field: "bestOverall", label: "Best" },
   },
   {
     id: "super-decoder",
@@ -83,6 +86,7 @@ window.GAMES = [
     icon: "🔐",
     players: "1",
     status: "live",
+    best: { key: "playpad.superDecoder.v1", field: "bestOverall", label: "Best" },
   },
   {
     id: "neon-rush",

@@ -355,6 +355,12 @@
           border-color var(--md-sys-motion-duration-short3);
         flex: none;
       }
+      /* Extends the hit area to 62x56 (>= 48px, WCAG 2.5.8) without changing the 52x32 visual. */
+      .switch::before {
+        content: "";
+        position: absolute;
+        inset: -12px -7px;
+      }
       .switch::after {
         content: "";
         position: absolute;
@@ -844,6 +850,20 @@
         margin: 0 0 22px;
         color: rgba(255, 255, 255, 0.78);
       }
+      /* Quit from the paused state (the topbar ✕ is covered by this overlay). Same two-tap
+         confirm as the ✕: the first tap arms "Quit?", a second within 2s quits. */
+      #pauseQuit {
+        display: flex;
+        margin: 14px auto 0;
+        background: transparent;
+        color: #fff;
+        border: 1.5px solid rgba(255, 255, 255, 0.55);
+      }
+      #pauseQuit.armed {
+        background: var(--md-sys-color-error-container);
+        color: var(--md-sys-color-on-error-container);
+        border-color: transparent;
+      }
 
       /* ---------- RESULTS ---------- */
       .res-inner {
@@ -1126,6 +1146,7 @@
         <h2 id="pauseTitle" class="headline-small">Paused</h2>
         <p>Tap anywhere to resume</p>
         <button class="button button--filled state-layer" id="resumeBtn">Resume</button>
+        <button class="button state-layer" id="pauseQuit" type="button">Quit</button>
       </div>
     </div>
 
@@ -1916,9 +1937,17 @@
             cancelLater(quitTimer);
             quitTimer = null;
           }
+          paintQuit(false);
+        }
+        // Paints the ✕ in the topbar and the Quit button on the pause card together; whichever
+        // is on screen shows the armed state.
+        function paintQuit(armed) {
           var q = $("quitBtn");
-          q.classList.remove("armed");
-          q.setAttribute("aria-label", "Quit game");
+          q.classList.toggle("armed", armed);
+          q.setAttribute("aria-label", armed ? "Quit? Press again to confirm" : "Quit game");
+          var pq = $("pauseQuit");
+          pq.classList.toggle("armed", armed);
+          pq.textContent = armed ? "Quit? Tap again" : "Quit";
         }
         // First tap (or Esc) arms a "Quit?" pill for 2s; a second tap (or Esc) quits.
         function requestQuit() {
@@ -1927,15 +1956,18 @@
             return;
           }
           quitArmed = true;
-          var q = $("quitBtn");
-          q.classList.add("armed");
-          q.setAttribute("aria-label", "Quit? Press again to confirm");
+          paintQuit(true);
           announce("Quit? Press again to confirm.");
           quitTimer = later(disarmQuit, QUIT_CONFIRM_MS);
         }
         $("quitBtn").addEventListener("click", requestQuit);
+        $("pauseQuit").addEventListener("click", function (ev) {
+          ev.stopPropagation(); // the card sits inside #pause, whose click resumes
+          requestQuit();
+        });
+        // Esc works while paused too: it arms / confirms the Quit button on the pause card.
         document.addEventListener("keydown", function (ev) {
-          if (ev.key !== "Escape" || ev.repeat || paused || !gameActive()) return;
+          if (ev.key !== "Escape" || ev.repeat || !gameActive()) return;
           ev.preventDefault();
           requestQuit();
         });
@@ -1974,6 +2006,7 @@
           if (!paused) return;
           primeAudio();
           paused = false;
+          disarmQuit();
           $("pause").classList.remove("active");
           $("game").focus({ preventScroll: true });
           beginCountdown(startRound);

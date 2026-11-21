@@ -115,10 +115,12 @@
         background: var(--md-sys-color-surface);
       }
 
+      /* Back to hub (48px tall hit area, WCAG 2.5.8) */
       .back-link {
         display: inline-flex;
         align-items: center;
         gap: 6px;
+        min-height: 48px;
         color: var(--md-sys-color-on-surface-variant);
         padding: 8px 12px 8px 4px;
         margin: 0 0 6px -4px;
@@ -308,6 +310,12 @@
         transition:
           background var(--md-sys-motion-duration-short3),
           border-color var(--md-sys-motion-duration-short3);
+      }
+      /* Extends the hit area to 62x56 (>= 48px, WCAG 2.5.8) without changing the 52x32 visual. */
+      .switch::before {
+        content: "";
+        position: absolute;
+        inset: -12px -7px;
       }
       .switch::after {
         content: "";
@@ -1514,23 +1522,32 @@
         }
 
         // ============================================================
-        //  SAVE — best score per difficulty (D15)
+        //  SAVE — best score per difficulty (D15) + bestOverall for the hub
         // ============================================================
         // The ONLY gateway to localStorage (same pattern as Neon Rush's SaveManager, LEARNINGS rows 43
         // and 45): one versioned key, every access in try/catch, fail-soft to defaults. Private mode,
         // blocked storage or a corrupt/hand-edited value must never crash the game — we just keep the
         // best in memory for the session. localStorage is untrusted input: copy only the allow-listed
         // difficulty ids, sanitise each number, never merge/spread the parsed object.
+        // `bestOverall` is a top-level number = the highest best across difficulties. The hub reads it
+        // through games.js (`best: { field: "bestOverall" }`) because it can't read the per-difficulty
+        // map. If a save has none (written before it existed), it is derived from `best` on load.
         var SaveManager = (function () {
           var KEY = "playpad.superDecoder.v1";
           var IDS = ["quick", "easy", "normal", "hard"];
           function defaults() {
-            return { v: 1, best: { quick: 0, easy: 0, normal: 0, hard: 0 } };
+            return { v: 1, best: { quick: 0, easy: 0, normal: 0, hard: 0 }, bestOverall: 0 };
           }
           function sanitizeScore(x) {
             var n = Math.floor(Number(x));
             return Number.isFinite(n) ? clamp(n, 0, 1e6) : 0;
           }
+          function maxBest(best) {
+            var m = 0;
+            for (var i = 0; i < IDS.length; i++) m = Math.max(m, best[IDS[i]]);
+            return m;
+          }
+          var needsRewrite = false; // saved before `bestOverall` existed (or it was edited): fix it once
           function load() {
             var out = defaults();
             try {
@@ -1543,12 +1560,18 @@
                 if (Object.prototype.hasOwnProperty.call(d.best, IDS[i]))
                   out.best[IDS[i]] = sanitizeScore(d.best[IDS[i]]);
               }
+              out.bestOverall = Math.max(sanitizeScore(d.bestOverall), maxBest(out.best));
+              needsRewrite = out.bestOverall !== d.bestOverall;
               return out;
             } catch (e) {
               return defaults();
             }
           }
           var data = load();
+          // Call after changing data.best, before persist(): keeps bestOverall in step, synchronously.
+          function refreshOverall() {
+            data.bestOverall = maxBest(data.best);
+          }
           function persist() {
             try {
               localStorage.setItem(KEY, JSON.stringify(data));
@@ -1556,7 +1579,9 @@
               /* private mode / quota: in-memory only */
             }
           }
-          return { data: data, persist: persist };
+          // Existing players get their hub badge without having to bank a new best first.
+          if (needsRewrite && data.bestOverall > 0) persist();
+          return { data: data, persist: persist, refreshOverall: refreshOverall };
         })();
         var save = SaveManager.data;
         function curTheme() {
@@ -2369,6 +2394,7 @@
           var isNew = session.totalScore > prev;
           if (isNew) {
             save.best[id] = session.totalScore;
+            SaveManager.refreshOverall();
             SaveManager.persist();
           }
           sessionResult = { prevBest: prev, isNewBest: isNew, best: save.best[id] || 0 };

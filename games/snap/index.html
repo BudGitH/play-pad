@@ -72,10 +72,12 @@
         background: var(--md-sys-color-surface);
       }
 
+      /* Back to hub (48px tall hit area, WCAG 2.5.8) */
       .back-link {
         display: inline-flex;
         align-items: center;
         gap: 6px;
+        min-height: 48px;
         color: var(--md-sys-color-on-surface-variant);
         padding: 8px 12px 8px 4px;
         margin: 0 0 6px -4px;
@@ -442,6 +444,12 @@
         transition:
           background var(--md-sys-motion-duration-short3),
           border-color var(--md-sys-motion-duration-short3);
+      }
+      /* Extends the hit area to 62x56 (>= 48px, WCAG 2.5.8) without changing the 52x32 visual. */
+      .switch::before {
+        content: "";
+        position: absolute;
+        inset: -12px -7px;
       }
       .switch::after {
         content: "";
@@ -1156,6 +1164,38 @@
         outline: 3px solid #fff;
         outline-offset: -10px;
       }
+      /* Quit from the paused state: the HUD ✕ sits under this overlay. A sibling (not a child) of the
+         #pause button, so tapping it never resumes. Same two-tap confirm as the ✕. */
+      #pauseQuit {
+        display: none;
+        position: absolute;
+        z-index: 81;
+        left: 50%;
+        top: calc(50% + 72px); /* just under the centred "Paused / Tap to resume" text */
+        transform: translateX(-50%);
+        min-height: 48px;
+        padding: 0 24px;
+        border: 1.5px solid rgba(255, 255, 255, 0.6);
+        border-radius: var(--md-sys-shape-corner-full);
+        background: rgba(0, 0, 0, 0.4);
+        color: #fff;
+        font: inherit;
+        font-size: 16px;
+        font-weight: 700;
+        white-space: nowrap;
+      }
+      #pause.active + #pauseQuit {
+        display: block;
+      }
+      #pauseQuit.confirm {
+        border-color: transparent;
+        background: var(--md-sys-color-error-container);
+        color: var(--md-sys-color-on-error-container);
+      }
+      #pauseQuit:focus-visible {
+        outline: 3px solid #fff;
+        outline-offset: 2px;
+      }
 
       /* ---------- RESULTS — reused from Colour Rush ---------- */
       .res-inner {
@@ -1487,6 +1527,7 @@
       <span class="p-title">Paused</span>
       <span class="p-sub">Tap to resume</span>
     </button>
+    <button id="pauseQuit" type="button">Quit</button>
 
     <!-- Results confetti layer (pieces are added/removed by JS; never rendered under reduced motion). -->
     <div id="confetti" aria-hidden="true"></div>
@@ -2384,6 +2425,7 @@
         function resumeGame() {
           if (!paused) return;
           paused = false;
+          disarmQuit();
           $("pause").classList.remove("active");
           var now = performance.now();
           sessionEndTs = now + pausedRemainMs; // clockHeldMs keeps it frozen through the 3-2-1
@@ -2392,7 +2434,10 @@
           announce("Resuming.");
         }
         document.addEventListener("visibilitychange", function () {
-          if (document.hidden || document.visibilityState === "hidden") pauseGame();
+          if (document.hidden || document.visibilityState === "hidden") {
+            keyHeld = {}; // a keyup can't arrive while hidden — don't leave a key "held" (see blur below)
+            pauseGame();
+          }
         });
         $("pause").addEventListener("click", resumeGame);
 
@@ -2608,8 +2653,7 @@
           if (ev.repeat || keyHeld[ev.code]) return; // ignore auto-repeat / held keys
           if (ev.code === "Escape" || ev.key === "Escape") {
             keyHeld[ev.code] = true;
-            if (paused) return;
-            ev.preventDefault();
+            ev.preventDefault(); // also while paused: Esc arms / confirms the Quit button on the pause card
             quitArmed ? quitToSetup() : armQuit();
             return;
           }
@@ -2622,34 +2666,47 @@
         window.addEventListener("keyup", function (ev) {
           if (keyHeld[ev.code]) keyHeld[ev.code] = false;
         });
+        // The keyup of a key released while the window is unfocused (alt-tab, browser chrome, an OS
+        // dialog) is never delivered. Without this reset the seat's NEXT real press would be swallowed
+        // by the held-key guard above (PLAY-006 AR-03).
+        window.addEventListener("blur", function () {
+          keyHeld = {};
+        });
 
         // ============================================================
         //  QUIT (two taps) / END / RESULTS
         // ============================================================
-        function armQuit() {
+        // Paints the HUD ✕ and the pause-card Quit together; whichever is on screen shows the state.
+        function paintQuit(armed) {
           var b = $("quitBtn");
+          b.classList.toggle("confirm", armed);
+          b.textContent = armed ? "Quit?" : "✕";
+          b.setAttribute("aria-label", armed ? "Quit? Tap again to confirm" : "Quit game");
+          var pq = $("pauseQuit");
+          pq.classList.toggle("confirm", armed);
+          pq.textContent = armed ? "Quit? Tap again" : "Quit";
+        }
+        function armQuit() {
           quitArmed = true;
-          b.classList.add("confirm");
-          b.textContent = "Quit?";
-          b.setAttribute("aria-label", "Quit? Tap again to confirm");
+          paintQuit(true);
           clearTimeout(quitTimer);
           quitTimer = setTimeout(disarmQuit, QUIT_CONFIRM_MS);
           announce("Quit? Tap again to confirm.");
         }
         function disarmQuit() {
-          var b = $("quitBtn");
           clearTimeout(quitTimer);
           quitTimer = null;
           quitArmed = false;
-          b.classList.remove("confirm");
-          b.textContent = "✕";
-          b.setAttribute("aria-label", "Quit game");
+          paintQuit(false);
         }
         // show("setup") tears everything down (loop, overlays, decoration) — no per-path cleanup here.
         function quitToSetup() {
           show("setup");
         }
         $("quitBtn").addEventListener("click", function () {
+          quitArmed ? quitToSetup() : armQuit();
+        });
+        $("pauseQuit").addEventListener("click", function () {
           quitArmed ? quitToSetup() : armQuit();
         });
 

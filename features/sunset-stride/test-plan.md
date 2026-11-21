@@ -17,6 +17,7 @@
 | AC9  | pause on hide/blur, countdown, draw calls ≤ 170 high, `prefers-reduced-motion` → no shake/FOV kick, no WebGL → notice                                                                                                                                                               | probe + smoke  |
 | AC10 | `npm run smoke`, `npm run check`, `npm run secrets`                                                                                                                                                                                                                                 | CI             |
 | AC12 | `__stride.audio.played` deltas over a scripted run (step ≥ 3, jump, land, swoosh ≥ 2, slide, coin ≥ 3, bump, bark), `streak` ≥ 3, wind on; `__stride.fx` emitted > 40, live ≤ pool size, tier `mult` low < medium < high; screenshots of coins / landing / skid / power-up / impact | probe + visual |
+| AC13 | phone 390×844 + desktop 1280×720: `#startBtn` rect inside the viewport at setup, `.tc` vs `.kb` label visibility; synthetic pointer events: lane changes at the 30 px mark before `pointerup`, once; keyboard: Esc / P / M, results focus + Enter / R retry                         | probe          |
 
 ## Test cases
 

@@ -283,6 +283,32 @@
         outline: 3px solid var(--md-sys-color-primary);
         outline-offset: 3px;
       }
+      /* Sticky Start (same pattern as Claw Catch / Colour Rush): the how-to is long, so the button must not
+         depend on scrolling to it. The bar lets taps fall through its fade; only the button is interactive. */
+      .start-bar {
+        position: sticky;
+        bottom: 0;
+        z-index: 5;
+        margin: 0 -22px;
+        padding: 24px 22px max(12px, env(safe-area-inset-bottom));
+        background: linear-gradient(to bottom, transparent, var(--md-sys-color-surface) 30%);
+        pointer-events: none;
+      }
+      .start-bar > * {
+        pointer-events: auto;
+      }
+      /* Control labels follow the input the player has: keys by default, swipes on touch-first devices. */
+      .tc {
+        display: none;
+      }
+      @media (hover: none) and (pointer: coarse) {
+        .kb {
+          display: none;
+        }
+        .tc {
+          display: inline;
+        }
+      }
       .start-note {
         text-align: center;
         font-size: 12.5px;
@@ -1018,15 +1044,17 @@
           <div class="label"><span>How to play</span></div>
           <div class="howto">
             <div class="how">
-              <span class="k">← → / swipe</span
+              <span class="k"
+                ><span class="kb">← → / A D</span><span class="tc">swipe ← →</span></span
               ><span>Change lane — go around vans, food trucks and buses</span>
             </div>
             <div class="how">
-              <span class="k">↑ / swipe up</span
+              <span class="k"
+                ><span class="kb">↑ / W / Space</span><span class="tc">swipe up</span></span
               ><span>Jump — hop road-works barriers, produce crates and fruit carts</span>
             </div>
             <div class="how">
-              <span class="k">↓ / swipe down</span
+              <span class="k"><span class="kb">↓ / S</span><span class="tc">swipe down</span></span
               ><span>Slide — skid under scaffolding and market awnings</span>
             </div>
             <div class="how">
@@ -1053,12 +1081,16 @@
           </div>
         </div>
 
-        <button class="start-btn state-layer" id="startBtn">Start running</button>
+        <div class="start-bar">
+          <button class="start-btn state-layer" id="startBtn">Start running</button>
+        </div>
         <button class="button button--outlined state-layer shop-btn" id="setupShopBtn">
           👟 Outfit shop
         </button>
         <p class="start-note">
-          One player · arrows, WASD or swipes · your coins and best score are saved on this device.
+          One player · arrows, WASD or swipes ·
+          <span class="kb">P pauses · M mutes · </span>your coins and best score are saved on this
+          device.
         </p>
         <p class="start-note" style="opacity: 0.7; font-size: 11px; margin-top: 6px">
           Characters &amp; dogs by Quaternius · textures by ambientCG · music by omfgdude (loop edit
@@ -1914,6 +1946,7 @@
           $("srStatus").textContent = msg;
         }
 
+        var focusOnShow = false; // false until the first setup screen is up (no focus theft on page load)
         var UIManager = {
           show: function (s) {
             pendingTimeouts.forEach(clearTimeout);
@@ -1932,6 +1965,16 @@
             if (s === "setup") {
               $("bankCoins").textContent = save.coins;
               $("bankBest").textContent = save.highScore;
+            }
+            // Keyboard loop: after a run, Enter / Space retries. Not on first load (that would skip the back link).
+            // Results wait half a second: a player still tapping Space to jump when the run ends must not retry by accident.
+            if (s === "results") {
+              later(function () {
+                if ($("results").classList.contains("active"))
+                  $("againBtn").focus({ preventScroll: true });
+              }, 500);
+            } else if (s === "setup" && focusOnShow) {
+              $("startBtn").focus({ preventScroll: true });
             }
             if (s === "shop") {
               UIManager.renderShop();
@@ -6684,8 +6727,14 @@
         /* ══════════════════════ input: keyboard + swipes ══════════════════════ */
         window.addEventListener("keydown", function (ev) {
           if (!$("game").classList.contains("active")) return;
+          if ((ev.key === "m" || ev.key === "M") && !ev.repeat) {
+            ev.preventDefault();
+            AudioManager.setMuted(!save.muted); // same path as the HUD button (a desktop player's hands stay on the keys)
+            syncMuteUi();
+            return;
+          }
           if (paused) return pauseKey(ev);
-          if ((ev.key === "p" || ev.key === "P") && !ev.repeat) {
+          if ((ev.key === "p" || ev.key === "P" || ev.key === "Escape") && !ev.repeat) {
             ev.preventDefault();
             return pauseRun();
           }
@@ -6735,33 +6784,57 @@
         (function swipes() {
           var sx = 0,
             sy = 0,
-            tracking = false;
+            tracking = false,
+            fired = false;
           var THRESHOLD = 30; // px
           var stage = $("stage");
+          // One swipe = one action, decided the moment the finger has travelled THRESHOLD px (not when it lifts:
+          // waiting for the lift added 100-200 ms of lag at 24 m/s). pointerup stays as the fallback decision.
+          function swipeAction(dx, dy) {
+            if (skipCountdown()) return; // a swipe during the countdown only skips it
+            if (Math.abs(dx) > Math.abs(dy)) PlayerController.input(dx > 0 ? "right" : "left");
+            else PlayerController.input(dy < 0 ? "jump" : "slide");
+          }
           stage.addEventListener("pointerdown", function (ev) {
             if (paused || ev.target.closest("button")) return;
             tracking = true;
+            fired = false;
             sx = ev.clientX;
             sy = ev.clientY;
+          });
+          stage.addEventListener("pointermove", function (ev) {
+            if (!tracking || fired || paused) return;
+            var dx = ev.clientX - sx,
+              dy = ev.clientY - sy;
+            if (Math.abs(dx) < THRESHOLD && Math.abs(dy) < THRESHOLD) return;
+            fired = true;
+            swipeAction(dx, dy);
           });
           stage.addEventListener("pointerup", function (ev) {
             if (!tracking) return;
             tracking = false;
-            if (paused) return; // a swipe that was mid-air when the pause came up is dropped
+            if (fired || paused) return; // already acted on mid-drag / a swipe that was mid-air when the pause came up is dropped
             var dx = ev.clientX - sx,
               dy = ev.clientY - sy;
             if (Math.abs(dx) < THRESHOLD && Math.abs(dy) < THRESHOLD) {
               skipCountdown();
               return;
             } // a tap only skips the countdown
-            if (skipCountdown()) return;
-            if (Math.abs(dx) > Math.abs(dy)) PlayerController.input(dx > 0 ? "right" : "left");
-            else PlayerController.input(dy < 0 ? "jump" : "slide");
+            swipeAction(dx, dy);
           });
           stage.addEventListener("pointercancel", function () {
             tracking = false;
           });
         })();
+
+        // Results: R is a retry shortcut. Enter / Space work through the focused Try-again button.
+        window.addEventListener("keydown", function (ev) {
+          if (ev.repeat || ev.ctrlKey || ev.metaKey || ev.altKey) return;
+          if ((ev.key === "r" || ev.key === "R") && $("results").classList.contains("active")) {
+            ev.preventDefault();
+            startRun(true);
+          }
+        });
 
         /* ══════════════════════ buttons ══════════════════════ */
         var shopReturn = "setup";
@@ -6814,6 +6887,7 @@
           if (ev.target.closest && ev.target.closest("button, .start-btn")) AudioManager.click(); // tiny UI tick
         });
         UIManager.show("setup");
+        focusOnShow = true; // from here on, returning to setup puts focus on Start
 
         /* ══════════════════════ boot: models + photo textures load in the background ══════════════════════ */
         if (renderer) {

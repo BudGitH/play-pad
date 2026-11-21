@@ -862,6 +862,170 @@ async function main() {
     await ph.ctx.close();
   }
 
+  /* ---- AC13 usability (persona findings): Start always in reach, labels follow the input, swipes act on
+         the drag, keyboard loop (P / Esc pause, M mute, retry by key) ---- */
+  {
+    const ph = await openGame(browser, { viewport: { width: 390, height: 844 }, mobile: true });
+    await ph.page.locator("#startBtn").waitFor();
+    const startPh = await S(ph.page, () => {
+      const r = document.getElementById("startBtn").getBoundingClientRect();
+      const vis = (sel) => getComputedStyle(document.querySelector(sel)).display !== "none";
+      return {
+        bottom: Math.round(r.bottom),
+        top: Math.round(r.top),
+        vh: innerHeight,
+        swipe: vis(".how .tc"),
+        keys: vis(".how .kb"),
+      };
+    });
+    check(
+      "AC13",
+      "phone: Start is inside the first screen (no scrolling), labels say swipe",
+      startPh.bottom <= startPh.vh && startPh.top >= 0 && startPh.swipe && !startPh.keys,
+      JSON.stringify(startPh),
+    );
+    await waitModels(ph.page);
+    await ph.page.getByRole("button", { name: "Start running" }).tap();
+    await ph.page.waitForFunction(() => window.__stride.state.phase === "running", null, {
+      timeout: 30000,
+    });
+    const sw = await S(ph.page, async () => {
+      const s = window.__stride,
+        cv = document.getElementById("glCanvas");
+      s.freeze(true);
+      s.clearObstacles();
+      s.setGap(4);
+      const fire = (type, x, y) =>
+        cv.dispatchEvent(
+          new PointerEvent(type, {
+            clientX: x,
+            clientY: y,
+            pointerId: 7,
+            pointerType: "touch",
+            bubbles: true,
+          }),
+        );
+      const lane0 = s.state.lane;
+      fire("pointerdown", 200, 500);
+      fire("pointermove", 190, 500); // 10 px: below the threshold, nothing yet
+      const early = s.state.lane;
+      fire("pointermove", 150, 502); // 50 px left, finger still down
+      const duringDrag = s.state.lane;
+      fire("pointermove", 100, 500);
+      fire("pointerup", 100, 500);
+      const afterLift = s.state.lane;
+      return { lane0, early, duringDrag, afterLift };
+    });
+    check(
+      "AC13",
+      "swipe acts the moment the finger passes the threshold (before it lifts), exactly once",
+      sw.early === sw.lane0 && sw.duringDrag === sw.lane0 - 1 && sw.afterLift === sw.duringDrag,
+      JSON.stringify(sw),
+    );
+    await ph.ctx.close();
+  }
+  {
+    const dk = await openGame(browser, { viewport: { width: 1280, height: 720 } });
+    await dk.page.locator("#startBtn").waitFor();
+    const startDk = await S(dk.page, () => {
+      const r = document.getElementById("startBtn").getBoundingClientRect();
+      const vis = (sel) => getComputedStyle(document.querySelector(sel)).display !== "none";
+      return {
+        bottom: Math.round(r.bottom),
+        vh: innerHeight,
+        swipe: vis(".how .tc"),
+        keys: vis(".how .kb"),
+      };
+    });
+    check(
+      "AC13",
+      "desktop 1280x720: Start is inside the first screen, labels name the keys",
+      startDk.bottom <= startDk.vh && startDk.keys && !startDk.swipe,
+      JSON.stringify(startDk),
+    );
+    await waitModels(dk.page);
+    await dk.page.getByRole("button", { name: "Start running" }).click();
+    await dk.page.waitForFunction(() => window.__stride.state.phase === "running", null, {
+      timeout: 30000,
+    });
+    // Esc pauses, P resumes; M mutes and unmutes
+    await dk.page.keyboard.press("Escape");
+    const paused = await S(dk.page, () => window.__stride.state.paused);
+    await dk.page.keyboard.press("p");
+    const resumed = await S(dk.page, () => window.__stride.state.paused);
+    const m0 = await S(dk.page, () => window.__stride.state.muted);
+    await dk.page.keyboard.press("m");
+    const m1 = await S(dk.page, () => window.__stride.state.muted);
+    await dk.page.keyboard.press("m");
+    const m2 = await S(dk.page, () => window.__stride.state.muted);
+    check(
+      "AC13",
+      "keyboard: Esc pauses, P resumes, M mutes / unmutes",
+      paused === true && resumed === false && m1 === !m0 && m2 === m0,
+      JSON.stringify({ paused, resumed, m0, m1, m2 }),
+    );
+    // caught -> results: focus lands on Try again (after a short guard), Enter retries; R retries too
+    // resuming replays a 3-2-1, and a hit during it is ignored: wait for the run to be live again
+    await dk.page.waitForFunction(() => window.__stride.state.phase === "running", null, {
+      timeout: 15000,
+    });
+    const caught = () =>
+      S(dk.page, () => {
+        const s = window.__stride;
+        s.clearObstacles();
+        s.three.player.invulnT = 0;
+        s.setGap(1.9);
+        s.hit();
+        s.step(100);
+      });
+    await caught();
+    await dk.page.waitForFunction(
+      () => document.getElementById("results").classList.contains("active"),
+      null,
+      { timeout: 15000 },
+    );
+    await dk.page.waitForFunction(
+      () => document.activeElement && document.activeElement.id === "againBtn",
+      null,
+      { timeout: 5000 },
+    );
+    await dk.page.keyboard.press("Enter");
+    await dk.page.waitForFunction(
+      () => ["countdown", "running"].includes(window.__stride.state.phase),
+      null,
+      { timeout: 15000 },
+    );
+    await dk.page.waitForFunction(() => window.__stride.state.phase === "running", null, {
+      timeout: 15000,
+    });
+    await caught();
+    await dk.page.waitForFunction(
+      () => document.getElementById("results").classList.contains("active"),
+      null,
+      { timeout: 15000 },
+    );
+    await dk.page.keyboard.press("r");
+    const again = await dk.page
+      .waitForFunction(() => ["countdown", "running"].includes(window.__stride.state.phase), null, {
+        timeout: 15000,
+      })
+      .then(() => true)
+      .catch(() => false);
+    check(
+      "AC13",
+      "keyboard loop: results focus Try again (Enter retries) and R retries",
+      again,
+      "",
+    );
+    check(
+      "AC13",
+      "desktop session: no uncaught errors",
+      dk.errors.length === 0,
+      dk.errors.slice(0, 2).join(" | "),
+    );
+    await dk.ctx.close();
+  }
+
   /* ---- AC9: WebGL missing -> the game explains instead of a blank screen ---- */
   {
     const nogl = await openGame(browser, {

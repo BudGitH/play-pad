@@ -35,6 +35,8 @@ To run the checks CI runs (needs Node.js):
 npm install
 npm run check    # lint + formatting
 npm run secrets  # secret scan
+npx playwright install chromium  # once
+npm run smoke    # opens the hub and every game, fails on any error
 ```
 
 ## Add a game

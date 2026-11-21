@@ -1,0 +1,10 @@
+# Cloudflare Pages redirects for PlayPad.
+# The whole repo root is deployed, so dev-only files would otherwise be served.
+# These rules send them to the hub instead. Redirects take precedence over
+# static files on Cloudflare Pages.
+# Docs: https://developers.cloudflare.com/pages/configuration/redirects/
+
+/docs              /  302
+/docs/*            /  302
+/package.json      /  302
+/package-lock.json /  302

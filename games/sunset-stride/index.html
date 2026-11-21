@@ -878,7 +878,8 @@
         border-radius: var(--md-sys-shape-corner-xl, 24px);
         margin: 4px 0 18px;
         overflow: hidden;
-        background: radial-gradient(
+        background:
+          radial-gradient(
             circle at 78% 82%,
             #fff3c4 0 11%,
             rgba(255, 214, 140, 0.55) 12% 26%,
@@ -1281,60 +1282,12 @@
         var INPUT_BUFFER = 0.14; // s a too-early jump/slide/lane press is remembered
 
         var SKINS = [
-          {
-            id: "morning",
-            name: "Morning Jogger",
-            desc: "Blue tee, jeans, brown hair.",
-            price: 0,
-            tex: "light_a",
-            tee: "#7fd0ff",
-            glyph: "🏃",
-          },
-          {
-            id: "ranger",
-            name: "Park Ranger",
-            desc: "Green tee, jeans, dark hair.",
-            price: 250,
-            tex: "light_b",
-            tee: "#7bea8a",
-            glyph: "🌲",
-          },
-          {
-            id: "weekend",
-            name: "Weekender",
-            desc: "Mint tee and khaki chinos.",
-            price: 500,
-            tex: "light_c",
-            tee: "#9cf0b0",
-            glyph: "☕",
-          },
-          {
-            id: "sunny",
-            name: "Sunny Side",
-            desc: "Blue tee, warm tan, brown hair.",
-            price: 800,
-            tex: "dark_a",
-            tee: "#7fd0ff",
-            glyph: "🌞",
-          },
-          {
-            id: "nightowl",
-            name: "Night Owl",
-            desc: "Green tee, jeans, short dark hair.",
-            price: 1100,
-            tex: "dark_b",
-            tee: "#7bea8a",
-            glyph: "🦉",
-          },
-          {
-            id: "golden",
-            name: "Golden Hour",
-            desc: "Mint tee, khaki chinos, sun-kissed.",
-            price: 1500,
-            tex: "dark_c",
-            tee: "#9cf0b0",
-            glyph: "🌇",
-          },
+          { id: "morning", name: "Morning Jogger", desc: "Coral tee, navy trousers, white trainers.", price: 0, tex: "light_a", tee: "#ee6a3c", shoe: 0xf4f1ea, glyph: "🏃" },
+          { id: "ranger", name: "Park Ranger", desc: "Forest tee, khaki trousers, trail shoes.", price: 250, tex: "light_b", tee: "#2f8f5b", shoe: 0x6b4b2e, glyph: "🌲" },
+          { id: "weekend", name: "Weekender", desc: "Mustard tee, charcoal trousers, red trainers.", price: 500, tex: "light_c", tee: "#f0b93b", shoe: 0xd0382d, glyph: "☕" },
+          { id: "sunny", name: "Sunny Side", desc: "Sky-blue tee, white trousers, orange trainers.", price: 800, tex: "dark_a", tee: "#3fa2e8", shoe: 0xf08a2a, glyph: "🌞" },
+          { id: "nightowl", name: "Night Owl", desc: "Violet tee, dark denim, black trainers.", price: 1100, tex: "dark_b", tee: "#7b5ad8", shoe: 0x26272c, glyph: "🦉" },
+          { id: "golden", name: "Golden Hour", desc: "Teal tee, brown trousers, cream trainers.", price: 1500, tex: "dark_c", tee: "#14b0a4", shoe: 0xeadfc6, glyph: "🌇" },
         ];
 
         /* ══════════════════════ SaveManager ══════════════════════
@@ -2020,6 +1973,141 @@
           };
         }
 
+        /* ══════════════════════ model fidelity helpers ══════════════════════ */
+        // Rounded box (bevelled on every edge) built on a lattice whose stops cluster in the corner margins, so
+        // 2-3 segments per corner already read as a smooth radius. w/h/d in metres, r = corner radius.
+        function roundedBoxGeo(w, h, d, r, k) {
+          k = k || 2;
+          var seg = 2 * k + 1;
+          var g = new THREE.BoxGeometry(2, 2, 2, seg, seg, seg);
+          var hx = w / 2,
+            hy = h / 2,
+            hz = d / 2;
+          r = Math.min(r, hx - 0.001, hy - 0.001, hz - 0.001);
+          function stops(H) {
+            var a = [],
+              i;
+            for (i = 0; i <= k; i++) a.push(-H + (r * i) / k);
+            for (i = 0; i <= k; i++) a.push(H - r + (r * i) / k);
+            return a;
+          }
+          var sx = stops(hx),
+            sy = stops(hy),
+            sz = stops(hz);
+          var pos = g.attributes.position,
+            nrm = g.attributes.normal;
+          var v = new THREE.Vector3(),
+            inner = new THREE.Vector3(),
+            n = new THREE.Vector3();
+          for (var i = 0; i < pos.count; i++) {
+            var jx = Math.round(((pos.getX(i) + 1) * seg) / 2),
+              jy = Math.round(((pos.getY(i) + 1) * seg) / 2),
+              jz = Math.round(((pos.getZ(i) + 1) * seg) / 2);
+            v.set(sx[jx], sy[jy], sz[jz]);
+            inner.set(
+              clamp(v.x, -(hx - r), hx - r),
+              clamp(v.y, -(hy - r), hy - r),
+              clamp(v.z, -(hz - r), hz - r),
+            );
+            n.subVectors(v, inner);
+            var len = n.length();
+            if (len > 1e-6) {
+              n.divideScalar(len);
+              v.copy(inner).addScaledVector(n, r);
+              nrm.setXYZ(i, n.x, n.y, n.z);
+            }
+            pos.setXYZ(i, v.x, v.y, v.z);
+          }
+          // UVs in metres-ish so a photo tile keeps its real-world scale (see boxM)
+          var uv = g.attributes.uv;
+          for (i = 0; i < uv.count; i++) {
+            var nx = Math.abs(nrm.getX(i)),
+              ny = Math.abs(nrm.getY(i));
+            var su = nx > 0.7 ? d : w,
+              sv = ny > 0.7 ? d : h;
+            uv.setXY(i, uv.getX(i) * su, uv.getY(i) * sv);
+          }
+          return g;
+        }
+        // Auto-smooth (like Blender): weld vertices that share a position and average normals whose faces
+        // agree within `deg`, so flat-faceted low-poly meshes shade as soft surfaces but hard edges stay crisp.
+        function smoothNormals(geo, deg) {
+          var pos = geo.attributes.position,
+            n = pos.count;
+          var tmp = geo.clone();
+          tmp.deleteAttribute("normal");
+          tmp.computeVertexNormals();
+          var fn = tmp.attributes.normal,
+            q = 10000,
+            map = {},
+            i,
+            k;
+          for (i = 0; i < n; i++) {
+            k =
+              Math.round(pos.getX(i) * q) +
+              "," +
+              Math.round(pos.getY(i) * q) +
+              "," +
+              Math.round(pos.getZ(i) * q);
+            (map[k] = map[k] || []).push(i);
+          }
+          var out = new Float32Array(n * 3),
+            c = Math.cos((deg * Math.PI) / 180),
+            v = new THREE.Vector3(),
+            a = new THREE.Vector3(),
+            b = new THREE.Vector3();
+          for (k in map) {
+            var grp = map[k];
+            for (i = 0; i < grp.length; i++) {
+              a.fromBufferAttribute(fn, grp[i]);
+              v.set(0, 0, 0);
+              for (var j = 0; j < grp.length; j++) {
+                b.fromBufferAttribute(fn, grp[j]);
+                if (a.dot(b) > c) v.add(b);
+              }
+              v.normalize();
+              out[grp[i] * 3] = v.x;
+              out[grp[i] * 3 + 1] = v.y;
+              out[grp[i] * 3 + 2] = v.z;
+            }
+          }
+          tmp.dispose();
+          geo.setAttribute("normal", new THREE.BufferAttribute(out, 3));
+        }
+        // Shared shading patch for the characters: a soft warm rim (sun behind the street), a fine cloth / fur
+        // grain from the rest-pose position (so it sticks to the body as it animates) and a little contact
+        // darkening near the ground. `grain` is the grain scale, `ground` the rest-pose height of the contact AO.
+        function patchCharacter(mat, grain, ground, minH, up, furTop) {
+          var upS = "vec3( " + up.x.toFixed(4) + ", " + up.y.toFixed(4) + ", " + up.z.toFixed(4) + " )";
+          mat.onBeforeCompile = function (sh) {
+            sh.vertexShader = sh.vertexShader
+              .replace("#include <common>", "#include <common>\nvarying vec3 vRP;\nvarying float vH;")
+              .replace("#include <begin_vertex>", "#include <begin_vertex>\nvRP = position;\nvH = dot( position, " + upS + " ) - " + minH.toFixed(4) + ";");
+            sh.fragmentShader = sh.fragmentShader
+              .replace(
+                "#include <common>",
+                "#include <common>\nvarying vec3 vRP;\nvarying float vH;\nfloat gh( vec3 p ) { return fract( sin( dot( p, vec3( 12.9898, 78.233, 37.719 ) ) ) * 43758.5453 ); }",
+              )
+              .replace(
+                "#include <map_fragment>",
+                "#include <map_fragment>\n" +
+                  "vec3 gp = floor( vRP * " + grain.toFixed(2) + " );\n" +
+                  "diffuseColor.rgb *= 0.93 + 0.14 * gh( gp );\n" +
+                  "diffuseColor.rgb *= mix( 0.8, 1.0, smoothstep( 0.0, " + ground.toFixed(4) + ", vH ) );" +
+                  (furTop ? "\ndiffuseColor.rgb *= mix( 1.14, 0.88, smoothstep( 0.0, " + furTop.toFixed(4) + ", vH ) );" : ""),
+              )
+              .replace(
+                "#include <output_fragment>",
+                "float rimF = pow( 1.0 - clamp( dot( normalize( normal ), normalize( vViewPosition ) ), 0.0, 1.0 ), 3.0 );\n" +
+                  "outgoingLight += vec3( 1.0, 0.8, 0.55 ) * rimF * 0.32;\n#include <output_fragment>",
+              );
+          };
+          mat.customProgramCacheKey = function () {
+            return "chr" + grain + "_" + ground + "_" + minH + "_" + upS + "_" + (furTop || 0);
+          };
+          return mat;
+        }
+
         /* ══════════════════════ TexLib — photo textures with procedural fallbacks ══════════════════════
      Real CC0 photo textures (ambientCG, assets/textures/*.jpg) replace the procedural stand-ins the moment
      they load; the stand-ins are what a file:// page (or a failed request) keeps — the game never DEPENDS on
@@ -2629,38 +2717,62 @@
           });
 
           // --- street trees (trunk + foliage) and lamp posts, instanced on a ring ---
-          var trunkG = bakeGeo(
-            new THREE.CylinderGeometry(0.13, 0.2, 2.7, 7),
-            mat4(0, 1.35, 0, 1, 1, 1),
-            0x6b4a32,
-          );
+          // Trunk with a root flare and two branches; foliage = six displaced, smooth-shaded leaf clumps with a
+          // light-to-dark vertex gradient (a low-poly "lollipop" read as a real tree canopy).
+          function branch(ax, ay, az, bx, by, bz, r, hex) {
+            var d = new THREE.Vector3(bx - ax, by - ay, bz - az),
+              q = new THREE.Quaternion().setFromUnitVectors(_Y, d.clone().normalize());
+            var m = new THREE.Matrix4().compose(new THREE.Vector3((ax + bx) / 2, (ay + by) / 2, (az + bz) / 2), q, new THREE.Vector3(1, 1, 1));
+            return bakeGeo(new THREE.CylinderGeometry(r * 0.7, r, d.length(), 7), m, hex);
+          }
+          var trunkParts = [
+            bakeGeo(new THREE.CylinderGeometry(0.11, 0.2, 2.9, 8), mat4(0, 1.45, 0), 0x6b4a32),
+            bakeGeo(new THREE.CylinderGeometry(0.2, 0.32, 0.34, 8), mat4(0, 0.17, 0), 0x5a3e2a),
+            branch(0, 2.5, 0, 0.6, 3.5, 0.2, 0.07, 0x6b4a32),
+            branch(0, 2.8, 0, -0.55, 3.6, -0.2, 0.06, 0x6b4a32),
+          ];
           trunkMesh = makeInst(
-            mergeGeos([trunkG]),
+            mergeGeos(trunkParts),
             new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 }),
             TREE_N * 2,
           );
-          var foliage = [];
-          [
-            [0, 3.9, 0, 1.55, 0x4f9a3f],
-            [0.7, 3.5, 0.3, 1.1, 0x62ad4a],
-            [-0.7, 4.3, -0.2, 1.2, 0x469035],
-            [0.1, 5.0, 0.1, 0.95, 0x6cb653],
-          ].forEach(function (f) {
-            foliage.push(
-              bakeGeo(
-                new THREE.IcosahedronGeometry(f[3], 1),
-                mat4(f[0], f[1], f[2], 1, 0.9, 1),
-                f[4],
-              ),
-            );
-          });
+          function leafBlob(r, detail, x, y, z, sy, seed, low, high) {
+            var g = new THREE.IcosahedronGeometry(r, detail),
+              pos = g.attributes.position,
+              v = new THREE.Vector3();
+            for (var i = 0; i < pos.count; i++) {
+              v.fromBufferAttribute(pos, i);
+              // displacement is a function of position only, so vertices that share a spot move together
+              var n = Math.sin(v.x * 7.3 + v.y * 5.1 + v.z * 9.7 + seed) * 43758.5453;
+              var k = 1 + (n - Math.floor(n) - 0.5) * 0.26;
+              pos.setXYZ(i, v.x * k, v.y * k, v.z * k);
+            }
+            smoothNormals(g, 75);
+            var b = bakeGeo(g, mat4(x, y, z, 1, sy, 1), 0xffffff),
+              col = b.attributes.color,
+              lc = new THREE.Color(low),
+              hc = new THREE.Color(high),
+              c = new THREE.Color(),
+              bp = b.attributes.position;
+            for (var j = 0; j < col.count; j++) {
+              var t = clamp((bp.getY(j) - y) / (r * sy) * 0.5 + 0.5, 0, 1);
+              var jit = 0.94 + 0.12 * (Math.sin(j * 12.9898 + seed) * 43758.5453 % 1 + 1) * 0.5;
+              c.copy(lc).lerp(hc, t).multiplyScalar(jit);
+              col.setXYZ(j, c.r, c.g, c.b);
+            }
+            return b;
+          }
+          var foliage = [
+            leafBlob(1.55, 2, 0, 4.0, 0, 0.9, 1, 0x3f7f33, 0x7fc45e),
+            leafBlob(1.15, 1, 0.8, 3.6, 0.35, 0.9, 2, 0x3a7a30, 0x74bb55),
+            leafBlob(1.2, 1, -0.8, 4.2, -0.25, 0.9, 3, 0x3a7a30, 0x78c05a),
+            leafBlob(1.0, 1, 0.1, 5.0, 0.1, 0.9, 4, 0x438a37, 0x86cc66),
+            leafBlob(0.85, 1, -0.55, 3.4, 0.6, 0.9, 5, 0x37742d, 0x6db250),
+            leafBlob(0.9, 1, 0.55, 4.5, -0.6, 0.9, 6, 0x3f7f33, 0x7bc25c),
+          ];
           treeMesh = makeInst(
             mergeGeos(foliage),
-            new THREE.MeshStandardMaterial({
-              vertexColors: true,
-              roughness: 0.95,
-              flatShading: true,
-            }),
+            new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.92 }),
             TREE_N * 2,
           );
           var lampParts = [
@@ -2963,7 +3075,130 @@
         }
 
         /* ---------- GLB runner view ---------- */
-        function makeGlbRunner(gltf, palette) {
+        // Geometry facts of a skinned mesh in its rest pose: min / max height along `up` (mesh-local units).
+        function restHeightRange(geo, up) {
+          var pos = geo.attributes.position,
+            v = new THREE.Vector3(),
+            lo = 1e9,
+            hi = -1e9;
+          for (var i = 0; i < pos.count; i++) {
+            var h = v.fromBufferAttribute(pos, i).dot(up);
+            if (h < lo) lo = h;
+            if (h > hi) hi = h;
+          }
+          return { lo: lo, hi: hi };
+        }
+        // Trainers on both feet, attached to the foot bones at the rest pose (the pack's feet are bare): rounded
+        // upper + white sole. `upper` is a shared material so the outfit can recolour the shoes.
+        function addSneakers(rig, upper) {
+          var sole = new THREE.MeshStandardMaterial({ color: 0xf2f0ea, roughness: 0.7 });
+          var P = new THREE.Vector3(),
+            E = new THREE.Vector3(),
+            f = new THREE.Vector3();
+          ["Left", "Right"].forEach(function (side) {
+            var foot = rig.bones[side + "Foot"],
+              toe = rig.bones[side + "Toe_End"] || rig.bones[side + "ToeBase"];
+            if (!foot || !toe) return;
+            foot.getWorldPosition(P);
+            toe.getWorldPosition(E);
+            f.subVectors(E, P);
+            f.y = 0;
+            if (f.lengthSq() < 1e-6) return;
+            f.normalize();
+            var holder = new THREE.Group();
+            var up = new THREE.Mesh(roundedBoxGeo(0.11, 0.09, 0.3, 0.042, 2), upper);
+            up.position.y = 0.055;
+            var so = new THREE.Mesh(roundedBoxGeo(0.118, 0.032, 0.312, 0.014, 1), sole);
+            so.position.y = 0.016;
+            up.castShadow = so.castShadow = true;
+            holder.add(up, so);
+            holder.position.set(P.x + f.x * 0.085, 0, P.z + f.z * 0.085);
+            holder.rotation.y = Math.atan2(f.x, f.z);
+            holder.updateMatrix();
+            foot.attach(holder); // keeps the world transform, then rides the bone through every animation
+          });
+        }
+        // Eyes + nose for the dog. The pack ships a faceless head, so find it from the geometry: the long
+        // horizontal axis, the end with the larger vertical extent (skull + ears vs a thin tail), the nose
+        // tip, and the bone that owns that vertex (the head). Everything is attached at the rest pose.
+        function addDogFace(model, mesh) {
+          var skel = mesh.skeleton;
+          skel.pose();
+          model.updateMatrixWorld(true);
+          var pos = mesh.geometry.attributes.position,
+            si = mesh.geometry.attributes.skinIndex,
+            sw = mesh.geometry.attributes.skinWeight;
+          var n = pos.count,
+            v = new THREE.Vector3(),
+            W = new Float32Array(n * 3),
+            mn = [1e9, 1e9, 1e9],
+            mx = [-1e9, -1e9, -1e9],
+            i,
+            k;
+          for (i = 0; i < n; i++) {
+            v.fromBufferAttribute(pos, i).applyMatrix4(mesh.matrixWorld);
+            W[i * 3] = v.x;
+            W[i * 3 + 1] = v.y;
+            W[i * 3 + 2] = v.z;
+            for (k = 0; k < 3; k++) {
+              if (W[i * 3 + k] < mn[k]) mn[k] = W[i * 3 + k];
+              if (W[i * 3 + k] > mx[k]) mx[k] = W[i * 3 + k];
+            }
+          }
+          var ax = mx[0] - mn[0] > mx[2] - mn[2] ? 0 : 2,
+            lo = mn[ax],
+            span = mx[ax] - lo;
+          function vertical(end) {
+            var a = 1e9,
+              b = -1e9;
+            for (var j = 0; j < n; j++) {
+              var t = (W[j * 3 + ax] - lo) / span;
+              if (end ? t > 0.86 : t < 0.14) {
+                if (W[j * 3 + 1] < a) a = W[j * 3 + 1];
+                if (W[j * 3 + 1] > b) b = W[j * 3 + 1];
+              }
+            }
+            return b - a;
+          }
+          var dir = vertical(1) > vertical(0) ? 1 : -1;
+          var best = 0,
+            bv = -1e9;
+          for (i = 0; i < n; i++) {
+            if (W[i * 3 + ax] * dir > bv) {
+              bv = W[i * 3 + ax] * dir;
+              best = i;
+            }
+          }
+          var bi = 0,
+            bw = -1;
+          for (k = 0; k < 4; k++) {
+            if (sw.array[best * 4 + k] > bw) {
+              bw = sw.array[best * 4 + k];
+              bi = si.array[best * 4 + k];
+            }
+          }
+          var bone = skel.bones[bi];
+          var nose = new THREE.Vector3(W[best * 3], W[best * 3 + 1], W[best * 3 + 2]),
+            fwd = new THREE.Vector3(ax === 0 ? dir : 0, 0, ax === 2 ? dir : 0),
+            up = new THREE.Vector3(0, 1, 0),
+            side = new THREE.Vector3().crossVectors(up, fwd).normalize();
+          var dark = new THREE.MeshStandardMaterial({ color: 0x15110f, roughness: 0.25, metalness: 0.1 }),
+            glint = new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false });
+          function part(geo, mat, at) {
+            var m = new THREE.Mesh(geo, mat);
+            m.position.copy(at);
+            m.castShadow = false;
+            m.updateMatrix();
+            bone.attach(m);
+          }
+          part(new THREE.SphereGeometry(0.034, 12, 10), dark, nose.clone().addScaledVector(fwd, -0.012).addScaledVector(up, 0.006)); // nose
+          [-1, 1].forEach(function (s) {
+            var at = nose.clone().addScaledVector(fwd, -0.12).addScaledVector(up, 0.07).addScaledVector(side, s * 0.052);
+            part(new THREE.SphereGeometry(0.024, 12, 10), dark, at);
+            part(new THREE.SphereGeometry(0.007, 6, 5), glint, at.clone().addScaledVector(fwd, 0.016).addScaledVector(up, 0.01));
+          });
+        }
+        function makeGlbRunner(gltf, palette, skinId) {
           var model = gltf.scene;
           var wrap = new THREE.Group(); // yaw wrapper (native +Z → game -Z)
           var lean = new THREE.Group(); // pitch/roll pivot at the feet
@@ -2973,11 +3208,15 @@
           var mat = new THREE.MeshStandardMaterial({
             map: palette || null,
             color: palette ? 0xffffff : 0x7fd0ff,
-            roughness: 0.85,
+            roughness: 0.78,
             metalness: 0,
           });
+          var UP = new THREE.Vector3(0, 1, 0);
           model.traverse(function (o) {
             if (o.isMesh) {
+              smoothNormals(o.geometry, 60); // soft, un-faceted shading on the low-poly body
+              var rh = restHeightRange(o.geometry, UP);
+              patchCharacter(mat, 150 / (rh.hi - rh.lo), (rh.hi - rh.lo) * 0.27, rh.lo, UP);
               o.material = mat;
               o.frustumCulled = false; // skinned bounds are bind-pose; the runner is always near the camera
               o.castShadow = true;
@@ -2990,6 +3229,8 @@
           box.setFromObject(model);
           model.position.y -= box.min.y; // feet on y = 0
           var rig = makePoseRig(model);
+          var shoeMat = new THREE.MeshStandardMaterial({ color: skinById(skinId || save.equipped).shoe, roughness: 0.55 });
+          addSneakers(rig, shoeMat);
           var mixer = new THREE.AnimationMixer(model);
           var clips = {};
           gltf.animations.forEach(function (c) {
@@ -3018,10 +3259,11 @@
             stumbleT: 0, // seconds left of the stumble envelope
             stumbleW: 0,
             ready: false,
-            setSkin: function (tex) {
+            setSkin: function (tex, id) {
               mat.map = tex || null;
               mat.color.set(tex ? 0xffffff : 0x7fd0ff);
               mat.needsUpdate = true;
+              shoeMat.color.set(skinById(id || save.equipped).shoe);
             },
             play: function (state, o) {
               if (state === view.state && !(o && o.restart)) return;
@@ -3221,14 +3463,23 @@
           wrap.add(hop);
           hop.add(model);
           model.rotation.y = Math.PI / 2; // native +X nose → game -Z (the dog faces the runner's back... see Chase)
-          var mat = new THREE.MeshStandardMaterial({ color: tint, roughness: 0.9, metalness: 0 });
+          var mat = new THREE.MeshStandardMaterial({ color: tint, roughness: 0.95, metalness: 0 });
+          var dogMesh = null;
+          model.updateMatrixWorld(true);
           model.traverse(function (o) {
             if (o.isMesh) {
+              dogMesh = o;
+              smoothNormals(o.geometry, 55);
+              // the dog's mesh node is rotated: find the rest-pose "up" in mesh-local space for the fur gradient
+              var upL = new THREE.Vector3(0, 1, 0).transformDirection(new THREE.Matrix4().copy(o.matrixWorld).invert());
+              var rh = restHeightRange(o.geometry, upL);
+              patchCharacter(mat, 120 / (rh.hi - rh.lo), (rh.hi - rh.lo) * 0.2, rh.lo, upL, rh.hi - rh.lo);
               o.material = mat;
               o.frustumCulled = false;
               o.castShadow = true;
             }
           });
+          if (dogMesh && dogMesh.skeleton) addDogFace(model, dogMesh);
           model.updateMatrixWorld(true);
           var box = new THREE.Box3().setFromObject(model),
             size = box.getSize(new THREE.Vector3());
@@ -3394,7 +3645,7 @@
                 // a second parse feeds the shop thumbnails (they need their own skeleton)
                 return Promise.all([parse(buf), parse(buf), skinsP]).then(function (r) {
                   var s = skinById(save.equipped);
-                  var view = makeGlbRunner(r[0], skinTex[s.id] || null);
+                  var view = makeGlbRunner(r[0], skinTex[s.id] || null, s.id);
                   previewGltf = r[1];
                   glbRunnerReady = true;
                   api.pendingRunner = view; // swapped in at the next safe point (applyModels)
@@ -3460,7 +3711,7 @@
             }
             if (!previewGltf) return null;
             if (!thumbKit.view) {
-              thumbKit.view = makeGlbRunner(previewGltf, skinTex[id]);
+              thumbKit.view = makeGlbRunner(previewGltf, skinTex[id], id);
               thumbKit.view.root.rotation.y = 0.5; // slight 3/4 turn so it reads as a person, not a back
               thumbKit.sc.add(thumbKit.view.root);
               thumbKit.view.update(0.2, { speed01: 0.5 }); // mid-stride frame
@@ -3747,168 +3998,366 @@
           bar: { len: 0.6, halfW: 1.1, y0: 1.0, y1: 2.6, kind: "slide" },
           van: { len: 4.4, halfW: 1.0, y0: 0, y1: 2.4, kind: "block" },
           truck: { len: 8.6, halfW: 1.1, y0: 0, y1: 3.0, kind: "block" },
+          cart: { len: 1.4, halfW: 1.0, y0: 0, y1: 1.1, kind: "jump" },
         };
         var PAINT = [0xd9483b, 0x2f8fa8, 0xf0ece2, 0x3b6fc4, 0xee8a2f, 0x5aa05a];
         var obMats = null,
-          obPool = { hurdle: [], crates: [], bar: [], van: [], truck: [] };
+          obPool = {}; // keyed "type:variant"
         var activeObstacles = [];
 
+        /* ---------- obstacle visuals: real-world street set pieces ----------
+     The route is a town street with road works and a market day. Jump: a road-works barrier (cones, sandbags,
+     beacon), a delivery pallet of produce crates, a market fruit cart. Slide: scaffolding with a LOW HEADROOM
+     sign, a market-stall awning. Go around: a delivery van, a food truck, a box truck, a city bus. Each kind
+     has a few variants; collision stays the OB_SPEC table (types), only the look varies. */
+        // Draw `text` at the largest size (up to `px`) that fits `maxW`; `center` centres it on x.
+        function fitText(x, text, tx, ty, maxW, px, center) {
+          x.font = "800 " + px + "px Inter, 'Segoe UI', Arial, sans-serif";
+          var tw = x.measureText(text).width;
+          if (tw > maxW) x.font = "800 " + Math.floor((px * maxW) / tw) + "px Inter, 'Segoe UI', Arial, sans-serif";
+          x.textAlign = center ? "center" : "left";
+          x.fillText(text, tx, ty);
+        }
+        function decalTexture(w, h, draw) {
+          var c = mkCanvas(w, h);
+          draw(c.getContext("2d"), w, h);
+          var t = colorTex(c, false);
+          t.anisotropy = maxAniso;
+          return t;
+        }
+        // Livery band: translucent dark strip, a sun mark and white lettering (readable on any paint colour).
+        function liveryTexture(text, wide) {
+          return decalTexture(wide ? 1024 : 512, wide ? 128 : 96, function (x, w, h) {
+            x.fillStyle = "rgba(20,16,12,0.58)";
+            x.fillRect(0, h * 0.12, w, h * 0.76);
+            x.fillStyle = "#ffb347";
+            x.beginPath();
+            x.arc(h * 0.62, h * 0.5, h * 0.24, 0, Math.PI * 2);
+            x.fill();
+            x.fillStyle = "#fff";
+            x.textBaseline = "middle";
+            fitText(x, text, h * 1.05, h * 0.52, w - h * 1.2, Math.round(h * 0.4));
+          });
+        }
+        // Black-on-yellow warning plate with a border (LOW HEADROOM), or white-on-black lit display (bus).
+        function plateTexture(lines, bg, fg, border) {
+          return decalTexture(512, 160, function (x, w, h) {
+            x.fillStyle = bg;
+            x.fillRect(0, 0, w, h);
+            if (border) {
+              x.strokeStyle = fg;
+              x.lineWidth = 10;
+              x.strokeRect(8, 8, w - 16, h - 16);
+            }
+            x.fillStyle = fg;
+            x.textBaseline = "middle";
+            lines.forEach(function (ln, i) {
+              fitText(x, ln, w / 2, lines.length > 1 ? h * (0.34 + i * 0.36) : h / 2, w - 40, lines.length > 1 ? 58 : 78, true);
+            });
+          });
+        }
+        // 1 m of red / white awning stripes (the UVs of the rounded parts are in metres).
+        function awningTexture() {
+          var c = mkCanvas(128, 128),
+            x = c.getContext("2d");
+          for (var i = 0; i < 4; i++) {
+            x.fillStyle = i % 2 ? "#f3efe6" : "#c8372d";
+            x.fillRect(i * 32, 0, 32, 128);
+          }
+          return colorTex(c, true); // RepeatWrapping: the awning parts are wider than one metre
+        }
         function initObstacleKit() {
           if (!renderer || obMats) return;
           var hazard = TexLib.get("hazard"),
             planks = TexLib.get("planks"),
             concrete = TexLib.get("concrete");
-          obMats = {
-            hazard: new THREE.MeshStandardMaterial({ map: hazard, roughness: 0.7, metalness: 0.1 }),
-            planks: new THREE.MeshStandardMaterial({ map: planks, roughness: 0.85 }),
-            concrete: new THREE.MeshStandardMaterial({ map: concrete, roughness: 0.9 }),
-            dark: new THREE.MeshStandardMaterial({
-              vertexColors: true,
-              roughness: 0.55,
-              metalness: 0.3,
-            }),
-            paint: PAINT.map(function (c) {
-              return new THREE.MeshStandardMaterial({ color: c, roughness: 0.34, metalness: 0.2 });
-            }),
-          };
-        }
-        function bx(w, h, d, x, y, z, tile) {
-          return bakeGeo(boxM(w, h, d, tile || 1), mat4(x, y, z), 0xffffff);
-        }
-        function dk(w, h, d, x, y, z, hex) {
-          return bakeGeo(new THREE.BoxGeometry(w, h, d), mat4(x, y, z), hex);
-        }
-        function cyl(r, h, x, y, z, hex) {
-          return bakeGeo(
-            new THREE.CylinderGeometry(r, r, h, 14),
-            mat4(x, y, z, 1, 1, 1, 0, 0, Math.PI / 2),
-            hex,
-          );
-        }
-        function addMesh(group, geoList, mat) {
-          var m = new THREE.Mesh(mergeGeos(geoList), mat);
-          m.castShadow = true;
-          group.add(m);
-          return m;
-        }
-        function buildObstacleMesh(type) {
-          var g = new THREE.Group(),
-            info = { group: g, paintMesh: null };
-          if (type === "hurdle") {
-            addMesh(
-              g,
-              [bx(2.0, 0.42, 0.1, 0, 0.67, 0, 1), bx(2.0, 0.2, 0.1, 0, 0.27, 0, 1)],
-              obMats.hazard,
-            );
-            addMesh(
-              g,
-              [
-                dk(0.08, 0.9, 0.08, -0.85, 0.45, 0.16, 0x33363b),
-                dk(0.08, 0.9, 0.08, 0.85, 0.45, 0.16, 0x33363b),
-                dk(0.08, 0.9, 0.08, -0.85, 0.45, -0.16, 0x33363b),
-                dk(0.08, 0.9, 0.08, 0.85, 0.45, -0.16, 0x33363b),
-                dk(0.08, 0.07, 0.7, -0.85, 0.04, 0, 0x33363b),
-                dk(0.08, 0.07, 0.7, 0.85, 0.04, 0, 0x33363b),
-              ],
-              obMats.dark,
-            );
-          } else if (type === "crates") {
-            addMesh(
-              g,
-              [bx(1.5, 0.58, 0.95, 0, 0.29, 0, 0.9), bx(1.2, 0.56, 0.8, 0.12, 0.86, 0, 0.9)],
-              obMats.planks,
-            );
-            addMesh(
-              g,
-              [
-                dk(1.54, 0.07, 0.99, 0, 0.58, 0, 0x4a3a2a),
-                dk(0.07, 0.6, 0.99, -0.7, 0.3, 0, 0x4a3a2a),
-                dk(0.07, 0.6, 0.99, 0.7, 0.3, 0, 0x4a3a2a),
-                dk(1.24, 0.07, 0.84, 0.12, 1.15, 0, 0x4a3a2a),
-              ],
-              obMats.dark,
-            );
-          } else if (type === "bar") {
-            addMesh(
-              g,
-              [bx(2.1, 0.62, 0.16, 0, 1.31, 0, 1), bx(2.3, 0.16, 0.2, 0, 2.5, 0, 1)],
-              obMats.hazard,
-            );
-            addMesh(
-              g,
-              [bx(0.16, 2.6, 0.16, -1.08, 1.3, 0, 1.2), bx(0.16, 2.6, 0.16, 1.08, 1.3, 0, 1.2)],
-              obMats.concrete,
-            );
-            addMesh(g, [dk(2.0, 0.05, 0.05, 0, 1.0, 0.09, 0x33363b)], obMats.dark);
-          } else if (type === "van") {
-            info.paintMesh = addMesh(
-              g,
-              [bakeGeo(new THREE.BoxGeometry(2.0, 1.95, 4.4), mat4(0, 1.28, 0), 0xffffff)],
-              obMats.paint[0],
-            );
-            addMesh(
-              g,
-              [
-                cyl(0.4, 0.28, -0.95, 0.4, -1.45, 0x1c1d20),
-                cyl(0.4, 0.28, 0.95, 0.4, -1.45, 0x1c1d20),
-                cyl(0.4, 0.28, -0.95, 0.4, 1.45, 0x1c1d20),
-                cyl(0.4, 0.28, 0.95, 0.4, 1.45, 0x1c1d20),
-                dk(2.06, 0.26, 0.16, 0, 0.42, 2.22, 0x2a2c30),
-                dk(0.24, 0.2, 0.08, -0.78, 1.0, 2.2, 0xc22a22),
-                dk(0.24, 0.2, 0.08, 0.78, 1.0, 2.2, 0xc22a22),
-                dk(1.5, 0.7, 0.05, 0, 1.75, 2.2, 0x1d2a36),
-                dk(0.04, 1.2, 0.06, 0, 1.1, 2.21, 0x4a4d52),
-                dk(2.04, 0.12, 4.42, 0, 0.82, 0, 0xe9e6de),
-              ],
-              obMats.dark,
-            );
-          } else if (type === "truck") {
-            info.paintMesh = addMesh(
-              g,
-              [bakeGeo(new THREE.BoxGeometry(2.25, 2.45, 6.3), mat4(0, 1.78, 1.15), 0xffffff)],
-              obMats.paint[2],
-            );
-            addMesh(
-              g,
-              [
-                dk(2.1, 1.75, 1.9, 0, 1.38, -3.4, 0xc9ccd2),
-                dk(1.95, 0.7, 0.05, 0, 1.9, -4.38, 0x1d2a36),
-                dk(2.15, 0.3, 8.6, 0, 0.5, 0, 0x2a2c30),
-                cyl(0.46, 0.3, -1.0, 0.46, -3.4, 0x1c1d20),
-                cyl(0.46, 0.3, 1.0, 0.46, -3.4, 0x1c1d20),
-                cyl(0.46, 0.3, -1.0, 0.46, 2.4, 0x1c1d20),
-                cyl(0.46, 0.3, 1.0, 0.46, 2.4, 0x1c1d20),
-                cyl(0.46, 0.3, -1.0, 0.46, 1.2, 0x1c1d20),
-                cyl(0.46, 0.3, 1.0, 0.46, 1.2, 0x1c1d20),
-                dk(2.2, 0.26, 0.16, 0, 0.62, 4.36, 0x2a2c30),
-                dk(0.26, 0.2, 0.08, -0.9, 0.95, 4.33, 0xc22a22),
-                dk(0.26, 0.2, 0.08, 0.9, 0.95, 4.33, 0xc22a22),
-                dk(0.05, 2.2, 0.06, 0, 1.8, 4.33, 0x8a8d92),
-                dk(2.27, 0.14, 6.32, 0, 1.0, 1.15, 0xc22a22),
-              ],
-              obMats.dark,
+          function plane(tex, extra) {
+            return new THREE.MeshStandardMaterial(
+              Object.assign({ map: tex, transparent: true, roughness: 0.6, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 }, extra || {}),
             );
           }
+          obMats = {
+            hazard: new THREE.MeshStandardMaterial({ map: hazard, roughness: 0.55, metalness: 0.2 }),
+            planks: new THREE.MeshStandardMaterial({ map: planks, roughness: 0.82 }),
+            concrete: new THREE.MeshStandardMaterial({ map: concrete, roughness: 0.9 }),
+            awning: new THREE.MeshStandardMaterial({ map: awningTexture(), roughness: 0.92, side: THREE.DoubleSide }),
+            dark: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6, metalness: 0.25 }),
+            matte: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, metalness: 0 }),
+            steel: new THREE.MeshStandardMaterial({ color: 0xbcc2ca, roughness: 0.38, metalness: 0.85 }),
+            chrome: new THREE.MeshStandardMaterial({ color: 0xd9dee4, roughness: 0.22, metalness: 1 }),
+            tire: new THREE.MeshStandardMaterial({ color: 0x151517, roughness: 0.92 }),
+            glass: new THREE.MeshPhysicalMaterial({ color: 0x0c1826, roughness: 0.1, metalness: 0, clearcoat: 0.4, envMapIntensity: 0.8 }),
+            lamp: new THREE.MeshStandardMaterial({ color: 0xff8a1f, emissive: 0xff6a00, emissiveIntensity: 1, roughness: 0.4 }),
+            tail: new THREE.MeshStandardMaterial({ color: 0xb01c14, emissive: 0xff2a1a, emissiveIntensity: 0.9, roughness: 0.3 }),
+            paint: PAINT.map(function (c) {
+              return new THREE.MeshPhysicalMaterial({ color: c, roughness: 0.34, metalness: 0.12, clearcoat: 0.85, clearcoatRoughness: 0.12 });
+            }),
+            // flat decal planes (separate textured quads on the vehicles / signs)
+            pExpressSide: plane(liveryTexture("SUNSET EXPRESS", true)),
+            pExpressRear: plane(liveryTexture("SUNSET EXPRESS", false)),
+            pFoodSide: plane(liveryTexture("SUNNY BITES · TACOS", true)),
+            pFoodRear: plane(liveryTexture("SUNNY BITES", false)),
+            pBusSide: plane(liveryTexture("TOWN TRANSIT · LINE 12", true)),
+            pBusDest: new THREE.MeshBasicMaterial({ map: plateTexture(["12 TOWN CENTRE"], "#120d06", "#ffb12a", false), toneMapped: false }),
+            pHeadroom: plane(plateTexture(["LOW HEADROOM", "1.0 m"], "#f5c518", "#1c1a17", true)),
+          };
+        }
+        // One baked, rounded part (rotations in radians). Geometry is cached per obstacle variant and shared by
+        // every pooled instance.
+        function rb(w, h, d, r, k, x, y, z, hex, ry, rx, rz) {
+          return bakeGeo(roundedBoxGeo(w, h, d, r, k), mat4(x, y, z, 1, 1, 1, rx || 0, ry || 0, rz || 0), hex === undefined ? 0xffffff : hex);
+        }
+        function cylY(rad, h, x, y, z, hex, seg) {
+          return bakeGeo(new THREE.CylinderGeometry(rad, rad, h, seg || 16), mat4(x, y, z), hex);
+        }
+        function ball(r, x, y, z, hex) {
+          return bakeGeo(new THREE.SphereGeometry(r, 8, 6), mat4(x, y, z), hex);
+        }
+        // Steel tube between two points.
+        function tube(ax, ay, az, bx, by, bz, r) {
+          var d = new THREE.Vector3(bx - ax, by - ay, bz - az),
+            len = d.length();
+          var q = new THREE.Quaternion().setFromUnitVectors(_Y, d.normalize());
+          var m = new THREE.Matrix4().compose(new THREE.Vector3((ax + bx) / 2, (ay + by) / 2, (az + bz) / 2), q, new THREE.Vector3(1, 1, 1));
+          return bakeGeo(new THREE.CylinderGeometry(r, r, len, 8), m, 0xffffff);
+        }
+        function wheel(parts, x, y, z, rad, wd) {
+          parts.tire.push(bakeGeo(new THREE.CylinderGeometry(rad, rad, wd, 20), mat4(x, y, z, 1, 1, 1, 0, 0, Math.PI / 2), 0xffffff));
+          parts.chrome.push(bakeGeo(new THREE.CylinderGeometry(rad * 0.58, rad * 0.58, wd + 0.03, 16), mat4(x, y, z, 1, 1, 1, 0, 0, Math.PI / 2), 0xffffff));
+          parts.dark.push(bakeGeo(new THREE.CylinderGeometry(rad * 0.24, rad * 0.24, wd + 0.05, 10), mat4(x, y, z, 1, 1, 1, 0, 0, Math.PI / 2), 0x4a4d52));
+        }
+        function cone(p, x, z) {
+          p.matte.push(
+            rb(0.3, 0.04, 0.3, 0.015, 1, x, 0.02, z, 0x232323),
+            bakeGeo(new THREE.CylinderGeometry(0.035, 0.12, 0.5, 12), mat4(x, 0.29, z), 0xff6414),
+            bakeGeo(new THREE.CylinderGeometry(0.066, 0.08, 0.1, 12), mat4(x, 0.33, z), 0xf4f4f0),
+          );
+        }
+        function fruit(p, cx, cy, cz, cols, rows, step, r) {
+          var pal = [0xf08a1a, 0xd62d2d, 0xf4d21f, 0x7fb83a, 0xf08a1a];
+          for (var i = 0; i < cols; i++)
+            for (var j = 0; j < rows; j++) p.matte.push(ball(r, cx + (i - (cols - 1) / 2) * step, cy + ((i + j) % 2) * 0.03, cz + (j - (rows - 1) / 2) * step, pal[(i * 3 + j) % pal.length]));
+        }
+        function newParts() {
+          return { paint: [], glass: [], dark: [], tire: [], chrome: [], tail: [], hazard: [], planks: [], concrete: [], lamp: [], matte: [], steel: [], awning: [], planes: [] };
+        }
+        // Shared van / truck details: tail lights, bumper, wheels.
+        function vehicleRear(p, half, z, bumperY, lightY, lightX) {
+          p.dark.push(rb(half * 2 + 0.1, 0.24, 0.22, 0.08, 1, 0, bumperY, z, 0x33363c));
+          p.tail.push(rb(0.2, 0.34, 0.06, 0.04, 1, -lightX, lightY, z, undefined), rb(0.2, 0.34, 0.06, 0.04, 1, lightX, lightY, z, undefined));
+        }
+        var OB_VARIANTS = { hurdle: ["barrier"], crates: ["pallet"], cart: ["fruit"], bar: ["scaffold", "canopy"], van: ["delivery", "food"], truck: ["box", "bus"] };
+        var OB_BUILD = {
+          // ---- jump ----
+          "hurdle:barrier": function (p) {
+            p.hazard.push(rb(2.0, 0.4, 0.08, 0.03, 1, 0, 0.68, 0), rb(2.0, 0.2, 0.08, 0.03, 1, 0, 0.28, 0));
+            [-0.88, 0.88].forEach(function (x) {
+              p.dark.push(rb(0.07, 0.98, 0.07, 0.025, 1, x, 0.49, 0.2, 0x3a3d43), rb(0.07, 0.98, 0.07, 0.025, 1, x, 0.49, -0.2, 0x3a3d43), rb(0.08, 0.06, 0.78, 0.02, 1, x, 0.03, 0, 0x2a2c30));
+              p.matte.push(rb(0.34, 0.12, 0.22, 0.05, 1, x, 0.12, 0.0, 0xb9a37a)); // sandbag ballast on each foot
+            });
+            p.dark.push(rb(2.04, 0.04, 0.1, 0.015, 1, 0, 0.9, 0, 0xf2efe6), rb(2.04, 0.04, 0.1, 0.015, 1, 0, 0.46, 0, 0xf2efe6)); // reflective edge strips
+            p.lamp.push(cylY(0.1, 0.16, 0, 1.0, 0, 0xffffff), cylY(0.04, 0.1, 0, 0.92, 0, 0xffffff, 8));
+            cone(p, -0.98, 0.55);
+            cone(p, 0.98, 0.55);
+          },
+          "crates:pallet": function (p) {
+            p.planks.push(rb(1.5, 0.04, 1.0, 0.012, 1, 0, 0.12, 0), rb(1.3, 0.45, 0.85, 0.04, 1, 0, 0.365, 0), rb(1.0, 0.42, 0.7, 0.04, 1, 0.1, 0.8, 0, 0xffffff, 0.12));
+            [-0.62, 0, 0.62].forEach(function (x) {
+              p.planks.push(rb(0.13, 0.1, 1.0, 0.012, 1, x, 0.05, 0)); // pallet stringers
+            });
+            [-0.62, 0.62].forEach(function (x) {
+              [-0.4, 0.4].forEach(function (z) {
+                p.dark.push(rb(0.06, 0.46, 0.06, 0.02, 1, x * 1.0, 0.365, z, 0x4f5660));
+              });
+            });
+            p.dark.push(rb(1.34, 0.05, 0.89, 0.015, 1, 0, 0.6, 0, 0x4f5660));
+            fruit(p, 0.1, 1.04, 0, 4, 3, 0.2, 0.075); // a crate of oranges, lemons and apples
+          },
+          "cart:fruit": function (p) {
+            p.planks.push(rb(1.5, 0.4, 0.85, 0.05, 1, 0, 0.62, 0));
+            p.dark.push(rb(1.56, 0.05, 0.9, 0.02, 1, 0, 0.84, 0, 0x2a6f78), rb(1.54, 0.06, 0.88, 0.02, 1, 0, 0.44, 0, 0x2a6f78));
+            [-0.82, 0.82].forEach(function (x) {
+              wheel(p, x, 0.34, 0, 0.34, 0.09);
+            });
+            [-0.55, 0.55].forEach(function (x) {
+              p.steel.push(tube(x, 0.7, 0.4, x * 0.9, 0.5, 1.15, 0.025));
+            });
+            p.steel.push(tube(-0.5, 0.5, 1.15, 0.5, 0.5, 1.15, 0.025));
+            fruit(p, 0, 0.93, 0, 6, 3, 0.2, 0.1); // heaped produce
+          },
+          // ---- slide ----
+          "bar:scaffold": function (p) {
+            [-1.1, 1.1].forEach(function (x) {
+              [-0.16, 0.16].forEach(function (z) {
+                p.steel.push(tube(x, 0, z, x, 2.75, z, 0.035));
+                p.dark.push(rb(0.22, 0.04, 0.22, 0.015, 1, x, 0.02, z, 0x2a2c30));
+              });
+              p.steel.push(tube(x, 1.05, -0.16, x, 2.7, 0.16, 0.025), tube(x, 1.05, 0.16, x, 2.7, -0.16, 0.025));
+              p.lamp.push(cylY(0.09, 0.12, x, 2.86, 0, 0xffffff));
+            });
+            [1.05, 1.6, 2.15, 2.7].forEach(function (y) {
+              p.steel.push(tube(-1.1, y, -0.16, 1.1, y, -0.16, 0.03), tube(-1.1, y, 0.16, 1.1, y, 0.16, 0.03));
+            });
+            p.hazard.push(rb(2.0, 0.55, 0.08, 0.03, 1, 0, 1.33, 0.0));
+            p.planes.push({ mat: "pHeadroom", w: 1.2, h: 0.38, x: 0, y: 1.33, z: 0.045, ry: 0 });
+          },
+          "bar:canopy": function (p) {
+            [-1.12, 1.12].forEach(function (x) {
+              p.steel.push(tube(x, 0, 0, x, 2.8, 0, 0.04));
+              p.steel.push(tube(x, 2.6, 0, x * 0.88, 2.0, 0.5, 0.025));
+              p.dark.push(rb(0.24, 0.05, 0.24, 0.02, 1, x, 0.025, 0, 0x2a2c30));
+            });
+            p.awning.push(rb(2.4, 0.05, 1.1, 0.02, 1, 0, 1.75, -0.05, 0xffffff, 0, 0.5, 0), rb(2.4, 0.42, 0.05, 0.02, 1, 0, 1.2, 0.46));
+            p.dark.push(rb(2.4, 0.05, 0.05, 0.02, 1, 0, 0.995, 0.47, 0x8a2a22));
+          },
+          // ---- go around ----
+          "van:delivery": function (p) {
+            p.paint.push(rb(2.0, 1.7, 4.4, 0.18, 2, 0, 1.2, 0), rb(1.9, 0.14, 4.2, 0.07, 1, 0, 2.08, 0));
+            p.glass.push(rb(1.5, 0.66, 0.05, 0.06, 1, 0, 1.62, 2.205), rb(1.55, 0.66, 0.05, 0.06, 1, 0, 1.55, -2.2), rb(0.05, 0.6, 0.95, 0.06, 1, -1.005, 1.62, -1.45), rb(0.05, 0.6, 0.95, 0.06, 1, 1.005, 1.62, -1.45));
+            p.dark.push(
+              rb(2.04, 0.3, 4.46, 0.1, 1, 0, 0.46, 0, 0x2a2d33), rb(0.03, 1.3, 0.03, 0.01, 1, 0, 1.2, 2.205, 0x2a2d33), rb(0.05, 0.14, 0.05, 0.02, 1, -0.15, 1.15, 2.22, 0x6a6e75), rb(0.05, 0.14, 0.05, 0.02, 1, 0.15, 1.15, 2.22, 0x6a6e75),
+              rb(0.5, 0.16, 0.03, 0.01, 1, 0, 0.86, 2.23, 0xf2f0e8), rb(0.12, 0.22, 0.1, 0.04, 1, -1.12, 1.55, -1.7, 0x25272b), rb(0.12, 0.22, 0.1, 0.04, 1, 1.12, 1.55, -1.7, 0x25272b), rb(0.5, 0.1, 0.7, 0.04, 1, 0, 2.2, 0.5, 0xcfd3d8),
+            );
+            [-1, 1].forEach(function (s) {
+              [-1.5, 1.5].forEach(function (z) {
+                wheel(p, s * 0.92, 0.4, z, 0.4, 0.3);
+                p.dark.push(rb(0.12, 0.66, 1.1, 0.05, 1, s * 1.0, 0.68, z, 0x25272b));
+              });
+            });
+            vehicleRear(p, 1.0, 2.22, 0.5, 1.0, 0.84);
+            [-1, 1].forEach(function (s) {
+              p.planes.push({ mat: "pExpressSide", w: 3.4, h: 0.4, x: s * 1.012, y: 1.2, z: 0.4, ry: (s * Math.PI) / 2 });
+            });
+            p.planes.push({ mat: "pExpressRear", w: 1.7, h: 0.32, x: 0, y: 0.98, z: 2.215, ry: 0 });
+          },
+          "van:food": function (p) {
+            p.paint.push(rb(2.0, 1.95, 4.4, 0.22, 2, 0, 1.25, 0), rb(1.9, 0.12, 4.2, 0.07, 1, 0, 2.28, 0));
+            p.glass.push(rb(1.5, 0.5, 0.05, 0.06, 1, 0, 1.75, 2.205), rb(1.55, 0.66, 0.05, 0.06, 1, 0, 1.55, -2.2), rb(0.05, 0.66, 1.7, 0.06, 1, 1.005, 1.6, -0.1)); // serving hatch on the kerb side
+            p.dark.push(rb(2.04, 0.3, 4.46, 0.1, 1, 0, 0.46, 0, 0x2a2d33), rb(0.28, 0.06, 1.8, 0.02, 1, 1.12, 1.22, -0.1, 0xcfd3d8), rb(0.3, 0.4, 0.3, 0.05, 1, 0.5, 2.55, -1.0, 0x6a6e75));
+            p.awning.push(rb(0.9, 0.04, 2.0, 0.015, 1, 1.4, 2.0, -0.1, 0xffffff, 0, 0, -0.4)); // striped hatch awning
+            [-1, 1].forEach(function (s) {
+              [-1.5, 1.5].forEach(function (z) {
+                wheel(p, s * 0.92, 0.4, z, 0.4, 0.3);
+                p.dark.push(rb(0.12, 0.66, 1.1, 0.05, 1, s * 1.0, 0.68, z, 0x25272b));
+              });
+            });
+            vehicleRear(p, 1.0, 2.22, 0.5, 1.0, 0.84);
+            p.planes.push({ mat: "pFoodSide", w: 3.4, h: 0.4, x: -1.012, y: 1.1, z: 0.4, ry: -Math.PI / 2 });
+            p.planes.push({ mat: "pFoodRear", w: 1.7, h: 0.32, x: 0, y: 1.0, z: 2.215, ry: 0 });
+          },
+          "truck:box": function (p) {
+            p.paint.push(rb(2.3, 2.4, 6.0, 0.14, 2, 0, 1.8, 1.35), rb(2.15, 1.8, 1.9, 0.28, 2, 0, 1.45, -3.5));
+            p.glass.push(rb(1.8, 0.75, 0.05, 0.08, 1, 0, 1.85, -4.47), rb(0.05, 0.7, 1.2, 0.08, 1, -1.085, 1.85, -3.55), rb(0.05, 0.7, 1.2, 0.08, 1, 1.085, 1.85, -3.55));
+            p.dark.push(
+              rb(2.1, 0.3, 8.6, 0.1, 1, 0, 0.56, 0, 0x2a2d33), rb(2.0, 0.1, 0.05, 0.02, 1, 0, 0.82, 4.34, 0x8a8d92), rb(0.5, 0.46, 0.04, 0.02, 1, -0.75, 0.5, 4.1, 0x1c1d20), rb(0.5, 0.46, 0.04, 0.02, 1, 0.75, 0.5, 4.1, 0x1c1d20),
+              rb(0.12, 0.24, 0.1, 0.04, 1, -1.22, 1.9, -4.1, 0x25272b), rb(0.12, 0.24, 0.1, 0.04, 1, 1.22, 1.9, -4.1, 0x25272b), rb(0.1, 1.7, 0.1, 0.04, 1, 1.0, 2.4, -2.95, 0x6a6e75), rb(2.32, 0.14, 6.02, 0.05, 1, 0, 1.0, 1.35, 0xc22a22),
+            );
+            for (var i = 0; i < 6; i++) p.dark.push(rb(2.0, 0.04, 0.04, 0.015, 1, 0, 1.3 + i * 0.3, 4.36, 0x9a9da3)); // roll-up door ribs
+            [-1, 1].forEach(function (s) {
+              wheel(p, s * 1.0, 0.46, -3.4, 0.46, 0.32);
+              wheel(p, s * 1.0, 0.46, 1.2, 0.46, 0.32);
+              wheel(p, s * 1.0, 0.46, 2.4, 0.46, 0.32);
+            });
+            vehicleRear(p, 1.1, 4.37, 0.62, 0.98, 0.95);
+            [-1, 1].forEach(function (s) {
+              p.planes.push({ mat: "pExpressSide", w: 5.0, h: 0.62, x: s * 1.162, y: 1.8, z: 1.35, ry: (s * Math.PI) / 2 });
+            });
+            p.planes.push({ mat: "pExpressRear", w: 2.0, h: 0.4, x: 0, y: 1.9, z: 4.39, ry: 0 });
+          },
+          "truck:bus": function (p) {
+            p.paint.push(rb(2.3, 2.5, 8.4, 0.32, 2, 0, 1.73, 0));
+            p.glass.push(rb(0.05, 0.95, 7.7, 0.1, 1, -1.155, 2.15, 0), rb(0.05, 0.95, 7.7, 0.1, 1, 1.155, 2.15, 0), rb(1.7, 0.8, 0.05, 0.08, 1, 0, 2.15, 4.215), rb(0.05, 1.55, 1.2, 0.05, 1, 1.158, 1.5, -2.9), rb(1.8, 1.0, 0.05, 0.1, 1, 0, 2.0, -4.22));
+            p.dark.push(
+              rb(2.34, 0.4, 8.5, 0.1, 1, 0, 0.56, 0, 0x2a2d33), rb(1.4, 0.28, 2.6, 0.1, 1, 0, 3.08, -0.6, 0xdfe3e8), rb(1.2, 0.5, 0.04, 0.02, 1, 0, 1.0, 4.22, 0x23252a), rb(0.04, 1.55, 0.04, 0.01, 1, 1.158, 1.5, -2.3, 0x23252a), rb(0.04, 1.55, 0.04, 0.01, 1, 1.158, 1.5, -3.5, 0x23252a),
+            );
+            [-1, 1].forEach(function (s) {
+              wheel(p, s * 1.1, 0.5, -3.0, 0.5, 0.34);
+              wheel(p, s * 1.1, 0.5, 2.7, 0.5, 0.34);
+              p.dark.push(rb(0.14, 0.8, 1.4, 0.06, 1, s * 1.14, 0.8, -3.0, 0x25272b), rb(0.14, 0.8, 1.4, 0.06, 1, s * 1.14, 0.8, 2.7, 0x25272b));
+            });
+            vehicleRear(p, 1.1, 4.25, 0.58, 1.3, 0.98);
+            [-1, 1].forEach(function (s) {
+              p.planes.push({ mat: "pBusSide", w: 4.1, h: 0.5, x: s * 1.162, y: 1.1, z: -0.15, ry: (s * Math.PI) / 2 });
+            });
+            p.planes.push({ mat: "pBusDest", w: 1.4, h: 0.3, x: 0, y: 2.8, z: 4.225, ry: 0 });
+          },
+        };
+        var obGeoCache = {};
+        function obGeo(key) {
+          if (obGeoCache[key]) return obGeoCache[key];
+          var parts = newParts(),
+            out = {};
+          OB_BUILD[key](parts);
+          Object.keys(parts).forEach(function (k) {
+            if (k !== "planes" && parts[k].length) out[k] = mergeGeos(parts[k]);
+          });
+          // decal planes: merge those that share a material into one mesh (a van has 3 planes but 2 materials)
+          var byMat = {};
+          parts.planes.forEach(function (pl) {
+            (byMat[pl.mat] = byMat[pl.mat] || []).push(bakeGeo(new THREE.PlaneGeometry(pl.w, pl.h), mat4(pl.x, pl.y, pl.z, 1, 1, 1, 0, pl.ry, 0), 0xffffff));
+          });
+          out.planes = Object.keys(byMat).map(function (m) {
+            return { mat: m, geo: mergeGeos(byMat[m]) };
+          });
+          obGeoCache[key] = out;
+          return out;
+        }
+        function addPart(g, geo, mat, shadow) {
+          var m = new THREE.Mesh(geo, mat);
+          m.castShadow = !!shadow;
+          g.add(m);
+          return m;
+        }
+        function buildObstacleMesh(type, variant) {
+          var g = new THREE.Group(),
+            info = { group: g, paintMesh: null },
+            geos = obGeo(type + ":" + variant),
+            M = obMats;
+          if (geos.paint) info.paintMesh = addPart(g, geos.paint, M.paint[0], true);
+          [
+            ["glass", false],
+            ["dark", true],
+            ["tire", true],
+            ["chrome", false],
+            ["tail", false],
+            ["hazard", true],
+            ["planks", true],
+            ["concrete", true],
+            ["lamp", false],
+            ["matte", true],
+            ["steel", true],
+            ["awning", true],
+          ].forEach(function (e) {
+            if (geos[e[0]]) addPart(g, geos[e[0]], M[e[0]], e[1]);
+          });
+          geos.planes.forEach(function (pl) {
+            g.add(new THREE.Mesh(pl.geo, M[pl.mat]));
+          });
           g.visible = false;
           scene.add(g);
           return info;
         }
-        function spawnObstacle(type, lane, z) {
+        function spawnObstacle(type, lane, z, variantArg) {
           if (!renderer) return null;
           initObstacleKit();
           var spec = OB_SPEC[type],
+            vars = OB_VARIANTS[type],
+            variant = variantArg && vars.indexOf(variantArg) >= 0 ? variantArg : vars[Math.floor(rand() * vars.length)],
+            key = type + ":" + variant,
+            pool = (obPool[key] = obPool[key] || []),
             o = null,
             i;
-          for (i = 0; i < obPool[type].length; i++) {
-            if (!obPool[type][i].active) {
-              o = obPool[type][i];
+          for (i = 0; i < pool.length; i++) {
+            if (!pool[i].active) {
+              o = pool[i];
               break;
             }
           }
           if (!o) {
-            o = buildObstacleMesh(type);
+            o = buildObstacleMesh(type, variant);
             o.type = type;
-            obPool[type].push(o);
+            o.variant = variant;
+            pool.push(o);
           }
           o.active = true;
           o.lane = lane;
@@ -3935,7 +4384,16 @@
           activeCoins = [],
           coinFxList = [];
         if (renderer) {
-          var cg = new THREE.CylinderGeometry(0.34, 0.34, 0.08, 20);
+          // beveled coin with a raised rim and an inset face ring (a lathe profile, radius x height)
+          var cg = new THREE.LatheGeometry(
+            [
+              [0, 0.045], [0.2, 0.045], [0.215, 0.058], [0.255, 0.058], [0.27, 0.045], [0.315, 0.045], [0.345, 0.022], [0.35, 0],
+              [0.345, -0.022], [0.315, -0.045], [0.27, -0.045], [0.255, -0.058], [0.215, -0.058], [0.2, -0.045], [0, -0.045],
+            ].map(function (q) {
+              return new THREE.Vector2(q[0], q[1]);
+            }),
+            28,
+          );
           cg.rotateX(Math.PI / 2);
           var coinMat = new THREE.MeshStandardMaterial({
             color: 0xffc928,
@@ -4386,7 +4844,7 @@
             return 20;
           },
           single: function () {
-            var type = pick(["hurdle", "crates", "bar", "van"]),
+            var type = pick(["hurdle", "crates", "cart", "bar", "van"]),
               l = ri(3);
             S(type, l, 0);
             if (OB_SPEC[type].kind === "jump") coinArc(l, SPAWN_Z, 5, 1.1);
@@ -4399,6 +4857,7 @@
               pair = pick([
                 ["van", "van"],
                 ["van", "crates"],
+                ["cart", "van"],
                 ["hurdle", "van"],
                 ["van", "bar"],
                 ["truck", "van"],
@@ -4409,7 +4868,7 @@
             return 12;
           },
           gate: function () {
-            var type = pick(["hurdle", "hurdle", "crates", "bar"]);
+            var type = pick(["hurdle", "hurdle", "crates", "cart", "bar"]);
             for (var l = 0; l < 3; l++) S(type, l, 0);
             if (OB_SPEC[type].kind === "jump")
               [0, 1, 2].forEach(function (l) {
@@ -4425,7 +4884,7 @@
               });
             S("truck", l, 0);
             coinLine(others[0], SPAWN_Z + 4, 9, 2.0);
-            S(pick(["hurdle", "crates"]), others[1], 14);
+            S(pick(["hurdle", "crates", "cart"]), others[1], 14);
             coinArc(others[1], SPAWN_Z - 14, 5, 1.1);
             return 24;
           },
@@ -4803,6 +5262,10 @@
             camera.fov = fov;
             camera.updateProjectionMatrix();
           }
+          if (obMats)
+            obMats.lamp.emissiveIntensity = prefersReduced
+              ? 0.9
+              : 0.5 + 0.5 * Math.abs(Math.sin(elapsed * 7)); // warning beacons
           skyGroup.position.copy(camera.position);
           // the sun key follows the runner so shadows stay crisp in every lane
           dirLight.position.set(player.x - 9, 14, 11);
@@ -4858,7 +5321,7 @@
           }
           if (frozen) {
             rafLast = now;
-            render(0);
+            if (frozen !== 2) render(0); // freeze(2): no ticks AND no render, so a custom camera shot stays on the canvas
             return;
           }
           if (paused) {
@@ -5246,7 +5709,7 @@
             phase = "running";
             if (runnerView) runnerView.play("run", { restart: true });
           },
-          forceSpawn: function (type, lane, z) {
+          forceSpawn: function (type, lane, z, variant) {
             if (type === "coinRow") {
               coinLine(lane, z || -20, 6, 2);
               return;
@@ -5255,11 +5718,11 @@
               spawnPickup(type, lane, z || -20);
               return;
             }
-            return spawnObstacle(type, lane, z === undefined ? -30 : z);
+            return spawnObstacle(type, lane, z === undefined ? -30 : z, variant);
           },
           clearObstacles: clearWorldObjects,
           freeze: function (f) {
-            frozen = !!f;
+            frozen = f === 2 ? 2 : !!f;
           },
           seed: function (n) {
             rand = rng(n);

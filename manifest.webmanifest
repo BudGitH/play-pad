@@ -1,0 +1,15 @@
+{
+  "name": "PlayPad",
+  "short_name": "PlayPad",
+  "description": "A colourful little hub of quick, playable browser mini-games.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#08080c",
+  "theme_color": "#08080c",
+  "icons": [
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}

@@ -1,0 +1,328 @@
+/* ============================================================================
+   PlayPad — base styles & MD3 components
+   ----------------------------------------------------------------------------
+   Reset, typography utilities, and the shared component vocabulary (card, chip,
+   button, state layers, focus, the horizontal game rail). Spacing/shape/colour
+   come from tokens.css; the only literals are a few off-grid component paddings
+   (6/12px) and 1px hairlines, kept intentionally.
+   ========================================================================== */
+
+/* ---- Reset -------------------------------------------------------------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--md-sys-color-surface);
+  color: var(--md-sys-color-on-surface);
+  font-family: var(--md-sys-typeface-plain);
+  font-size: var(--md-sys-typescale-body-large-size);
+  line-height: var(--md-sys-typescale-body-large-line);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3, h4, p {
+  margin: 0;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+button {
+  font-family: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+/* ---- Typography utilities ---------------------------------------------- */
+.display-large {
+  font-size: var(--md-sys-typescale-display-large-size);
+  line-height: var(--md-sys-typescale-display-large-line);
+  font-weight: var(--md-sys-typescale-display-large-weight);
+  letter-spacing: -0.02em;
+}
+.display-small {
+  font-size: var(--md-sys-typescale-display-small-size);
+  line-height: var(--md-sys-typescale-display-small-line);
+  font-weight: var(--md-sys-typescale-display-small-weight);
+  letter-spacing: -0.015em;
+}
+.headline-large {
+  font-size: var(--md-sys-typescale-headline-large-size);
+  line-height: var(--md-sys-typescale-headline-large-line);
+  font-weight: var(--md-sys-typescale-headline-large-weight);
+  letter-spacing: -0.01em;
+}
+.headline-small {
+  font-size: var(--md-sys-typescale-headline-small-size);
+  line-height: var(--md-sys-typescale-headline-small-line);
+  font-weight: var(--md-sys-typescale-headline-small-weight);
+}
+.title-large {
+  font-size: var(--md-sys-typescale-title-large-size);
+  line-height: var(--md-sys-typescale-title-large-line);
+  font-weight: var(--md-sys-typescale-title-large-weight);
+  letter-spacing: -0.01em;
+}
+.title-medium {
+  font-size: var(--md-sys-typescale-title-medium-size);
+  line-height: var(--md-sys-typescale-title-medium-line);
+  font-weight: var(--md-sys-typescale-title-medium-weight);
+}
+.body-large {
+  font-size: var(--md-sys-typescale-body-large-size);
+  line-height: var(--md-sys-typescale-body-large-line);
+  font-weight: var(--md-sys-typescale-body-large-weight);
+}
+.body-medium {
+  font-size: var(--md-sys-typescale-body-medium-size);
+  line-height: var(--md-sys-typescale-body-medium-line);
+  font-weight: var(--md-sys-typescale-body-medium-weight);
+}
+.body-small {
+  font-size: var(--md-sys-typescale-body-small-size);
+  line-height: var(--md-sys-typescale-body-small-line);
+  font-weight: var(--md-sys-typescale-body-small-weight);
+}
+.label-large {
+  font-size: var(--md-sys-typescale-label-large-size);
+  line-height: var(--md-sys-typescale-label-large-line);
+  font-weight: var(--md-sys-typescale-label-large-weight);
+  letter-spacing: var(--md-sys-typescale-label-large-tracking);
+}
+.label-medium {
+  font-size: var(--md-sys-typescale-label-medium-size);
+  line-height: var(--md-sys-typescale-label-medium-line);
+  font-weight: var(--md-sys-typescale-label-medium-weight);
+  letter-spacing: var(--md-sys-typescale-label-medium-tracking);
+}
+
+.text-muted { color: var(--md-sys-color-on-surface-variant); }
+
+/* Brand wordmark — the six-stop gradient clipped to text */
+.brand-wordmark {
+  background: var(--brand-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* ---- Focus (keyboard) --------------------------------------------------- */
+:focus-visible {
+  outline: 3px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
+  border-radius: var(--md-sys-shape-corner-xs);
+}
+
+/* ---- State layer -------------------------------------------------------- */
+/* Any element marked .state-layer gets an MD3 hover/focus/pressed overlay via
+   a ::before that tints with currentColor. Add to interactive surfaces. */
+.state-layer {
+  position: relative;
+  isolation: isolate;
+}
+.state-layer::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: currentColor;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--md-sys-motion-duration-short3)
+    var(--md-sys-motion-easing-standard);
+  z-index: 0;
+}
+.state-layer:hover::before { opacity: var(--md-sys-state-hover-opacity); }
+.state-layer:focus-visible::before { opacity: var(--md-sys-state-focus-opacity); }
+.state-layer:active::before { opacity: var(--md-sys-state-pressed-opacity); }
+
+/* ---- Card --------------------------------------------------------------- */
+.card {
+  position: relative;
+  background: var(--md-sys-color-surface-container);
+  color: var(--md-sys-color-on-surface);
+  border-radius: var(--md-sys-shape-corner-lg);
+  box-shadow: var(--md-sys-elevation-level1);
+}
+.card--interactive {
+  display: block;
+  transition:
+    box-shadow var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-standard),
+    transform var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-emphasized),
+    background var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-standard);
+}
+.card--interactive:hover {
+  box-shadow: var(--md-sys-elevation-level3);
+  transform: translateY(-3px);
+}
+.card--interactive:active {
+  transform: scale(0.98);
+  box-shadow: var(--md-sys-elevation-level1);
+}
+
+/* ---- Chip (tags, filters) ---------------------------------------------- */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--md-sys-spacing-xs);
+  padding: 6px 12px;
+  border-radius: var(--md-sys-shape-corner-sm);
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface-variant);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  font-size: var(--md-sys-typescale-label-medium-size);
+  line-height: 1;
+  font-weight: var(--md-sys-typescale-label-medium-weight);
+  letter-spacing: var(--md-sys-typescale-label-medium-tracking);
+  white-space: nowrap;
+}
+
+/* ---- Buttons ------------------------------------------------------------ */
+.button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--md-sys-spacing-sm);
+  min-height: var(--md-sys-spacing-2xl);
+  padding: 0 var(--md-sys-spacing-lg);
+  border: 0;
+  border-radius: var(--md-sys-shape-corner-full);
+  font-size: var(--md-sys-typescale-label-large-size);
+  font-weight: var(--md-sys-typescale-label-large-weight);
+  letter-spacing: var(--md-sys-typescale-label-large-tracking);
+  isolation: isolate;
+  transition: box-shadow var(--md-sys-motion-duration-short3)
+    var(--md-sys-motion-easing-standard);
+}
+.button > * { position: relative; z-index: 1; }
+.button:active { transform: scale(0.98); }
+.button[disabled],
+.button[aria-disabled="true"] {
+  opacity: 0.38;
+  pointer-events: none;
+}
+
+.button--filled {
+  background: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
+}
+.button--tonal {
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+}
+.button--outlined {
+  background: transparent;
+  color: var(--md-sys-color-primary);
+  border: 1px solid var(--md-sys-color-outline);
+}
+.button--text {
+  background: transparent;
+  color: var(--md-sys-color-primary);
+  padding: 0 12px;
+}
+
+/* Icon-only round button (e.g. rail arrows, quit) */
+.icon-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--md-sys-spacing-2xl);
+  height: var(--md-sys-spacing-2xl);
+  border: 0;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface);
+  isolation: isolate;
+  transition: box-shadow var(--md-sys-motion-duration-short3)
+    var(--md-sys-motion-easing-standard);
+}
+.icon-button svg { position: relative; z-index: 1; }
+.icon-button[disabled] { opacity: 0.38; pointer-events: none; }
+
+/* ---- Horizontal game rail (scroll-based selection) ---------------------- */
+.rail {
+  position: relative;
+}
+/* Wrapper around the scroll track so arrows centre on the track, not the
+   whole section, and never sit outside the viewport (no stray h-scroll). */
+.rail__viewport {
+  position: relative;
+}
+.rail__track {
+  display: flex;
+  gap: var(--md-sys-spacing-md);
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: var(--rail-edge, 24px);
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: var(--md-sys-spacing-sm) var(--rail-edge, 24px) var(--md-sys-spacing-lg);
+  scrollbar-width: thin;
+  scrollbar-color: var(--md-sys-color-outline-variant) transparent;
+}
+.rail__track::-webkit-scrollbar { height: 8px; }
+.rail__track::-webkit-scrollbar-track { background: transparent; }
+.rail__track::-webkit-scrollbar-thumb {
+  background: var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-full);
+}
+.rail__track > * { scroll-snap-align: start; flex: 0 0 auto; }
+
+/* Desktop arrow affordances — hidden where there's no hover/fine pointer */
+.rail__arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 5;
+  box-shadow: var(--md-sys-elevation-level2);
+}
+.rail__arrow--prev { left: var(--md-sys-spacing-xs); }
+.rail__arrow--next { right: var(--md-sys-spacing-xs); }
+.rail__arrow[hidden] { display: none; }
+/* Hide the arrows where cards span (near-)full width or touch is the norm —
+   there, overlaying a card would cover its content; swipe/scroll is natural. */
+@media (pointer: coarse), (max-width: 720px) {
+  .rail__arrow { display: none; }
+}
+
+/* ---- Visually-hidden (for screen-reader-only labels) -------------------- */
+.visually-hidden {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0; border: 0;
+  clip: rect(0 0 0 0); clip-path: inset(50%);
+  overflow: hidden; white-space: nowrap;
+}
+
+/* ---- Reduced motion ----------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

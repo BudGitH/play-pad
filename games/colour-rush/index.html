@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <title>Colour Rush — PlayPad</title>
+
+  <link rel="icon" href="../../icons/favicon.svg" type="image/svg+xml" />
+  <meta name="theme-color" content="#08080c" />
+
+  <!-- Shared PlayPad design system -->
+  <link rel="stylesheet" href="../../styles/tokens.css" />
+  <link rel="stylesheet" href="../../styles/base.css" />
+
+  <style>
+    /* ---- App shell (full-screen, immersive game) ---- */
+    html, body { margin: 0; height: 100%; width: 100%; }
+    body {
+      position: fixed; inset: 0; overflow: hidden;
+      background: var(--md-sys-color-surface);
+      color: var(--md-sys-color-on-surface);
+      -webkit-user-select: none; user-select: none;
+      overscroll-behavior: none; touch-action: manipulation;
+    }
+
+    .screen { position: absolute; inset: 0; display: none; }
+    .screen.active { display: block; }
+    #setup, #results {
+      overflow-y: auto; -webkit-overflow-scrolling: touch;
+      background: var(--md-sys-color-surface);
+    }
+
+    /* Back to hub */
+    .back-link {
+      display: inline-flex; align-items: center; gap: 6px;
+      color: var(--md-sys-color-on-surface-variant);
+      padding: 8px 12px 8px 4px; margin: 0 0 6px -4px;
+      border-radius: var(--md-sys-shape-corner-full);
+      font-size: var(--md-sys-typescale-label-large-size);
+      font-weight: var(--md-sys-typescale-label-large-weight);
+    }
+    .back-link:hover { color: var(--md-sys-color-on-surface); }
+
+    /* ---------- SETUP ---------- */
+    .setup-inner {
+      max-width: 560px; margin: 0 auto;
+      padding: max(20px, env(safe-area-inset-top)) 22px 48px;
+    }
+    .brand { margin: 2px 0 6px; }
+    .brand h1 { margin: 0; }
+    .tagline {
+      color: var(--md-sys-color-on-surface-variant);
+      margin: 0 0 26px; max-width: 48ch;
+    }
+    .tagline em { color: var(--md-sys-color-on-surface); font-style: normal; font-weight: 600; }
+
+    .block { margin-bottom: 26px; }
+    .block > .label {
+      display: flex; justify-content: space-between; align-items: baseline;
+      text-transform: uppercase; color: var(--md-sys-color-on-surface-variant);
+      margin: 0 2px 12px;
+      font-size: var(--md-sys-typescale-label-medium-size);
+      font-weight: var(--md-sys-typescale-label-medium-weight);
+      letter-spacing: var(--md-sys-typescale-label-medium-tracking);
+    }
+    .label .hint { text-transform: none; letter-spacing: 0; font-weight: 500; }
+
+    /* Selection chips (player count / duration / speed) */
+    .chips { display: flex; gap: 10px; flex-wrap: wrap; }
+    .sel-chip {
+      position: relative; flex: 1 1 0; min-width: 62px; padding: 14px 8px;
+      border-radius: var(--md-sys-shape-corner-md);
+      background: var(--md-sys-color-surface-container);
+      border: 1.5px solid var(--md-sys-color-outline-variant);
+      color: var(--md-sys-color-on-surface);
+      font-size: 16px; font-weight: 600; text-align: center;
+      transition: transform var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-emphasized),
+                  border-color var(--md-sys-motion-duration-short3),
+                  background var(--md-sys-motion-duration-short3);
+    }
+    .sel-chip small {
+      display: block; font-size: 11px; font-weight: 500;
+      color: var(--md-sys-color-on-surface-variant); margin-top: 2px;
+    }
+    .sel-chip[aria-pressed="true"] {
+      border-color: var(--md-sys-color-primary);
+      background: var(--md-sys-color-secondary-container);
+      color: var(--md-sys-color-on-secondary-container);
+    }
+    .sel-chip[aria-pressed="true"] small { color: var(--md-sys-color-on-secondary-container); }
+    .sel-chip:active { transform: scale(0.96); }
+
+    /* Player colour rows */
+    .player-row {
+      background: var(--md-sys-color-surface-container);
+      border: 1.5px solid var(--md-sys-color-outline-variant);
+      border-radius: var(--md-sys-shape-corner-lg);
+      padding: 14px 14px 16px; margin-bottom: 12px;
+    }
+    .player-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .player-dot {
+      width: 14px; height: 14px; border-radius: 50%;
+      background: var(--md-sys-color-outline-variant);
+      box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.12);
+    }
+    .player-name { font-size: 15px; font-weight: 700; }
+    .player-name .pick { color: var(--md-sys-color-on-surface-variant); font-weight: 500; }
+    .swatches { display: flex; gap: 10px; flex-wrap: wrap; }
+    .swatch {
+      width: 42px; height: 42px; border-radius: var(--md-sys-shape-corner-md);
+      border: 0; position: relative; outline: 2.5px solid transparent; outline-offset: 2px;
+      transition: transform var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-emphasized),
+                  outline-color var(--md-sys-motion-duration-short3), opacity var(--md-sys-motion-duration-short3);
+    }
+    .swatch:active { transform: scale(0.9); }
+    .swatch[aria-pressed="true"] { outline-color: var(--md-sys-color-on-surface); }
+    .swatch[disabled] { opacity: 0.18; }
+    .swatch[aria-pressed="true"]::after {
+      content: ""; position: absolute; inset: 0; margin: auto;
+      width: 13px; height: 7px;
+      border-left: 3px solid #fff; border-bottom: 3px solid #fff;
+      transform: rotate(-45deg) translate(1px, -2px);
+      filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.6));
+    }
+    /* Keyboard focus ring — must beat both .swatch and the selected-state ring */
+    .swatch:focus-visible { outline: 3px solid var(--md-sys-color-primary); outline-offset: 2px; }
+
+    /* Sound toggle (MD3 switch) */
+    .toggle-row {
+      display: flex; align-items: center; justify-content: space-between;
+      background: var(--md-sys-color-surface-container);
+      border: 1.5px solid var(--md-sys-color-outline-variant);
+      border-radius: var(--md-sys-shape-corner-md); padding: 14px 16px;
+    }
+    .toggle-row .t-label { font-size: 15px; font-weight: 600; }
+    .toggle-row .t-sub { font-size: 12px; color: var(--md-sys-color-on-surface-variant); margin-top: 2px; }
+    .switch {
+      width: 52px; height: 32px; border-radius: var(--md-sys-shape-corner-full);
+      background: var(--md-sys-color-surface-container-highest);
+      border: 2px solid var(--md-sys-color-outline);
+      position: relative; transition: background var(--md-sys-motion-duration-short3),
+                                        border-color var(--md-sys-motion-duration-short3);
+      flex: none;
+    }
+    .switch::after {
+      content: ""; position: absolute; top: 6px; left: 6px;
+      width: 16px; height: 16px; border-radius: 50%;
+      background: var(--md-sys-color-outline);
+      transition: transform var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-emphasized),
+                  width var(--md-sys-motion-duration-short4), height var(--md-sys-motion-duration-short4),
+                  top var(--md-sys-motion-duration-short4), left var(--md-sys-motion-duration-short4),
+                  background var(--md-sys-motion-duration-short4);
+    }
+    .switch[aria-pressed="true"] {
+      background: var(--md-sys-color-primary); border-color: var(--md-sys-color-primary);
+    }
+    .switch[aria-pressed="true"]::after {
+      top: 3px; left: 3px; width: 24px; height: 24px;
+      background: var(--md-sys-color-on-primary);
+      transform: translateX(20px);
+    }
+
+    /* Start button (filled primary CTA) */
+    .start-btn {
+      width: 100%; padding: 18px; border: 0; margin-top: 8px;
+      border-radius: var(--md-sys-shape-corner-full);
+      font-size: 18px; font-weight: 700; letter-spacing: 0.01em;
+      color: var(--md-sys-color-on-primary); background: var(--md-sys-color-primary);
+      box-shadow: var(--md-sys-elevation-level1);
+      transition: transform var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-emphasized),
+                  opacity var(--md-sys-motion-duration-short3), box-shadow var(--md-sys-motion-duration-short3);
+    }
+    .start-btn:active { transform: scale(0.98); }
+    .start-btn[disabled] { opacity: 0.38; box-shadow: none; }
+    .start-note { text-align: center; color: var(--md-sys-color-on-surface-variant); font-size: 12.5px; margin-top: 12px; line-height: 1.5; }
+
+    /* ---------- GAME (immersive dark stage so dots pop) ---------- */
+    #game { background: #000; }
+    #playArea { position: absolute; inset: 0; touch-action: none; overflow: hidden; }
+
+    .dot {
+      position: absolute; border-radius: 50%; touch-action: none; z-index: 10;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5),
+                  inset 0 -7px 14px rgba(0, 0, 0, 0.22),
+                  inset 0 5px 10px rgba(255, 255, 255, 0.18);
+      animation-name: dotlife; animation-timing-function: linear; animation-fill-mode: forwards;
+      will-change: transform, opacity;
+    }
+    @keyframes dotlife {
+      0% { transform: scale(0.2); opacity: 0; }
+      9% { transform: scale(1.10); opacity: 1; }
+      17% { transform: scale(1); opacity: 1; }
+      60% { transform: scale(1); opacity: 1; }
+      100% { transform: scale(0.5); opacity: 0; }
+    }
+    .dot.tapped {
+      animation-name: dotpop; animation-duration: 0.26s !important;
+      animation-timing-function: var(--md-sys-motion-easing-emphasized);
+    }
+    @keyframes dotpop { 0% { transform: scale(1); opacity: 1; } 100% { transform: scale(1.75); opacity: 0; } }
+    /* Reduced motion: show dots statically (no dotlife flash); JS times their life */
+    .dot--static { animation: none; transform: none; opacity: 1; }
+
+    #topbar {
+      position: absolute; top: 0; left: 0; right: 0; z-index: 25;
+      display: flex; align-items: center; gap: 14px;
+      padding: calc(env(safe-area-inset-top) + 9px) 12px 11px;
+    }
+    #topbar::before {
+      content: ""; position: absolute; inset: 0;
+      background: linear-gradient(180deg, rgba(0, 0, 0, 0.62), rgba(0, 0, 0, 0));
+      z-index: -1; pointer-events: none;
+    }
+    #sessClock { font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; color: #fff; flex: none; min-width: 42px; }
+    #scoreChips { display: flex; gap: 14px; flex: 1; flex-wrap: wrap; align-items: center; }
+    .chipscore { display: flex; align-items: center; gap: 6px; font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; color: #fff; }
+    .chipscore .sw { width: 16px; height: 16px; border-radius: 5px; flex: none; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.25); }
+    .chipscore .nv { display: inline-block; min-width: 12px; transition: transform var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-emphasized); }
+    /* 48px hit target (WCAG 2.5.8) with a 36px visual circle drawn behind the ✕ */
+    #quitBtn {
+      flex: none; position: relative; width: 48px; height: 48px; border: 0;
+      background: transparent; color: #fff; font-size: 17px; line-height: 1;
+      display: grid; place-items: center; border-radius: 50%;
+    }
+    #quitBtn::before {
+      content: ""; position: absolute; width: 36px; height: 36px; border-radius: 50%;
+      background: rgba(255, 255, 255, 0.14);
+    }
+    #quitBtn { z-index: 0; }
+    #quitBtn::before { z-index: -1; }
+    #progress { position: absolute; bottom: 0; left: 0; right: 0; height: 3px; background: rgba(255, 255, 255, 0.14); }
+    #progressFill { height: 100%; width: 100%; background: rgba(255, 255, 255, 0.7); transform-origin: left; }
+
+    /* Countdown */
+    #countdown { position: absolute; inset: 0; z-index: 60; display: none; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.82); }
+    #countdown.active { display: flex; }
+    #countdown .cnum {
+      font-size: 30vmin; font-weight: 800; line-height: 1;
+      background: var(--brand-gradient); -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+    #countdown .cnum.go { font-size: 18vmin; letter-spacing: 0.04em; }
+    .cnum.beat { animation: beat 0.7s var(--md-sys-motion-easing-emphasized); }
+    @keyframes beat { 0% { transform: scale(0.4); opacity: 0; } 30% { opacity: 1; } 100% { transform: scale(1.25); opacity: 0; } }
+
+    /* ---------- RESULTS ---------- */
+    .res-inner { max-width: 520px; margin: 0 auto; padding: max(28px, env(safe-area-inset-top)) 22px 40px; text-align: center; }
+    .res-inner .crown { font-size: 46px; }
+    .res-inner h2 { margin: 6px 0 4px; }
+    .res-inner .sub { color: var(--md-sys-color-on-surface-variant); font-size: 14px; margin: 0 0 26px; }
+    .rank {
+      display: flex; align-items: center; gap: 14px;
+      background: var(--md-sys-color-surface-container);
+      border: 1.5px solid var(--md-sys-color-outline-variant);
+      border-radius: var(--md-sys-shape-corner-lg); padding: 14px 16px; margin-bottom: 10px; text-align: left;
+    }
+    .rank.win { border-color: var(--md-sys-color-primary); background: var(--md-sys-color-surface-container-high); }
+    .rank .pos { font-size: 18px; font-weight: 800; width: 26px; color: var(--md-sys-color-on-surface-variant); font-variant-numeric: tabular-nums; }
+    .rank.win .pos { color: var(--md-sys-color-tertiary); }
+    .rank .swt { width: 34px; height: 34px; border-radius: var(--md-sys-shape-corner-sm); flex: none; }
+    .rank .rname { flex: 1; font-size: 16px; font-weight: 700; }
+    .rank .rname small { display: block; font-weight: 500; color: var(--md-sys-color-on-surface-variant); font-size: 12px; }
+    .rank .rscore { font-size: 24px; font-weight: 800; font-variant-numeric: tabular-nums; }
+    .res-actions { display: flex; gap: 12px; margin-top: 22px; }
+    .res-actions .button { flex: 1; }
+    .res-foot { margin-top: 18px; }
+  </style>
+</head>
+<body>
+
+<!-- ========== SETUP ========== -->
+<section id="setup" class="screen active">
+  <div class="setup-inner">
+    <a class="back-link state-layer" href="../../index.html" aria-label="Back to PlayPad">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      PlayPad
+    </a>
+    <div class="brand"><h1 class="display-small brand-wordmark">Colour Rush</h1></div>
+    <p class="tagline body-medium">Coloured dots scatter across the screen — <em>tap your own colour before it vanishes.</em> Tap someone else's by mistake and you've just scored it for them. Quickest, most selective hands win.</p>
+
+    <div class="block">
+      <div class="label"><span>Players</span></div>
+      <div class="chips" id="playerChips"></div>
+    </div>
+
+    <div class="block" id="colourBlock">
+      <div class="label"><span>Pick colours</span><span class="hint">one each, all different</span></div>
+      <div id="playerRows"></div>
+    </div>
+
+    <div class="block">
+      <div class="label"><span>Round length</span></div>
+      <div class="chips" id="durationChips"></div>
+    </div>
+
+    <div class="block">
+      <div class="label"><span>Speed</span><span class="hint">how fast dots come &amp; go</span></div>
+      <div class="chips" id="speedChips"></div>
+    </div>
+
+    <div class="block">
+      <div class="toggle-row">
+        <div><div class="t-label">Sound</div><div class="t-sub">A note each time a dot is tapped</div></div>
+        <button class="switch" id="soundToggle" aria-pressed="true" aria-label="Sound"></button>
+      </div>
+    </div>
+
+    <button class="start-btn state-layer" id="startBtn" disabled>Start</button>
+    <p class="start-note" id="startNote">Pick a colour for every player to start.</p>
+  </div>
+</section>
+
+<!-- ========== GAME ========== -->
+<section id="game" class="screen">
+  <div id="playArea"></div>
+  <div id="topbar">
+    <div id="sessClock">0:00</div>
+    <div id="scoreChips"></div>
+    <button id="quitBtn" aria-label="Quit game">✕</button>
+    <div id="progress"><div id="progressFill"></div></div>
+  </div>
+</section>
+
+<div id="countdown"><div class="cnum" id="cnum">3</div></div>
+
+<!-- Screen-reader-only live region: announces the round outcome (the spatial tap
+     loop itself has no keyboard/AT equivalent — see design-review.md). -->
+<p id="srStatus" class="visually-hidden" role="status" aria-live="polite"></p>
+
+<!-- ========== RESULTS ========== -->
+<section id="results" class="screen">
+  <div class="res-inner">
+    <div class="crown">🏆</div>
+    <h2 id="winTitle" class="headline-small">Winner</h2>
+    <p class="sub" id="winSub"></p>
+    <div id="rankList"></div>
+    <div class="res-actions">
+      <button class="button button--outlined state-layer" id="changeBtn">Change settings</button>
+      <button class="button button--filled state-layer" id="againBtn">Play again</button>
+    </div>
+    <div class="res-foot">
+      <a class="back-link state-layer" href="../../index.html" aria-label="Back to PlayPad">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Back to PlayPad
+      </a>
+    </div>
+  </div>
+</section>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- config ----------
+  var PALETTE = [
+    { name:"Red",    hex:"#FF453A" },
+    { name:"Blue",   hex:"#0A84FF" },
+    { name:"Green",  hex:"#30D158" },
+    { name:"Yellow", hex:"#FFD60A" },
+    { name:"Orange", hex:"#FF9F0A" },
+    { name:"Purple", hex:"#BF5AF2" },
+    { name:"Pink",   hex:"#FF375F" },
+    { name:"Cyan",   hex:"#64D2FF" }
+  ];
+  var DURATIONS = [ {s:30,l:"0:30"}, {s:60,l:"1:00"}, {s:90,l:"1:30"}, {s:120,l:"2:00"} ];
+  // speed presets: spawn interval (ms between new dots) + lifespan (ms a dot lives)
+  var SPEEDS = [
+    { spawn:750, life:2400, l:"Chill"  },
+    { spawn:500, life:2000, l:"Normal" },
+    { spawn:360, life:1500, l:"Fast"   },
+    { spawn:260, life:1050, l:"Insane" }
+  ];
+  // pleasant per-player tones (C major pentatonic)
+  var TONES = [523.25, 659.25, 783.99, 987.77];
+  var MAX_DOTS = 12;
+
+  // ---------- setup state ----------
+  var numPlayers = 2;
+  var selections = [null, null, null, null];
+  var durationSec = 60;
+  var speedIdx = 1;             // Normal
+  var soundOn = true;
+
+  // ---------- game state ----------
+  var players = [];             // {idx,name,hex,score,chipEl,numEl}
+  var ownerByHex = {};          // hex -> player idx
+  var dots = [];                // live dot elements
+  var spawnCounts = {};         // hex -> times spawned (for balancing)
+  var running = false;
+  var sessionStartTs = 0, sessionEndTs = 0;
+  var nextSpawnTs = 0;
+  var spawnIntervalMs = 500, lifeMs = 2000;
+  var rafId = null;
+  var areaW = 0, areaH = 0, topBarH = 60, dotSize = 70;
+  var audioCtx = null;
+  var reduceMotion = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+
+  // ---------- helpers ----------
+  function $(id){ return document.getElementById(id); }
+  function el(tag, cls){ var e = document.createElement(tag); if(cls) e.className = cls; return e; }
+  function colourName(hex){ for(var i=0;i<PALETTE.length;i++){ if(PALETTE[i].hex===hex) return PALETTE[i].name; } return ""; }
+  function show(s){ ["setup","game","results"].forEach(function(x){ $(x).classList.toggle("active", x===s); }); }
+
+  // ---------- audio ----------
+  function initAudio(){
+    if(audioCtx) return;
+    try { var AC = window.AudioContext || window.webkitAudioContext; audioCtx = new AC(); } catch(e){ audioCtx = null; }
+  }
+  function beep(freq, dur, type, gain){
+    if(!soundOn || !audioCtx) return;
+    try{
+      var o = audioCtx.createOscillator(), g = audioCtx.createGain();
+      o.type = type || "sine"; o.frequency.value = freq;
+      o.connect(g); g.connect(audioCtx.destination);
+      var t = audioCtx.currentTime;
+      g.gain.setValueAtTime(gain || 0.16, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.start(t); o.stop(t + dur);
+    }catch(e){ /* a single missed beep must never interrupt gameplay */ }
+  }
+  function toneFor(idx){ beep(TONES[idx % TONES.length], 0.16, "sine", 0.17); }
+  function soundTick(){ beep(520,0.07,"sine",0.14); }
+  function soundGo(){ beep(880,0.18,"sine",0.22); }
+
+  // ============================================================
+  //  SETUP UI
+  // ============================================================
+  function buildChips(container, items, getActive, onPick){
+    container.innerHTML = "";
+    items.forEach(function(it){
+      var b = el("button","sel-chip");
+      if(it.sub){ b.innerHTML = it.main + "<small>" + it.sub + "</small>"; } else { b.textContent = it.main; }
+      b.setAttribute("aria-pressed", getActive(it) ? "true" : "false");
+      b.addEventListener("click", function(){ onPick(it); });
+      container.appendChild(b);
+    });
+  }
+  function renderPlayerChips(){
+    buildChips($("playerChips"),
+      [2,3,4].map(function(n){ return { main:String(n), n:n }; }),
+      function(it){ return it.n === numPlayers; },
+      function(it){ numPlayers = it.n; for(var i=numPlayers;i<4;i++){ selections[i]=null; } renderPlayerChips(); renderPlayerRows(); refreshStart(); });
+  }
+  function renderPlayerRows(){
+    var wrap = $("playerRows"); wrap.innerHTML = "";
+    for(var i=0;i<numPlayers;i++){
+      (function(slot){
+        var row = el("div","player-row");
+        var head = el("div","player-head");
+        var dot = el("div","player-dot");
+        if(selections[slot]) dot.style.background = selections[slot];
+        var name = el("div","player-name");
+        var pname = selections[slot] ? colourName(selections[slot]) : "tap a colour";
+        name.innerHTML = "Player " + (slot+1) + ' <span class="pick">· ' + pname + "</span>";
+        head.appendChild(dot); head.appendChild(name); row.appendChild(head);
+        var sw = el("div","swatches");
+        PALETTE.forEach(function(c){
+          var b = el("button","swatch");
+          b.style.background = c.hex;
+          var takenByOther = selections.indexOf(c.hex) !== -1 && selections[slot] !== c.hex;
+          if(takenByOther) b.setAttribute("disabled","");
+          b.setAttribute("aria-pressed", selections[slot] === c.hex ? "true" : "false");
+          b.setAttribute("aria-label", c.name);
+          b.addEventListener("click", function(){
+            if(takenByOther) return;
+            selections[slot] = (selections[slot] === c.hex) ? null : c.hex;
+            renderPlayerRows(); refreshStart();
+          });
+          sw.appendChild(b);
+        });
+        row.appendChild(sw); wrap.appendChild(row);
+      })(i);
+    }
+  }
+  function renderDurationChips(){
+    buildChips($("durationChips"),
+      DURATIONS.map(function(d){ return { main:d.l, s:d.s }; }),
+      function(it){ return it.s === durationSec; },
+      function(it){ durationSec = it.s; renderDurationChips(); });
+  }
+  function renderSpeedChips(){
+    buildChips($("speedChips"),
+      SPEEDS.map(function(s,i){ return { main:s.l, sub:(s.spawn/1000).toFixed(2)+"s", i:i }; }),
+      function(it){ return it.i === speedIdx; },
+      function(it){ speedIdx = it.i; renderSpeedChips(); });
+  }
+  function chosenCount(){ var c=0; for(var i=0;i<numPlayers;i++){ if(selections[i]) c++; } return c; }
+  function refreshStart(){
+    var ready = chosenCount() === numPlayers;
+    $("startBtn").disabled = !ready;
+    $("startNote").textContent = ready
+      ? "Gather round one screen. Scores read best from the bottom edge."
+      : "Pick a colour for every player to start.";
+  }
+
+  $("soundToggle").addEventListener("click", function(){
+    soundOn = !soundOn; this.setAttribute("aria-pressed", soundOn ? "true" : "false");
+  });
+  $("startBtn").addEventListener("click", function(){
+    if($("startBtn").disabled) return;
+    initAudio(); if(audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+    startGame();
+  });
+
+  // ============================================================
+  //  GAME
+  // ============================================================
+  function measureArea(){
+    areaW = window.innerWidth; areaH = window.innerHeight;
+    var tb = $("topbar").getBoundingClientRect();
+    topBarH = tb.height || 60;
+    dotSize = Math.max(58, Math.min(88, Math.round(Math.min(areaW, areaH) * 0.16)));
+  }
+  window.addEventListener("resize", function(){ if(running) measureArea(); });
+  window.addEventListener("orientationchange", function(){ if(running) setTimeout(measureArea, 150); });
+
+  function buildScoreboard(){
+    players = []; ownerByHex = {}; spawnCounts = {};
+    var chips = $("scoreChips"); chips.innerHTML = "";
+    for(var i=0;i<numPlayers;i++){
+      var hex = selections[i];
+      var chip = el("div","chipscore");
+      var sw = el("span","sw"); sw.style.background = hex;
+      var nv = el("span","nv"); nv.textContent = "0";
+      chip.appendChild(sw); chip.appendChild(nv);
+      chips.appendChild(chip);
+      players.push({ idx:i, name:"P"+(i+1), hex:hex, score:0, chipEl:chip, numEl:nv });
+      ownerByHex[hex] = i;
+      spawnCounts[hex] = 0;
+    }
+  }
+
+  function startGame(){
+    clearDots();
+    buildScoreboard();
+    show("game");
+    measureArea();
+    $("progressFill").style.transform = "scaleX(1)";
+    countdown(function(){
+      running = true;
+      sessionStartTs = performance.now();
+      sessionEndTs = sessionStartTs + durationSec * 1000;
+      spawnIntervalMs = SPEEDS[speedIdx].spawn;
+      lifeMs = SPEEDS[speedIdx].life;
+      nextSpawnTs = sessionStartTs;       // first dot immediately
+      rafId = requestAnimationFrame(loop);
+    });
+  }
+
+  function countdown(done){
+    var overlay = $("countdown"), cnum = $("cnum");
+    overlay.classList.add("active");
+    var seq = ["3","2","1","GO"], i = 0;
+    function step(){
+      if(i >= seq.length){ overlay.classList.remove("active"); done(); return; }
+      var val = seq[i];
+      cnum.textContent = val;
+      cnum.className = "cnum" + (val==="GO" ? " go" : "");
+      void cnum.offsetWidth; cnum.classList.add("beat");
+      if(val==="GO") soundGo(); else soundTick();
+      i++;
+      setTimeout(step, val==="GO" ? 600 : 700);
+    }
+    step();
+  }
+
+  // choose the colour that has spawned least so far (random tiebreak) -> balanced
+  function pickSpawnHex(){
+    var min = Infinity, i;
+    for(i=0;i<players.length;i++){ var c = spawnCounts[players[i].hex]; if(c < min) min = c; }
+    var pool = [];
+    for(i=0;i<players.length;i++){ if(spawnCounts[players[i].hex] === min) pool.push(players[i].hex); }
+    return pool[Math.floor(Math.random()*pool.length)];
+  }
+
+  function collides(x, y, size){
+    var r = size; // require centres at least one diameter apart (no overlap)
+    for(var i=0;i<dots.length;i++){
+      var d = dots[i];
+      var dx = (d.__x) - x, dy = (d.__y) - y;
+      if(dx*dx + dy*dy < r*r) return true;
+    }
+    return false;
+  }
+  function findSpot(size){
+    var pad = 8;
+    var minX = pad, maxX = areaW - size - pad;
+    var minY = topBarH + pad, maxY = areaH - size - pad;
+    if(maxX < minX) maxX = minX;
+    if(maxY < minY) maxY = minY;
+    for(var t=0;t<16;t++){
+      var x = minX + Math.random()*(maxX-minX);
+      var y = minY + Math.random()*(maxY-minY);
+      if(!collides(x, y, size)) return { x:x, y:y };
+    }
+    return { x:minX + Math.random()*(maxX-minX), y:minY + Math.random()*(maxY-minY) };
+  }
+
+  function spawnDot(){
+    if(dots.length >= MAX_DOTS) return;
+    var hex = pickSpawnHex();
+    spawnCounts[hex] = (spawnCounts[hex] || 0) + 1;
+    var pos = findSpot(dotSize);
+    var d = el("div","dot");
+    d.style.width = d.style.height = dotSize + "px";
+    d.style.left = pos.x + "px";
+    d.style.top = pos.y + "px";
+    d.style.background = hex;
+    d.__x = pos.x; d.__y = pos.y; d.__owner = ownerByHex[hex]; d.__removed = false; d.__done = false;
+    if(reduceMotion){
+      // The dotlife animation is suppressed under reduced motion, so animationend
+      // would fire instantly. Show the dot statically and time its life ourselves
+      // so it stays tappable for the full lifespan.
+      d.classList.add("dot--static");
+      setTimeout(function(){ removeDot(d); }, lifeMs);
+    } else {
+      d.style.animationDuration = lifeMs + "ms";
+    }
+    d.addEventListener("pointerdown", onDotTap, { passive:false });
+    d.addEventListener("contextmenu", function(ev){ ev.preventDefault(); });
+    d.addEventListener("animationend", function(){ removeDot(d); });
+    $("playArea").appendChild(d);
+    dots.push(d);
+  }
+
+  function onDotTap(ev){
+    ev.preventDefault();
+    var d = ev.currentTarget;
+    if(d.__done || !running) return;
+    d.__done = true;                          // claimed; ignore further fingers
+    var owner = players[d.__owner];
+    owner.score++;
+    owner.numEl.textContent = String(owner.score);
+    bump(owner.numEl);
+    toneFor(owner.idx);
+    d.classList.add("tapped");                // burst, then animationend removes it
+  }
+
+  function bump(node){
+    node.style.transform = "scale(1.4)";
+    setTimeout(function(){ node.style.transform = "scale(1)"; }, 120);
+  }
+
+  function removeDot(d){
+    if(d.__removed) return;
+    d.__removed = true;
+    if(d.parentNode) d.parentNode.removeChild(d);
+    var i = dots.indexOf(d); if(i>=0) dots.splice(i,1);
+  }
+  function clearDots(){
+    for(var i=dots.length-1;i>=0;i--){ removeDot(dots[i]); }
+    dots.length = 0;
+  }
+
+  function loop(){
+    if(!running) return;
+    var now = performance.now();
+    if(now >= sessionEndTs){ endGame(); return; }
+
+    // spawn; if we fell far behind (e.g. backgrounded), skip the backlog
+    if(now - nextSpawnTs > spawnIntervalMs * 2) nextSpawnTs = now;
+    while(now >= nextSpawnTs){ spawnDot(); nextSpawnTs += spawnIntervalMs; }
+
+    var remain = Math.max(0, sessionEndTs - now);
+    var totalS = Math.ceil(remain/1000);
+    var mm = Math.floor(totalS/60), ss = totalS % 60;
+    $("sessClock").textContent = mm + ":" + (ss<10?"0":"") + ss;
+    $("progressFill").style.transform = "scaleX(" + (remain/(durationSec*1000)) + ")";
+
+    rafId = requestAnimationFrame(loop);
+  }
+
+  function endGame(){
+    running = false;
+    if(rafId) cancelAnimationFrame(rafId);
+    clearDots();
+    showResults();
+  }
+
+  $("quitBtn").addEventListener("click", function(){
+    running = false;
+    if(rafId) cancelAnimationFrame(rafId);
+    clearDots();
+    show("setup");
+  });
+
+  // ============================================================
+  //  RESULTS
+  // ============================================================
+  function showResults(){
+    var sorted = players.slice().sort(function(a,b){ return b.score - a.score; });
+    var top = sorted[0].score;
+    var winners = sorted.filter(function(p){ return p.score === top; });
+    var tie = winners.length > 1 && top > 0;
+
+    if(top === 0){
+      $("winTitle").textContent = "Nobody scored";
+      $("winSub").textContent = "Too fast? Run it back.";
+    } else if(tie){
+      $("winTitle").textContent = "It's a tie!";
+      $("winSub").textContent = winners.map(function(p){ return p.name; }).join(" & ") + " — " + top + " each";
+    } else {
+      $("winTitle").textContent = sorted[0].name + " wins";
+      $("winSub").textContent = top + (top===1 ? " point" : " points");
+    }
+
+    var list = $("rankList"); list.innerHTML = "";
+    var pos = 0, lastScore = null, shown = 0;
+    sorted.forEach(function(p){
+      shown++;
+      if(p.score !== lastScore){ pos = shown; lastScore = p.score; }
+      var isWin = (p.score === top && top > 0);
+      var row = el("div","rank" + (isWin ? " win" : ""));
+      var ps = el("div","pos"); ps.textContent = pos;
+      var swt = el("div","swt"); swt.style.background = p.hex;
+      var nm = el("div","rname"); nm.innerHTML = p.name + "<small>" + colourName(p.hex) + "</small>";
+      var sc = el("div","rscore"); sc.textContent = p.score;
+      row.appendChild(ps); row.appendChild(swt); row.appendChild(nm); row.appendChild(sc);
+      list.appendChild(row);
+    });
+    $("srStatus").textContent = $("winTitle").textContent + ". " + $("winSub").textContent;
+    show("results");
+  }
+
+  $("againBtn").addEventListener("click", function(){
+    initAudio(); if(audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+    startGame();
+  });
+  $("changeBtn").addEventListener("click", function(){ show("setup"); });
+
+  // global gesture guards
+  document.addEventListener("gesturestart", function(e){ e.preventDefault(); });
+  document.addEventListener("dblclick", function(e){ e.preventDefault(); });
+
+  // ---------- boot ----------
+  renderPlayerChips();
+  renderPlayerRows();
+  renderDurationChips();
+  renderSpeedChips();
+  refreshStart();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,91 @@
+<!-- brain-version: 3 -->
+# PlayPad — Project Brain
+
+> A colourful little hub of quick, playable browser mini-games.
+
+PlayPad is a static, build-free web hub that presents a growing catalog of bite-size browser games behind one branded front door. It is styled with Material Design 3 and runs from the file system or any static host — no install, no backend. It launches with one game, Colour Rush, and is built so new games drop in with a one-line change.
+
+> This file is **auto-loaded at the start of every Claude session**. It is the orchestrator: it tells you what to read, how to build, and how to keep itself current. Treat its protocols as standing instructions, not suggestions.
+
+**New here? 30-second orientation:** this project keeps its knowledge in `docs/` and builds every feature through a short loop (below). To start: read the four files in the next section, then follow "How we build every feature." All the depth — tiers, design, QA, the review panel — is pulled in *only when a feature needs it*; you don't have to learn it up front. **Project tier:** Prototype.
+
+---
+
+## ⚡ Start of session — read these first
+
+Before doing any work, read in order:
+
+1. `docs/PROJECT.md` — vision, users, scope (the **why**)
+2. `docs/ARCHITECTURE.md` — current map of the app (the **what / where**)
+3. `docs/LEARNINGS.md` — gotchas not to repeat (the **lessons**)
+4. `docs/IDEAS.md` — backlog / what's next (the **next**)
+
+Skim as needed: `docs/WORKFLOW.md` (how we build), `docs/DESIGN-SYSTEM.md` (how it looks), `docs/PRODUCT-PANEL.md` (the review panel), `docs/CODE_QUALITY.md` (the standard), `docs/findings-ledger.md` (recurring issues), `docs/DECISIONS.md` (why things are the way they are).
+
+---
+
+## 🛠️ How we build every feature — the self-contained loop
+
+The full procedure is in `docs/WORKFLOW.md`. **Do not skip phases — the discipline is the point.**
+
+1. **REQUIREMENTS** — copy `features/_TEMPLATE/` to `features/<feature-name>/` (see `features/_EXAMPLE/` for a worked example) and fill `requirements.md`: acceptance criteria + business requirements + target personas + feature tier. The **Senior Tech Lead** does a quick feasibility check (advisory).
+   - **1b — DESIGN (UI changes only):** small tweaks → a lite check against `docs/DESIGN-SYSTEM.md`; significant UI → the **Design Roundtable** (Tech Lead + PM + UX propose options) and **you choose** the approach. See `docs/WORKFLOW.md`.
+2. **TESTS** — fill `test-plan.md` and write the actual tests that encode "done". Tests come *before* the implementation is finished.
+3. **IMPLEMENT** — build until the tests pass, strictly following `docs/CODE_QUALITY.md`.
+4. **QA — recursive multi-lens panel.** Spawn a **panel of independent QA agents in parallel**, one per dimension:
+   - **ACCURACY** — does it produce correct output? (calculations, edge cases, business rules)
+   - **QUALITY** — does it meet `CODE_QUALITY.md`? (naming, comments, tests, complexity)
+   - **COMPLIANCE** — audit trail, PII handling, required docs, the four-tier comment system
+   - **RISK** — security: injection, authn/authz, secrets, input validation at trust boundaries
+
+   Hand each agent the `requirements.md`, `test-plan.md`, and the slice of `CODE_QUALITY.md` for its lens. Each returns classified findings (severity × dimension). **Merge + dedupe** them into `features/<feature-name>/qa-report.md` (the Post-Run Findings Report). If anything blocks (any CRITICAL/HIGH), **FIX and re-spawn the panel.** Loop until the report is clean. *The panel is the pipeline — no external CI is required.*
+5. **PRODUCT & UX VALIDATION.** After technical QA passes, prove the feature is *worth shipping*. Spawn — from `docs/PRODUCT-PANEL.md` — the **Senior PM** (does it meet the business requirement? → `PASS`/`NEEDS_REVISION`, loop until PASS), then the feature's **1–3 target personas** (do they complete their goal, is it worth it, would they return? — scoring **baseline / value / satisfaction**). Any baseline/value-blocking critical goes to a **round table** (PM + UX designer + the raising persona) → plan → fix (back to step 3) → re-validate. Record in `features/<feature-name>/product-validation.md`. **Gate:** baseline **and** value must be met (satisfaction is scored, not gated); the round table is capped at **3 rounds**, then escalates to you. *Personas reason from requirements + code + screenshots; if a preview is running, one driver captures it for them — no external tool is required.*
+6. **CAPTURE** — record what you learned and update the brain (next section).
+
+---
+
+## ♻️ End of work — keep the brain current (the recursive part)
+
+After any meaningful change, **before you finish**:
+
+- **Update `docs/ARCHITECTURE.md`** if structure, data model, or flow changed. Keep it a **MAP that links to code** — an overview, not a copy. Prune stale lines. Target **< ~150 lines**.
+- **Append to `docs/LEARNINGS.md`** any non-obvious gotcha: `date · area · lesson · how to apply`. No duplicates.
+- **Append to `docs/DECISIONS.md`** any non-obvious choice: `what · why · alternatives rejected`.
+- **Update `docs/findings-ledger.md`**: increment recurrence counts for repeat findings and apply escalation (**2× = ticket, 3× = tech-debt priority, 4× = STOP-SHIP**).
+- **Update `docs/IDEAS.md`**: move shipped ideas out; add the non-blocking value/satisfaction feedback from the persona panel as future improvements.
+
+> **RULE:** every brain doc is an **OVERVIEW**. Link to detail; never inline large code or dumps. If a file bloats, consolidate it.
+
+---
+
+## 🧭 Standards
+
+- `docs/CODE_QUALITY.md` — the non-negotiable code-quality + security standard. Read it before writing code.
+- `docs/CONVENTIONS.md` — project-local stack, naming, style, and the **dev commands** QA runs.
+- `docs/DESIGN-SYSTEM.md` — how the product looks: tokens, components, accessibility floor. Read before any UI work.
+- `docs/PRODUCT-PANEL.md` — the **review panel**: the Senior PM, Senior UX Designer, Senior Tech Lead, and the user personas that validate features.
+
+---
+
+## 🗺️ File map
+
+> Keep this current via the maintenance step. Pointers to the key code, not a full listing.
+
+- **Hub / catalog:** `index.html` (renders from the registry) · `games.js` (`window.GAMES` — add a game here).
+- **Design system:** `styles/tokens.css` (MD3 tokens, light+dark) · `styles/base.css` (components, the rail).
+- **Games:** `games/<slug>/index.html` — today `games/colour-rush/`, `games/snap/`, `games/claw-catch/` (solo, Canvas), `games/super-decoder/` (solo, DOM logic), `games/neon-rush/` (solo, 3D Three.js — vendored `three.min.js` r147 + `GLTFLoader.js` + CC0 `assets/` (GLB characters, synthwave music, SFX) + a game-local `CLAUDE.md`; first game to persist to localStorage and first with vendored assets). (Reference-only, never shipped: `Old prototype/`.)
+- **Brand / deploy:** `icons/` · `manifest.webmanifest` · `_headers` · `tools/build-dist.ps1` → `dist/`.
+- **The full map:** `docs/ARCHITECTURE.md` (structure, data model, flows, modules).
+
+---
+
+## ▶️ Run / test
+
+**Stack:** Vanilla HTML/CSS/JS, no build step (static; runs from file:// or any static host)
+
+The canonical commands live in `docs/CONVENTIONS.md` → *Dev commands* (Phase 4 QA runs them). Quick reference:
+
+- **Run the app:** open `index.html` directly, or `python -m http.server 5500` → http://localhost:5500/ (preview config: `.claude/launch.json` → `playpad`).
+- **Build for deploy:** `powershell -ExecutionPolicy Bypass -File tools\build-dist.ps1` → upload `dist/` to Cloudflare Pages (Direct Upload; `_headers` sits at the dist root).
+- **Test:** no automated harness at Prototype tier — QA is the in-workflow multi-lens panel (`docs/WORKFLOW.md`).
+- **Lint / type-check:** none (vanilla, no build step).

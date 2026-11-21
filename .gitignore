@@ -1,0 +1,45 @@
+# Secrets / env — never commit these
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# Dependencies
+node_modules/
+.venv/
+venv/
+__pycache__/
+target/
+vendor/
+
+# Build output
+dist/
+build/
+out/
+.next/
+coverage/
+
+# Brain backups (kept locally, not in VC)
+docs/.brain-backup/
+
+# Editor / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Logs / temp
+*.log
+*.tmp
+tmp/
+
+# Local-only (never public)
+Old prototype/
+poly_robot.html
+s1.html
+s2.html
+.claude/settings.local.json
+desktop.ini
+

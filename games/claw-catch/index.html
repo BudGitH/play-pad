@@ -1,0 +1,1536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <title>Claw Catch — PlayPad</title>
+
+  <link rel="icon" href="../../icons/favicon.svg" type="image/svg+xml" />
+  <meta name="theme-color" content="#08080c" />
+
+  <!-- Shared PlayPad design system -->
+  <link rel="stylesheet" href="../../styles/tokens.css" />
+  <link rel="stylesheet" href="../../styles/base.css" />
+
+  <!--
+    Claw Catch — a solo arcade claw-machine game (PlayPad game #3, PLAY-003).
+    Self-contained, build-free. Mirrors games/snap/index.html for its setup/results/HUD chrome
+    (shared MD3 tokens), but the PLAY STAGE is an HTML5 Canvas: a trolley rides a top rail, a claw
+    hangs from a cable and SWINGS like a real crane (a tunable trolley-pendulum), and the player
+    drops it to grab themed prizes from a bin and dump them down a chute for points within a timed
+    round. Prizes refill periodically up to a CAP so the bin is never trivially full. Scoring is
+    rarity-weighted AND transparent — a prize key (setup + in-game) shows every prize's points.
+    Controls echo the reference image: an on-screen joystick + a round grab button, plus keyboard.
+    Standards: docs/CODE_QUALITY.md at the relaxed Prototype level (docs/CONVENTIONS.md PLAY-001).
+    Why Canvas (a departure from the DOM-only Colour Rush/Snap): the swinging cable, opening claw
+    arms, falling prizes, and a held prize riding the tip are far cleaner on a canvas — see
+    docs/DECISIONS.md. All INTERACTIVE controls remain real DOM buttons (≥48px, focus rings).
+  -->
+  <style>
+    /* Local decorative theme tokens — cabinet gradient per theme (mirrors Snap's pattern). */
+    :root {
+      --claw-theme-critters-back: linear-gradient(160deg, #1f7a3f, #0d3b21);
+      --claw-theme-sweets-back:   linear-gradient(160deg, #c84f9e, #5e1a55);
+      --claw-theme-space-back:    linear-gradient(160deg, #2b46c8, #10183f);
+      --deck-h: clamp(118px, 21vh, 160px);
+    }
+
+    /* ---- App shell (full-screen immersive game) — reused from Snap ---- */
+    html, body { margin: 0; height: 100%; width: 100%; }
+    body {
+      position: fixed; inset: 0; overflow: hidden;
+      background: var(--md-sys-color-surface);
+      color: var(--md-sys-color-on-surface);
+      -webkit-user-select: none; user-select: none;
+      overscroll-behavior: none; touch-action: manipulation;
+    }
+    .screen { position: absolute; inset: 0; display: none; }
+    .screen.active { display: block; }
+    /* The game screen stacks the canvas stage above the control deck. */
+    #game.active { display: flex; flex-direction: column; background: #000; }
+    #setup, #results {
+      overflow-y: auto; -webkit-overflow-scrolling: touch;
+      background: var(--md-sys-color-surface);
+    }
+
+    .back-link {
+      display: inline-flex; align-items: center; gap: 6px;
+      color: var(--md-sys-color-on-surface-variant);
+      padding: 8px 12px 8px 4px; margin: 0 0 6px -4px;
+      border-radius: var(--md-sys-shape-corner-full);
+      font-size: var(--md-sys-typescale-label-large-size);
+      font-weight: var(--md-sys-typescale-label-large-weight);
+    }
+    .back-link:hover { color: var(--md-sys-color-on-surface); }
+
+    /* ---------- SETUP (chrome reused from Snap) ---------- */
+    .setup-inner { max-width: 560px; margin: 0 auto; padding: max(20px, env(safe-area-inset-top)) 22px 48px; }
+    .brand { margin: 2px 0 6px; }
+    .brand h1 { margin: 0; }
+    .tagline { color: var(--md-sys-color-on-surface-variant); margin: 0 0 26px; max-width: 48ch; }
+    .tagline em { color: var(--md-sys-color-on-surface); font-style: normal; font-weight: 600; }
+
+    .block { margin-bottom: 26px; }
+    .block > .label {
+      display: flex; justify-content: space-between; align-items: baseline;
+      text-transform: uppercase; color: var(--md-sys-color-on-surface-variant);
+      margin: 0 2px 12px;
+      font-size: var(--md-sys-typescale-label-medium-size);
+      font-weight: var(--md-sys-typescale-label-medium-weight);
+      letter-spacing: var(--md-sys-typescale-label-medium-tracking);
+    }
+    .label .hint { text-transform: none; letter-spacing: 0; font-weight: 500; }
+
+    /* Selection chips (duration / difficulty) — reused */
+    .chips { display: flex; gap: 10px; flex-wrap: wrap; }
+    .sel-chip {
+      position: relative; flex: 1 1 0; min-width: 62px; padding: 14px 8px;
+      border-radius: var(--md-sys-shape-corner-md);
+      background: var(--md-sys-color-surface-container);
+      border: 1.5px solid var(--md-sys-color-outline-variant);
+      color: var(--md-sys-color-on-surface);
+      font-size: 16px; font-weight: 600; text-align: center;
+      transition: transform var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-emphasized),
+                  border-color var(--md-sys-motion-duration-short3),
+                  background var(--md-sys-motion-duration-short3);
+    }
+    .sel-chip small { display: block; font-size: 11px; font-weight: 500; color: var(--md-sys-color-on-surface-variant); margin-top: 2px; }
+    .sel-chip[aria-pressed="true"] {
+      border-color: var(--md-sys-color-primary);
+      background: var(--md-sys-color-secondary-container);
+      color: var(--md-sys-color-on-secondary-container);
+    }
+    .sel-chip[aria-pressed="true"] small { color: var(--md-sys-color-on-secondary-container); }
+    .sel-chip:active { transform: scale(0.96); }
+    .sel-chip:focus-visible { outline: 3px solid var(--md-sys-color-primary); outline-offset: 2px; }
+
+    /* Theme picker — mechanics mirror Snap's .theme-card */
+    .theme-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .theme-card {
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+      padding: 14px 8px 12px;
+      border-radius: var(--md-sys-shape-corner-lg);
+      background: var(--md-sys-color-surface-container);
+      border: 1.5px solid var(--md-sys-color-outline-variant);
+      color: var(--md-sys-color-on-surface);
+      transition: transform var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-emphasized),
+                  border-color var(--md-sys-motion-duration-short3),
+                  background var(--md-sys-motion-duration-short3);
+    }
+    .theme-card .preview {
+      width: 100%; max-width: 84px; aspect-ratio: 3 / 4;
+      border-radius: var(--md-sys-shape-corner-md);
+      display: grid; place-items: center; font-size: 30px; color: #fff;
+      box-shadow: var(--md-sys-elevation-level1);
+    }
+    .theme-card .tname { font-size: 14px; font-weight: 700; }
+    .theme-card:active { transform: scale(0.96); }
+    .theme-card[aria-pressed="true"] {
+      border-color: var(--md-sys-color-primary);
+      background: var(--md-sys-color-secondary-container);
+      color: var(--md-sys-color-on-secondary-container);
+    }
+    .theme-card:focus-visible { outline: 3px solid var(--md-sys-color-primary); outline-offset: 2px; }
+
+    /* Prize key — the transparency surface: every prize, its rarity, and its points. */
+    .keylist {
+      background: var(--md-sys-color-surface-container);
+      border: 1.5px solid var(--md-sys-color-outline-variant);
+      border-radius: var(--md-sys-shape-corner-lg);
+      padding: 6px 4px;
+    }
+    .key-note { color: var(--md-sys-color-on-surface-variant); font-size: 12px; padding: 8px 12px 6px; line-height: 1.5; }
+    .key-row { display: flex; align-items: center; gap: 12px; padding: 8px 12px; }
+    .key-row + .key-row { border-top: 1px solid var(--md-sys-color-outline-variant); }
+    .key-emoji { font-size: 26px; line-height: 1; width: 30px; text-align: center; flex: none; }
+    .key-stars { flex: 1; color: var(--md-sys-color-tertiary); font-size: 13px; letter-spacing: 1px; }
+    .key-stars small { display: block; color: var(--md-sys-color-on-surface-variant); letter-spacing: 0; font-size: 11px; }
+    .key-pts {
+      font-size: 14px; font-weight: 800; font-variant-numeric: tabular-nums;
+      color: var(--md-sys-color-on-surface);
+      background: var(--md-sys-color-surface-container-highest);
+      border-radius: var(--md-sys-shape-corner-full); padding: 4px 12px; flex: none;
+    }
+
+    /* Sound toggle (MD3 switch) — reused */
+    .toggle-row {
+      display: flex; align-items: center; justify-content: space-between;
+      background: var(--md-sys-color-surface-container);
+      border: 1.5px solid var(--md-sys-color-outline-variant);
+      border-radius: var(--md-sys-shape-corner-md); padding: 14px 16px;
+    }
+    .toggle-row .t-label { font-size: 15px; font-weight: 600; }
+    .toggle-row .t-sub { font-size: 12px; color: var(--md-sys-color-on-surface-variant); margin-top: 2px; }
+    .switch {
+      width: 52px; height: 32px; border-radius: var(--md-sys-shape-corner-full);
+      background: var(--md-sys-color-surface-container-highest);
+      border: 2px solid var(--md-sys-color-outline);
+      position: relative; flex: none;
+      transition: background var(--md-sys-motion-duration-short3), border-color var(--md-sys-motion-duration-short3);
+    }
+    .switch::after {
+      content: ""; position: absolute; top: 6px; left: 6px;
+      width: 16px; height: 16px; border-radius: 50%;
+      background: var(--md-sys-color-outline);
+      transition: transform var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-emphasized),
+                  width var(--md-sys-motion-duration-short4), height var(--md-sys-motion-duration-short4),
+                  top var(--md-sys-motion-duration-short4), left var(--md-sys-motion-duration-short4),
+                  background var(--md-sys-motion-duration-short4);
+    }
+    .switch[aria-pressed="true"] { background: var(--md-sys-color-primary); border-color: var(--md-sys-color-primary); }
+    .switch[aria-pressed="true"]::after { top: 3px; left: 3px; width: 24px; height: 24px; background: var(--md-sys-color-on-primary); transform: translateX(20px); }
+
+    /* Start button — reused */
+    .start-btn {
+      width: 100%; padding: 18px; border: 0; margin-top: 8px;
+      border-radius: var(--md-sys-shape-corner-full);
+      font-size: 18px; font-weight: 700; letter-spacing: 0.01em;
+      color: var(--md-sys-color-on-primary); background: var(--md-sys-color-primary);
+      box-shadow: var(--md-sys-elevation-level1);
+      transition: transform var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-emphasized),
+                  opacity var(--md-sys-motion-duration-short3), box-shadow var(--md-sys-motion-duration-short3);
+    }
+    .start-btn:active { transform: scale(0.98); }
+    .start-note { text-align: center; color: var(--md-sys-color-on-surface-variant); font-size: 12.5px; margin-top: 12px; line-height: 1.5; }
+
+    /* ---------- GAME STAGE (canvas) ---------- */
+    #stage { position: relative; flex: 1 1 auto; min-height: 0; overflow: hidden; }
+    #clawCanvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+
+    /* HUD pill (clock · score · prize key · quit) — floats top-centre, like Snap's #hud. */
+    #hud {
+      position: absolute; left: 50%; top: max(10px, env(safe-area-inset-top)); transform: translateX(-50%); z-index: 30;
+      display: flex; align-items: center; gap: 6px;
+      padding: 4px 6px 4px 14px; border-radius: var(--md-sys-shape-corner-full);
+      background: rgba(0, 0, 0, 0.5); color: #fff;
+    }
+    #sessClock { font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; }
+    #hudScore { font-size: 13px; opacity: 0.9; font-variant-numeric: tabular-nums; }
+    #hudScore b { font-weight: 800; opacity: 1; }
+    /* 48px hit targets (WCAG 2.5.8) with a 36px visual circle (matches Snap/Colour Rush). */
+    #keyBtn, #quitBtn {
+      flex: none; position: relative; width: 48px; height: 48px; border: 0;
+      background: transparent; color: #fff; font-size: 17px; line-height: 1;
+      display: grid; place-items: center; border-radius: 50%;
+    }
+    #keyBtn::before, #quitBtn::before { content: ""; position: absolute; width: 36px; height: 36px; border-radius: 50%; background: rgba(255, 255, 255, 0.16); z-index: -1; }
+    #keyBtn[aria-pressed="true"]::before { background: var(--md-sys-color-primary); }
+
+    #progress { position: absolute; top: 0; left: 0; right: 0; height: 4px; background: rgba(255, 255, 255, 0.14); z-index: 40; }
+    #progressFill { height: 100%; width: 100%; background: rgba(255, 255, 255, 0.6); transform-origin: left; }
+
+    /* In-game prize key — an overlay panel toggled by #keyBtn. */
+    #keyPanel {
+      position: absolute; z-index: 45; top: 64px; left: 50%; transform: translateX(-50%);
+      width: min(360px, calc(100% - 24px)); max-height: 64%; overflow-y: auto;
+      background: var(--md-sys-color-surface-container-high);
+      border: 1px solid var(--md-sys-color-outline-variant);
+      border-radius: var(--md-sys-shape-corner-lg);
+      box-shadow: var(--md-sys-elevation-level3); padding: 6px; display: none;
+    }
+    #keyPanel.show { display: block; }
+    #keyPanel .keylist { border: 0; background: transparent; }
+
+    /* ---------- CONTROL DECK (echoes the reference: joystick · feedback · grab) ---------- */
+    #deck {
+      flex: none; height: var(--deck-h);
+      display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px;
+      padding: 10px clamp(12px, 4vw, 26px) calc(10px + env(safe-area-inset-bottom));
+      background: var(--md-sys-color-surface-container);
+      border-top: 1px solid var(--md-sys-color-outline-variant);
+    }
+
+    /* Joystick — pointer-drag the knob; springs back to centre on release. */
+    #joy {
+      position: relative; width: clamp(78px, 22vw, 104px); aspect-ratio: 1; border-radius: 50%;
+      background: radial-gradient(circle at 50% 38%, var(--md-sys-color-surface-container-highest), var(--md-sys-color-surface-container-low));
+      border: 1.5px solid var(--md-sys-color-outline-variant);
+      box-shadow: inset 0 2px 8px rgba(0,0,0,0.45); touch-action: none;
+    }
+    #joyKnob {
+      position: absolute; left: 50%; top: 50%; width: 42%; aspect-ratio: 1; border-radius: 50%;
+      background: radial-gradient(circle at 42% 34%, #ff7a8c, var(--md-sys-color-primary) 70%);
+      border: 2px solid rgba(255,255,255,0.18);
+      box-shadow: 0 3px 8px rgba(0,0,0,0.5), inset 0 2px 4px rgba(255,255,255,0.25);
+      transform: translate(-50%, -50%);
+    }
+    #joy:focus-visible { outline: 3px solid var(--md-sys-color-primary); outline-offset: 3px; }
+
+    /* Centre feedback chip — mirrors the reference's "Nice catch!" box; reflects the last action. */
+    #feedback {
+      justify-self: stretch; text-align: center;
+      min-height: 54px; display: grid; place-items: center; padding: 8px 12px;
+      border-radius: var(--md-sys-shape-corner-lg);
+      background: var(--md-sys-color-surface-container-high);
+      border: 1.5px solid var(--md-sys-color-outline-variant);
+      color: var(--md-sys-color-on-surface); font-weight: 700; font-size: clamp(13px, 3.6vw, 16px);
+      transition: border-color var(--md-sys-motion-duration-short3), background var(--md-sys-motion-duration-short3), color var(--md-sys-motion-duration-short3);
+    }
+    #feedback small { display: block; font-weight: 500; font-size: 11px; color: var(--md-sys-color-on-surface-variant); margin-top: 3px; }
+    #feedback[data-tone="good"] { border-color: var(--md-sys-color-primary); background: var(--md-sys-color-secondary-container); color: var(--md-sys-color-on-secondary-container); }
+    #feedback[data-tone="miss"] { border-color: var(--md-sys-color-outline); }
+
+    /* Grab button — an explanatory round action: a claw glyph above the word DROP. */
+    #grabBtn {
+      position: relative; width: clamp(78px, 22vw, 102px); aspect-ratio: 1; border: 0; padding: 0;
+      border-radius: 50%; cursor: pointer; touch-action: none;
+      display: grid; place-items: center; gap: 0; line-height: 1;
+      color: var(--md-sys-color-on-primary);
+      background: radial-gradient(circle at 50% 32%, #ff8a99, var(--md-sys-color-primary) 72%);
+      box-shadow: var(--md-sys-elevation-level3), inset 0 -3px 7px rgba(0,0,0,0.28), inset 0 2px 4px rgba(255,255,255,0.4);
+      transition: transform var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-emphasized), filter var(--md-sys-motion-duration-short2);
+    }
+    #grabBtn svg { display: block; margin-bottom: 1px; }
+    #grabBtn .glabel { font-size: clamp(12px, 3.4vw, 15px); font-weight: 800; letter-spacing: 0.08em; }
+    #grabBtn:active { transform: scale(0.93); }
+    #grabBtn:disabled { filter: grayscale(0.5) brightness(0.7); }
+    #grabBtn:focus-visible { outline: 3px solid var(--md-sys-color-primary); outline-offset: 4px; }
+    .grab-label { position: absolute; bottom: -19px; left: 50%; transform: translateX(-50%); font-size: 11px; font-weight: 700; color: var(--md-sys-color-on-surface-variant); white-space: nowrap; }
+    #grabWrap { position: relative; }
+
+    /* ---------- COUNTDOWN (reused look from Snap) ---------- */
+    #countdown { position: absolute; inset: 0; z-index: 60; display: none; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.45); pointer-events: none; }
+    #countdown.active { display: flex; }
+    #countdown .cnum { font-size: 30vmin; font-weight: 800; line-height: 1; background: var(--brand-gradient); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    #countdown .cnum.go { font-size: 18vmin; letter-spacing: 0.04em; }
+    .cnum.beat { animation: beat 0.7s var(--md-sys-motion-easing-emphasized); }
+    @keyframes beat { 0% { transform: scale(0.4); opacity: 0; } 30% { opacity: 1; } 100% { transform: scale(1.25); opacity: 0; } }
+
+    /* ---------- RESULTS — reused from Snap/Colour Rush ---------- */
+    .res-inner { max-width: 520px; margin: 0 auto; padding: max(28px, env(safe-area-inset-top)) 22px 40px; text-align: center; }
+    .res-inner .crown { font-size: 46px; }
+    .res-inner h2 { margin: 6px 0 4px; }
+    .res-inner .sub { color: var(--md-sys-color-on-surface-variant); font-size: 14px; margin: 0 0 26px; }
+    .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 22px; }
+    .stat {
+      background: var(--md-sys-color-surface-container);
+      border: 1.5px solid var(--md-sys-color-outline-variant);
+      border-radius: var(--md-sys-shape-corner-lg); padding: 16px 8px;
+    }
+    .stat .big { font-size: 30px; font-weight: 800; font-variant-numeric: tabular-nums; }
+    .stat .cap { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--md-sys-color-on-surface-variant); margin-top: 4px; }
+    .stat.hero { border-color: var(--md-sys-color-primary); background: var(--md-sys-color-surface-container-high); }
+    .stat.hero .big { color: var(--md-sys-color-tertiary); }
+    .res-actions { display: flex; gap: 12px; margin-top: 4px; }
+    .res-actions .button { flex: 1; }
+    .res-foot { margin-top: 18px; }
+  </style>
+</head>
+<body>
+
+<!-- ========== SETUP ========== -->
+<section id="setup" class="screen active">
+  <div class="setup-inner">
+    <a class="back-link state-layer" href="../../index.html" aria-label="Back to PlayPad">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      PlayPad
+    </a>
+    <div class="brand"><h1 class="display-small brand-wordmark">Claw Catch</h1></div>
+    <p class="tagline body-medium">Line the claw up over the pile and <em>drop to grab</em> as many prizes as you can before the clock runs out. Rarer prizes are worth more — but they're harder to hold on to.</p>
+
+    <div class="block">
+      <div class="label"><span>Prize theme</span></div>
+      <div class="theme-grid" id="themeGrid"></div>
+    </div>
+
+    <div class="block">
+      <div class="label"><span>Round length</span></div>
+      <div class="chips" id="durationChips"></div>
+    </div>
+
+    <div class="block">
+      <div class="label"><span>Difficulty</span><span class="hint">grab window &amp; how often prizes slip</span></div>
+      <div class="chips" id="difficultyChips"></div>
+    </div>
+
+    <div class="block">
+      <div class="label"><span>Prize key</span><span class="hint">what each prize is worth</span></div>
+      <div class="keylist" id="setupKey"></div>
+    </div>
+
+    <div class="block">
+      <div class="toggle-row">
+        <div><div class="t-label">Sound</div><div class="t-sub">A claw whirr, a chime on a catch</div></div>
+        <button class="switch" id="soundToggle" aria-pressed="true" aria-label="Sound"></button>
+      </div>
+    </div>
+
+    <button class="start-btn state-layer" id="startBtn">Start</button>
+    <p class="start-note" id="startNote">One player · joystick or arrow keys to move · the big button to grab.</p>
+  </div>
+</section>
+
+<!-- ========== GAME ========== -->
+<section id="game" class="screen">
+  <div id="stage">
+    <canvas id="clawCanvas"></canvas>
+    <div id="progress"><div id="progressFill"></div></div>
+    <div id="hud">
+      <span id="sessClock">1:00</span>
+      <span id="hudScore">Score <b>0</b></span>
+      <button id="keyBtn" aria-pressed="false" aria-label="Show prize values">★</button>
+      <button id="quitBtn" aria-label="Quit game">✕</button>
+    </div>
+    <div id="keyPanel" aria-hidden="true"><div class="keylist" id="gameKey"></div></div>
+    <div id="countdown"><div class="cnum" id="cnum">3</div></div>
+  </div>
+
+  <div id="deck">
+    <div id="joy" role="slider" tabindex="0" aria-label="Move claw left and right" aria-valuemin="-100" aria-valuemax="100" aria-valuenow="0">
+      <div id="joyKnob"></div>
+    </div>
+    <div id="feedback" aria-hidden="true">Line it up — then drop!<small>Joystick or ← → / A D · Space to grab</small></div>
+    <div id="grabWrap">
+      <button id="grabBtn" aria-label="Drop the claw to grab a prize">
+        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 2v4"/>
+          <path d="M7 7h10"/>
+          <path d="M12 7v8"/>
+          <path d="M8 7c-2 3-2.5 6-3.5 9"/>
+          <path d="M16 7c2 3 2.5 6 3.5 9"/>
+        </svg>
+        <span class="glabel">DROP</span>
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- Screen-reader-only live region: the canvas action has no DOM-node equivalent, so this announces
+     catches and the final result for assistive tech. -->
+<p id="srStatus" class="visually-hidden" role="status" aria-live="polite"></p>
+
+<!-- ========== RESULTS ========== -->
+<section id="results" class="screen">
+  <div class="res-inner">
+    <div class="crown">🕹️</div>
+    <h2 id="resTitle" class="headline-small">Round over</h2>
+    <p class="sub" id="resSub"></p>
+    <div class="stat-grid">
+      <div class="stat hero"><div class="big" id="statScore">0</div><div class="cap">Score</div></div>
+      <div class="stat"><div class="big" id="statCaught">0</div><div class="cap">Caught</div></div>
+      <div class="stat"><div class="big" id="statBest">0</div><div class="cap">Best grab</div></div>
+    </div>
+    <div class="res-actions">
+      <button class="button button--outlined state-layer" id="changeBtn">Change settings</button>
+      <button class="button button--filled state-layer" id="againBtn">Play again</button>
+    </div>
+    <div class="res-foot">
+      <a class="back-link state-layer" href="../../index.html" aria-label="Back to PlayPad">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Back to PlayPad
+      </a>
+    </div>
+  </div>
+</section>
+
+<script>
+(function(){
+  "use strict";
+
+  // ============================================================
+  //  CONFIG — themes, prizes, durations, difficulty, physics
+  // ============================================================
+
+  // Rarity is the single lever behind points, spawn frequency, and grip. Keeping these in one place
+  // makes the "rarer = worth more but harder to hold" rule both true and inspectable (it's shown in
+  // the prize key, so what the player sees IS what's scored).
+  // rarity → { points, spawnWeight (higher = appears more often), grip (catch reliability 0..1) }
+  var RARITY = {
+    1: { points: 1, spawnWeight: 5, grip: 0.95, stars: "★",   label: "Common" },
+    2: { points: 3, spawnWeight: 3, grip: 0.78, stars: "★★",  label: "Uncommon" },
+    3: { points: 5, spawnWeight: 1, grip: 0.60, stars: "★★★", label: "Rare" }
+  };
+
+  // Each theme: a cabinet gradient (canvas colours) + a prize list keyed by emoji and rarity.
+  var THEMES = [
+    { id:"critters", name:"Critters", cabinet:{ top:"#1f7a3f", bottom:"#0d3b21" },
+      prizes:[ {e:"🐝",r:1}, {e:"🐸",r:1}, {e:"🐌",r:1}, {e:"🦊",r:2}, {e:"🦋",r:2}, {e:"🐢",r:2}, {e:"🦉",r:3}, {e:"🦚",r:3} ] },
+    { id:"sweets",   name:"Sweets",   cabinet:{ top:"#c84f9e", bottom:"#5e1a55" },
+      prizes:[ {e:"🍬",r:1}, {e:"🍪",r:1}, {e:"🍭",r:1}, {e:"🧁",r:2}, {e:"🍩",r:2}, {e:"🍫",r:2}, {e:"🍰",r:3}, {e:"🎂",r:3} ] },
+    { id:"space",    name:"Space",    cabinet:{ top:"#2b46c8", bottom:"#10183f" },
+      prizes:[ {e:"⭐",r:1}, {e:"☄️",r:1}, {e:"🌙",r:1}, {e:"🚀",r:2}, {e:"🛸",r:2}, {e:"🪐",r:2}, {e:"👾",r:3}, {e:"🌌",r:3} ] }
+  ];
+
+  var DURATIONS = [ {s:30,l:"0:30"}, {s:60,l:"1:00"}, {s:90,l:"1:30"}, {s:120,l:"2:00"} ];
+
+  // Difficulty tunes how forgiving the catch is and how lively the claw is. Tricky = a narrower grab
+  // window, weaker grip, more slip, LESS swing damping (it sways more), and a smaller, slower-filling
+  // bin — so the bin is never trivially full (the user's "not too easy" requirement).
+  // `binCap` here IS the AC-8 BIN_CAP cap (it varies by difficulty, so it lives on the preset rather
+  // than as a single module constant); `addPrize` enforces `bin.length < cfg.binCap`.
+  // `slipChance` = chance a prize slips the moment the claw lifts; `dropChance` = chance a carried
+  // prize SUDDENLY falls part-way to the chute (the dramatic mid-carry loss).
+  var DIFFICULTIES = [
+    { l:"Chill",  grabRadiusMul:1.35, gripMul:1.18, slipChance:0.03, dropChance:0.08, dampMul:1.45, refillMs:2600, binCap:12 },
+    { l:"Normal", grabRadiusMul:1.00, gripMul:1.00, slipChance:0.07, dropChance:0.18, dampMul:1.00, refillMs:3400, binCap:10 },
+    { l:"Tricky", grabRadiusMul:0.78, gripMul:0.84, slipChance:0.12, dropChance:0.30, dampMul:0.72, refillMs:4300, binCap:8  }
+  ];
+  var DEFAULT_DIFFICULTY_INDEX = 1;
+  var COUNTDOWN_SEQUENCE = ["3", "2", "1", "GO"];
+  var COUNTDOWN_DIGIT_MS = 600;
+
+  // ---- Physics constants (tuned; named so behaviour is inspectable, never magic numbers) ----
+  var MAX_CART_SPEED   = 540;   // px/s — top trolley speed
+  var CART_RESPONSE    = 11;    // 1/s — how fast cart velocity chases its target (gives weight)
+
+  // The claw does NOT swing like a pendulum — a real arcade claw is mounted on a rigid gantry and
+  // only JIGGLES a touch when the trolley starts/stops. `theta` is a tiny TILT (not a swing angle);
+  // the lateral offset uses a FIXED short lever (`JIGGLE_ARM`), so it never grows with drop depth —
+  // the claw goes straight down and straight up. The jiggle is a stiff, fast-damped driven oscillator.
+  var JIGGLE_ARM       = 22;    // px — fixed lateral lever for the head wobble (independent of cable length)
+  var JIGGLE_STIFFNESS = 150;   // 1/s² — restoring strength (tight, quick period)
+  var JIGGLE_DAMPING   = 6.0;   // 1/s — settles the jiggle fast (scaled gently by difficulty.dampMul)
+  var JIGGLE_DRIVE     = 0.011; // how strongly cart acceleration nudges the tilt (small → just a jiggle)
+  var MAX_TILT         = 0.12;  // rad (~7°) — hard clamp so it stays a wobble, never a swing
+  var RETURN_SPEED     = 900;   // px/s — auto-travel back to the chute while carrying a prize
+
+  // Grab/drop sequence timings (ms).
+  var DROP_MS = 680, CLOSE_MS = 340, LIFT_MS = 680, RELEASE_MS = 520, RETURN_MAX_MS = 1500;
+
+  // Prize fall + pile physics (refill drops, slipped prizes, and the settling heap).
+  var PILE_GRAVITY = 2000;      // px/s² — pulls prizes down into the bin
+  var PILE_FLOOR_DAMP = 0.45;   // vertical velocity kept after hitting the floor (tiny settle bounce)
+  var PILE_FRICTION = 6;        // 1/s — horizontal velocity decay so prizes settle, don't slide forever
+  var PILE_SEPARATION_PASSES = 2; // relaxation passes that push overlapping prizes apart each frame
+
+  var GRAB_BASE_CHANCE = 0.45;      // catch chance at the very edge of the grab window
+  var GRAB_PROXIMITY_BONUS = 0.55;  // extra chance earned for lining up dead-centre over a prize
+
+  // Drop sequence phases (named strings so devtools shows meaning).
+  var Phase = { IDLE:"idle", DROP:"drop", CLOSE:"close", LIFT:"lift", RETURN:"return", RELEASE:"release" };
+
+  // ============================================================
+  //  STATE
+  // ============================================================
+  // setup selections
+  var themeIndex = 0;
+  var durationSec = 60;
+  var difficultyIndex = DEFAULT_DIFFICULTY_INDEX;
+  var soundOn = true;
+
+  // active config (copied from the chosen difficulty at startGame)
+  var cfg = { grabRadius:0, gripMul:1, slipChance:0.1, dropChance:0.18, dampMul:1, refillMs:3400, binCap:10 };
+  var returnStartX = 0;   // cart x when the carry trip to the chute begins (for sudden-drop timing)
+
+  // canvas + layout (recomputed on resize)
+  var canvas = null, ctx = null, dpr = 1;
+  var W = 0, H = 0;
+  var lay = {};   // {margin, railY, prizeR, floorY, lRest, lDrop, chuteCx, chuteW, minX, maxX, binLeft, binRight, cartHalf}
+
+  // gameplay
+  var running = false, rafId = null, lastFrameTs = 0;
+  var sessionStartTs = 0, sessionEndTs = 0;
+  var countingDown = false, countdownIndex = 0, countdownStepTs = 0;
+
+  // claw + trolley physics
+  var cartX = 0, cartVx = 0, prevCartVx = 0;
+  var theta = 0, omega = 0;
+  var currentL = 0, openAmount = 1;
+
+  // drop sequence
+  var phase = Phase.IDLE, phaseStartTs = 0;
+  var carried = null;          // the prize riding the claw (or null)
+
+  // bin + effects
+  var bin = [];                // {x, y, restY, vy, falling, e, r, points, grip}
+  var popups = [];             // floating "+N" texts {x, y, text, color, life, maxLife}
+  var nextRefillTs = 0;
+
+  // score
+  var score = 0, prizesCaught = 0, bestCatch = 0;
+
+  // input
+  var keyLeft = false, keyRight = false;
+  var joyActive = false, joyAxis = 0, joyPointerId = null;
+
+  var audioCtx = null;
+  var reduceMotion = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+
+  // ============================================================
+  //  HELPERS
+  // ============================================================
+  function $(id){ return document.getElementById(id); }
+  function el(tag, cls){ var e = document.createElement(tag); if(cls) e.className = cls; return e; }
+  function show(s){ ["setup","game","results"].forEach(function(x){ $(x).classList.toggle("active", x===s); }); }
+  function clamp(v, lo, hi){ return v < lo ? lo : (v > hi ? hi : v); }
+  function announce(msg){ $("srStatus").textContent = msg; }
+  function easeOut(t){ return 1 - (1 - t) * (1 - t); }
+  function easeInOut(t){ return t < 0.5 ? 2*t*t : 1 - Math.pow(-2*t + 2, 2)/2; }
+  function curTheme(){ return THEMES[themeIndex]; }
+  function prizePoints(p){ return RARITY[p.r].points; }
+
+  // ---------- audio (optional; a missed beep never interrupts play) ----------
+  function initAudio(){
+    if(audioCtx) return;
+    try { var AC = window.AudioContext || window.webkitAudioContext; audioCtx = new AC(); } catch(e){ audioCtx = null; }
+  }
+  function beep(freq, dur, type, gain){
+    if(!soundOn || !audioCtx) return;
+    try{
+      var o = audioCtx.createOscillator(), g = audioCtx.createGain();
+      o.type = type || "sine"; o.frequency.value = freq;
+      o.connect(g); g.connect(audioCtx.destination);
+      var t = audioCtx.currentTime;
+      g.gain.setValueAtTime(gain || 0.16, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.start(t); o.stop(t + dur);
+    }catch(e){ /* ignore */ }
+  }
+  function soundDrop(){ beep(180, 0.18, "sawtooth", 0.08); }
+  function soundCatch(){ beep(659.25, 0.10, "sine", 0.18); setTimeout(function(){ beep(987.77, 0.18, "sine", 0.18); }, 90); }
+  function soundMiss(){ beep(200, 0.16, "square", 0.10); }
+  function soundTick(){ beep(520, 0.07, "sine", 0.12); }
+  function soundGo(){ beep(880, 0.16, "sine", 0.20); }
+
+  // ============================================================
+  //  SETUP UI (chip/theme/key renderers)
+  // ============================================================
+  function buildChips(container, items, getActive, onPick){
+    container.innerHTML = "";
+    items.forEach(function(it){
+      var b = el("button","sel-chip");
+      if(it.sub){ b.innerHTML = ""; b.appendChild(document.createTextNode(it.main)); var s = el("small"); s.textContent = it.sub; b.appendChild(s); }
+      else { b.textContent = it.main; }
+      b.setAttribute("aria-pressed", getActive(it) ? "true" : "false");
+      b.addEventListener("click", function(){ onPick(it); });
+      container.appendChild(b);
+    });
+  }
+
+  function renderThemeCards(){
+    var wrap = $("themeGrid"); wrap.innerHTML = "";
+    THEMES.forEach(function(t, i){
+      var b = el("button","theme-card");
+      b.setAttribute("aria-pressed", i===themeIndex ? "true" : "false");
+      b.setAttribute("aria-label", t.name + " theme");
+      var prev = el("div","preview");
+      prev.style.background = "var(--claw-theme-" + t.id + "-back)";
+      prev.textContent = t.prizes[t.prizes.length - 1].e;   // show the headline (rare) prize
+      var nm = el("div","tname"); nm.textContent = t.name;
+      b.appendChild(prev); b.appendChild(nm);
+      b.addEventListener("click", function(){ themeIndex = i; renderThemeCards(); renderPrizeKey($("setupKey")); });
+      wrap.appendChild(b);
+    });
+  }
+
+  // Renders the transparent prize key into a container (used in setup AND the in-game panel).
+  function renderPrizeKey(container){
+    container.innerHTML = "";
+    var note = el("div","key-note");
+    note.textContent = "Rarer prizes are worth more points, but the claw grips them less reliably.";
+    container.appendChild(note);
+    // One row per prize, grouped low→high points so the value ladder is obvious.
+    var ordered = curTheme().prizes.slice().sort(function(a,b){ return prizePoints(a) - prizePoints(b); });
+    ordered.forEach(function(p){
+      var row = el("div","key-row");
+      var em = el("div","key-emoji"); em.textContent = p.e;
+      var st = el("div","key-stars"); st.textContent = RARITY[p.r].stars;
+      var sub = el("small"); sub.textContent = RARITY[p.r].label; st.appendChild(sub);
+      var pts = el("div","key-pts"); pts.textContent = prizePoints(p) + (prizePoints(p) === 1 ? " pt" : " pts");
+      row.appendChild(em); row.appendChild(st); row.appendChild(pts);
+      container.appendChild(row);
+    });
+  }
+
+  function renderDurationChips(){
+    buildChips($("durationChips"),
+      DURATIONS.map(function(d){ return { main:d.l, s:d.s }; }),
+      function(it){ return it.s === durationSec; },
+      function(it){ durationSec = it.s; renderDurationChips(); });
+  }
+  function renderDifficultyChips(){
+    buildChips($("difficultyChips"),
+      DIFFICULTIES.map(function(d,i){ return { main:d.l, sub:d.binCap + " max", i:i }; }),
+      function(it){ return it.i === difficultyIndex; },
+      function(it){ difficultyIndex = it.i; renderDifficultyChips(); });
+  }
+
+  $("soundToggle").addEventListener("click", function(){
+    soundOn = !soundOn; this.setAttribute("aria-pressed", soundOn ? "true" : "false");
+  });
+  $("startBtn").addEventListener("click", function(){
+    initAudio(); if(audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+    startGame();
+  });
+
+  // ============================================================
+  //  CANVAS + LAYOUT
+  // ============================================================
+  function setupCanvas(){
+    canvas = $("clawCanvas");
+    ctx = canvas.getContext("2d");
+  }
+
+  // Recompute pixel buffer + cabinet geometry from the stage's CSS size. Called on start + resize.
+  function layout(){
+    if(!canvas) return;
+    var cssW = canvas.clientWidth, cssH = canvas.clientHeight;
+    if(cssW < 2 || cssH < 2) return false;   // hidden / not laid out yet
+    // Cap the retina buffer at 2× — a high-DPI tablet at 2.5–3× quadruples the fill cost for no
+    // visible gain and is a common source of canvas lag.
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = Math.round(cssW * dpr);
+    canvas.height = Math.round(cssH * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    W = cssW; H = cssH;
+
+    var margin = Math.max(14, W * 0.03);
+    var prizeR = clamp(H * 0.060, 20, 40);
+    var railY = Math.max(40, H * 0.11);
+    var floorY = H - Math.max(18, H * 0.06);
+    var chuteW = clamp(W * 0.15, 56, 92);
+    var cartHalf = clamp(W * 0.05, 20, 30);
+    var chuteCx = margin + chuteW / 2;
+    var minX = Math.max(chuteCx, margin + cartHalf);
+    var chuteTop = floorY - prizeR * 2.7;
+    lay = {
+      margin: margin, prizeR: prizeR, railY: railY, floorY: floorY,
+      lRest: Math.max(46, H * 0.14),
+      // The claw dips into the upper part of the pile (about one prize-radius above the floor), so it
+      // rakes the top of the heap rather than burying itself to the floor.
+      lDrop: (floorY - railY) - prizeR * 1.0,
+      chuteW: chuteW, chuteCx: chuteCx, cartHalf: cartHalf,
+      chuteTop: chuteTop, chuteHoleY: chuteTop + prizeR * 0.95,
+      minX: minX, maxX: W - margin - cartHalf,
+      binLeft: margin + chuteW + 18 + prizeR,
+      binRight: W - margin - prizeR
+    };
+    cfg.grabRadius = prizeR * 1.7 * DIFFICULTIES[difficultyIndex].grabRadiusMul;
+    cartX = clamp(cartX, lay.minX, lay.maxX);
+    buildStaticGradients();
+    return true;
+  }
+
+  // The cabinet/tray/chute gradients are constant within a round — build them once per layout
+  // instead of allocating new gradient objects on every frame (another per-frame-cost win).
+  var grad = {};
+  function buildStaticGradients(){
+    var t = curTheme().cabinet;
+    var cab = ctx.createLinearGradient(0, 0, 0, H);
+    cab.addColorStop(0, t.top); cab.addColorStop(1, t.bottom);
+
+    var sheen = ctx.createLinearGradient(0, 0, 0, lay.railY * 1.6);
+    sheen.addColorStop(0, "rgba(255,255,255,0.10)"); sheen.addColorStop(1, "rgba(255,255,255,0)");
+
+    var trayBottom = Math.min(H, lay.floorY + lay.prizeR * 0.9);
+    var tray = ctx.createLinearGradient(0, lay.floorY - lay.prizeR, 0, trayBottom);
+    tray.addColorStop(0, "rgba(0,0,0,0.02)"); tray.addColorStop(1, "rgba(0,0,0,0.38)");
+
+    var chute = ctx.createLinearGradient(lay.margin, 0, lay.margin + lay.chuteW, 0);
+    chute.addColorStop(0, "rgba(255,255,255,0.10)"); chute.addColorStop(0.5, "rgba(255,255,255,0.22)"); chute.addColorStop(1, "rgba(255,255,255,0.08)");
+
+    grad = { cabinet: cab, sheen: sheen, tray: tray, trayBottom: trayBottom, chute: chute };
+  }
+
+  window.addEventListener("resize", function(){
+    if(running){
+      // Shift the pile with the (possibly new) floor line; the pile physics re-settles the rest.
+      var oldFloor = lay.floorY;
+      if(layout()){
+        var dy = lay.floorY - (oldFloor || lay.floorY);
+        bin.forEach(function(p){ p.y += dy; });
+      }
+    }
+  });
+
+  // ============================================================
+  //  BIN — prizes, weighted spawning, refill (capped)
+  // ============================================================
+  function pickWeightedPrize(){
+    var list = curTheme().prizes, total = 0, i;
+    for(i = 0; i < list.length; i++){ total += RARITY[list[i].r].spawnWeight; }
+    var roll = Math.random() * total;
+    for(i = 0; i < list.length; i++){
+      roll -= RARITY[list[i].r].spawnWeight;
+      if(roll <= 0) return list[i];
+    }
+    return list[list.length - 1];
+  }
+
+  // Build a prize as a physical disc. `atRest` seeds it already settled near the floor (initial fill);
+  // otherwise it starts above the tray and falls in (a refill drop). Radius varies a touch so the
+  // heap looks like loose toys, not clones.
+  function makePrize(x, atRest){
+    var def = pickWeightedPrize();
+    var rad = lay.prizeR * (0.86 + Math.random() * 0.30);
+    return {
+      x: x,
+      y: atRest ? (lay.floorY - rad - Math.random() * lay.prizeR * 1.2) : (lay.railY + rad + 12),
+      vx: 0, vy: 0, rad: rad,
+      e: def.e, r: def.r, points: RARITY[def.r].points, grip: RARITY[def.r].grip
+    };
+  }
+
+  // Add one prize at a random spot in the tray if under cap (the pile physics spreads + stacks them).
+  function addPrize(atRest){
+    if(bin.length >= cfg.binCap) return false;
+    var span = lay.binRight - lay.binLeft - lay.prizeR * 2;
+    var x = lay.binLeft + lay.prizeR + Math.random() * Math.max(1, span);
+    bin.push(makePrize(x, atRest));
+    return true;
+  }
+
+  function fillInitialBin(){
+    bin = [];
+    var target = Math.max(3, cfg.binCap - 3);   // start stocked but below cap so refills are visible
+    for(var i = 0; i < target; i++){ if(!addPrize(true)) break; }
+  }
+
+  // ============================================================
+  //  GAME LIFECYCLE
+  // ============================================================
+  function startGame(){
+    // Copy the chosen difficulty into the active config the loop reads.
+    var d = DIFFICULTIES[difficultyIndex];
+    cfg.gripMul = d.gripMul; cfg.slipChance = d.slipChance; cfg.dropChance = d.dropChance; cfg.dampMul = d.dampMul;
+    cfg.refillMs = d.refillMs; cfg.binCap = d.binCap;
+
+    show("game");
+    setupCanvas();
+    // Canvas has zero size until the game screen is visible — lay out on the next frame to be safe.
+    if(!layout()){ requestAnimationFrame(function(){ layout(); beginRound(); }); return; }
+    beginRound();
+  }
+
+  function beginRound(){
+    cartX = (lay.minX + lay.maxX) / 2; cartVx = 0; prevCartVx = 0;
+    theta = 0; omega = 0; currentL = lay.lRest; openAmount = 1;
+    phase = Phase.IDLE; carried = null;
+    score = 0; prizesCaught = 0; bestCatch = 0;
+    popups = [];
+    keyLeft = keyRight = false; joyAxis = 0; joyActive = false; centreJoyKnob();
+    fillInitialBin();
+    renderPrizeKey($("gameKey"));
+    setFeedback("Line it up — then drop!", "Joystick or ← → / A D · Space to grab", "");
+    updateScoreHud();
+    $("progressFill").style.transform = "scaleX(1)";
+    $("grabBtn").disabled = false;
+
+    running = true;
+    var now = performance.now();
+    lastFrameTs = now;
+    sessionStartTs = now; sessionEndTs = now + durationSec * 1000;
+    nextRefillTs = now + cfg.refillMs;
+    beginCountdown(now);
+    rafId = requestAnimationFrame(loop);
+  }
+
+  function beginCountdown(now){
+    countingDown = true; countdownIndex = 0; countdownStepTs = now + COUNTDOWN_DIGIT_MS;
+    $("countdown").classList.add("active");
+    renderCountdownDigit(COUNTDOWN_SEQUENCE[0]); soundTick();
+  }
+  function renderCountdownDigit(val){
+    var cn = $("cnum"); cn.textContent = val; cn.className = "cnum" + (val === "GO" ? " go" : "");
+    void cn.offsetWidth; cn.classList.add("beat");
+  }
+  function advanceCountdown(now){
+    while(countingDown && now >= countdownStepTs){
+      countdownIndex++;
+      if(countdownIndex < COUNTDOWN_SEQUENCE.length){
+        var val = COUNTDOWN_SEQUENCE[countdownIndex];
+        renderCountdownDigit(val);
+        (val === "GO") ? soundGo() : soundTick();
+        countdownStepTs += COUNTDOWN_DIGIT_MS;
+      } else {
+        countingDown = false;
+        $("countdown").classList.remove("active");
+      }
+    }
+  }
+
+  // ============================================================
+  //  INPUT
+  // ============================================================
+  function inputAxis(){
+    if(joyActive) return joyAxis;
+    return (keyRight ? 1 : 0) - (keyLeft ? 1 : 0);
+  }
+  function canMoveOrGrab(){ return running && !countingDown && phase === Phase.IDLE; }
+
+  function requestGrab(){
+    if(!canMoveOrGrab()) return;
+    phase = Phase.DROP; phaseStartTs = performance.now();
+    soundDrop();
+    setFeedback("Dropping…", "", "");
+  }
+
+  // keyboard
+  window.addEventListener("keydown", function(ev){
+    if(!running) return;
+    var code = ev.code;
+    if(code === "ArrowLeft" || code === "KeyA"){ keyLeft = true; ev.preventDefault(); }
+    else if(code === "ArrowRight" || code === "KeyD"){ keyRight = true; ev.preventDefault(); }
+    else if(code === "Space" || code === "ArrowDown" || code === "KeyS"){ if(!ev.repeat) requestGrab(); ev.preventDefault(); }
+  });
+  window.addEventListener("keyup", function(ev){
+    if(ev.code === "ArrowLeft" || ev.code === "KeyA") keyLeft = false;
+    else if(ev.code === "ArrowRight" || ev.code === "KeyD") keyRight = false;
+  });
+
+  // on-screen joystick (horizontal axis only)
+  function centreJoyKnob(){ $("joyKnob").style.transform = "translate(-50%, -50%)"; $("joy").setAttribute("aria-valuenow", "0"); }
+  function setJoyFromPointer(clientX){
+    var joy = $("joy"); var rect = joy.getBoundingClientRect();
+    var cx = rect.left + rect.width / 2;
+    var maxR = rect.width * 0.34;
+    var dx = clamp(clientX - cx, -maxR, maxR);
+    joyAxis = dx / maxR;
+    $("joyKnob").style.transform = "translate(calc(-50% + " + dx + "px), -50%)";
+    $("joy").setAttribute("aria-valuenow", String(Math.round(joyAxis * 100)));
+  }
+  (function bindJoystick(){
+    var joy = $("joy");
+    joy.addEventListener("pointerdown", function(ev){
+      joyActive = true; joyPointerId = ev.pointerId;
+      try { joy.setPointerCapture(ev.pointerId); } catch(e){}
+      setJoyFromPointer(ev.clientX); ev.preventDefault();
+    });
+    joy.addEventListener("pointermove", function(ev){
+      if(!joyActive || ev.pointerId !== joyPointerId) return;
+      setJoyFromPointer(ev.clientX); ev.preventDefault();
+    });
+    function release(ev){
+      if(ev.pointerId !== joyPointerId) return;
+      joyActive = false; joyAxis = 0; joyPointerId = null; centreJoyKnob();
+    }
+    joy.addEventListener("pointerup", release);
+    joy.addEventListener("pointercancel", release);
+    // Movement (Arrow / A / D) and Space-to-grab are handled by the global keydown handler, which
+    // fires whenever the joystick is focused too. Here we only add Enter as a grab key (the global
+    // handler doesn't bind Enter), so focusing the joystick and pressing Enter drops the claw.
+    joy.addEventListener("keydown", function(ev){
+      if(ev.code === "Enter"){ if(!ev.repeat) requestGrab(); ev.preventDefault(); }
+    });
+  })();
+
+  $("grabBtn").addEventListener("pointerdown", function(ev){ ev.preventDefault(); requestGrab(); });
+  $("grabBtn").addEventListener("contextmenu", function(ev){ ev.preventDefault(); });
+
+  // prize-key toggle
+  $("keyBtn").addEventListener("click", function(){
+    var open = $("keyPanel").classList.toggle("show");
+    this.setAttribute("aria-pressed", open ? "true" : "false");
+    $("keyPanel").setAttribute("aria-hidden", open ? "false" : "true");
+  });
+
+  // ============================================================
+  //  PHYSICS — trolley, the (barely) jiggling claw, and the prize pile
+  // ============================================================
+  function stepPhysics(dt){
+    // 1) Trolley velocity chases a target (manual in IDLE, auto toward the chute in RETURN).
+    var target = 0;
+    if(phase === Phase.IDLE && !countingDown) target = inputAxis() * MAX_CART_SPEED;
+    else if(phase === Phase.RETURN) target = -RETURN_SPEED;   // chute sits at minX (left)
+    var follow = Math.min(1, CART_RESPONSE * dt);
+    cartVx += (target - cartVx) * follow;
+    cartX += cartVx * dt;
+    if(cartX < lay.minX){ cartX = lay.minX; cartVx = 0; }
+    if(cartX > lay.maxX){ cartX = lay.maxX; cartVx = 0; }
+
+    // 2) Claw jiggle: a stiff, fast-damped tilt nudged by the trolley's acceleration. This is NOT a
+    //    pendulum — the lever is fixed (JIGGLE_ARM) so the head barely moves and the drop is vertical.
+    var cartAccel = (cartVx - prevCartVx) / dt;
+    var angAccel = -JIGGLE_STIFFNESS * theta
+                   - (JIGGLE_DAMPING * cfg.dampMul) * omega
+                   - JIGGLE_DRIVE * cartAccel;
+    omega += angAccel * dt;
+    theta += omega * dt;
+    if(theta > MAX_TILT){ theta = MAX_TILT; if(omega > 0) omega = 0; }
+    if(theta < -MAX_TILT){ theta = -MAX_TILT; if(omega < 0) omega = 0; }
+    prevCartVx = cartVx;
+
+    // 3) The prize pile: gravity + settling + pairwise separation → a real heap with depth.
+    stepPile(dt);
+
+    // 4) A prize being released into the chute falls straight down into the hole as the claw opens.
+    if(carried && phase === Phase.RELEASE){
+      carried.vy += PILE_GRAVITY * dt;
+      carried.dropY = (carried.dropY || 0) + carried.vy * dt;
+    }
+  }
+
+  // The bin behaves like a tray of loose toys: each prize falls, rests on the floor or on top of
+  // other prizes, and overlaps are pushed apart — so the pile has genuine depth and re-settles into
+  // any gap left by a grabbed prize.
+  function stepPile(dt){
+    var i, j, p, q;
+    var left = lay.binLeft, right = lay.binRight, floor = lay.floorY;
+    for(i = 0; i < bin.length; i++){
+      p = bin[i];
+      if(p === carried) continue;
+      p.vy += PILE_GRAVITY * dt;
+      p.vx -= p.vx * Math.min(1, PILE_FRICTION * dt);
+      p.x += p.vx * dt; p.y += p.vy * dt;
+      // Floor.
+      if(p.y > floor - p.rad){ p.y = floor - p.rad; if(p.vy > 0) p.vy = -p.vy * PILE_FLOOR_DAMP; if(Math.abs(p.vy) < 12) p.vy = 0; }
+      // Side walls of the tray.
+      if(p.x < left + p.rad){ p.x = left + p.rad; if(p.vx < 0) p.vx = -p.vx * 0.3; }
+      if(p.x > right - p.rad){ p.x = right - p.rad; if(p.vx > 0) p.vx = -p.vx * 0.3; }
+    }
+    // Pairwise separation — a few relaxation passes keep it cheap and stable for ≤12 prizes.
+    for(var pass = 0; pass < PILE_SEPARATION_PASSES; pass++){
+      for(i = 0; i < bin.length; i++){
+        for(j = i + 1; j < bin.length; j++){
+          p = bin[i]; q = bin[j];
+          if(p === carried || q === carried) continue;
+          var dx = q.x - p.x, dy = q.y - p.y;
+          var minDist = p.rad + q.rad;
+          var dist = Math.sqrt(dx*dx + dy*dy) || 0.0001;
+          if(dist < minDist){
+            var push = (minDist - dist) / 2;
+            var nx = dx / dist, ny = dy / dist;
+            p.x -= nx * push; p.y -= ny * push;
+            q.x += nx * push; q.y += ny * push;
+            // a touch of velocity exchange so a settling prize nudges its neighbour
+            var rel = (q.vy - p.vy) * 0.5;
+            p.vy += rel * 0.2; q.vy -= rel * 0.2;
+          }
+        }
+      }
+      // Re-clamp to floor/walls after separation so nothing is pushed through.
+      for(i = 0; i < bin.length; i++){
+        p = bin[i]; if(p === carried) continue;
+        if(p.y > floor - p.rad) p.y = floor - p.rad;
+        if(p.x < left + p.rad) p.x = left + p.rad;
+        if(p.x > right - p.rad) p.x = right - p.rad;
+      }
+    }
+  }
+
+  // Claw tip world position (the grab point). Lateral offset uses the FIXED jiggle lever, so the
+  // claw drops straight down (the head stays within a few px of the trolley) — no swing.
+  function clawPos(){
+    return { x: cartX + JIGGLE_ARM * Math.sin(theta), y: lay.railY + currentL };
+  }
+
+  // ============================================================
+  //  DROP SEQUENCE STATE MACHINE
+  // ============================================================
+  function updateSequence(now){
+    var t = now - phaseStartTs;
+    switch(phase){
+      case Phase.IDLE:
+        currentL = lay.lRest; openAmount = 1;
+        break;
+      case Phase.DROP:
+        currentL = lay.lRest + (lay.lDrop - lay.lRest) * easeOut(clamp(t / DROP_MS, 0, 1));
+        openAmount = 1;
+        if(t >= DROP_MS){ phase = Phase.CLOSE; phaseStartTs = now; }
+        break;
+      case Phase.CLOSE:
+        currentL = lay.lDrop;
+        openAmount = 1 - clamp(t / CLOSE_MS, 0, 1);
+        if(t >= CLOSE_MS){ resolveGrab(); enterLift(now); }
+        break;
+      case Phase.LIFT:
+        currentL = lay.lDrop + (lay.lRest - lay.lDrop) * easeInOut(clamp(t / LIFT_MS, 0, 1));
+        openAmount = 0;
+        // Only travel to the chute if we're actually holding a prize; an empty grab (or one that
+        // slipped on lift) just lifts straight back up and returns to idle in place.
+        if(t >= LIFT_MS){
+          if(carried){ phase = Phase.RETURN; returnStartX = cartX; }
+          else { phase = Phase.IDLE; setFeedback("Line it up — then drop!", "", ""); }
+          phaseStartTs = now;
+        }
+        break;
+      case Phase.RETURN:
+        currentL = lay.lRest; openAmount = 0;
+        // The dramatic mid-carry betrayal: once we're past the scheduled fraction of the trip, a
+        // doomed prize lets go and tumbles back into the pile — no chute, no points.
+        if(carried && carried.willSuddenDrop){
+          var span = returnStartX - lay.minX;
+          var progress = span > 1 ? (returnStartX - cartX) / span : 1;
+          if(progress >= carried.suddenDropFrac){ suddenDrop(now); break; }
+        }
+        if(cartX <= lay.minX + 5 || t >= RETURN_MAX_MS){ enterRelease(now); }
+        break;
+      case Phase.RELEASE:
+        currentL = lay.lRest;
+        openAmount = clamp(t / RELEASE_MS, 0, 1);
+        if(t >= RELEASE_MS){ finishRelease(); phase = Phase.IDLE; phaseStartTs = now; }
+        break;
+    }
+    // A carried prize rides between the prongs with a little life — a bob + sway, plus a periodic
+    // downward LURCH (~every second) as if the grip is slipping. It sells "this might drop" and
+    // foreshadows the sudden-drop above.
+    if(carried && phase !== Phase.RELEASE){
+      var c = clawPos();
+      var r = carried.rad;
+      var bob = Math.sin(now * 0.013) * r * 0.10;
+      var sway = Math.sin(now * 0.009) * r * 0.10;
+      var lp = (now % 1100) / 1100;                       // lurch cycle
+      var lurch = lp > 0.78 ? Math.sin((lp - 0.78) / 0.22 * Math.PI) * r * 0.42 : 0;
+      carried.x = c.x + sway; carried.y = c.y + r * 0.8 + bob + lurch;
+      carried.dropY = 0; carried.vy = 0; carried.vx = 0;
+      // Prongs quiver a touch while struggling to hold on.
+      if(phase === Phase.LIFT || phase === Phase.RETURN){
+        openAmount = 0.05 + 0.05 * Math.abs(Math.sin(now * 0.022)) + (lurch > 0 ? 0.12 : 0);
+      }
+    }
+  }
+
+  // A carried prize suddenly lets go mid-carry: it drops back into the pile and the claw, now empty,
+  // returns to idle in place (the player can line up and try again).
+  function suddenDrop(now){
+    var p = carried; carried = null;
+    p.vx = (Math.random() * 2 - 1) * 50; p.vy = 120;
+    p.x = clamp(clawPos().x, lay.binLeft + p.rad, lay.binRight - p.rad);
+    p.y = clawPos().y;
+    bin.push(p);
+    setFeedback("It dropped!", "So close — grab it again", "miss");
+    soundMiss();
+    phase = Phase.IDLE; phaseStartTs = now;
+  }
+
+  // Decide whether the closing claw grabbed a prize. The claw rakes the TOP of the pile: among
+  // prizes within the grab window of the claw x, take the topmost (smallest y). Closer + higher grip
+  // = surer.
+  function resolveGrab(){
+    var c = clawPos();
+    var best = -1, bestY = Infinity;
+    for(var i = 0; i < bin.length; i++){
+      if(bin[i] === carried) continue;
+      var d = Math.abs(bin[i].x - c.x);
+      if(d <= cfg.grabRadius && bin[i].y < bestY){ bestY = bin[i].y; best = i; }
+    }
+    if(best === -1){
+      setFeedback("Empty grab", "Line up over the pile", "miss");
+      return;
+    }
+    var prize = bin[best];
+    // Proximity 1 (dead-centre) → 0 (edge of window); even an edge grab keeps a base chance.
+    var proximity = 1 - Math.abs(prize.x - c.x) / cfg.grabRadius;
+    var chance = (GRAB_BASE_CHANCE + GRAB_PROXIMITY_BONUS * proximity) * prize.grip * cfg.gripMul;
+    if(Math.random() < chance){
+      carried = prize;
+      bin.splice(best, 1);
+      // Decide up front whether this prize will betray you mid-carry, and at what point of the trip.
+      carried.willSuddenDrop = Math.random() < cfg.dropChance;
+      carried.suddenDropFrac = 0.3 + Math.random() * 0.5;
+      setFeedback("Got one!", "Reeling it to the chute…", "good");
+    } else {
+      setFeedback("So close!", "It slipped the claw", "miss");
+      soundMiss();
+    }
+  }
+
+  function enterLift(now){
+    phase = Phase.LIFT; phaseStartTs = now;
+    // A carried prize can still wriggle free on the way up — a pure difficulty roll (harder = looser).
+    if(carried && Math.random() < cfg.slipChance){
+      var dropped = carried; carried = null;
+      dropped.vx = (Math.random() * 2 - 1) * 50; dropped.vy = 0;
+      dropped.x = clamp(clawPos().x, lay.binLeft + dropped.rad, lay.binRight - dropped.rad);
+      dropped.y = clawPos().y;
+      bin.push(dropped);
+      setFeedback("It wriggled free!", "Drop again over the pile", "miss");
+      soundMiss();
+    }
+  }
+
+  function enterRelease(now){
+    phase = Phase.RELEASE; phaseStartTs = now;
+    if(carried){ carried.vy = 0; carried.dropY = 0; }
+  }
+
+  // Award points when the carried prize drops into the chute.
+  function finishRelease(){
+    if(carried){
+      var pts = carried.points;
+      score += pts; prizesCaught++;
+      if(pts > bestCatch) bestCatch = pts;
+      spawnPopup(lay.chuteCx, lay.chuteHoleY - lay.prizeR * 0.6, "+" + pts);
+      updateScoreHud();
+      setFeedback("Nice catch! +" + pts, carried.e + " · " + RARITY[carried.r].label, "good");
+      announce("Caught " + RARITY[carried.r].label + " prize, plus " + pts + ". Score " + score + ".");
+      soundCatch();
+      carried = null;
+    } else {
+      setFeedback("Try again", "Line up and drop", "");
+    }
+  }
+
+  function spawnPopup(x, y, text){
+    popups.push({ x:x, y:y, text:text, life:0, maxLife: reduceMotion ? 700 : 1100 });
+  }
+
+  // ============================================================
+  //  HUD / FEEDBACK
+  // ============================================================
+  function updateScoreHud(){ $("hudScore").innerHTML = ""; $("hudScore").appendChild(document.createTextNode("Score ")); var b = el("b"); b.textContent = String(score); $("hudScore").appendChild(b); }
+  function setFeedback(main, sub, tone){
+    var f = $("feedback"); f.textContent = "";
+    f.appendChild(document.createTextNode(main));
+    if(sub){ var s = el("small"); s.textContent = sub; f.appendChild(s); }
+    f.setAttribute("data-tone", tone || "");
+  }
+  function updateSessionHud(now){
+    var remain = Math.max(0, sessionEndTs - now);
+    var totalS = Math.ceil(remain / 1000);
+    var mm = Math.floor(totalS / 60), ss = totalS % 60;
+    $("sessClock").textContent = mm + ":" + (ss < 10 ? "0" : "") + ss;
+    $("progressFill").style.transform = "scaleX(" + (remain / (durationSec * 1000)) + ")";
+  }
+
+  // ============================================================
+  //  MAIN LOOP
+  // ============================================================
+  function loop(){
+    if(!running) return;
+    var now = performance.now();
+    if(now >= sessionEndTs){ endGame(); return; }
+
+    // Fixed-step physics (clamped) for a stable pendulum even after a backgrounded tab.
+    var frameDt = Math.min((now - lastFrameTs) / 1000, 0.05);
+    lastFrameTs = now;
+    var step = 1 / 120, acc = frameDt;
+    while(acc > 0){
+      var dt = Math.min(step, acc);
+      updateSequence(now);   // phase timings use real now; cheap to call per substep
+      stepPhysics(dt);
+      acc -= dt;
+    }
+
+    if(countingDown) advanceCountdown(now);
+
+    // Capped, periodic refill (the "fills up to a limit" behaviour).
+    if(now >= nextRefillTs){
+      addPrize(false);
+      nextRefillTs = now + cfg.refillMs;
+    }
+
+    // Age popups.
+    for(var i = popups.length - 1; i >= 0; i--){ popups[i].life += frameDt * 1000; if(popups[i].life >= popups[i].maxLife) popups.splice(i, 1); }
+
+    updateSessionHud(now);
+    draw();
+    publishDebug();
+    rafId = requestAnimationFrame(loop);
+  }
+
+  // ============================================================
+  //  RENDER (canvas)
+  // ============================================================
+  function draw(){
+    if(W < 2 || H < 2) return;
+    ctx.clearRect(0, 0, W, H);
+    ctx.globalAlpha = 1;   // defensive: never let a stale alpha/state bleed across frames
+    drawCabinet();      // background + top sheen + rail (all decoration drawn BEFORE prizes)
+    drawBinTray();      // the tray the heap sits in
+    drawChute();        // the proper chute box on the left
+    drawPrizes();       // the opaque heap (nothing translucent is drawn over it)
+    drawReleasing();    // a prize falling into the chute hole
+    drawClawAssembly(); // metallic claw + cable
+    drawPopups();
+  }
+
+  function drawCabinet(){
+    ctx.fillStyle = grad.cabinet; ctx.fillRect(0, 0, W, H);
+    // Soft sheen high up (decorative; ends well above the prizes so it can't wash them out).
+    ctx.fillStyle = grad.sheen; ctx.fillRect(0, 0, W, lay.railY * 1.6);
+    // Top rail the trolley rides on, with end caps.
+    ctx.strokeStyle = "rgba(255,255,255,0.42)"; ctx.lineWidth = 5; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(lay.margin, lay.railY); ctx.lineTo(W - lay.margin, lay.railY); ctx.stroke();
+    ctx.fillStyle = "rgba(0,0,0,0.28)";
+    ctx.beginPath(); ctx.arc(lay.margin, lay.railY, 5, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(W - lay.margin, lay.railY, 5, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // The tray that holds the heap — a recessed back panel + a shaded floor, so prizes read as sitting
+  // INSIDE a container rather than floating on the background.
+  function drawBinTray(){
+    var x = lay.binLeft - lay.prizeR - 8;
+    var w = (lay.binRight + lay.prizeR + 8) - x;
+    var top = lay.floorY - lay.prizeR * 2.7;
+    var bottom = grad.trayBottom;
+    ctx.fillStyle = "rgba(0,0,0,0.16)";
+    roundRect(x, top, w, bottom - top, 14); ctx.fill();
+    ctx.fillStyle = grad.tray;
+    roundRect(x, lay.floorY - lay.prizeR * 0.2, w, bottom - (lay.floorY - lay.prizeR * 0.2), 12); ctx.fill();
+    ctx.strokeStyle = "rgba(255,255,255,0.16)"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(x + 8, bottom - 2); ctx.lineTo(x + w - 8, bottom - 2); ctx.stroke();
+  }
+
+  // A real chute: a lit box on the left with a dark drop-hole at the top and a collected count.
+  function drawChute(){
+    var x = lay.margin, w = lay.chuteW, top = lay.chuteTop, bottom = H;
+    ctx.fillStyle = grad.chute; roundRect(x, top, w, bottom - top, 14); ctx.fill();
+    ctx.strokeStyle = "rgba(255,255,255,0.30)"; ctx.lineWidth = 2; roundRect(x, top, w, bottom - top, 14); ctx.stroke();
+    // Drop hole.
+    ctx.fillStyle = "rgba(0,0,0,0.80)";
+    ctx.beginPath(); ctx.ellipse(lay.chuteCx, lay.chuteHoleY, w * 0.36, lay.prizeR * 0.52, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "rgba(0,0,0,0.55)"; ctx.lineWidth = 3; ctx.stroke();
+    // Label plate + collected count.
+    ctx.fillStyle = "rgba(0,0,0,0.4)"; roundRect(x + 4, top - 22, w - 8, 18, 7); ctx.fill();
+    ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.font = "700 10px " + bodyFont(); ctx.fillText("PRIZES", lay.chuteCx, top - 13);
+    ctx.font = "800 16px " + bodyFont(); ctx.fillText(String(prizesCaught), lay.chuteCx, bottom - 20);
+  }
+
+  function drawPrizes(){
+    // Back-to-front by y so the heap layers correctly (lower = nearer = drawn last).
+    var sorted = bin.slice().sort(function(a, b){ return a.y - b.y; });
+    for(var i = 0; i < sorted.length; i++){ if(sorted[i] !== carried) drawPrize(sorted[i], true); }
+  }
+  // Each prize is a solid, glossy CAPSULE TOY: an opaque light disc with the emoji on top + a
+  // specular highlight. The opaque backing is what makes every prize pop off the dark tray (the fix
+  // for "transparent" — bare dark emoji used to blend into the cabinet).
+  function drawPrize(p, withShadow){
+    ctx.globalAlpha = 1;
+    if(withShadow){
+      ctx.fillStyle = "rgba(0,0,0,0.32)";
+      ctx.beginPath(); ctx.ellipse(p.x, p.y + p.rad * 0.86, p.rad * 0.78, p.rad * 0.26, 0, 0, Math.PI * 2); ctx.fill();
+    }
+    // Blit the pre-rendered capsule sprite (the emoji is rasterised ONCE, with a correct emoji-first
+    // font, so it shows on every engine — and per frame this is a cheap drawImage, not gradients +
+    // fillText). See getPrizeSprite().
+    var spr = getPrizeSprite(p.e);
+    if(spr) ctx.drawImage(spr, p.x - p.rad, p.y - p.rad, p.rad * 2, p.rad * 2);
+  }
+
+  // ---- Prize sprite cache -------------------------------------------------
+  // Canvas color-emoji is engine-dependent: some browsers (notably WebKit / mobile) will NOT fall
+  // back per-glyph to a trailing emoji family, so `fillText(emoji)` with a Latin-led font renders
+  // blank. We sidestep that entirely: render each emoji ONCE onto a capsule sprite using an
+  // emoji-FIRST font, cache it, and draw the bitmap thereafter. This is OS-agnostic (color-emoji
+  // families for Apple, Windows and Android/Linux all lead the list) and far cheaper per frame.
+  var prizeSpriteCache = {};
+  var PRIZE_SPRITE_PX = 128;   // base resolution; scaled to each prize's diameter on draw
+  function emojiFont(px){
+    // Color-emoji families first so the glyph resolves (and uses colour presentation) everywhere.
+    return px + 'px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Twemoji Mozilla",sans-serif';
+  }
+  function getPrizeSprite(emoji){
+    if(prizeSpriteCache[emoji]) return prizeSpriteCache[emoji];
+    var S = PRIZE_SPRITE_PX, r = S / 2;
+    var c = document.createElement("canvas");
+    c.width = S; c.height = S;
+    var g = c.getContext("2d");
+    // Capsule body.
+    var grd = g.createRadialGradient(r - r * 0.32, r - r * 0.4, r * 0.2, r, r, r * 1.05);
+    grd.addColorStop(0, "#ffffff"); grd.addColorStop(0.6, "#eef0f5"); grd.addColorStop(1, "#c6cad6");
+    g.fillStyle = grd;
+    g.beginPath(); g.arc(r, r, r * 0.98, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = "rgba(0,0,0,0.14)"; g.lineWidth = Math.max(1, r * 0.06);
+    g.beginPath(); g.arc(r, r, r * 0.98, 0, Math.PI * 2); g.stroke();
+    // Emoji (neutral dark fill as a safety net if an engine renders it monochrome).
+    g.fillStyle = "#333";
+    g.font = emojiFont(Math.round(r * 1.4));
+    g.textAlign = "center"; g.textBaseline = "middle";
+    g.fillText(emoji, r, r + r * 0.04);
+    // Specular highlight.
+    g.fillStyle = "rgba(255,255,255,0.5)";
+    g.beginPath(); g.ellipse(r - r * 0.34, r - r * 0.42, r * 0.3, r * 0.17, -0.5, 0, Math.PI * 2); g.fill();
+    prizeSpriteCache[emoji] = c;
+    return c;
+  }
+
+  // The carried prize while it drops into the chute — clipped so it vanishes INTO the hole.
+  function drawReleasing(){
+    if(!carried || phase !== Phase.RELEASE) return;
+    var py = carried.y + (carried.dropY || 0);
+    if(py > lay.chuteHoleY) return;   // past the rim → it's inside the chute, hidden
+    drawPrize({ x: carried.x, y: py, rad: carried.rad, e: carried.e }, false);
+  }
+
+  function drawClawAssembly(){
+    var c = clawPos();
+    // Straight cable + a small spring at the top (the claw drops vertically — no swing arc).
+    ctx.strokeStyle = "rgba(225,228,236,0.95)"; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(cartX, lay.railY); ctx.lineTo(c.x, c.y - lay.prizeR * 0.7); ctx.stroke();
+    drawSpring(cartX, lay.railY, c.x, c.y);
+    // Trolley on the rail.
+    ctx.fillStyle = "#c9ccd6";
+    roundRect(cartX - lay.cartHalf * 0.5, lay.railY - 9, lay.cartHalf, 14, 4); ctx.fill();
+    ctx.fillStyle = "#e2434f";
+    ctx.beginPath(); ctx.arc(cartX, lay.railY - 9, 4, 0, Math.PI * 2); ctx.fill();
+    // A carried prize rides between the prongs (drawn before the claw so the prongs overlap it).
+    if(carried && phase !== Phase.RELEASE){
+      drawPrize({ x: carried.x, y: carried.y, rad: carried.rad, e: carried.e }, false);
+    }
+    drawClaw(c.x, c.y, theta, openAmount);
+  }
+
+  function drawSpring(x1, y1, x2, y2){
+    var coils = 4, len = 22;
+    var ang = Math.atan2(x2 - x1, y2 - y1);   // ~0 (vertical) — the jiggle barely tilts it
+    ctx.save(); ctx.translate(x1, y1); ctx.rotate(ang);
+    ctx.strokeStyle = "rgba(185,189,201,0.95)"; ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    for(var i = 0; i <= coils; i++){
+      var yy = (i / coils) * len;
+      var xx = (i % 2 === 0 ? -4 : 4);
+      if(i === 0){ ctx.moveTo(0, 0); }
+      ctx.lineTo(xx, yy);
+    }
+    ctx.stroke(); ctx.restore();
+  }
+
+  // Returns a vertical metallic gradient for a steel look (light → steel → shadow).
+  function metalGradient(yTop, yBot){
+    var g = ctx.createLinearGradient(0, yTop, 0, yBot);
+    g.addColorStop(0, "#f3f5fb"); g.addColorStop(0.45, "#c4c9d6");
+    g.addColorStop(0.6, "#9aa0b1"); g.addColorStop(1, "#6e7384");
+    return g;
+  }
+
+  // A chunky metallic arcade claw: a top cap, a red collar, a body, and three hooked prongs that
+  // splay open (open≈1) or clamp shut (open≈0). Scaled off the prize radius.
+  function drawClaw(x, y, ang, open){
+    var s = clamp(lay.prizeR * 1.3, 26, 52);
+    ctx.save(); ctx.translate(x, y); ctx.rotate(ang);
+    ctx.lineJoin = "round"; ctx.lineCap = "round";
+    // Top cap / disc (cable mount).
+    ctx.fillStyle = metalGradient(-s * 0.98, -s * 0.45);
+    roundRect(-s * 0.5, -s * 0.98, s * 1.0, s * 0.5, s * 0.22); ctx.fill();
+    ctx.strokeStyle = "rgba(0,0,0,0.32)"; ctx.lineWidth = Math.max(1, s * 0.05);
+    roundRect(-s * 0.5, -s * 0.98, s * 1.0, s * 0.5, s * 0.22); ctx.stroke();
+    // Red collar.
+    ctx.fillStyle = "#e0434f";
+    roundRect(-s * 0.44, -s * 0.5, s * 0.88, s * 0.22, s * 0.07); ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,0.28)";
+    roundRect(-s * 0.44, -s * 0.5, s * 0.88, s * 0.08, s * 0.05); ctx.fill();
+    // Body (where the prongs hinge).
+    ctx.fillStyle = metalGradient(-s * 0.3, s * 0.2);
+    ctx.beginPath();
+    ctx.moveTo(-s * 0.36, -s * 0.3); ctx.lineTo(s * 0.36, -s * 0.3);
+    ctx.lineTo(s * 0.22, s * 0.2); ctx.lineTo(-s * 0.22, s * 0.2); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = "rgba(0,0,0,0.30)"; ctx.lineWidth = Math.max(1, s * 0.045); ctx.stroke();
+    // Three hooked prongs.
+    drawClawProng(s, -1, open);
+    drawClawProng(s, 1, open);
+    drawClawProng(s, 0, open);
+    // Hinge knuckles on top of the prong bases.
+    ctx.fillStyle = "#cfd3dd";
+    [-1, 0, 1].forEach(function(d){ ctx.beginPath(); ctx.arc(d * s * 0.16, s * 0.12, s * 0.13, 0, Math.PI * 2); ctx.fill(); });
+    ctx.restore();
+  }
+  function drawClawProng(s, dir, open){
+    var baseX = dir * s * 0.16;
+    var outX = dir * s * (0.22 + open * 0.62);   // splay grows with `open`
+    var outY = s * 0.82;
+    var tipX = outX - dir * s * 0.30;            // tip hooks back inward (a grabber)
+    var tipY = s * 1.18;
+    var g = ctx.createLinearGradient(baseX - s * 0.2, 0, outX + dir * s * 0.2, tipY);
+    g.addColorStop(0, "#eef0f6"); g.addColorStop(0.5, "#b7bcca"); g.addColorStop(1, "#7c8192");
+    ctx.beginPath();
+    ctx.moveTo(baseX, s * 0.12);
+    ctx.quadraticCurveTo(dir * s * 0.30, s * 0.48, outX, outY);
+    ctx.quadraticCurveTo(outX + dir * s * 0.06, tipY, tipX, tipY);
+    ctx.strokeStyle = g; ctx.lineWidth = s * 0.3; ctx.stroke();
+    ctx.strokeStyle = "rgba(0,0,0,0.26)"; ctx.lineWidth = s * 0.05; ctx.stroke();
+  }
+
+  function drawPopups(){
+    ctx.save();
+    ctx.font = "800 " + Math.round(clamp(H * 0.045, 18, 32)) + "px " + bodyFont();
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    for(var i = 0; i < popups.length; i++){
+      var p = popups[i], k = p.life / p.maxLife;
+      ctx.globalAlpha = clamp(1 - k, 0, 1);
+      ctx.fillStyle = "#fff";
+      ctx.lineWidth = 3; ctx.strokeStyle = "rgba(0,0,0,0.4)";
+      ctx.strokeText(p.text, p.x, p.y - k * (reduceMotion ? 10 : 46));
+      ctx.fillText(p.text, p.x, p.y - k * (reduceMotion ? 10 : 46));
+    }
+    ctx.restore();
+  }
+
+  function roundRect(x, y, w, h, r){
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+  function bodyFont(){ return '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, "Apple Color Emoji", "Segoe UI Emoji", sans-serif'; }
+
+  // ============================================================
+  //  END / RESULTS
+  // ============================================================
+  function endGame(){
+    running = false;
+    if(rafId) cancelAnimationFrame(rafId); rafId = null;
+    $("countdown").classList.remove("active");
+    updateSessionHud(sessionEndTs);   // force the literal 0:00 frame before leaving the stage
+    showResults();
+  }
+
+  function stopToSetup(){
+    running = false;
+    if(rafId) cancelAnimationFrame(rafId); rafId = null;
+    phase = Phase.IDLE; carried = null; countingDown = false;
+    $("countdown").classList.remove("active");
+    $("keyPanel").classList.remove("show"); $("keyBtn").setAttribute("aria-pressed", "false");
+    show("setup");
+  }
+
+  $("quitBtn").addEventListener("click", stopToSetup);
+
+  function showResults(){
+    $("statScore").textContent = String(score);
+    $("statCaught").textContent = String(prizesCaught);
+    $("statBest").textContent = bestCatch > 0 ? ("+" + bestCatch) : "0";
+    if(score === 0){
+      $("resTitle").textContent = "Empty-handed";
+      $("resSub").textContent = "Not a single prize — line the claw up dead-centre and try again.";
+    } else {
+      $("resTitle").textContent = "Round over";
+      $("resSub").textContent = "You scored " + score + " from " + prizesCaught + (prizesCaught === 1 ? " prize." : " prizes.");
+    }
+    announce($("resTitle").textContent + ". " + $("resSub").textContent);
+    show("results");
+  }
+
+  $("againBtn").addEventListener("click", function(){
+    initAudio(); if(audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+    startGame();
+  });
+  $("changeBtn").addEventListener("click", function(){ show("setup"); });
+
+  // ============================================================
+  //  DEBUG HOOK (for the Phase-2 test plan; harmless in production)
+  // ============================================================
+  function publishDebug(){
+    window.__claw = window.__claw || {};
+    var d = window.__claw;
+    d.cartX = cartX; d.theta = theta; d.omega = omega; d.phase = phase;
+    d.score = score; d.prizesCaught = prizesCaught; d.bestCatch = bestCatch;
+    d.bin = bin; d.binLength = bin.length; d.carried = !!carried; d.running = running;
+    d.cfg = { binCap: cfg.binCap, refillMs: cfg.refillMs, grabRadius: cfg.grabRadius, slipChance: cfg.slipChance };
+    // Test helpers (no-ops outside an active round).
+    d.requestGrab = requestGrab;
+    d.forcePrizeUnderTip = function(rarity){
+      if(!running) return false;
+      var c = clawPos();
+      var def = null, list = curTheme().prizes;
+      for(var i = 0; i < list.length; i++){ if(list[i].r === (rarity || 1)){ def = list[i]; break; } }
+      def = def || list[0];
+      bin.push({ x: c.x, restY: lay.floorY - lay.prizeR, y: lay.floorY - lay.prizeR, vy: 0, falling: false,
+                 e: def.e, r: def.r, points: RARITY[def.r].points, grip: 1 });
+      return true;
+    };
+  }
+
+  // global gesture guards (reused)
+  document.addEventListener("gesturestart", function(e){ e.preventDefault(); });
+  document.addEventListener("dblclick", function(e){ e.preventDefault(); });
+
+  // ---------- boot ----------
+  renderThemeCards();
+  renderDurationChips();
+  renderDifficultyChips();
+  renderPrizeKey($("setupKey"));
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,2108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <title>Neon Rush — PlayPad</title>
+
+  <link rel="icon" href="../../icons/favicon.svg" type="image/svg+xml" />
+  <meta name="theme-color" content="#07031a" />
+
+  <!-- Shared PlayPad design system -->
+  <link rel="stylesheet" href="../../styles/tokens.css" />
+  <link rel="stylesheet" href="../../styles/base.css" />
+
+  <!--
+    Neon Rush — a solo 3-lane 3D endless runner (PlayPad game #5, PLAY-005).
+    Self-contained, build-free. Chrome (setup/results/HUD/quit) mirrors Claw Catch; the PLAY STAGE
+    is a Three.js scene (vendored UMD r147 — see CLAUDE.md in this folder: NEVER swap for a CDN tag
+    or an ES-module build, both break the offline/file:// + CSP contract).
+    Modules (section banners below): SaveManager · AudioManager · UIManager · PlayerController ·
+    ObstacleSpawner · CollisionEngine (+ hover-patrol chaser, power-ups, shop).
+    First PlayPad game with persistence: one versioned localStorage key, fail-soft everywhere.
+    Standards: docs/CODE_QUALITY.md at the relaxed Prototype level (docs/CONVENTIONS.md PLAY-001).
+  -->
+  <style>
+    html, body { margin: 0; height: 100%; width: 100%; }
+    body {
+      position: fixed; inset: 0; overflow: hidden;
+      background: var(--md-sys-color-surface);
+      color: var(--md-sys-color-on-surface);
+      -webkit-user-select: none; user-select: none;
+      overscroll-behavior: none; touch-action: manipulation;
+    }
+    .screen { position: absolute; inset: 0; display: none; }
+    .screen.active { display: block; }
+    #game.active { display: block; background: #07031a; }
+    #setup, #results, #shop {
+      overflow-y: auto; -webkit-overflow-scrolling: touch;
+      background: var(--md-sys-color-surface);
+    }
+
+    .back-link {
+      display: inline-flex; align-items: center; gap: 6px;
+      color: var(--md-sys-color-on-surface-variant);
+      padding: 8px 12px 8px 4px; margin: 0 0 6px -4px;
+      border-radius: var(--md-sys-shape-corner-full);
+      font-size: var(--md-sys-typescale-label-large-size);
+      font-weight: var(--md-sys-typescale-label-large-weight);
+    }
+    .back-link:hover { color: var(--md-sys-color-on-surface); }
+
+    /* ---------- SETUP (chrome reused from Claw Catch) ---------- */
+    .setup-inner { max-width: 560px; margin: 0 auto; padding: max(20px, env(safe-area-inset-top)) 22px 48px; }
+    .brand { margin: 2px 0 6px; }
+    .brand h1 { margin: 0; }
+    .tagline { color: var(--md-sys-color-on-surface-variant); margin: 0 0 26px; max-width: 48ch; }
+    .tagline em { color: var(--md-sys-color-on-surface); font-style: normal; font-weight: 600; }
+
+    .block { margin-bottom: 26px; }
+    .block > .label {
+      display: flex; justify-content: space-between; align-items: baseline;
+      text-transform: uppercase; color: var(--md-sys-color-on-surface-variant);
+      margin: 0 2px 12px;
+      font-size: var(--md-sys-typescale-label-medium-size);
+      font-weight: var(--md-sys-typescale-label-medium-weight);
+      letter-spacing: var(--md-sys-typescale-label-medium-tracking);
+    }
+    .label .hint { text-transform: none; letter-spacing: 0; font-weight: 500; }
+
+    /* Persistent-stats strip: total coins + best score (the progression hook). */
+    .bank-row { display: flex; gap: 10px; }
+    .bank {
+      flex: 1; display: flex; align-items: center; gap: 10px; padding: 14px;
+      background: var(--md-sys-color-surface-container);
+      border: 1.5px solid var(--md-sys-color-outline-variant);
+      border-radius: var(--md-sys-shape-corner-lg);
+    }
+    .bank .b-ico { font-size: 24px; }
+    .bank .b-num { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.1; }
+    .bank .b-cap { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--md-sys-color-on-surface-variant); }
+
+    /* How-to-play key (controls + obstacle legend). */
+    .howto { display: grid; gap: 8px; }
+    .how {
+      display: flex; align-items: center; gap: 12px; padding: 10px 14px;
+      background: var(--md-sys-color-surface-container);
+      border: 1.5px solid var(--md-sys-color-outline-variant);
+      border-radius: var(--md-sys-shape-corner-md);
+      font-size: 14px;
+    }
+    .how .k {
+      flex: none; min-width: 84px; text-align: center; padding: 5px 8px; border-radius: 8px;
+      background: var(--md-sys-color-surface-container-highest);
+      border: 1px solid var(--md-sys-color-outline-variant);
+      font-weight: 700; font-size: 12.5px;
+    }
+    .how span:last-child { color: var(--md-sys-color-on-surface-variant); }
+
+    .toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 4px 2px; }
+    .t-label { font-weight: 600; }
+    .t-sub { font-size: 12.5px; color: var(--md-sys-color-on-surface-variant); }
+
+    .start-btn {
+      width: 100%; padding: 18px; border: 0; cursor: pointer;
+      border-radius: var(--md-sys-shape-corner-full);
+      background: var(--md-sys-color-primary); color: var(--md-sys-color-on-primary);
+      font-size: 17px; font-weight: 700; letter-spacing: 0.02em;
+      box-shadow: var(--md-sys-elevation-level1);
+    }
+    .start-btn:focus-visible { outline: 3px solid var(--md-sys-color-primary); outline-offset: 3px; }
+    .start-note { text-align: center; font-size: 12.5px; color: var(--md-sys-color-on-surface-variant); margin-top: 12px; }
+    .shop-btn { width: 100%; margin-top: 12px; }
+
+    /* ---------- GAME STAGE ---------- */
+    #stage { position: absolute; inset: 0; }
+    #glCanvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+
+    /* HUD pill — floats top-centre (Claw Catch pattern). */
+    #hud {
+      position: absolute; left: 50%; top: max(10px, env(safe-area-inset-top)); transform: translateX(-50%); z-index: 30;
+      display: flex; align-items: center; gap: 8px;
+      padding: 4px 6px 4px 14px; border-radius: var(--md-sys-shape-corner-full);
+      background: rgba(4, 2, 18, 0.62); color: #fff;
+      border: 1px solid rgba(255, 45, 149, 0.35);
+    }
+    #hudScore { font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; min-width: 54px; text-align: right; }
+    #hudCoins { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; color: #ffd54a; }
+    /* 48px hit targets (WCAG 2.5.8) with a 36px visual circle — verbatim PlayPad chrome. */
+    #muteBtn, #quitBtn {
+      flex: none; position: relative; width: 48px; height: 48px; border: 0;
+      background: transparent; color: #fff; font-size: 17px; line-height: 1;
+      display: grid; place-items: center; border-radius: 50%; cursor: pointer;
+    }
+    #muteBtn::before, #quitBtn::before { content: ""; position: absolute; width: 36px; height: 36px; border-radius: 50%; background: rgba(255, 255, 255, 0.16); z-index: -1; }
+    #muteBtn[aria-pressed="true"]::before { background: rgba(255, 45, 149, 0.45); }
+    #muteBtn:focus-visible, #quitBtn:focus-visible { outline: 3px solid #ff2d95; outline-offset: 2px; }
+
+    /* Power-up timer chips — bottom-centre, one per active power-up, bar drains right-to-left. */
+    #puDock {
+      position: absolute; left: 50%; bottom: max(14px, env(safe-area-inset-bottom)); transform: translateX(-50%);
+      z-index: 30; display: flex; gap: 8px; pointer-events: none;
+    }
+    .pu-chip {
+      display: none; align-items: center; gap: 7px; padding: 7px 12px 7px 9px;
+      border-radius: var(--md-sys-shape-corner-full);
+      background: rgba(4, 2, 18, 0.66); color: #fff; font-size: 13px; font-weight: 700;
+      border: 1px solid rgba(34, 229, 255, 0.45);
+      position: relative; overflow: hidden;
+    }
+    .pu-chip.on { display: flex; }
+    .pu-chip .pu-bar { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; background: rgba(34, 229, 255, 0.22); transform-origin: left; z-index: 0; }
+    .pu-chip > span { position: relative; z-index: 1; }
+    .pu-chip .pu-ico { font-size: 16px; }
+    #puHoverboard { border-color: rgba(255, 213, 74, 0.55); }
+    #puHoverboard .pu-bar { background: rgba(255, 213, 74, 0.22); }
+    #puMagnet { border-color: rgba(255, 45, 149, 0.55); }
+    #puMagnet .pu-bar { background: rgba(255, 45, 149, 0.22); }
+
+    /* Transient in-run toast (power-up pickups, shield save) — opacity class, NOT a keyframe
+       (reduced-motion lesson: a self-ending animation would flash and vanish). */
+    #toast {
+      position: absolute; left: 50%; top: 26%; transform: translateX(-50%); z-index: 35;
+      padding: 10px 20px; border-radius: var(--md-sys-shape-corner-full);
+      background: rgba(4, 2, 18, 0.72); color: #22e5ff; font-weight: 800; font-size: 16px;
+      border: 1px solid rgba(34, 229, 255, 0.5);
+      opacity: 0; transition: opacity 0.25s; pointer-events: none; white-space: nowrap;
+    }
+    #toast.show { opacity: 1; }
+
+    /* ---------- COUNTDOWN (reused look from Snap/Claw Catch) ---------- */
+    #countdown { position: absolute; inset: 0; z-index: 60; display: none; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.45); pointer-events: none; }
+    #countdown.active { display: flex; }
+    #countdown .cnum { font-size: 30vmin; font-weight: 800; line-height: 1; background: var(--brand-gradient); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    #countdown .cnum.go { font-size: 18vmin; letter-spacing: 0.04em; }
+    .cnum.beat { animation: beat 0.7s var(--md-sys-motion-easing-emphasized); }
+    @keyframes beat { 0% { transform: scale(0.4); opacity: 0; } 30% { opacity: 1; } 100% { transform: scale(1.25); opacity: 0; } }
+
+    /* WebGL-unavailable fallback — the page must never be blank. */
+    #glFail {
+      position: absolute; inset: 0; z-index: 70; display: none;
+      align-items: center; justify-content: center; text-align: center; padding: 24px;
+      background: var(--md-sys-color-surface); color: var(--md-sys-color-on-surface);
+    }
+    #glFail.show { display: flex; }
+
+    /* ---------- RESULTS — reused from Claw Catch ---------- */
+    .res-inner { max-width: 520px; margin: 0 auto; padding: max(28px, env(safe-area-inset-top)) 22px 40px; text-align: center; }
+    .res-inner .crown { font-size: 46px; }
+    .res-inner h2 { margin: 6px 0 4px; }
+    .res-inner .sub { color: var(--md-sys-color-on-surface-variant); font-size: 14px; margin: 0 0 26px; }
+    .newbest {
+      display: none; margin: 0 auto 18px; padding: 7px 16px; width: fit-content;
+      border-radius: var(--md-sys-shape-corner-full);
+      background: var(--md-sys-color-secondary-container); color: var(--md-sys-color-on-secondary-container);
+      font-weight: 800; font-size: 13.5px; letter-spacing: 0.03em;
+    }
+    .newbest.show { display: block; }
+    .stat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 22px; }
+    .stat {
+      background: var(--md-sys-color-surface-container);
+      border: 1.5px solid var(--md-sys-color-outline-variant);
+      border-radius: var(--md-sys-shape-corner-lg); padding: 16px 8px;
+    }
+    .stat .big { font-size: 30px; font-weight: 800; font-variant-numeric: tabular-nums; }
+    .stat .cap { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--md-sys-color-on-surface-variant); margin-top: 4px; }
+    .stat.hero { border-color: var(--md-sys-color-primary); background: var(--md-sys-color-surface-container-high); }
+    .stat.hero .big { color: var(--md-sys-color-tertiary); }
+    .res-actions { display: flex; gap: 12px; margin-top: 4px; }
+    .res-actions .button { flex: 1; }
+    .res-foot { margin-top: 18px; }
+
+    /* ---------- SHOP ---------- */
+    .shop-inner { max-width: 560px; margin: 0 auto; padding: max(20px, env(safe-area-inset-top)) 22px 48px; }
+    .shop-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
+    .shop-head h2 { margin: 0; }
+    .wallet {
+      display: inline-flex; align-items: center; gap: 7px; padding: 8px 16px;
+      border-radius: var(--md-sys-shape-corner-full);
+      background: var(--md-sys-color-surface-container-high);
+      border: 1.5px solid var(--md-sys-color-outline-variant);
+      font-weight: 800; font-variant-numeric: tabular-nums;
+    }
+    .skin-grid { display: grid; gap: 14px; margin-top: 20px; }
+    .skin-card {
+      display: grid; grid-template-columns: 92px 1fr auto; align-items: center; gap: 16px;
+      padding: 14px; border-radius: var(--md-sys-shape-corner-lg);
+      background: var(--md-sys-color-surface-container);
+      border: 1.5px solid var(--md-sys-color-outline-variant);
+    }
+    .skin-card.equipped { border-color: var(--md-sys-color-primary); background: var(--md-sys-color-surface-container-high); }
+    .skin-thumb {
+      width: 92px; height: 92px; border-radius: var(--md-sys-shape-corner-md);
+      display: grid; place-items: center; font-size: 44px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+    }
+    .skin-name { font-weight: 800; font-size: 16px; }
+    .skin-desc { font-size: 12.5px; color: var(--md-sys-color-on-surface-variant); margin-top: 2px; }
+    .skin-price { font-size: 13px; font-weight: 700; color: var(--md-sys-color-tertiary); margin-top: 6px; font-variant-numeric: tabular-nums; }
+    .skin-act .button { min-width: 96px; }
+    .skin-act .owned-tag { font-size: 12px; font-weight: 700; color: var(--md-sys-color-on-surface-variant); }
+  </style>
+</head>
+<body>
+
+<!-- ========== SETUP ========== -->
+<section id="setup" class="screen active">
+  <div class="setup-inner">
+    <a class="back-link state-layer" href="../../index.html" aria-label="Back to PlayPad">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      PlayPad
+    </a>
+    <div class="brand"><h1 class="display-small brand-wordmark">Neon Rush</h1></div>
+    <p class="tagline body-medium">Sprint through a neon city that never ends. <em>Dodge, jump and slide</em> past the traffic, grab every coin, and don't let the hover patrol catch up.</p>
+
+    <div class="block">
+      <div class="bank-row">
+        <div class="bank"><span class="b-ico" aria-hidden="true">🪙</span><div><div class="b-num" id="bankCoins">0</div><div class="b-cap">Coins</div></div></div>
+        <div class="bank"><span class="b-ico" aria-hidden="true">🏆</span><div><div class="b-num" id="bankBest">0</div><div class="b-cap">Best score</div></div></div>
+      </div>
+    </div>
+
+    <div class="block">
+      <div class="label"><span>How to play</span></div>
+      <div class="howto">
+        <div class="how"><span class="k">← → / swipe</span><span>Change lane — go around tall trains</span></div>
+        <div class="how"><span class="k">↑ / swipe up</span><span>Jump — clear barriers and low trams</span></div>
+        <div class="how"><span class="k">↓ / swipe down</span><span>Slide — duck under barriers</span></div>
+        <div class="how"><span class="k">✨ Power-ups</span><span>Magnet pulls coins · Sneakers jump higher · Hoverboard saves one crash</span></div>
+      </div>
+    </div>
+
+    <div class="block">
+      <div class="toggle-row">
+        <div><div class="t-label">Sound</div><div class="t-sub">Synthwave soundtrack, arcade SFX and a siren on your tail</div></div>
+        <button class="switch" id="soundToggle" aria-pressed="true" aria-label="Sound"></button>
+      </div>
+    </div>
+
+    <button class="start-btn state-layer" id="startBtn">Start running</button>
+    <button class="button button--outlined state-layer shop-btn" id="setupShopBtn">🛍️ Skin shop</button>
+    <p class="start-note">One player · arrows or swipes · your coins and best score are saved on this device.</p>
+    <p class="start-note" style="opacity:.6;font-size:11px;margin-top:6px">Music by ansimuz · characters by KayKit (Kay Lousberg) · SFX by Kenney — all CC0</p>
+  </div>
+</section>
+
+<!-- ========== GAME ========== -->
+<section id="game" class="screen">
+  <div id="stage">
+    <canvas id="glCanvas"></canvas>
+    <div id="hud">
+      <span id="hudScore">0</span>
+      <span id="hudCoins">🪙 0</span>
+      <button id="muteBtn" aria-pressed="false" aria-label="Mute sound">🔊</button>
+      <button id="quitBtn" aria-label="Quit game">✕</button>
+    </div>
+    <div id="puDock" aria-hidden="true">
+      <div class="pu-chip" id="puMagnet"><div class="pu-bar"></div><span class="pu-ico">🧲</span><span>Magnet</span></div>
+      <div class="pu-chip" id="puSneakers"><div class="pu-bar"></div><span class="pu-ico">👟</span><span>Sneakers</span></div>
+      <div class="pu-chip" id="puHoverboard"><div class="pu-bar"></div><span class="pu-ico">🛹</span><span>Hoverboard</span></div>
+    </div>
+    <div id="toast"></div>
+    <div id="countdown"><div class="cnum" id="cnum">3</div></div>
+    <div id="glFail"><div><h2 class="headline-small">3D isn't available here</h2><p class="body-medium">Neon Rush needs WebGL, which this browser has turned off.<br/><a href="../../index.html">← Back to PlayPad</a></p></div></div>
+  </div>
+</section>
+
+<!-- Screen-reader live region: the canvas action has no DOM equivalent. -->
+<p id="srStatus" class="visually-hidden" role="status" aria-live="polite"></p>
+
+<!-- ========== RESULTS ========== -->
+<section id="results" class="screen">
+  <div class="res-inner">
+    <div class="crown">🚨</div>
+    <h2 id="resTitle" class="headline-small">Busted!</h2>
+    <p class="sub" id="resSub">The hover patrol finally caught up.</p>
+    <div class="newbest" id="newBest">★ NEW BEST SCORE ★</div>
+    <div class="stat-grid">
+      <div class="stat hero"><div class="big" id="statScore">0</div><div class="cap">Score</div></div>
+      <div class="stat"><div class="big" id="statRunCoins">0</div><div class="cap">Coins this run</div></div>
+      <div class="stat"><div class="big" id="statBank">0</div><div class="cap">Total coins</div></div>
+      <div class="stat"><div class="big" id="statBest">0</div><div class="cap">Best score</div></div>
+    </div>
+    <div class="res-actions">
+      <button class="button button--outlined state-layer" id="resShopBtn">Shop</button>
+      <button class="button button--filled state-layer" id="againBtn">Try again</button>
+    </div>
+    <div class="res-actions" style="margin-top:12px">
+      <button class="button button--outlined state-layer" id="changeBtn">Change settings</button>
+    </div>
+    <div class="res-foot">
+      <a class="back-link state-layer" href="../../index.html" aria-label="Back to PlayPad">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Back to PlayPad
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ========== SHOP ========== -->
+<section id="shop" class="screen">
+  <div class="shop-inner">
+    <button class="back-link state-layer" id="shopBackBtn" style="border:0;background:transparent;cursor:pointer">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      Back
+    </button>
+    <div class="shop-head">
+      <h2 class="headline-small">Skin shop</h2>
+      <span class="wallet">🪙 <span id="walletCoins">0</span></span>
+    </div>
+    <p class="body-medium" style="color:var(--md-sys-color-on-surface-variant);margin:4px 0 0">Earn coins in runs. Buy a runner, equip it, and it's yours forever on this device.</p>
+    <div class="skin-grid" id="skinGrid"></div>
+  </div>
+</section>
+
+<script src="three.min.js"></script>
+<script src="GLTFLoader.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  /* ══════════════════════ helpers & config ══════════════════════ */
+  function $(id) { return document.getElementById(id); }
+  function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
+  var prefersReduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  var LANE_X = [-2.4, 0, 2.4];
+  var GRAVITY = 18;
+  var JUMP_V = 10.4;           // apex ≈ 3.0m — clears trams (1.55) with a humane timing window even at low speed
+  var SNEAKER_JUMP_V = 15;     // apex ≈ 6.2m — clears tall trains (4.2)
+  var FAST_FALL_V = -26;       // slide while airborne
+  var SLIDE_TIME = 0.72;       // s
+  var STAND_H = 1.8, SLIDE_H = 0.72, PLAYER_HALF_W = 0.42;
+  var SPEED_BASE = 11, SPEED_MAX = 30, SPEED_RAMP = 0.045; // speed = base + dist*ramp, capped
+  var SPAWN_Z = -110, KILL_Z = 14;
+  var PU_DURATION = 10;        // s, all power-ups
+  var COIN_SCORE = 5;          // score bonus per coin (banked coins are separate)
+  var STEP = 1 / 60;           // fixed simulation step
+
+  var NEON = { bg: 0x07031a, magenta: 0xff2d95, cyan: 0x22e5ff, purple: 0x7b3ff2, gold: 0xffd54a };
+
+  var SKINS = [
+    { id: "urban",  name: "Urban Runner", desc: "The original street sprinter.",          price: 0,    glyph: "🏃", grad: "linear-gradient(150deg,#2b2f4a,#11131f)" },
+    { id: "neonbot", name: "Neon Bot",    desc: "A chrome bot with a cyan power core.",   price: 500,  glyph: "🤖", grad: "linear-gradient(150deg,#0e4b57,#071a2e)" },
+    { id: "skater", name: "Star Rider", desc: "A starfighter pilot on a mag-board.",      price: 1200, glyph: "🛹", grad: "linear-gradient(150deg,#59114e,#1d0730)" }
+  ];
+
+  /* ══════════════════════ SaveManager ══════════════════════
+     The ONLY gateway to localStorage. Versioned key, fail-soft: private mode or
+     corrupted JSON must never crash the game — we fall back to defaults and keep
+     playing in-memory. */
+  var SaveManager = (function () {
+    var KEY = "playpad.neonRush.v1";
+    function defaults() { return { v: 1, coins: 0, unlocked: ["urban"], equipped: "urban", highScore: 0, muted: false }; }
+    // Untrusted-save guard: reject NaN / Infinity / negatives and cap at a sane ceiling.
+    function sanitizeCount(x) { var n = Math.floor(Number(x)); return Number.isFinite(n) ? clamp(n, 0, 1e9) : 0; }
+    function load() {
+      try {
+        var raw = localStorage.getItem(KEY);
+        if (!raw) return defaults();
+        var d = JSON.parse(raw);
+        if (!d || typeof d !== "object" || d.v !== 1) return defaults();
+        var out = defaults();
+        out.coins = sanitizeCount(d.coins);
+        out.highScore = sanitizeCount(d.highScore);
+        out.muted = !!d.muted;
+        if (Array.isArray(d.unlocked)) {
+          out.unlocked = d.unlocked.filter(function (id) { return SKINS.some(function (s) { return s.id === id; }); });
+        }
+        if (out.unlocked.indexOf("urban") < 0) out.unlocked.push("urban");
+        out.equipped = (out.unlocked.indexOf(d.equipped) >= 0) ? d.equipped : "urban";
+        return out;
+      } catch (e) { return defaults(); }
+    }
+    var data = load();
+    function persist() { try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (e) { /* private mode: in-memory only */ } }
+    return { data: data, persist: persist };
+  })();
+  var save = SaveManager.data;
+
+  /* ══════════════════════ AudioManager ══════════════════════
+     Real vendored audio (CC0 synthwave loop + Kenney sci-fi SFX, see assets/CREDITS.md)
+     with an automatic SYNTH FALLBACK: if a file is missing or fails to decode (offline
+     dev, partial deploy), the original oscillator voice fires instead — audio never
+     breaks play. Music is a looping <audio> element; SFX are decoded Web Audio buffers
+     for low latency; the drone siren stays synth (it's a live proximity layer). */
+  var AudioManager = (function () {
+    var ctx = null, master = null;
+    var droneOsc = null, droneGain = null;
+    var musicT = 0, musicStepI = 0;
+    var BASS = [55, 55, 82.4, 55, 65.4, 65.4, 82.4, 98]; // A1-centred 8-step loop (fallback rhythm)
+    var buffers = {};                    // name -> decoded AudioBuffer (undefined = use synth)
+    var sfxRequested = false;
+    var musicEl = null, musicFailed = false;
+    var SFX = { coin: 0.7, jump: 0.6, slide: 0.6, crash: 0.9, power: 0.8, buy: 0.7 }; // name -> playback gain
+
+    function ensure() {
+      if (ctx) return true;
+      try {
+        var AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return false;
+        ctx = new AC();
+        master = ctx.createGain();
+        master.gain.value = save.muted ? 0 : 0.5;
+        master.connect(ctx.destination);
+      } catch (e) { ctx = null; return false; }
+      loadSfx();
+      return true;
+    }
+    function resume() { try { if (ctx && ctx.state === "suspended") ctx.resume(); } catch (e) {} }
+    function loadSfx() {
+      if (sfxRequested || !ctx) return;
+      sfxRequested = true;
+      Object.keys(SFX).forEach(function (name) {
+        try {
+          fetch("assets/audio/" + name + ".ogg")
+            .then(function (r) { if (!r.ok) throw 0; return r.arrayBuffer(); })
+            .then(function (a) { return ctx.decodeAudioData(a); })
+            .then(function (b) { buffers[name] = b; })
+            .catch(function () { /* leave undefined → synth fallback */ });
+        } catch (e) {}
+      });
+    }
+    function playBuf(name) {
+      var b = buffers[name];
+      if (!b || !ctx || save.muted) return false;
+      try {
+        var s = ctx.createBufferSource(); s.buffer = b;
+        var g = ctx.createGain(); g.gain.value = SFX[name] || 0.7;
+        s.connect(g); g.connect(master); s.start();
+        return true;
+      } catch (e) { return false; }
+    }
+    function blip(freq, dur, type, gain, endFreq) {
+      if (!ensure()) return;
+      try {
+        var t = ctx.currentTime;
+        var o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = type || "sine"; o.frequency.setValueAtTime(freq, t);
+        if (endFreq) o.frequency.exponentialRampToValueAtTime(endFreq, t + dur);
+        g.gain.setValueAtTime(gain || 0.2, t);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        o.connect(g); g.connect(master);
+        o.start(t); o.stop(t + dur + 0.02);
+      } catch (e) {}
+    }
+    function noise(dur, gain, freq) {
+      if (!ensure()) return;
+      try {
+        var t = ctx.currentTime, n = Math.floor(ctx.sampleRate * dur);
+        var buf = ctx.createBuffer(1, n, ctx.sampleRate), d = buf.getChannelData(0);
+        for (var i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n);
+        var src = ctx.createBufferSource(); src.buffer = buf;
+        var f = ctx.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = freq || 900;
+        var g = ctx.createGain(); g.gain.value = gain || 0.3;
+        src.connect(f); f.connect(g); g.connect(master);
+        src.start(t);
+      } catch (e) {}
+    }
+    // Real SFX first, synth voice as fallback — `synth` is the old oscillator recipe.
+    function sfx(name, synth) { if (!playBuf(name)) synth(); }
+    function initMusic() {
+      if (musicEl || musicFailed) return;
+      try {
+        musicEl = new Audio("assets/audio/music.ogg");
+        musicEl.loop = true;
+        musicEl.volume = save.muted ? 0 : 0.4;
+        musicEl.addEventListener("error", function () { musicFailed = true; musicEl = null; });
+      } catch (e) { musicFailed = true; musicEl = null; }
+    }
+    var musicPlaying = false;
+    function playMusic() {
+      musicPlaying = true;
+      initMusic();
+      if (musicEl && !save.muted) { try { musicEl.play().catch(function () { musicFailed = true; }); } catch (e) {} }
+    }
+    function pauseMusic() { musicPlaying = false; if (musicEl) { try { musicEl.pause(); } catch (e) {} } }        // run ended: forget intent
+    function suspendMusic() { if (musicEl) { try { musicEl.pause(); } catch (e) {} } }                             // tab hidden: keep intent
+    return {
+      unlock: function () { ensure(); resume(); },
+      setMuted: function (m) {
+        save.muted = m; SaveManager.persist();
+        try { if (master) master.gain.value = m ? 0 : 0.5; } catch (e) {}
+        if (musicEl) { musicEl.volume = m ? 0 : 0.4; if (m) { try { musicEl.pause(); } catch (e) {} } else if (musicPlaying) { try { musicEl.play().catch(function () {}); } catch (e) {} } }
+      },
+      playMusic: playMusic,
+      pauseMusic: pauseMusic,
+      suspendMusic: suspendMusic,
+      resumeMusicIfPlaying: function () { if (musicPlaying && musicEl && !save.muted) { try { musicEl.play().catch(function () {}); } catch (e) {} } },
+      coin: function () { sfx("coin", function () { blip(1318, 0.09, "sine", 0.16); blip(1760, 0.14, "sine", 0.14); }); },
+      jump: function () { sfx("jump", function () { blip(300, 0.16, "square", 0.08, 620); }); },
+      slide: function () { sfx("slide", function () { noise(0.18, 0.16, 500); }); },
+      crash: function () { sfx("crash", function () { noise(0.4, 0.4, 700); blip(220, 0.5, "sawtooth", 0.22, 55); }); },
+      power: function () { sfx("power", function () { blip(660, 0.1, "triangle", 0.18); blip(880, 0.1, "triangle", 0.18); blip(1320, 0.18, "triangle", 0.18); }); },
+      shield: function () { blip(392, 0.12, "triangle", 0.2); blip(523, 0.22, "triangle", 0.2); },
+      buy: function () { sfx("buy", function () { blip(880, 0.08, "sine", 0.18); blip(1174, 0.08, "sine", 0.18); blip(1568, 0.2, "sine", 0.18); }); },
+      denied: function () { blip(180, 0.2, "square", 0.12, 120); },
+      musicIsReal: function () { return !!musicEl && !musicFailed; },
+      debug: function () { return { sfxLoaded: Object.keys(buffers), musicReal: !!musicEl && !musicFailed, musicPlaying: !!(musicEl && !musicEl.paused), ctx: ctx ? ctx.state : "none" }; },
+      droneStart: function () {
+        if (!ensure()) return;
+        try {
+          if (droneOsc) return;
+          droneOsc = ctx.createOscillator(); droneGain = ctx.createGain();
+          droneOsc.type = "sawtooth"; droneOsc.frequency.value = 70;
+          var lfo = ctx.createOscillator(), lg = ctx.createGain();
+          lfo.frequency.value = 5; lg.gain.value = 14;
+          lfo.connect(lg); lg.connect(droneOsc.frequency); lfo.start();
+          droneGain.gain.value = 0;
+          droneOsc.connect(droneGain); droneGain.connect(master);
+          droneOsc.start();
+          droneOsc.__lfo = lfo;
+        } catch (e) { droneOsc = null; }
+      },
+      droneLevel: function (t01) { try { if (droneGain) droneGain.gain.value = 0.10 * t01 * t01; } catch (e) {} },
+      droneStop: function () { try { if (droneOsc) { droneOsc.stop(); droneOsc.__lfo.stop(); } } catch (e) {} droneOsc = null; droneGain = null; },
+      /* Fallback bass loop — only runs when the real music file didn't load, so
+         there's still a beat offline. Driven from the fixed-step tick (pause-safe). */
+      musicTick: function (dt, speed) {
+        if (!ctx || (musicEl && !musicFailed)) return;
+        musicT += dt;
+        var beat = 60 / (100 + speed * 2); // tempo creeps up with speed
+        if (musicT >= beat) {
+          musicT -= beat;
+          blip(BASS[musicStepI % 8], 0.16, "triangle", 0.10);
+          if (musicStepI % 2 === 1) noise(0.03, 0.05, 5000);
+          musicStepI++;
+        }
+      },
+      musicReset: function () { musicT = 0; musicStepI = 0; }
+    };
+  })();
+
+  /* ══════════════════════ UIManager ══════════════════════
+     Screen router + HUD + announcements. Teardown lives INSIDE show() (the single
+     chokepoint) so no exit path can leave a stuck countdown/toast/timer. */
+  var pendingTimeouts = [];
+  function later(fn, ms) { var id = setTimeout(fn, ms); pendingTimeouts.push(id); return id; }
+  function announce(msg) { $("srStatus").textContent = msg; }
+
+  var UIManager = {
+    show: function (s) {
+      pendingTimeouts.forEach(clearTimeout); pendingTimeouts.length = 0;
+      $("countdown").classList.remove("active");
+      $("toast").classList.remove("show");
+      ["setup", "game", "results", "shop"].forEach(function (x) { $(x).classList.toggle("active", x === s); });
+      if (s !== "game" && phase !== "idle") { stopRun(); }
+      if (s === "setup") { $("bankCoins").textContent = save.coins; $("bankBest").textContent = save.highScore; }
+      if (s === "shop") { UIManager.renderShop(); }
+    },
+    toast: function (msg) {
+      var t = $("toast");
+      t.textContent = msg;
+      t.classList.add("show");
+      later(function () { t.classList.remove("show"); }, 1400);
+    },
+    hud: function () {
+      $("hudScore").textContent = Math.floor(score);
+      $("hudCoins").textContent = "🪙 " + runCoins;
+    },
+    puChip: function (id, remaining) {
+      var chip = $(id);
+      if (remaining <= 0) { chip.classList.remove("on"); return; }
+      chip.classList.add("on");
+      chip.querySelector(".pu-bar").style.transform = "scaleX(" + (remaining / PU_DURATION) + ")"; // transform, not width → no per-frame layout
+
+    },
+    renderShop: function () {
+      $("walletCoins").textContent = save.coins;
+      var grid = $("skinGrid");
+      grid.textContent = "";
+      SKINS.forEach(function (skin) {
+        var owned = save.unlocked.indexOf(skin.id) >= 0;
+        var equipped = save.equipped === skin.id;
+        var card = document.createElement("div");
+        card.className = "skin-card" + (equipped ? " equipped" : "");
+        var thumb = document.createElement("div");
+        thumb.className = "skin-thumb"; thumb.style.background = skin.grad; thumb.textContent = skin.glyph;
+        thumb.setAttribute("aria-hidden", "true");
+        var info = document.createElement("div");
+        var nm = document.createElement("div"); nm.className = "skin-name"; nm.textContent = skin.name;
+        var ds = document.createElement("div"); ds.className = "skin-desc"; ds.textContent = skin.desc;
+        info.appendChild(nm); info.appendChild(ds);
+        if (!owned) {
+          var pr = document.createElement("div"); pr.className = "skin-price"; pr.textContent = "🪙 " + skin.price;
+          info.appendChild(pr);
+        }
+        var act = document.createElement("div"); act.className = "skin-act";
+        var btn = document.createElement("button");
+        btn.className = "button state-layer " + (equipped ? "button--outlined" : "button--filled");
+        if (equipped) { btn.textContent = "Equipped"; btn.disabled = true; }
+        else if (owned) { btn.textContent = "Equip"; btn.addEventListener("click", function () { equipSkin(skin.id); }); }
+        else {
+          btn.textContent = "Buy";
+          btn.setAttribute("aria-label", "Buy " + skin.name + " for " + skin.price + " coins");
+          btn.addEventListener("click", function () { buySkin(skin.id); });
+        }
+        act.appendChild(btn);
+        card.appendChild(thumb); card.appendChild(info); card.appendChild(act);
+        grid.appendChild(card);
+      });
+    }
+  };
+
+  function buySkin(id) {
+    var skin = SKINS.filter(function (s) { return s.id === id; })[0];
+    if (!skin || save.unlocked.indexOf(id) >= 0) return;
+    if (save.coins < skin.price) { AudioManager.denied(); announce("Not enough coins for " + skin.name); return; }
+    save.coins -= skin.price;
+    save.unlocked.push(id);
+    save.equipped = id;
+    SaveManager.persist();
+    AudioManager.buy();
+    announce(skin.name + " bought and equipped");
+    applySkin();
+    UIManager.renderShop();
+  }
+  function equipSkin(id) {
+    if (save.unlocked.indexOf(id) < 0) return;
+    save.equipped = id;
+    SaveManager.persist();
+    announce(SKINS.filter(function (s) { return s.id === id; })[0].name + " equipped");
+    applySkin();
+    UIManager.renderShop();
+  }
+
+  /* ══════════════════════ THREE scene ══════════════════════ */
+  var renderer = null, scene, camera;
+  try {
+    renderer = new THREE.WebGLRenderer({ canvas: $("glCanvas"), antialias: true, powerPreference: "high-performance" });
+  } catch (e) { renderer = null; }
+  if (!renderer) {
+    // WebGL unavailable: leave the setup screen usable but explain on entry.
+    $("startBtn").addEventListener("click", function () { UIManager.show("game"); $("glFail").classList.add("show"); });
+  }
+
+  var skinRoot = null; // current skin mesh group, child of playerGroup
+  var roadTex = null;  // scrolling road CanvasTexture (updated in the run loop)
+  var skyGroup = null, skyMesh = null, skyMat = null, starField = null; // dynamic skydome + stars
+
+  /* Procedural CanvasTextures — zero downloads, guaranteed offline. A scrolling tech-grid
+     road (sells speed) and a lit-window facade for the buildings. */
+  function makeRoadTexture() {
+    var c = document.createElement("canvas"); c.width = 128; c.height = 512;
+    var x = c.getContext("2d");
+    x.fillStyle = "#0a0518"; x.fillRect(0, 0, 128, 512);
+    for (var i = 0; i < 1600; i++) { var v = (Math.random() * 22) | 0; x.fillStyle = "rgba(" + (24 + v) + "," + (16 + v) + "," + (46 + v) + ",0.5)"; x.fillRect((Math.random() * 128) | 0, (Math.random() * 512) | 0, 1, 1); }
+    x.strokeStyle = "rgba(90,70,170,0.16)"; x.lineWidth = 1;
+    for (var y = 0; y < 512; y += 32) { x.beginPath(); x.moveTo(0, y + 0.5); x.lineTo(128, y + 0.5); x.stroke(); }
+    x.fillStyle = "rgba(34,229,255,0.34)";
+    for (var y2 = 0; y2 < 512; y2 += 72) { x.fillRect(61, y2, 5, 34); }
+    var t = new THREE.CanvasTexture(c);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(6, 26);
+    return t;
+  }
+  function makeWindowTexture() {
+    var c = document.createElement("canvas"); c.width = 64; c.height = 128;
+    var x = c.getContext("2d");
+    x.fillStyle = "#050310"; x.fillRect(0, 0, 64, 128);
+    var cols = 4, rows = 8, pw = 64 / cols, ph = 128 / rows;
+    var pal = ["#22e5ff", "#ff2d95", "#7b3ff2", "#ffd54a"];
+    for (var r = 0; r < rows; r++) for (var col = 0; col < cols; col++) {
+      if (Math.random() < 0.5) { x.fillStyle = pal[(Math.random() * pal.length) | 0]; x.fillRect(col * pw + 3, r * ph + 4, pw - 6, ph - 8); }
+    }
+    var t = new THREE.CanvasTexture(c);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(2, 3);
+    return t;
+  }
+
+  /* ══════════════════════ Particle FX + sky ══════════════════════
+     Pooled THREE.Points with additive blending — fading each particle's vertex colour to
+     black reads as a fade-out (no per-vertex alpha plumbing). One soft-dot sprite is shared
+     by every emitter (thruster exhaust, shield aura, stars). */
+  var _spriteTex = null;
+  function makeSpriteTexture() {
+    if (_spriteTex) return _spriteTex;
+    var c = document.createElement("canvas"); c.width = c.height = 64;
+    var x = c.getContext("2d");
+    var g = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+    g.addColorStop(0, "rgba(255,255,255,1)");
+    g.addColorStop(0.35, "rgba(255,255,255,0.65)");
+    g.addColorStop(1, "rgba(255,255,255,0)");
+    x.fillStyle = g; x.fillRect(0, 0, 64, 64);
+    _spriteTex = new THREE.CanvasTexture(c);
+    return _spriteTex;
+  }
+  // count points, world point size. Exposes pos/col Float32Arrays on userData so each
+  // emitter drives its own dynamics; base is the emitter's tint.
+  function makeParticles(count, size, hex) {
+    var geo = new THREE.BufferGeometry();
+    var pos = new Float32Array(count * 3);
+    var col = new Float32Array(count * 3);
+    geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+    geo.setAttribute("color", new THREE.BufferAttribute(col, 3));
+    var mat = new THREE.PointsMaterial({
+      size: size, map: makeSpriteTexture(), vertexColors: true, transparent: true,
+      depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: true, fog: false
+    });
+    var pts = new THREE.Points(geo, mat);
+    pts.frustumCulled = false;
+    pts.userData.pos = pos; pts.userData.col = col; pts.userData.count = count;
+    pts.userData.base = new THREE.Color(hex);
+    return pts;
+  }
+
+  /* Synthwave skydome texture: vertical gradient (indigo zenith → magenta horizon glow →
+     deep base) with a banded retro sun on the forward horizon. Tinted + rolled live for the
+     "sky evolves the longer you play" feel; fog is disabled on the dome so it stays visible
+     past the fog far-plane. */
+  function makeSkyTexture() {
+    var c = document.createElement("canvas"); c.width = 1024; c.height = 512;
+    var x = c.getContext("2d");
+    var g = x.createLinearGradient(0, 0, 0, 512);
+    g.addColorStop(0.0, "#080423");
+    g.addColorStop(0.34, "#1e0d4e");
+    g.addColorStop(0.5, "#5a1f8c");
+    g.addColorStop(0.6, "#ff2d95");   // horizon glow band
+    g.addColorStop(0.68, "#37124b");
+    g.addColorStop(1.0, "#06021a");
+    x.fillStyle = g; x.fillRect(0, 0, 1024, 512);
+    // retro sun just above the horizon, centred (forward azimuth), with scanline gaps
+    var sunX = 512, sunY = 512 * 0.575, sunR = 96;
+    var gg = x.createRadialGradient(sunX, sunY, 8, sunX, sunY, sunR * 2.4);
+    gg.addColorStop(0, "rgba(255,150,190,0.55)"); gg.addColorStop(1, "rgba(255,150,190,0)");
+    x.globalCompositeOperation = "lighter"; x.fillStyle = gg; x.fillRect(0, 0, 1024, 512);
+    x.globalCompositeOperation = "source-over";
+    x.save();
+    x.beginPath(); x.arc(sunX, sunY, sunR, 0, Math.PI * 2); x.clip();
+    var sg = x.createLinearGradient(0, sunY - sunR, 0, sunY + sunR);
+    sg.addColorStop(0, "#ffe27a"); sg.addColorStop(0.5, "#ff7bad"); sg.addColorStop(1, "#ff2d95");
+    x.fillStyle = sg; x.fillRect(sunX - sunR, sunY - sunR, sunR * 2, sunR * 2);
+    x.globalCompositeOperation = "destination-out";
+    for (var i = 0; i < 7; i++) { x.fillRect(sunX - sunR, sunY + 6 + i * 11, sunR * 2, 3 + i * 0.8); }
+    x.restore();
+    var t = new THREE.CanvasTexture(c);
+    return t;
+  }
+
+  if (renderer) {
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2)); // dpr cap (LEARNINGS perf row)
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    // GLTFLoader tags GLB textures as sRGB; without matching output encoding the
+    // characters render grey/washed on http(s) where the real models load.
+    renderer.outputEncoding = THREE.sRGBEncoding;
+
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(NEON.bg);
+    // fog blends distant scenery into a muted purple haze that reads against the skydome
+    // horizon (not into black); FOG_BASE is also the starting tint the sky hue-roll drifts from
+    var FOG_BASE = 0x241053;
+    scene.fog = new THREE.Fog(FOG_BASE, 26, 98);
+
+    camera = new THREE.PerspectiveCamera(58, 1, 0.1, 200);
+    camera.position.set(0, 4.4, 8);
+
+    scene.add(new THREE.HemisphereLight(0x8a7bff, 0x120a2a, 0.9));
+    var dirLight = new THREE.DirectionalLight(0xc9d6ff, 1.0);
+    dirLight.position.set(6, 14, 8);
+    dirLight.castShadow = true;
+    dirLight.shadow.mapSize.set(1024, 1024);
+    dirLight.shadow.camera.left = -10; dirLight.shadow.camera.right = 10;
+    dirLight.shadow.camera.top = 12; dirLight.shadow.camera.bottom = -6;
+    dirLight.shadow.camera.near = 1; dirLight.shadow.camera.far = 45;
+    scene.add(dirLight);
+
+    // Global skydome (gradient + retro sun) + starfield. Grouped so a single slow Y-roll +
+    // material hue-drift makes the sky evolve the longer you run. Follows the camera in
+    // render() so it always reads as infinitely far. fog:false keeps it visible past fog-far.
+    skyGroup = new THREE.Group();
+    skyMat = new THREE.MeshBasicMaterial({ map: makeSkyTexture(), side: THREE.BackSide, fog: false, depthWrite: false });
+    skyMesh = new THREE.Mesh(new THREE.SphereGeometry(160, 32, 20), skyMat);
+    skyMesh.renderOrder = -1;
+    skyGroup.add(skyMesh);
+    var starGeo = new THREE.BufferGeometry();
+    var STAR_N = 240, starPos = new Float32Array(STAR_N * 3);
+    for (var si = 0; si < STAR_N; si++) {
+      var sth = Math.random() * Math.PI * 2, sph = Math.random() * Math.random() * (Math.PI * 0.46), sr = 150;
+      starPos[si * 3] = Math.cos(sph) * Math.cos(sth) * sr;
+      starPos[si * 3 + 1] = Math.sin(sph) * sr + 10;
+      starPos[si * 3 + 2] = Math.cos(sph) * Math.sin(sth) * sr;
+    }
+    starGeo.setAttribute("position", new THREE.BufferAttribute(starPos, 3));
+    starField = new THREE.Points(starGeo, new THREE.PointsMaterial({
+      size: 2.4, map: makeSpriteTexture(), color: 0xbfeaff, transparent: true,
+      depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: false, fog: false
+    }));
+    starField.frustumCulled = false;
+    skyGroup.add(starField);
+    scene.add(skyGroup);
+
+    // Ground + static neon lane lines
+    roadTex = makeRoadTexture();
+    var ground = new THREE.Mesh(
+      new THREE.PlaneGeometry(46, 280),
+      new THREE.MeshStandardMaterial({ color: 0x0b0620, roughness: 0.9, metalness: 0.1, map: roadTex })
+    );
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.z = -100;
+    ground.receiveShadow = true;
+    scene.add(ground);
+
+    var lineGeo = new THREE.BoxGeometry(0.08, 0.02, 280);
+    var cyanLineMat = new THREE.MeshBasicMaterial({ color: NEON.cyan });
+    var magLineMat = new THREE.MeshBasicMaterial({ color: NEON.magenta });
+    [-1.2, 1.2].forEach(function (x) {
+      var l = new THREE.Mesh(lineGeo, cyanLineMat); l.position.set(x, 0.011, -100); scene.add(l);
+    });
+    [-3.7, 3.7].forEach(function (x) {
+      var l = new THREE.Mesh(lineGeo, magLineMat); l.position.set(x, 0.011, -100); scene.add(l);
+    });
+  }
+
+  /* Recycled scenery: buildings (with neon edge wireframes) + edge light bars for speed feel. */
+  var buildings = [], lightBars = [];
+  if (renderer) {
+    var bldGeo = new THREE.BoxGeometry(1, 1, 1);
+    var winTex = makeWindowTexture();
+    var bldMat = new THREE.MeshStandardMaterial({ color: 0x0d0722, roughness: 0.85, emissive: 0xffffff, emissiveMap: winTex, emissiveIntensity: 0.55 });
+    var edgeMats = [new THREE.LineBasicMaterial({ color: NEON.magenta }), new THREE.LineBasicMaterial({ color: NEON.cyan }), new THREE.LineBasicMaterial({ color: NEON.purple })];
+    var bldEdges = new THREE.EdgesGeometry(bldGeo);
+    for (var bi = 0; bi < 26; bi++) {
+      var side = bi % 2 === 0 ? -1 : 1;
+      var b = new THREE.Mesh(bldGeo, bldMat);
+      var wire = new THREE.LineSegments(bldEdges, edgeMats[bi % 3]);
+      b.add(wire);
+      b.userData.side = side;
+      scene.add(b);
+      buildings.push(b);
+      resetBuilding(b, -10 - (bi >> 1) * 18);
+    }
+    var barGeo = new THREE.BoxGeometry(0.14, 0.5, 0.14);
+    var barMatC = new THREE.MeshBasicMaterial({ color: NEON.cyan });
+    var barMatM = new THREE.MeshBasicMaterial({ color: NEON.magenta });
+    for (var li = 0; li < 30; li++) {
+      var side2 = li % 2 === 0 ? -1 : 1;
+      var bar = new THREE.Mesh(barGeo, li % 4 < 2 ? barMatC : barMatM);
+      bar.position.set(side2 * 4.4, 0.25, -(li >> 1) * 8);
+      scene.add(bar);
+      lightBars.push(bar);
+    }
+  }
+  function resetBuilding(b, z) {
+    var h = 6 + Math.random() * 16;
+    var w = 3 + Math.random() * 4;
+    // once textured GLB buildings own the roadside, the neon boxes retreat to a far skyline
+    var off = cityMode ? 20 + Math.random() * 9 : 8.5 + Math.random() * 5;
+    if (cityMode) h = 10 + Math.random() * 20;
+    b.scale.set(w, h, 4 + Math.random() * 5);
+    b.position.set(b.userData.side * off, h / 2, z);
+  }
+
+  /* Textured roadside city (KayKit City Builder Bits, CC0) — loaded async like the
+     character GLBs. Until (or unless) they arrive, the neon boxes above are the city:
+     file:// and any failed fetch keep the old look, nothing ever depends on these. */
+  var cityMode = false;
+  var cityBuildings = [];
+  var CITY_FILES = ["building_A", "building_B", "building_C", "building_D", "building_E", "building_F", "building_G", "building_H"];
+  var CITY_SPACING = 17, CITY_COUNT = 16;
+  function prepCityModel(scene3) {
+    scene3.traverse(function (o) {
+      if (o.isMesh && o.material && o.material.emissive) {
+        // self-lit night look: reuse the color map as a dim emissive map so the texture
+        // reads under the dark sky without extra lights
+        o.material.emissive = new THREE.Color(0xbfc8ff);
+        o.material.emissiveMap = o.material.map;
+        o.material.emissiveIntensity = 0.38;
+      }
+    });
+    return scene3;
+  }
+  function enableCityBuildings(models) {
+    // pool: alternate sides, cycle through the loaded models, normalize each to a
+    // believable height; recycling only shifts z so layout stays stable
+    for (var i = 0; i < CITY_COUNT; i++) {
+      var src = models[i % models.length];
+      var inst = src.clone();
+      var side = i % 2 === 0 ? -1 : 1;
+      var box = new THREE.Box3().setFromObject(inst);
+      var size = new THREE.Vector3(); box.getSize(size);
+      var s = (7 + Math.random() * 5) / (size.y || 1);
+      inst.scale.setScalar(s);
+      inst.scale.y *= 1 + Math.random() * 0.4; // gentle tower stretch
+      inst.rotation.y = side === -1 ? Math.PI / 2 : -Math.PI / 2; // face the road
+      box.setFromObject(inst);
+      inst.position.set(side * (9.6 + Math.random() * 2.6), -box.min.y, -4 - i * CITY_SPACING + Math.random() * 6);
+      scene.add(inst);
+      cityBuildings.push(inst);
+    }
+    cityMode = true;
+    buildings.forEach(function (b) { resetBuilding(b, b.position.z); }); // push the boxes out to skyline duty
+  }
+  function preloadCity() {
+    if (!gltfLoader || !renderer) return;
+    var loaded = [], done = 0;
+    CITY_FILES.forEach(function (f) {
+      gltfLoader.load("assets/models/city/" + f + ".glb",
+        function (g) { loaded.push(prepCityModel(g.scene)); if (++done === CITY_FILES.length && loaded.length) enableCityBuildings(loaded); },
+        undefined,
+        function () { if (++done === CITY_FILES.length && loaded.length) enableCityBuildings(loaded); });
+    });
+  }
+
+  /* ══════════════════════ Skins (primitive-built, articulated) ══════════════════════
+     Each builder returns a Group and stashes animatable joints on `userData.parts`
+     (legL/legR/armL/armR pivots, plus flags like hover/board) so PlayerController can
+     drive a run cycle + turn lean. Rounded forms come from CapsuleGeometry (r142+);
+     flatShading gives the faceted low-poly-neon read. */
+  function stdMat(color, emissive, ei, flat) {
+    return new THREE.MeshStandardMaterial({ color: color, emissive: emissive || 0x000000, emissiveIntensity: ei || 0, roughness: 0.55, metalness: 0.3, flatShading: !!flat });
+  }
+  function chromeMat(color, emissive, ei) {
+    // Brushed-chrome look for the bot — MeshPhysicalMaterial adds a clearcoat sheen.
+    return new THREE.MeshPhysicalMaterial({ color: color, emissive: emissive || 0x000000, emissiveIntensity: ei || 0, roughness: 0.28, metalness: 0.95, clearcoat: 0.6, clearcoatRoughness: 0.25, flatShading: false });
+  }
+  // A limb that swings from its top end (shoulder/hip) — the pivot Group sits at the joint,
+  // the capsule hangs beneath it so rotating the pivot on X sweeps the limb forward/back.
+  function makeLimb(radius, cylLen, mat, jointX, jointY, jointZ) {
+    var pivot = new THREE.Group();
+    pivot.position.set(jointX, jointY, jointZ || 0);
+    var total = cylLen + radius * 2;
+    var m = new THREE.Mesh(new THREE.CapsuleGeometry(radius, cylLen, 4, 8), mat);
+    m.position.y = -total / 2; // top cap at the joint
+    pivot.add(m);
+    return pivot;
+  }
+  function buildUrban() {
+    var g = new THREE.Group();
+    var suit = stdMat(0x2c3357, NEON.cyan, 0.22, true);
+    var dark = stdMat(0x171b30, 0, 0, true);
+    var skin = stdMat(0xd9a066, 0, 0, false);
+    var torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.24, 0.42, 4, 10), suit);
+    torso.position.y = 1.0;
+    var chest = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.16, 0.34), stdMat(NEON.magenta, NEON.magenta, 0.85, true));
+    chest.position.set(0, 1.12, 0.02); // glowing chest band
+    var head = new THREE.Mesh(new THREE.SphereGeometry(0.21, 16, 14), skin);
+    head.position.y = 1.66;
+    var cap = new THREE.Mesh(new THREE.SphereGeometry(0.24, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2), stdMat(NEON.magenta, NEON.magenta, 0.5, true));
+    cap.position.y = 1.72;
+    var brim = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.05, 0.2), stdMat(NEON.magenta, NEON.magenta, 0.5, true));
+    brim.position.set(0, 1.7, 0.24);
+    var legL = makeLimb(0.11, 0.42, dark, -0.13, 0.66);
+    var legR = makeLimb(0.11, 0.42, dark, 0.13, 0.66);
+    var armL = makeLimb(0.085, 0.4, suit, -0.3, 1.24);
+    var armR = makeLimb(0.085, 0.4, suit, 0.3, 1.24);
+    g.add(torso, chest, head, cap, brim, legL, legR, armL, armR);
+    g.userData.parts = { legL: legL, legR: legR, armL: armL, armR: armR };
+    return g;
+  }
+  function buildNeonBot() {
+    var g = new THREE.Group();
+    var shell = chromeMat(0xaeb9cc, 0, 0);
+    var body = new THREE.Mesh(new THREE.CapsuleGeometry(0.3, 0.42, 6, 14), shell);
+    body.position.y = 1.05;
+    var core = new THREE.Mesh(new THREE.SphereGeometry(0.13, 12, 10), stdMat(NEON.cyan, NEON.cyan, 1.6));
+    core.position.set(0, 1.02, 0.26);
+    var ring = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.03, 8, 20), stdMat(NEON.cyan, NEON.cyan, 1.3));
+    ring.position.set(0, 1.02, 0.24);
+    var head = new THREE.Mesh(new THREE.CapsuleGeometry(0.2, 0.08, 4, 12), shell);
+    head.rotation.z = Math.PI / 2; head.position.y = 1.62;
+    var visor = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.045, 8, 16, Math.PI), stdMat(NEON.cyan, NEON.cyan, 1.7));
+    visor.rotation.set(Math.PI / 2, 0, 0); visor.position.set(0, 1.63, 0.06);
+    var ant = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.28, 8), shell);
+    ant.position.y = 1.92;
+    var tip = new THREE.Mesh(new THREE.SphereGeometry(0.055, 10, 8), stdMat(NEON.magenta, NEON.magenta, 1.8));
+    tip.position.y = 2.08;
+    var armL = makeLimb(0.075, 0.34, shell, -0.32, 1.26);
+    var armR = makeLimb(0.075, 0.34, shell, 0.32, 1.26);
+    // Twin thruster cones (point down) — it hovers instead of running.
+    var thL = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.34, 12), stdMat(NEON.magenta, NEON.magenta, 1.5));
+    thL.rotation.x = Math.PI; thL.position.set(-0.14, 0.55, 0);
+    var thR = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.34, 12), stdMat(NEON.magenta, NEON.magenta, 1.5));
+    thR.rotation.x = Math.PI; thR.position.set(0.14, 0.55, 0);
+    g.add(body, core, ring, head, visor, ant, tip, armL, armR, thL, thR);
+    g.userData.parts = { armL: armL, armR: armR, hover: true, core: core };
+    return g;
+  }
+  function buildSkater() {
+    var g = new THREE.Group();
+    var jacket = stdMat(0x531a63, NEON.magenta, 0.45, true);
+    var pants = stdMat(0x1c1030, 0, 0, true);
+    var skin = stdMat(0xe0b08c, 0, 0, false);
+    // Hoverboard: rounded deck + two glowing mag-rings + an underglow plane.
+    var board = new THREE.Group();
+    var deck = new THREE.Mesh(new THREE.CapsuleGeometry(0.16, 0.7, 3, 10), stdMat(0x20112e, NEON.purple, 0.5, true));
+    deck.rotation.z = Math.PI / 2; deck.scale.set(1, 1, 0.5); deck.position.y = 0.2;
+    [-0.32, 0.32].forEach(function (zx) {
+      var mag = new THREE.Mesh(new THREE.TorusGeometry(0.11, 0.035, 8, 16), stdMat(NEON.cyan, NEON.cyan, 1.5));
+      mag.rotation.y = Math.PI / 2; mag.position.set(zx, 0.09, 0);
+      board.add(mag);
+    });
+    var glow = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 0.4), new THREE.MeshBasicMaterial({ color: NEON.purple, transparent: true, opacity: 0.5, depthWrite: false }));
+    glow.rotation.x = -Math.PI / 2; glow.position.y = 0.02;
+    board.add(deck, glow);
+    var torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.23, 0.4, 4, 10), jacket);
+    torso.position.y = 1.02; torso.rotation.x = 0.12; // slight forward stance
+    var collar = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.04, 8, 16), stdMat(NEON.cyan, NEON.cyan, 1.1));
+    collar.rotation.x = Math.PI / 2; collar.position.y = 1.28;
+    var head = new THREE.Mesh(new THREE.SphereGeometry(0.21, 16, 14), skin);
+    head.position.y = 1.62;
+    var visor = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.11, 0.12), stdMat(NEON.cyan, NEON.cyan, 1.6, true));
+    visor.position.set(0, 1.64, 0.14);
+    // Planted legs (short, static) + arms out for balance.
+    var legL = new THREE.Mesh(new THREE.CapsuleGeometry(0.1, 0.34, 4, 8), pants); legL.position.set(-0.16, 0.5, 0.02);
+    var legR = new THREE.Mesh(new THREE.CapsuleGeometry(0.1, 0.34, 4, 8), pants); legR.position.set(0.16, 0.5, -0.02);
+    var armL = makeLimb(0.08, 0.36, jacket, -0.3, 1.22); armL.rotation.z = 0.5;  // held out
+    var armR = makeLimb(0.08, 0.36, jacket, 0.3, 1.22); armR.rotation.z = -0.5;
+    g.add(board, torso, collar, head, visor, legL, legR, armL, armR);
+    g.userData.parts = { armL: armL, armR: armR, board: board, sway: true, armBaseZ: 0.5 };
+    return g;
+  }
+  var SKIN_BUILDERS = { urban: buildUrban, neonbot: buildNeonBot, skater: buildSkater };
+
+  /* ══════════════════════ PlayerController ══════════════════════ */
+  var playerGroup = null, shieldAura = null, magnetRing = null, sneakerGlow = null;
+  var player = {
+    lane: 1, x: 0, y: 0, vy: 0,
+    onGround: true, sliding: false, slideT: 0,
+    invulnT: 0
+  };
+  if (renderer) {
+    playerGroup = new THREE.Group();
+    playerGroup.position.set(0, 0, 0);
+    scene.add(playerGroup);
+    playerGroup.traverse(function (o) { o.castShadow = true; });
+
+    // Hoverboard shield = a gold particle aura orbiting the runner (was a translucent globe).
+    // Fixed per-particle orbital params animated each frame — no spawn churn. userData.th/ph/
+    // spd/rad/phase drive a spherical swirl; brightness pulses.
+    shieldAura = makeParticles(90, 0.17, NEON.gold);
+    var au = shieldAura.userData;
+    au.th = new Float32Array(au.count); au.ph = new Float32Array(au.count);
+    au.spd = new Float32Array(au.count); au.rad = new Float32Array(au.count);
+    for (var ai = 0; ai < au.count; ai++) {
+      au.th[ai] = Math.random() * Math.PI * 2;
+      au.ph[ai] = Math.acos(2 * Math.random() - 1);
+      au.spd[ai] = 1.4 + Math.random() * 1.8;
+      au.rad[ai] = 1.0 + Math.random() * 0.35;
+    }
+    shieldAura.position.y = 1.0;
+    shieldAura.visible = false;
+    playerGroup.add(shieldAura);
+
+    magnetRing = new THREE.Mesh(
+      new THREE.TorusGeometry(0.9, 0.05, 8, 24),
+      new THREE.MeshBasicMaterial({ color: NEON.magenta })
+    );
+    magnetRing.rotation.x = Math.PI / 2;
+    magnetRing.position.y = 0.1;
+    magnetRing.visible = false;
+    playerGroup.add(magnetRing);
+
+    sneakerGlow = new THREE.Mesh(
+      new THREE.PlaneGeometry(1.1, 0.5),
+      new THREE.MeshBasicMaterial({ color: NEON.cyan, transparent: true, opacity: 0.7, depthWrite: false })
+    );
+    sneakerGlow.rotation.x = -Math.PI / 2;
+    sneakerGlow.position.y = 0.04;
+    sneakerGlow.visible = false;
+    playerGroup.add(sneakerGlow);
+  }
+  /* ══════════════════════ GLTF character models ══════════════════════
+     Real CC0 animated characters (assets/CREDITS.md) loaded async with THREE.GLTFLoader.
+     The primitive builders above stay as the INSTANT + FAILURE fallback: applySkin() uses
+     a model once its download resolves, else the primitive — start is never blocked. */
+  var MODEL_CFG = {
+    urban:   { file: "Rogue_Hooded",   height: 1.85, yaw: Math.PI, lift: 0,
+               clips: { idle: "Idle", run: "Running_A", jump: "Jump_Idle", slide: "Dodge_Forward" } },
+    // Quaternius Astronaut (CC0): sci-fi armored suit on the mag-board. No jump clip —
+    // the state machine falls back to "run" mid-air; Roll doubles as a tucked slide.
+    skater:  { file: "Astronaut",      height: 1.9,  yaw: Math.PI, board: true, lift: 0.28,
+               glowMats: /SciFi_Light/i,
+               clips: { idle: "CharacterArmature|Idle_Neutral", run: "CharacterArmature|Run",
+                        jump: null, slide: "CharacterArmature|Roll" } },
+    neonbot: { file: "RobotExpressive", height: 1.95, yaw: Math.PI, lift: 0, emissiveBoost: true,
+               clips: { idle: "Idle", run: "Running", jump: "Jump", slide: null } }
+  };
+  var gltfRaw = {}, gltfCache = {};
+  var gltfLoader = (typeof THREE.GLTFLoader !== "undefined") ? new THREE.GLTFLoader() : null;
+
+  function buildHoverboardPrim() {
+    var board = new THREE.Group();
+    var deck = new THREE.Mesh(new THREE.CapsuleGeometry(0.16, 0.7, 3, 10), stdMat(0x20112e, NEON.purple, 0.5, true));
+    deck.rotation.z = Math.PI / 2; deck.scale.set(1, 1, 0.55); deck.position.y = 0.14;
+    [-0.34, 0.34].forEach(function (zx) {
+      var mag = new THREE.Mesh(new THREE.TorusGeometry(0.11, 0.035, 8, 16), stdMat(NEON.cyan, NEON.cyan, 1.5));
+      mag.rotation.y = Math.PI / 2; mag.position.set(zx, 0.07, 0); board.add(mag);
+    });
+    var glow = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.44), new THREE.MeshBasicMaterial({ color: NEON.purple, transparent: true, opacity: 0.5, depthWrite: false }));
+    glow.rotation.x = -Math.PI / 2; glow.position.y = 0.015;
+    board.add(deck, glow);
+    return board;
+  }
+
+  function buildGltfSkin(id) {
+    if (gltfCache[id]) return gltfCache[id];
+    var raw = gltfRaw[id]; if (!raw) return null;
+    var cfg = MODEL_CFG[id];
+    var wrap = new THREE.Group();
+    var root = raw.scene;
+    // normalize: scale to target height, face away from camera, sit on the ground (+ optional lift onto a board)
+    var box = new THREE.Box3().setFromObject(root), size = new THREE.Vector3();
+    box.getSize(size);
+    root.scale.setScalar(cfg.height / (size.y || 1));
+    root.rotation.y = cfg.yaw || 0;
+    box.setFromObject(root); root.position.y = -box.min.y + (cfg.lift || 0);
+    root.traverse(function (o) {
+      // Hide the held weapons/shields the KayKit rigs ship with — this is a runner, not a brawler.
+      if (/crossbow|sword|shield|knife|throwable|dagger|_axe|staff|quiver|badge/i.test(o.name || "")) { o.visible = false; return; }
+      if (o.isMesh) {
+        o.castShadow = true; o.frustumCulled = false;
+        if (cfg.emissiveBoost && o.material && o.material.emissive) { o.material.emissive = new THREE.Color(NEON.cyan); o.material.emissiveIntensity = 0.3; }
+        // targeted neon glow: only the materials the config names (visor/accent strips)
+        if (cfg.glowMats && o.material && o.material.emissive && cfg.glowMats.test(o.material.name || "")) {
+          o.material.emissive = new THREE.Color(NEON.cyan); o.material.emissiveIntensity = 0.9;
+        }
+      }
+    });
+    wrap.add(root);
+    if (cfg.board) wrap.add(buildHoverboardPrim());
+    var mixer = new THREE.AnimationMixer(root), actions = {};
+    ["idle", "run", "jump", "slide"].forEach(function (st) {
+      var nm = cfg.clips[st]; if (!nm) return;
+      var clip = THREE.AnimationClip.findByName(raw.animations, nm);
+      if (clip) actions[st] = mixer.clipAction(clip);
+    });
+    if (actions.slide) { actions.slide.setLoop(THREE.LoopOnce, 1); actions.slide.clampWhenFinished = true; }
+    var ctrl = {
+      mixer: mixer, actions: actions, current: null, currentAction: null,
+      set: function (st) {
+        if (st === this.current) return;
+        // missing clips resolve to run/idle; tracking the RESOLVED action (not the state
+        // name) avoids re-fading an action that stays active across the state change
+        var next = this.actions[st] || this.actions.run || this.actions.idle;
+        if (!next) return;
+        var prev = this.currentAction;
+        if (st === "slide") next.reset();
+        if (next !== prev) {
+          // Re-arm: three.js sets enabled=false when a fadeOut completes, so an action
+          // faded out during a long slide/jump won't come back on fadeIn().play() alone
+          // (_updateWeight early-returns on !enabled) → skeleton falls to bind pose (T-pose).
+          next.enabled = true; next.paused = false;
+          next.setEffectiveWeight(1).fadeIn(0.12).play();
+          if (prev) prev.fadeOut(0.12);
+        }
+        this.current = st; this.currentAction = next;
+      },
+      update: function (dt, running, onGround, sliding, spd) {
+        this.mixer.update(dt);
+        var st = (sliding && this.actions.slide) ? "slide" : !onGround ? "jump" : running ? "run" : "idle";
+        this.set(st);
+        // Speed-tie the run clip always: for a model without a jump clip the run action is
+        // the airborne fallback, so gating this on `running` snapped its leg cycle to 1x on jump.
+        if (this.actions.run) this.actions.run.timeScale = clamp(spd / 11, 0.9, 2.4);
+      }
+    };
+    wrap.userData.gltf = ctrl;
+    wrap.userData.hasSlideClip = !!actions.slide;
+    gltfCache[id] = { wrap: wrap, ctrl: ctrl };
+    return gltfCache[id];
+  }
+
+  function preloadModels() {
+    if (!gltfLoader || !renderer) return;
+    Object.keys(MODEL_CFG).forEach(function (id) {
+      gltfLoader.load("assets/models/" + MODEL_CFG[id].file + ".glb",
+        function (gltf) { gltfRaw[id] = gltf; if (save.equipped === id && phase === "idle") applySkin(); },
+        undefined,
+        function () { /* load failed → primitive fallback stays in place */ });
+    });
+  }
+
+  function applySkin() {
+    if (!renderer) return;
+    if (skinRoot) { playerGroup.remove(skinRoot); }
+    var g = buildGltfSkin(save.equipped);
+    if (g) {
+      skinRoot = g.wrap;
+      // Full mixer reset: a cached skin returns with stale action state (a clamped
+      // LoopOnce slide, half-faded run weights) that otherwise leaves it in a T-pose.
+      g.ctrl.mixer.stopAllAction();
+      Object.keys(g.ctrl.actions).forEach(function (k) { g.ctrl.actions[k].reset().setEffectiveWeight(0); });
+      g.ctrl.current = null; g.ctrl.currentAction = null;
+      g.ctrl.set("idle");
+      // set() fades idle in from weight 0, so update(0) alone would evaluate it at 0 (bind/T-pose)
+      // for one frame — force full weight now so the very first rendered frame is already posed.
+      if (g.ctrl.currentAction) g.ctrl.currentAction.setEffectiveWeight(1);
+      g.ctrl.mixer.update(0);
+    }
+    else {
+      skinRoot = SKIN_BUILDERS[save.equipped] ? SKIN_BUILDERS[save.equipped]() : buildUrban();
+      skinRoot.traverse(function (o) { o.castShadow = true; });
+    }
+    skinRoot.position.set(0, 0, 0); skinRoot.rotation.set(0, 0, 0); skinRoot.scale.set(1, 1, 1);
+    playerGroup.add(skinRoot);
+  }
+  applySkin();
+  preloadModels();
+  preloadCity();
+  preloadPatrol();
+
+  // Per-frame character motion: a leg/arm run cycle (grounded), a tuck in the air, a
+  // hover bob for the bot, and a balance sway for the skater. Reads userData.parts so
+  // each skin animates only the joints it has. No allocation.
+  function animateSkin(dt, leanTarget) {
+    var parts = skinRoot && skinRoot.userData.parts;
+    if (!parts) return;
+    var running = player.onGround && !player.sliding;
+    var stride = Math.sin(distance * 3.2);
+    if (parts.hover) {
+      // bot: gentle arm sway + a spinning core; no stride
+      if (parts.armL) parts.armL.rotation.x = Math.sin(elapsed * 3) * 0.25;
+      if (parts.armR) parts.armR.rotation.x = -Math.sin(elapsed * 3) * 0.25;
+      if (parts.core) parts.core.rotation.y += dt * 3;
+    } else if (parts.sway) {
+      // skater: subtle balance sway on the out-held arms, board tilts into the turn
+      var s = Math.sin(elapsed * 2.4) * 0.12;
+      if (parts.armL) parts.armL.rotation.x = s;
+      if (parts.armR) parts.armR.rotation.x = -s;
+      if (parts.board) parts.board.rotation.z += ((leanTarget * 1.6) - parts.board.rotation.z) * Math.min(1, dt * 8);
+    } else {
+      // runner: legs + counter-swinging arms; a small tuck when airborne
+      var amp = running ? 0.8 : 0.25;
+      var tgtL = running ? stride * amp : (player.onGround ? 0 : -0.5);
+      var tgtR = running ? -stride * amp : (player.onGround ? 0 : -0.5);
+      if (parts.legL) parts.legL.rotation.x += (tgtL - parts.legL.rotation.x) * Math.min(1, dt * 18);
+      if (parts.legR) parts.legR.rotation.x += (tgtR - parts.legR.rotation.x) * Math.min(1, dt * 18);
+      if (parts.armL) parts.armL.rotation.x = -tgtL * 0.85;
+      if (parts.armR) parts.armR.rotation.x = -tgtR * 0.85;
+    }
+  }
+
+  var PlayerController = {
+    reset: function () {
+      player.lane = 1; player.x = 0; player.y = 0; player.vy = 0;
+      player.onGround = true; player.sliding = false; player.slideT = 0; player.invulnT = 0;
+      if (playerGroup) { playerGroup.position.set(0, 0, 0); playerGroup.rotation.set(0, 0, 0); }
+      if (skinRoot) {
+        skinRoot.scale.set(1, 1, 1); skinRoot.rotation.set(0, 0, 0);
+        var pr = skinRoot.userData.parts;
+        if (pr) { ["legL", "legR", "armL", "armR"].forEach(function (k) { if (pr[k] && !pr.sway) pr[k].rotation.x = 0; }); }
+      }
+    },
+    input: function (action) {
+      if (phase !== "running") return;
+      if (action === "left" && player.lane > 0) { player.lane--; nearMissArm = 0.5; }
+      else if (action === "right" && player.lane < 2) { player.lane++; nearMissArm = 0.5; }
+      else if (action === "jump" && player.onGround) {
+        player.vy = powerups.sneakers > 0 ? SNEAKER_JUMP_V : JUMP_V;
+        player.onGround = false; player.sliding = false; player.slideT = 0;
+        AudioManager.jump();
+      } else if (action === "slide") {
+        if (player.onGround) { player.sliding = true; player.slideT = SLIDE_TIME; AudioManager.slide(); }
+        else { player.vy = FAST_FALL_V; } // air-slide = fast fall
+      }
+    },
+    tick: function (dt) {
+      // lane lerp
+      var targetX = LANE_X[player.lane];
+      player.x += (targetX - player.x) * Math.min(1, dt * 12);
+      // vertical physics
+      if (!player.onGround) {
+        player.vy -= GRAVITY * dt;
+        player.y += player.vy * dt;
+        if (player.y <= 0) { player.y = 0; player.vy = 0; player.onGround = true; }
+      }
+      // slide timer
+      if (player.sliding) {
+        player.slideT -= dt;
+        if (player.slideT <= 0) { player.sliding = false; }
+      }
+      if (player.invulnT > 0) player.invulnT -= dt;
+      // mesh
+      if (playerGroup) {
+        playerGroup.position.x = player.x;
+        playerGroup.position.y = player.y;
+        if (skinRoot) {
+          var gltf = skinRoot.userData.gltf;
+          var hasSlide = skinRoot.userData.hasSlideClip;
+          // squash-crouch only for skins WITHOUT a real slide clip (primitives + the robot)
+          var squash = player.sliding && !hasSlide;
+          var sc = squash ? 0.5 : 1;
+          skinRoot.scale.y += (sc - skinRoot.scale.y) * Math.min(1, dt * 16);
+          skinRoot.rotation.x = squash ? -0.5 : (player.onGround ? 0 : (gltf ? 0 : -0.18));
+          // lean into the turn while the lane lerp is still catching up
+          var leanTarget = clamp((LANE_X[player.lane] - player.x) * 0.5, -0.4, 0.4);
+          skinRoot.rotation.z += (-leanTarget - skinRoot.rotation.z) * Math.min(1, dt * 10);
+          // run bob for primitives only (GLB clips carry their own bob)
+          skinRoot.position.y = (!gltf && player.onGround && !player.sliding) ? Math.abs(Math.sin(distance * 2.2)) * 0.06 : 0;
+          if (gltf) gltf.update(dt, player.onGround && !player.sliding, player.onGround, player.sliding, speed);
+          else animateSkin(dt, leanTarget);
+          // invulnerability flicker after a hoverboard save
+          skinRoot.visible = player.invulnT > 0 ? (Math.floor(player.invulnT * 12) % 2 === 0) : true;
+        }
+      }
+    },
+    height: function () { return player.sliding ? SLIDE_H : STAND_H; }
+  };
+
+  /* ══════════════════════ ObstacleSpawner ══════════════════════
+     Pooled obstacles + coins + pickups. Waves come from a pattern table where every
+     entry keeps at least one survivable option — never pure random death walls. */
+  var obstaclePool = { barrier: [], lowTrain: [], tallTrain: [] };
+  var activeObstacles = [];
+  var coinPool = [], activeCoins = [];
+  var pickupPool = [], activePickups = [];
+
+  // type geometry specs: y0..y1 = the vertical solid span for collision
+  var OB_SPEC = {
+    barrier:  { y0: 0.85, y1: 1.45, halfW: 1.05, len: 0.5 },
+    lowTrain: { y0: 0,    y1: 1.55, halfW: 1.05, len: 5 },
+    tallTrain:{ y0: 0,    y1: 4.2,  halfW: 1.1,  len: 10 }
+  };
+
+  // A row of glowing windows down both sides of a train car (emissive, no shadow cost worth culling).
+  function addWindows(g, mat, count, halfLen, y, halfW, w, h) {
+    for (var i = 0; i < count; i++) {
+      var z = -halfLen + (i + 0.5) * (halfLen * 2 / count);
+      [-1, 1].forEach(function (s) {
+        var win = new THREE.Mesh(new THREE.BoxGeometry(0.06, h, w), mat);
+        win.position.set(s * halfW, y, z);
+        g.add(win);
+      });
+    }
+  }
+  function buildObstacleMesh(type) {
+    var g = new THREE.Group();
+    if (type === "barrier") {
+      var postMat = stdMat(0x2a3050, NEON.cyan, 0.35, true);
+      var barMat = stdMat(NEON.magenta, NEON.magenta, 1.2, false);
+      [-1, 1].forEach(function (s) {
+        var post = new THREE.Mesh(new THREE.CapsuleGeometry(0.08, 1.34, 3, 8), postMat);
+        post.position.set(s * 1.0, 0.75, 0);
+        var lamp = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 8), stdMat(NEON.cyan, NEON.cyan, 1.4));
+        lamp.position.set(s * 1.0, 1.48, 0);
+        g.add(post, lamp);
+      });
+      // rounded warning crossbar + a bright chevron core
+      var bar = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 2.1, 12), barMat);
+      bar.rotation.z = Math.PI / 2; bar.position.y = 1.15;
+      var chevron = new THREE.Mesh(new THREE.BoxGeometry(2.12, 0.14, 0.32), stdMat(NEON.gold, NEON.gold, 1.3, true));
+      chevron.position.y = 1.15;
+      g.add(bar, chevron);
+    } else if (type === "lowTrain") {
+      var body = new THREE.Mesh(new THREE.BoxGeometry(2.0, 1.4, 5), stdMat(0x8f1f63, NEON.magenta, 0.45, true));
+      body.position.y = 0.78;
+      var roof = new THREE.Mesh(new THREE.CapsuleGeometry(0.24, 1.7, 3, 8), stdMat(0xa8397a, NEON.magenta, 0.5, true));
+      roof.rotation.x = Math.PI / 2; roof.scale.set(1, 1, 0.9); roof.position.set(0, 1.45, 0);
+      var stripe = new THREE.Mesh(new THREE.BoxGeometry(2.04, 0.14, 5.02), stdMat(NEON.cyan, NEON.cyan, 1.3));
+      stripe.position.y = 1.16;
+      var lightL = new THREE.Mesh(new THREE.SphereGeometry(0.13, 10, 8), stdMat(NEON.gold, NEON.gold, 1.6));
+      lightL.position.set(-0.6, 0.5, 2.52);
+      var lightR = lightL.clone(); lightR.position.x = 0.6;
+      g.add(body, roof, stripe, lightL, lightR);
+      addWindows(g, stdMat(NEON.cyan, NEON.cyan, 1.5), 4, 2.2, 0.85, 1.01, 0.6, 0.4);
+    } else {
+      var body2 = new THREE.Mesh(new THREE.BoxGeometry(2.1, 4.0, 10), stdMat(0x2a1660, NEON.purple, 0.4, true));
+      body2.position.y = 2.1;
+      var roof2 = new THREE.Mesh(new THREE.CapsuleGeometry(0.4, 1.7, 3, 8), stdMat(0x3a2080, NEON.purple, 0.45, true));
+      roof2.rotation.x = Math.PI / 2; roof2.scale.set(1, 1, 0.8); roof2.position.set(0, 4.05, 0);
+      var stripe2 = new THREE.Mesh(new THREE.BoxGeometry(2.14, 0.2, 10.02), stdMat(NEON.cyan, NEON.cyan, 1.2));
+      stripe2.position.y = 3.4;
+      var nose = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.5, 0.4), stdMat(NEON.gold, NEON.gold, 1.2, true));
+      nose.position.set(0, 0.6, 5.0);
+      var wsL = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), stdMat(NEON.gold, NEON.gold, 1.6));
+      wsL.position.set(-0.6, 1.2, 5.02);
+      var wsR = wsL.clone(); wsR.position.x = 0.6;
+      g.add(body2, roof2, stripe2, nose, wsL, wsR);
+      addWindows(g, stdMat(NEON.cyan, NEON.cyan, 1.4), 5, 4.6, 2.7, 1.06, 0.7, 0.5); // upper deck
+      addWindows(g, stdMat(NEON.cyan, NEON.cyan, 1.4), 5, 4.6, 1.5, 1.06, 0.7, 0.5); // lower deck
+    }
+    g.traverse(function (o) { if (o.isMesh) o.castShadow = true; });
+    return g;
+  }
+  function getObstacle(type) {
+    var pool = obstaclePool[type], ob = null;
+    for (var i = 0; i < pool.length; i++) if (!pool[i].active) { ob = pool[i]; break; }
+    if (!ob) {
+      ob = { type: type, mesh: renderer ? buildObstacleMesh(type) : null, active: false, lane: 0, z: 0, passed: false };
+      if (ob.mesh) scene.add(ob.mesh);
+      pool.push(ob);
+    }
+    return ob;
+  }
+  function spawnObstacle(type, lane, z) {
+    var ob = getObstacle(type);
+    ob.active = true; ob.lane = lane; ob.z = z; ob.passed = false;
+    if (ob.mesh) { ob.mesh.visible = true; ob.mesh.position.set(LANE_X[lane], 0, z); }
+    activeObstacles.push(ob);
+    return ob;
+  }
+  var coinGeo = null, coinMat = null, pickupGeos = null;
+  if (renderer) {
+    coinGeo = new THREE.CylinderGeometry(0.3, 0.3, 0.07, 14);
+    coinMat = new THREE.MeshStandardMaterial({ color: NEON.gold, emissive: NEON.gold, emissiveIntensity: 0.7, roughness: 0.3, metalness: 0.7 });
+  }
+  function getCoin() {
+    for (var i = 0; i < coinPool.length; i++) if (!coinPool[i].active) return coinPool[i];
+    var c = { mesh: null, active: false, x: 0, y: 0, z: 0 };
+    if (renderer) { c.mesh = new THREE.Mesh(coinGeo, coinMat); c.mesh.rotation.z = Math.PI / 2; scene.add(c.mesh); }
+    coinPool.push(c);
+    return c;
+  }
+  function spawnCoin(x, y, z) {
+    var c = getCoin();
+    c.active = true; c.x = x; c.y = y; c.z = z;
+    if (c.mesh) { c.mesh.visible = true; c.mesh.position.set(x, y, z); }
+    activeCoins.push(c);
+  }
+  var PICKUP_STYLE = { magnet: NEON.magenta, sneakers: NEON.cyan, hoverboard: NEON.gold };
+  function getPickup(kind) {
+    for (var i = 0; i < pickupPool.length; i++) if (!pickupPool[i].active) { pickupPool[i].kind = kind; return pickupPool[i]; }
+    var p = { mesh: null, inner: null, active: false, kind: kind, x: 0, z: 0 };
+    if (renderer) {
+      p.mesh = new THREE.Group();
+      // Faceted power-crystal: a solid glowing core inside a brighter wireframe cage.
+      var geo = new THREE.OctahedronGeometry(0.4, 0);
+      p.inner = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.9, roughness: 0.25, metalness: 0.4, flatShading: true }));
+      p.cage = new THREE.LineSegments(new THREE.WireframeGeometry(new THREE.OctahedronGeometry(0.5, 0)), new THREE.LineBasicMaterial({ color: 0xffffff }));
+      p.mesh.add(p.inner, p.cage);
+      scene.add(p.mesh);
+    }
+    pickupPool.push(p);
+    return p;
+  }
+  function spawnPickup(kind, lane, z) {
+    var p = getPickup(kind);
+    p.active = true; p.kind = kind; p.x = LANE_X[lane]; p.z = z;
+    if (p.mesh) {
+      p.mesh.visible = true; p.mesh.position.set(p.x, 1.2, z);
+      p.inner.material.emissive.setHex(PICKUP_STYLE[kind]);
+      p.inner.material.color.setHex(PICKUP_STYLE[kind]);
+      p.cage.material.color.setHex(PICKUP_STYLE[kind]);
+    }
+    activePickups.push(p);
+  }
+
+  // Pattern table: '.'=clear  B=barrier  L=low train  T=tall train.
+  // FAIRNESS INVARIANT: every pattern has ≥1 lane that is '.' , 'B' or 'L'
+  // (survivable in-lane with jump/slide), so a path always exists.
+  var PATTERNS = [
+    ["B", ".", "."], [".", "B", "."], [".", ".", "B"],
+    ["B", "B", "."], [".", "B", "B"], ["B", ".", "B"],
+    ["L", ".", "."], [".", "L", "."], [".", ".", "L"],
+    ["L", "B", "."], ["B", ".", "L"], [".", "L", "B"],
+    ["T", ".", "."], [".", ".", "T"],
+    ["T", ".", "B"], ["B", ".", "T"], ["T", "B", "."], [".", "B", "T"],
+    ["T", "L", "."], [".", "L", "T"], ["T", ".", "L"], ["L", ".", "T"],
+    ["T", "T", "."], [".", "T", "T"], ["T", ".", "T"],
+    ["T", "B", "B"], ["B", "B", "T"], ["L", "B", "B"]
+  ];
+  var TYPE_BY_CODE = { B: "barrier", L: "lowTrain", T: "tallTrain" };
+
+  var distToNextWave = 20;
+  var firstWave = true; // the opening wave spawns nearer so play starts ~5s after GO, not ~11s
+  var ObstacleSpawner = {
+    reset: function () {
+      activeObstacles.forEach(function (o) { o.active = false; if (o.mesh) o.mesh.visible = false; });
+      activeCoins.forEach(function (c) { c.active = false; if (c.mesh) c.mesh.visible = false; });
+      activePickups.forEach(function (p) { p.active = false; if (p.mesh) p.mesh.visible = false; });
+      activeObstacles.length = 0; activeCoins.length = 0; activePickups.length = 0;
+      distToNextWave = 4; // opening breathing room (short — the first wave also spawns nearer)
+      firstWave = true;
+    },
+    spawnWave: function () {
+      // Simple patterns early; tall trains join after 120m so the first waves teach jump/slide.
+      var maxI = distance < 120 ? 12 : PATTERNS.length;
+      var pat = PATTERNS[Math.floor(Math.random() * maxI)];
+      var spawnZ = firstWave ? -55 : SPAWN_Z; // first wave halves the run-up; later waves materialize beyond the fog
+      var clearLanes = [];
+      for (var lane = 0; lane < 3; lane++) {
+        var code = pat[lane];
+        if (code === ".") { clearLanes.push(lane); continue; }
+        spawnObstacle(TYPE_BY_CODE[code], lane, spawnZ);
+        // coin arc over jumpable obstacles (40%)
+        if ((code === "B" || code === "L") && Math.random() < 0.4) {
+          for (var a = 0; a < 5; a++) {
+            var t = a / 4;
+            spawnCoin(LANE_X[lane], 1.1 + Math.sin(t * Math.PI) * 1.6, spawnZ - 4 + t * 8);
+          }
+        }
+      }
+      // coin rows on clear lanes (70%; guaranteed on the first wave so there's something to grab immediately)
+      clearLanes.forEach(function (lane) {
+        if (firstWave || Math.random() < 0.7) {
+          for (var i = 0; i < 6; i++) spawnCoin(LANE_X[lane], 1.0, spawnZ - i * 2);
+        }
+      });
+      // occasional power-up on a clear lane (12%)
+      if (clearLanes.length && Math.random() < 0.12) {
+        var kinds = ["magnet", "sneakers", "hoverboard"];
+        spawnPickup(kinds[Math.floor(Math.random() * 3)], clearLanes[Math.floor(Math.random() * clearLanes.length)], spawnZ - 14);
+      }
+      firstWave = false;
+    },
+    tick: function (dt) {
+      var move = speed * dt;
+      if (roadTex) roadTex.offset.y += move * 0.03; // scroll the road toward the camera (sells speed)
+      distToNextWave -= move;
+      if (distToNextWave <= 0) {
+        var wasFirst = firstWave;
+        this.spawnWave();
+        // gap scales with speed → constant reaction time. After the near first wave, wave 2 is
+        // triggered soon but spawns far back at SPAWN_Z, so it trails wave 1 by a comfortable
+        // ~57m (an intentional breather) before the steady ~22m cadence resumes.
+        distToNextWave = wasFirst ? 2 : 16 + speed * 0.55;
+      }
+      var i, o;
+      for (i = activeObstacles.length - 1; i >= 0; i--) {
+        o = activeObstacles[i];
+        o.z += move;
+        if (o.mesh) o.mesh.position.z = o.z;
+        if (o.z - OB_SPEC[o.type].len / 2 > KILL_Z) {
+          o.active = false; if (o.mesh) o.mesh.visible = false;
+          activeObstacles.splice(i, 1);
+        }
+      }
+      for (i = activeCoins.length - 1; i >= 0; i--) {
+        var c = activeCoins[i];
+        c.z += move;
+        // Coin Magnet: bend nearby coins toward the player
+        if (powerups.magnet > 0 && c.z > -9 && c.z < 2) {
+          c.x += (player.x - c.x) * Math.min(1, dt * 10);
+          c.y += ((player.y + 1.0) - c.y) * Math.min(1, dt * 10);
+        }
+        if (c.mesh) { c.mesh.position.set(c.x, c.y, c.z); c.mesh.rotation.y += dt * 4; }
+        if (c.z > KILL_Z) { c.active = false; if (c.mesh) c.mesh.visible = false; activeCoins.splice(i, 1); }
+      }
+      for (i = activePickups.length - 1; i >= 0; i--) {
+        var p = activePickups[i];
+        p.z += move;
+        if (p.mesh) { p.mesh.position.z = p.z; p.mesh.rotation.y += dt * 2.4; p.mesh.position.y = 1.2 + Math.sin(elapsed * 3 + i) * 0.15; }
+        if (p.z > KILL_Z) { p.active = false; if (p.mesh) p.mesh.visible = false; activePickups.splice(i, 1); }
+      }
+      // scenery recycle
+      if (renderer) {
+        for (i = 0; i < buildings.length; i++) {
+          var b = buildings[i];
+          b.position.z += move;
+          if (b.position.z > 24) resetBuilding(b, b.position.z - 240);
+        }
+        for (i = 0; i < cityBuildings.length; i++) {
+          var cb = cityBuildings[i];
+          cb.position.z += move;
+          if (cb.position.z > 26) cb.position.z -= CITY_COUNT * CITY_SPACING;
+        }
+        for (i = 0; i < lightBars.length; i++) {
+          var bar = lightBars[i];
+          bar.position.z += move;
+          if (bar.position.z > 12) bar.position.z -= 120;
+        }
+      }
+    }
+  };
+
+  /* ══════════════════════ CollisionEngine ══════════════════════ */
+  var nearMissArm = 0; // set briefly after a lane change → passing an obstacle then counts as a near-miss
+  var CollisionEngine = {
+    tick: function (dt) {
+      if (nearMissArm > 0) nearMissArm -= dt;
+      var pBottom = player.y, pTop = player.y + PlayerController.height();
+      var i, o, spec;
+      for (i = 0; i < activeObstacles.length; i++) {
+        o = activeObstacles[i];
+        spec = OB_SPEC[o.type];
+        var zNear = o.z - spec.len / 2, zFar = o.z + spec.len / 2;
+        var xOverlap = Math.abs(LANE_X[o.lane] - player.x) < (spec.halfW + PLAYER_HALF_W);
+        var zOverlap = zFar > -0.4 && zNear < 0.4;
+        if (zOverlap && xOverlap) {
+          var yOverlap = pBottom < spec.y1 && pTop > spec.y0;
+          if (yOverlap && player.invulnT <= 0) { onCrash(); return; }
+        }
+        // near-miss: obstacle passes the player plane in a lane we overlapped or just left
+        if (!o.passed && zNear > 0.4) {
+          o.passed = true;
+          if (xOverlap || (nearMissArm > 0 && o.lane !== player.lane && Math.abs(o.lane - player.lane) === 1)) {
+            droneTension = Math.min(1, droneTension + 0.3);
+          }
+        }
+      }
+      // coins
+      for (i = activeCoins.length - 1; i >= 0; i--) {
+        var c = activeCoins[i];
+        if (Math.abs(c.z) < 0.9 && Math.abs(c.x - player.x) < 0.8 && Math.abs(c.y - (player.y + 1.0)) < 1.25) {
+          c.active = false; if (c.mesh) c.mesh.visible = false;
+          activeCoins.splice(i, 1);
+          runCoins++;
+          score += COIN_SCORE;
+          AudioManager.coin();
+        }
+      }
+      // pickups
+      for (i = activePickups.length - 1; i >= 0; i--) {
+        var p = activePickups[i];
+        if (Math.abs(p.z) < 1.0 && Math.abs(p.x - player.x) < 0.9 && player.y < 2.2) {
+          p.active = false; if (p.mesh) p.mesh.visible = false;
+          activePickups.splice(i, 1);
+          activatePowerup(p.kind);
+        }
+      }
+    }
+  };
+
+  /* ══════════════════════ power-ups ══════════════════════ */
+  var powerups = { magnet: 0, sneakers: 0, hoverboard: 0 };
+  var PU_LABEL = { magnet: "Coin Magnet!", sneakers: "Super Sneakers!", hoverboard: "Hoverboard shield!" };
+  function activatePowerup(kind) {
+    powerups[kind] = PU_DURATION;
+    AudioManager.power();
+    UIManager.toast(PU_LABEL[kind]);
+    announce(PU_LABEL[kind]);
+  }
+  // Gold shield aura: swirl particles on a spherical shell around the runner, pulse
+  // brightness. Static-but-visible under reduced motion (no swirl advance).
+  var _auraC = new THREE.Color();
+  function updateShieldAura(dt, active) {
+    shieldAura.visible = active;
+    if (!active) return;
+    var u = shieldAura.userData, pos = u.pos, col = u.col, base = u.base;
+    var pulse = 0.7 + Math.abs(Math.sin(elapsed * 4)) * 0.3;
+    for (var i = 0; i < u.count; i++) {
+      if (!prefersReduced) u.th[i] += u.spd[i] * dt;
+      var r = u.rad[i], th = u.th[i], ph = u.ph[i];
+      var sph = Math.sin(ph);
+      pos[i * 3] = Math.cos(th) * sph * r;
+      pos[i * 3 + 1] = Math.cos(ph) * r;
+      pos[i * 3 + 2] = Math.sin(th) * sph * r;
+      var b = pulse * (0.6 + 0.4 * Math.sin(elapsed * 6 + i));
+      _auraC.copy(base).multiplyScalar(b);
+      col[i * 3] = _auraC.r; col[i * 3 + 1] = _auraC.g; col[i * 3 + 2] = _auraC.b;
+    }
+    shieldAura.geometry.attributes.position.needsUpdate = true;
+    shieldAura.geometry.attributes.color.needsUpdate = true;
+  }
+
+  // Timer decrement + 3D effect meshes live in the sim step; DOM chip paints happen
+  // once per rendered frame (paintHud) so multi-substep frames don't write the HUD twice.
+  function powerupsTick(dt) {
+    for (var k in powerups) { if (powerups[k] > 0) powerups[k] = Math.max(0, powerups[k] - dt); }
+    if (renderer) {
+      updateShieldAura(dt, powerups.hoverboard > 0);
+      magnetRing.visible = powerups.magnet > 0;
+      if (magnetRing.visible) { magnetRing.rotation.z += dt * 3; magnetRing.scale.setScalar(1 + Math.sin(elapsed * 6) * 0.08); }
+      sneakerGlow.visible = powerups.sneakers > 0;
+    }
+  }
+
+  /* ══════════════════════ hover patrol chaser (visual tension only) ══════════════════════
+     Primitive drone builds instantly and STAYS as the fallback; when the KayKit police
+     car GLB arrives it takes over as a hover cruiser (wheels hidden, underglow, the same
+     red/blue flashers move onto its roof as a lightbar). */
+  var droneTension = 0;
+  var droneGroup = null, droneLightA = null, droneLightB = null;
+  var patrolFX = null, patrolJetY = 0.35, _jetAcc = 0, _jetCyan = new THREE.Color(NEON.cyan), _jetHot = new THREE.Color(NEON.magenta);
+  if (renderer) {
+    droneGroup = new THREE.Group();
+    var dBody = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.32, 0.9), stdMat(0x1a2038, 0x223355, 0.3));
+    var dDome = new THREE.Mesh(new THREE.SphereGeometry(0.26, 10, 8), stdMat(0x0e1322));
+    dDome.position.y = 0.25;
+    droneLightA = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.1, 0.18), new THREE.MeshBasicMaterial({ color: 0xff3040 }));
+    droneLightA.position.set(-0.32, 0.24, 0);
+    droneLightB = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.1, 0.18), new THREE.MeshBasicMaterial({ color: 0x3070ff }));
+    droneLightB.position.set(0.32, 0.24, 0);
+    var rotGeo = new THREE.CylinderGeometry(0.3, 0.3, 0.03, 10);
+    var rotMat = new THREE.MeshStandardMaterial({ color: 0x444c66, transparent: true, opacity: 0.55 });
+    [[-0.55, -0.55], [0.55, -0.55], [-0.55, 0.55], [0.55, 0.55]].forEach(function (xz) {
+      var r = new THREE.Mesh(rotGeo, rotMat);
+      r.position.set(xz[0], 0.2, xz[1]);
+      r.userData.rotor = true;
+      r.userData.prim = true;
+      droneGroup.add(r);
+    });
+    dBody.userData.prim = true; dDome.userData.prim = true;
+    droneGroup.add(dBody, dDome, droneLightA, droneLightB);
+    droneGroup.position.set(0, 2.4, 11);
+    scene.add(droneGroup);
+
+    // Hover-jet exhaust particles (replaces the flat underglow plane). Pooled, WORLD-space so
+    // the puffs trail behind as the cruiser moves; emission rate + heat scale with tension.
+    patrolFX = makeParticles(60, 0.28, NEON.cyan);
+    var pf = patrolFX.userData;
+    pf.vx = new Float32Array(pf.count); pf.vy = new Float32Array(pf.count); pf.vz = new Float32Array(pf.count);
+    pf.life = new Float32Array(pf.count); pf.max = new Float32Array(pf.count); pf.next = 0;
+    scene.add(patrolFX);
+  }
+  function updatePatrolFX(dt) {
+    if (!patrolFX) return;
+    var u = patrolFX.userData, pos = u.pos, col = u.col;
+    // emit from the cruiser underside; rate/heat rise as the patrol closes in
+    var rate = 24 + droneTension * 90;
+    patrolFX.userData.base.copy(_jetCyan).lerp(_jetHot, droneTension);
+    var cx = droneGroup.position.x, cy = droneGroup.position.y - patrolJetY, cz = droneGroup.position.z;
+    _jetAcc += rate * dt;
+    while (_jetAcc >= 1) {
+      _jetAcc -= 1;
+      var i = u.next; u.next = (u.next + 1) % u.count;
+      pos[i * 3] = cx + (Math.random() - 0.5) * 0.32;
+      pos[i * 3 + 1] = cy;
+      pos[i * 3 + 2] = cz + (Math.random() - 0.5) * 0.32;
+      u.vx[i] = (Math.random() - 0.5) * 0.7;
+      u.vy[i] = -(1.5 + Math.random() * 1.6);          // blast down
+      u.vz[i] = 0.5 + Math.random() * 0.9;             // drift back toward the camera
+      u.max[i] = u.life[i] = 0.32 + Math.random() * 0.3;
+    }
+    var base = u.base;
+    for (var j = 0; j < u.count; j++) {
+      if (u.life[j] <= 0) { col[j * 3] = col[j * 3 + 1] = col[j * 3 + 2] = 0; continue; }
+      u.life[j] -= dt;
+      pos[j * 3] += u.vx[j] * dt; pos[j * 3 + 1] += u.vy[j] * dt; pos[j * 3 + 2] += u.vz[j] * dt;
+      var t = u.life[j] > 0 ? u.life[j] / u.max[j] : 0;
+      col[j * 3] = base.r * t; col[j * 3 + 1] = base.g * t; col[j * 3 + 2] = base.b * t;
+    }
+    patrolFX.geometry.attributes.position.needsUpdate = true;
+    patrolFX.geometry.attributes.color.needsUpdate = true;
+  }
+  function preloadPatrol() {
+    if (!gltfLoader || !renderer) return;
+    gltfLoader.load("assets/models/city/car_police.glb", function (g) {
+      var car = g.scene;
+      car.traverse(function (o) {
+        if (/wheel/i.test(o.name || "")) o.visible = false; // it hovers
+        if (o.isMesh && o.material && o.material.emissive) {
+          o.material.emissive = new THREE.Color(0xbfc8ff);
+          o.material.emissiveMap = o.material.map;
+          o.material.emissiveIntensity = 0.35; // same self-lit night treatment as the buildings
+        }
+      });
+      var box = new THREE.Box3().setFromObject(car), size = new THREE.Vector3();
+      box.getSize(size);
+      var s = 2.6 / (Math.max(size.x, size.z) || 1); // ~2.6 units long
+      car.scale.setScalar(s);
+      car.rotation.y = Math.PI; // nose toward the player
+      box.setFromObject(car);
+      var carH = box.max.y - box.min.y;
+      car.position.y = -box.min.y - carH / 2; // vertical center on the group origin (which hovers)
+      // swap: primitives out, cruiser in, flashers become the roof lightbar
+      droneGroup.children.forEach(function (ch) { if (ch.userData.prim) ch.visible = false; });
+      droneLightA.position.set(-0.24, carH / 2 + 0.05, 0.15);
+      droneLightB.position.set(0.24, carH / 2 + 0.05, 0.15);
+      // underside origin for the hover-jet exhaust (world-space thruster particles) — no flat plane
+      patrolJetY = carH / 2 + 0.02;
+      droneGroup.add(car);
+    }, undefined, function () { /* keep the primitive drone */ });
+  }
+  function droneTick(dt) {
+    droneTension = Math.max(0, droneTension - dt * 0.055); // clean running lets it fall back
+    if (renderer) {
+      var targetZ = 6.4 - droneTension * 4.0; // far 6.4 (small, hovering behind) → close 2.4 (right on your tail)
+      droneGroup.position.z += (targetZ - droneGroup.position.z) * Math.min(1, dt * 2);
+      droneGroup.position.x += (player.x - droneGroup.position.x) * Math.min(1, dt * 3);
+      droneGroup.position.y = 2.3 + Math.sin(elapsed * 2.4) * 0.18;
+      var flash = Math.floor(elapsed * 6) % 2 === 0;
+      droneLightA.material.color.setHex(flash ? 0xff3040 : 0x550a10);
+      droneLightB.material.color.setHex(flash ? 0x102055 : 0x3070ff);
+      for (var i = 0; i < droneGroup.children.length; i++) {
+        var ch = droneGroup.children[i];
+        if (ch.userData.rotor) ch.rotation.y += dt * 40;
+      }
+      updatePatrolFX(dt);
+    }
+    AudioManager.droneLevel(droneTension);
+  }
+
+  /* ══════════════════════ game state & loop ══════════════════════ */
+  var phase = "idle"; // idle | countdown | running | crashed
+  var distance = 0, score = 0, runCoins = 0, speed = SPEED_BASE, elapsed = 0;
+  var crashT = 0;
+  var camX = 0;
+
+  function resetRun() {
+    distance = 0; score = 0; runCoins = 0; speed = SPEED_BASE; elapsed = 0; crashT = 0;
+    droneTension = 0; nearMissArm = 0;
+    powerups.magnet = 0; powerups.sneakers = 0; powerups.hoverboard = 0;
+    PlayerController.reset();
+    ObstacleSpawner.reset();
+    if (renderer) { droneGroup.position.set(0, 2.4, 6.4); }
+    AudioManager.musicReset();
+    UIManager.hud();
+    powerupsTick(0);
+  }
+
+  function startRun(retry) {
+    UIManager.show("game");
+    if (!renderer) { $("glFail").classList.add("show"); return; }
+    applySkin(); // pick up a model that finished loading since the last run
+    resetRun();
+    resize();
+    phase = "countdown";
+    AudioManager.unlock();
+    AudioManager.droneStart();
+    AudioManager.playMusic();
+    // Fast start: retries skip straight to a "GO!" flash; the first run is a snappy
+    // 3-2-1 at 400ms/step (~1.2s, was ~2.8s). Any input skips the rest instantly.
+    var seq = retry ? ["GO!"] : ["3", "2", "1", "GO!"];
+    var STEP_MS = 300;
+    announce(retry ? "Go!" : "Get ready");
+    $("countdown").classList.add("active");
+    seq.forEach(function (v, i) {
+      later(function () {
+        if (phase !== "countdown") return; // already skipped
+        var el = $("cnum");
+        el.textContent = v;
+        el.classList.toggle("go", v === "GO!");
+        el.classList.remove("beat");
+        void el.offsetWidth; // restart the decorative beat animation
+        el.classList.add("beat");
+        AudioManager.jump();
+        if (v === "GO!") { later(beginRunning, retry ? 180 : 300); }
+      }, i * STEP_MS);
+    });
+  }
+
+  function beginRunning() {
+    if (phase !== "countdown") return;
+    $("countdown").classList.remove("active");
+    phase = "running";
+    announce("Run started. Arrow keys to move, jump and slide.");
+  }
+  // Tap/key during the 3-2-1 jumps straight into the run (the input itself is consumed).
+  function skipCountdown() {
+    if (phase !== "countdown") return false;
+    pendingTimeouts.forEach(clearTimeout); pendingTimeouts.length = 0;
+    beginRunning();
+    return true;
+  }
+
+  function stopRun() {
+    phase = "idle";
+    AudioManager.droneStop();
+    AudioManager.pauseMusic();
+  }
+
+  function onCrash() {
+    if (phase !== "running") return; // a crash can only happen mid-run (guards double-fire + the test hook)
+    if (powerups.hoverboard > 0) {
+      powerups.hoverboard = 0;          // one save, then it's spent
+      player.invulnT = 1.5;             // i-frames so the same train can't kill on the next step
+      droneTension = Math.min(1, droneTension + 0.35);
+      AudioManager.shield();
+      UIManager.toast("🛹 Hoverboard saved you!");
+      announce("Hoverboard saved you");
+      return;
+    }
+    phase = "crashed";
+    crashT = 0.9;
+    AudioManager.crash();
+    AudioManager.droneStop();
+    if (skinRoot) skinRoot.visible = true;
+    // Bank the run NOW (synchronously) — the crash-anim delay is cosmetic, and quitting
+    // during it must not lose the coins/high score. showResults() only paints. (ACCURACY QA)
+    lastRun.score = Math.floor(score);
+    lastRun.coins = runCoins;
+    lastRun.distance = Math.floor(distance);
+    save.coins += runCoins;
+    lastRun.isBest = lastRun.score > save.highScore;
+    if (lastRun.isBest) save.highScore = lastRun.score;
+    SaveManager.persist();
+    later(showResults, 950);
+  }
+
+  var lastRun = { score: 0, coins: 0, distance: 0, isBest: false };
+  function showResults() {
+    var finalScore = lastRun.score, isBest = lastRun.isBest;
+    $("statScore").textContent = finalScore;
+    $("statRunCoins").textContent = lastRun.coins;
+    $("statBank").textContent = save.coins;
+    $("statBest").textContent = save.highScore;
+    $("newBest").classList.toggle("show", isBest);
+    $("resSub").textContent = "You ran " + lastRun.distance + "m before the city caught you.";
+    announce("Run over. Score " + finalScore + ". " + lastRun.coins + " coins collected." + (isBest ? " New best score!" : ""));
+    UIManager.show("results");
+  }
+
+  function tick(dt) {
+    elapsed += dt;
+    if (phase === "running") {
+      speed = Math.min(SPEED_MAX, SPEED_BASE + distance * SPEED_RAMP);
+      distance += speed * dt;
+      score += speed * dt; // 1 point per metre; coins add COIN_SCORE each
+      PlayerController.tick(dt);
+      ObstacleSpawner.tick(dt);
+      CollisionEngine.tick(dt);
+      powerupsTick(dt);
+      droneTick(dt);
+      AudioManager.musicTick(dt, speed);
+    } else if (phase === "crashed") {
+      crashT -= dt;
+      if (playerGroup && skinRoot) {
+        skinRoot.rotation.x -= dt * 7;         // tumble
+        playerGroup.position.z += dt * 5;      // thrown back toward the camera
+        playerGroup.position.y = Math.max(0, playerGroup.position.y - dt * 2);
+        if (skinRoot.userData.gltf) skinRoot.userData.gltf.mixer.update(dt); // keep the rig posed mid-tumble, not frozen
+      }
+      droneTick(dt);
+    } else if (phase === "countdown") {
+      PlayerController.tick(dt);
+      droneTick(dt);
+    }
+  }
+
+  function paintHud() {
+    UIManager.hud();
+    UIManager.puChip("puMagnet", powerups.magnet);
+    UIManager.puChip("puSneakers", powerups.sneakers);
+    UIManager.puChip("puHoverboard", powerups.hoverboard);
+  }
+
+  function render() {
+    if (phase === "running" || phase === "countdown") paintHud();
+    if (!renderer) return;
+    camX += (player.x * 0.55 - camX) * 0.1;
+    var shake = (phase === "crashed" && !prefersReduced) ? Math.max(0, crashT) * 0.25 : 0;
+    camera.position.set(
+      camX + (shake ? (Math.random() - 0.5) * shake : 0),
+      4.4 + player.y * 0.25 + (shake ? (Math.random() - 0.5) * shake : 0),
+      8
+    );
+    camera.lookAt(camX * 1.2, 1.6, -8);
+    updateSky();
+    renderer.render(scene, camera);
+  }
+
+  // Dynamic sky: keep the dome centred on the camera (infinitely far), and — the longer/
+  // further you run — slowly roll it and drift its tint + the fog hue through the synthwave
+  // band, so the sky visibly evolves. Static under reduced motion.
+  var _skyTint = new THREE.Color(), _fogHue = new THREE.Color();
+  function updateSky() {
+    if (!skyGroup) return;
+    skyGroup.position.copy(camera.position);
+    if (prefersReduced) return;
+    skyGroup.rotation.y = elapsed * 0.012 + distance * 0.0009;
+    var hue = ((distance * 0.0009) % 1 + 1) % 1;           // cycles through the palette as you go
+    _skyTint.setHSL(hue, 0.45, 0.82); skyMat.color.copy(_skyTint);   // gentle dome tint (multiplies texture)
+    if (scene.fog) { _fogHue.setHSL(hue, 0.6, 0.22); scene.fog.color.copy(_fogHue); }
+  }
+
+  var rafLast = 0, acc = 0;
+  function frame(now) {
+    requestAnimationFrame(frame);
+    if (!$("game").classList.contains("active")) { rafLast = now; return; }
+    var dt = Math.min(0.1, (now - rafLast) / 1000); // clamp: tab-restore can't warp the sim
+    rafLast = now;
+    acc += dt;
+    while (acc >= STEP) { tick(STEP); acc -= STEP; }
+    render();
+  }
+  requestAnimationFrame(frame);
+
+  function resize() {
+    if (!renderer) return;
+    var w = $("stage").clientWidth, h = $("stage").clientHeight;
+    if (w < 2 || h < 2) return; // hidden screen — retry next entry (canvas-size lesson)
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+  }
+  window.addEventListener("resize", resize);
+
+  document.addEventListener("visibilitychange", function () {
+    // rAF stops while hidden; the dt clamp handles resume. Pause/resume the audio.
+    if (document.hidden) { try { AudioManager.droneLevel(0); AudioManager.suspendMusic(); } catch (e) {} }
+    else { try { AudioManager.resumeMusicIfPlaying(); } catch (e) {} }
+  });
+
+  /* ══════════════════════ input: keyboard + swipes ══════════════════════ */
+  window.addEventListener("keydown", function (ev) {
+    if (!$("game").classList.contains("active")) return;
+    // RECURRENCE(PLAY-005, count=2): a global keydown handler must not steal keys from a focused
+    // control (1st: Claw Catch joystick). Bail on buttons so Space/Enter activate #quitBtn/#muteBtn.
+    if (ev.target && ev.target.closest && ev.target.closest("button")) return;
+    var k = ev.key;
+    var action = null;
+    if (k === "ArrowLeft" || k === "a" || k === "A") action = "left";
+    else if (k === "ArrowRight" || k === "d" || k === "D") action = "right";
+    else if (k === "ArrowUp" || k === "w" || k === "W" || k === " ") action = "jump";
+    else if (k === "ArrowDown" || k === "s" || k === "S") action = "slide";
+    if (action) { ev.preventDefault(); if (skipCountdown()) return; PlayerController.input(action); }
+  });
+
+  (function swipes() {
+    var sx = 0, sy = 0, tracking = false;
+    var THRESHOLD = 30; // px — labelled assumption in requirements.md
+    var stage = $("stage");
+    stage.addEventListener("pointerdown", function (ev) {
+      if (ev.target.closest("button")) return;
+      tracking = true; sx = ev.clientX; sy = ev.clientY;
+    });
+    stage.addEventListener("pointerup", function (ev) {
+      if (!tracking) return;
+      tracking = false;
+      var dx = ev.clientX - sx, dy = ev.clientY - sy;
+      if (Math.abs(dx) < THRESHOLD && Math.abs(dy) < THRESHOLD) { skipCountdown(); return; } // a tap only skips the countdown
+      if (skipCountdown()) return;
+      if (Math.abs(dx) > Math.abs(dy)) PlayerController.input(dx > 0 ? "right" : "left");
+      else PlayerController.input(dy < 0 ? "jump" : "slide");
+    });
+    stage.addEventListener("pointercancel", function () { tracking = false; });
+  })();
+
+  /* ══════════════════════ buttons ══════════════════════ */
+  var shopReturn = "setup";
+  $("startBtn").addEventListener("click", function () { AudioManager.unlock(); startRun(); });
+  $("againBtn").addEventListener("click", function () { startRun(true); });
+  $("changeBtn").addEventListener("click", function () { UIManager.show("setup"); });
+  $("quitBtn").addEventListener("click", function () { stopRun(); UIManager.show("setup"); });
+  $("setupShopBtn").addEventListener("click", function () { shopReturn = "setup"; UIManager.show("shop"); });
+  $("resShopBtn").addEventListener("click", function () { shopReturn = "results"; UIManager.show("shop"); });
+  $("shopBackBtn").addEventListener("click", function () { UIManager.show(shopReturn); });
+
+  function syncMuteUi() {
+    $("muteBtn").textContent = save.muted ? "🔇" : "🔊";
+    $("muteBtn").setAttribute("aria-pressed", String(save.muted));
+    $("muteBtn").setAttribute("aria-label", save.muted ? "Unmute sound" : "Mute sound");
+    $("soundToggle").setAttribute("aria-pressed", String(!save.muted));
+  }
+  $("muteBtn").addEventListener("click", function () { AudioManager.setMuted(!save.muted); syncMuteUi(); });
+  $("soundToggle").addEventListener("click", function () { AudioManager.unlock(); AudioManager.setMuted(!save.muted); syncMuteUi(); });
+  syncMuteUi();
+  $("bankCoins").textContent = save.coins;
+  $("bankBest").textContent = save.highScore;
+
+  /* ══════════════════════ test hook (window.__neon) ══════════════════════
+     Deterministic drivers for the QA panel — see features/neon-rush/test-plan.md.
+     step(ms) advances the fixed-step sim without rAF (headless-preview-safe). */
+  window.__neon = {
+    get state() {
+      return {
+        phase: phase, lane: player.lane, playerY: player.y, sliding: player.sliding,
+        speed: speed, score: Math.floor(score), coins: save.coins, runCoins: runCoins,
+        powerups: { magnet: powerups.magnet, sneakers: powerups.sneakers, hoverboard: powerups.hoverboard },
+        droneTension: droneTension, muted: save.muted,
+        activeObstacles: activeObstacles.length, activeCoins: activeCoins.length,
+        equipped: save.equipped, unlocked: save.unlocked.slice()
+      };
+    },
+    get save() { return JSON.parse(JSON.stringify(save)); },
+    get audio() { return AudioManager.debug(); },
+    get skin() {
+      var g = skinRoot && skinRoot.userData.gltf;
+      var weap = [];
+      if (skinRoot) skinRoot.traverse(function (o) { if (/crossbow|sword|shield|knife|throwable|dagger|_axe|staff|quiver|badge/i.test(o.name || "") && o.visible) weap.push(o.name); });
+      return { kind: g ? "gltf" : "primitive", anim: g ? g.current : null, mixerTime: g ? +g.mixer.time.toFixed(2) : null, loaded: Object.keys(gltfRaw), visibleWeapons: weap };
+    },
+    forceRun: function () { UIManager.show("game"); resetRun(); resize(); phase = "running"; },
+    forceSpawn: function (type, lane, z) {
+      if (type === "coinRow") { for (var i = 0; i < 6; i++) spawnCoin(LANE_X[lane], 1.0, (z || -20) - i * 2); return; }
+      if (type === "magnet" || type === "sneakers" || type === "hoverboard") { spawnPickup(type, lane, z || -20); return; }
+      return spawnObstacle(type, lane, z || -30);
+    },
+    setSpeed: function (v) { distance = Math.max(0, (v - SPEED_BASE) / SPEED_RAMP); speed = v; }, // speed derives from distance, so move the distance
+    grantCoins: function (n) { save.coins += n; SaveManager.persist(); },
+    givePowerup: activatePowerup,
+    crash: onCrash,
+    input: function (a) { PlayerController.input(a); },
+    step: function (ms) { var n = Math.round((ms / 1000) / STEP); for (var i = 0; i < n; i++) tick(STEP); render(); },
+    show: UIManager.show
+  };
+})();
+</script>
+</body>
+</html>

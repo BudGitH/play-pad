@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="PlayPad">
+  <!-- Full-bleed background so the icon survives any maskable crop shape -->
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="38%" r="75%">
+      <stop offset="0%" stop-color="#1d1d27"/>
+      <stop offset="100%" stop-color="#08080c"/>
+    </radialGradient>
+    <!-- soft top highlight to echo the glossy game dots -->
+    <radialGradient id="gloss" cx="50%" cy="32%" r="60%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="512" height="512" fill="url(#bg)"/>
+
+  <!-- Cluster of four overlapping dots, kept within the central ~80% safe zone
+       (maskable). Each dot has a glossy highlight, nodding to the game art. -->
+  <g stroke="#08080c" stroke-width="10">
+    <circle cx="196" cy="196" r="108" fill="#ff375f"/>
+    <circle cx="320" cy="190" r="108" fill="#ffd60a"/>
+    <circle cx="190" cy="320" r="108" fill="#30d158"/>
+    <circle cx="316" cy="316" r="108" fill="#0a84ff"/>
+  </g>
+  <g>
+    <circle cx="196" cy="196" r="108" fill="url(#gloss)"/>
+    <circle cx="320" cy="190" r="108" fill="url(#gloss)"/>
+    <circle cx="190" cy="320" r="108" fill="url(#gloss)"/>
+    <circle cx="316" cy="316" r="108" fill="url(#gloss)"/>
+  </g>
+</svg>

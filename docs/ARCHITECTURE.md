@@ -1,0 +1,78 @@
+# PlayPad — Architecture (Living Map)
+
+> This is the **map**, not the territory. It is an overview that **links to code** — never a copy of it.
+> Update it whenever structure, the data model, or a key flow changes. Prune stale entries. **Target < ~150 lines.**
+
+**Stack:** Vanilla HTML/CSS/JS, no build step (static; runs from file:// or any static host)
+
+_Last updated: 2026-07-13 (PLAY-005 v3.1 — Neon Rush: crossfade T-pose fix — `ctrl.set()` re-arms the incoming action so a run/idle action disabled by a completed fadeOut revives after slide/long-jump instead of freezing at bind pose)_
+
+---
+
+## Top-level structure
+
+> What lives where, one line each.
+
+- `index.html` — the **PlayPad catalog**: MD3 app bar + a horizontal scroll-snap game rail, rendered from the registry.
+- `games.js` — the **game registry** (`window.GAMES`), the single source of truth for what's in the catalog.
+- `manifest.webmanifest` · `icons/` — PWA manifest + SVG favicon/app icon.
+- `styles/tokens.css` — MD3 design tokens (colour roles light+dark, type, shape, elevation, motion, state, spacing).
+- `styles/base.css` — reset + shared components (card, chip, button, state layers, focus, the rail).
+- `games/<slug>/index.html` — one self-contained game per folder. Today: `games/colour-rush/`, `games/snap/`, `games/claw-catch/`, `games/super-decoder/`, `games/neon-rush/`. Neon Rush also carries a sibling `three.min.js` (vendored Three.js r147 UMD) + a game-local `CLAUDE.md` (its constraints contract).
+- `404.html` · `_headers` — branded not-found page + Cloudflare Pages headers (CSP, caching).
+- `tools/build-dist.ps1` → `dist/` — copies the hostable subset for Cloudflare Pages upload.
+- `Old prototype/index.html` — **untouched reference** (the original Colour Rush); never linked or shipped.
+- `docs/` · `features/` — the project brain + per-feature records (see `features/playpad-launch/`).
+
+## Data model
+
+> The only runtime "model" is the registry array; everything else is ephemeral game state.
+
+- **`window.GAMES`** (in `games.js`): array of `{ id, title, description, tags[], path, accent, icon, players, status }`. `status` ∈ `"live" | "soon"`. The hub renders one card per entry; `path` is a relative link to the game folder.
+- **Colour Rush game state** (in-memory, per round): players[], `selections`, `ownerByHex`, live `dots[]`, timer/spawn timestamps — all local, nothing persisted.
+- **Snap game state** (in-memory): players[] (hex + auto-assigned key + edge placement + score), `themeIndex`, a `RoundState` string machine, `performance.now()` phase deadlines, `roundResolved` / `lockedOut[]` flags — all local, nothing persisted.
+- **Claw Catch game state** (in-memory, single player): trolley/claw physics (`cartX/cartVx`, jiggle tilt `theta/omega`, `currentL`), a `Phase` string machine for the grab sequence (idle→drop→close→lift→return→release; LIFT→RETURN only when carrying), `bin[]` of prizes as physical discs `{x,y,vx,vy,rad,e,r,points,grip,willSuddenDrop,suddenDropFrac}` (pile physics: gravity + pairwise separation), `carried` prize, `popups[]`, `score/prizesCaught/bestCatch`, `themeIndex` — all local, nothing persisted. Prizes draw from a cached **sprite per emoji** (`prizeSpriteCache`, emoji-first font → OS-agnostic + cheap); static gradients cached per `layout()`. A `window.__claw` debug hook mirrors state for tests.
+- **Neon Rush game state** — PlayPad's **first persisted** game. Per-run state is in-memory: `phase` string machine (`idle → countdown → running → crashed`), player `{lane, x, y, vy, onGround, sliding, slideT, invulnT}`, `distance/score/runCoins/speed` (speed derives from distance), `powerups{magnet,sneakers,hoverboard}` timers, `droneTension`. The world is **pooled** (`obstaclePool` by type, `coinPool`, `pickupPool`, recycled `buildings`/`lightBars`) — zero per-frame allocation; a fixed-timestep accumulator (`STEP=1/60`) drives `tick()`, decoupled from `render()`. **Persisted** via `SaveManager` to one versioned localStorage key `playpad.neonRush.v1` = `{v,coins,unlocked[],equipped,highScore,muted}`, sanitised + fail-soft on load (private mode / corrupt JSON → defaults; `sanitizeCount` rejects NaN/Infinity/negatives; `unlocked` allow-listed to known skins). Spawn fairness: a `PATTERNS` table where every row leaves ≥1 in-lane-survivable option. `window.__neon` mirrors state + exposes deterministic drivers (`forceSpawn`/`setSpeed`/`step(ms)`/`crash`/`givePowerup`) for headless QA.
+- **Super Decoder game state** (in-memory, single player): `session = {totalCodes, codeIndex, solved, totalScore, streak, bestAttempts}` for the run; `code = {secret[4], attemptsLeft, rows[], current[4], activeSlot}` for the in-flight puzzle; a `Phase` string machine `IDLE → PLACING ↔ SUBMITTING → BETWEEN → (PLACING | DONE)`; `pendingTimeouts[]` so the `show()` chokepoint can cancel every stagger/banner/countdown timer on quit (per LEARNINGS rev2 row 13). `scoreGuess(secret, guess)` is the **pure two-pass duplicate-safe** feedback algorithm; results render as a stable blacks→whites→greys cluster so position never leaks. A `window.__decoder` debug hook mirrors state for tests + exposes `scoreGuess` / `fillSlot` / `submit` / `forceSecret` deterministic helpers.
+
+## Key modules / components
+
+| Module | Responsibility | Location |
+|---|---|---|
+| Catalog render + rail | Build cards from `window.GAMES` (`esc`/`safeHref` sanitised), scroll-snap rail, arrow + scroll logic, app-bar elevation | [index.html](../index.html) |
+| Game registry | The list of games; add one object to add a game | [games.js](../games.js) |
+| Design tokens | MD3 variables; the single source of visual truth (light+dark) | [styles/tokens.css](../styles/tokens.css) |
+| Component CSS | Card, chip, button, state-layer overlay, focus ring, the `.rail` | [styles/base.css](../styles/base.css) |
+| Colour Rush | Setup → countdown → tap-to-score loop (RAF) → results; Web Audio; reduced-motion-safe | [games/colour-rush/index.html](../games/colour-rush/index.html) |
+| Snap | Setup (theme/players/colours/length/intensity) → roundtable stage (2–4 edge buttons + 2 flip cards) → RAF-deadline round state machine (countdown→reveal→resolve→inter) → results by pairs; touch + per-player keys; Web Audio; reduced-motion-safe | [games/snap/index.html](../games/snap/index.html) |
+| Claw Catch | **Solo, Canvas-rendered** claw machine. Setup (theme/length/difficulty + a transparent prize key) → canvas stage: a trolley claw that drops **straight down** with a small **jiggle** (`stepPhysics`), you steer + drop via a `Phase` grab state machine; rarity-weighted prizes form a physical **pile** (`stepPile`) and refill to a `binCap`; carried prizes wobble and can **slip mid-carry** (`dropChance`); cached emoji **capsule sprites**; on-screen joystick + **DROP** button + keyboard → results (score/caught/best). Web Audio; reduced-motion-safe | [games/claw-catch/index.html](../games/claw-catch/index.html) |
+| Neon Rush | **Solo, Three.js (WebGL)** 3-lane endless runner (PlayPad's first 3D + first persistent-save + first vendored-asset game). Vendored Three.js **r147** UMD + `GLTFLoader.js` (offline/CSP contract); `renderer.outputEncoding = sRGBEncoding` so GLB textures render in-colour, not grey. Skins are **real CC0 animated GLB characters** (KayKit Rogue → Urban Runner, Quaternius Astronaut → Star Rider, three.js RobotExpressive → Neon Bot) with skeletal run/jump/slide via `AnimationMixer` — missing clips fall back to run, and `applySkin` fully resets the cached mixer to avoid a 2nd-run T-pose; the primitive capsule builders remain as instant/failure fallback (`applySkin` hot-swaps). **Textured GLB city** (KayKit City Builder Bits `building_A..H` cloned into a recycled `cityBuildings` pool, `preloadCity`) lines the road; the procedural neon-box buildings retreat to a far skyline (`cityMode`) and stay as the `file://`/failure fallback. Chaser is a **KayKit police-car GLB** (`preloadPatrol`, wheels hidden → hover, red/blue roof lightbar + underglow); the primitive drone group stays as fallback. Real synthwave music + Kenney SFX (`assets/`, each with a synth fallback). Instant-start countdown (retry-skip + tap-skip); the first wave spawns nearer (`firstWave`) so play starts ~5s in. Modules: `SaveManager` (localStorage gateway) · `AudioManager` (real SFX/music + synth fallback, incl. a drone-proximity layer) · `UIManager` (screen router with `show()`-chokepoint teardown, HUD, shop render, live region) · `PlayerController` (lane lerp, jump/slide physics, arrows+swipes) · `ObstacleSpawner` (pooled obstacles/coins/pickups + fairness pattern table + scenery recycle) · `CollisionEngine` (AABB, hoverboard i-frames, near-miss→chaser tension). `window.__neon` test hook | [games/neon-rush/index.html](../games/neon-rush/index.html) · [games/neon-rush/CLAUDE.md](../games/neon-rush/CLAUDE.md) |
+| Super Decoder | **Solo, DOM-rendered** Mastermind-style code-breaker (PlayPad's first logic title). Setup (palette theme + difficulty = session length 3/5/8 codes) → game stage: 10-row board × 4 colour slots, 6-button palette, ⌫ Clear, SUBMIT. Tap a slot, tap a colour, peg drops in; SUBMIT locks the row and reveals feedback pegs one at a time (JS-driven staggers, reduced-motion-safe). Per-code 10-attempts limit; solve = score by attempts-used + streak bonus, fail = 0 + streak reset. Web Audio (place / submit / black-peg / white-peg / solve / fail / session-end). `window.__decoder` test hook | [games/super-decoder/index.html](../games/super-decoder/index.html) |
+| Brand assets | SVG favicon + maskable app icon + manifest | [icons/](../icons/) · [manifest.webmanifest](../manifest.webmanifest) |
+| Deploy package | `_headers` (CSP/caching) + the `dist/` builder | [_headers](../_headers) · [tools/build-dist.ps1](../tools/build-dist.ps1) |
+
+## Main flows
+
+- **Browse → launch:** open `index.html` → render cards from `window.GAMES` → activate a live card's `<a href>` → load `games/<slug>/`. (Keyboard: cards are real links; arrows are an extra, hidden on touch/≤720px.)
+- **Play a round (Colour Rush):** pick 2–4 players + a unique colour each → Start (gated on all colours chosen) → 3-2-1-GO → RAF loop spawns balanced, non-overlapping dots; tapping your colour scores its owner → timer ends → results (winner/tie/nobody) → Play again / Change settings / ← PlayPad.
+- **Play a round (Snap):** pick theme + 2–4 players + a unique colour each + length + intensity → Start → per round: 3-2-1 → both cards flip up at once → if symbols match, first edge-button tap (touch/key) scores +1; if not, a tapping player is −1 (floored at 0) + locked out for the round → rounds loop until the clock hits 0:00 → results ranked by pairs (winner/tie/"no snaps").
+- **Play a round (Claw Catch, solo):** pick theme + length + difficulty (prize key shows every prize's ★ rarity + points) → Start → 3-2-1 → steer the trolley (joystick / ← → / A D); the claw only **jiggles** a touch while moving and drops **straight down** (DROP / Space); the closing claw rakes the top of the pile — a prize under the tip may be caught (closer + higher grip = surer) → it rides to the chute (wobbling, and can **slip mid-carry**), releases into the hole, scores its points; an empty grab/slip lifts back in place (no chute trip); prizes refill to `binCap` → clock to 0:00 → results (score / caught / best grab) → Play again / Change settings / ← PlayPad.
+- **Play a round (Super Decoder, solo):** pick palette theme + difficulty (3 / 5 / 8 codes) → Start → 3-2-1 → first code begins: a random 4-peg secret is drawn from 6 colours (duplicates allowed); the active row pulses just above the palette. Tap a slot, tap a colour — peg drops into the slot, the active slot auto-advances; ⌫ wipes the row, tap-filled-slot clears it. SUBMIT (enabled at 4-of-4) locks the row and reveals 4 feedback pegs one at a time (black = right colour + position, white = right colour wrong position) with per-peg tones; if it's not a solve and tries remain, the next row activates. On solve → score `(10 − triesUsed + 1) × 10 + streak × 5`, streak +1, banner reveals the secret, next code begins. On fail (10 wrong) → streak resets to 0, secret revealed, next code. After the last code → results (Score / Solved X of N / Best fewest-tries solve) → Play again / Change settings / ← PlayPad.
+- **Play a round (Neon Rush, solo, 3D):** Start → 3-2-1-GO → auto-run down 3 lanes, speed ramps with distance. Arrows/swipes change lane (dodge tall trains), jump (barriers, low trains), slide (duck barriers). Pooled waves spawn from a fairness-guaranteed `PATTERNS` table; coins bank (+1) and score (+5); pickups grant magnet/sneakers/hoverboard (HUD timers). A cosmetic police-car chaser closes on near-misses, falls back on clean running. Crash (unless hoverboard absorbs it) → coins + high score persist immediately → results (Score / Coins this run / Total coins / Best) → Try again / Shop / Change settings / ← PlayPad. **Shop:** spend banked coins to buy + equip 3 skins (Urban Runner / Neon Bot / Star Rider); unlocks persist.
+- **Add a game:** append one object to `games.js` + create `games/<slug>/index.html` linking `../../styles/tokens.css` + `../../styles/base.css` and a ← PlayPad back link. **No hub edits.** (A game may add sibling assets in its own folder — e.g. Neon Rush's vendored `three.min.js` — as long as they're same-origin and offline-safe.)
+- **Build + deploy:** `tools/build-dist.ps1` → `dist/` (hostable subset + `_headers`) → upload to Cloudflare Pages (Direct Upload).
+
+## Integration points
+
+- **None external at runtime** — fully self-contained, no backend, no network. **Storage:** Neon Rush is the first game to persist — one versioned localStorage key (`playpad.neonRush.v1`), read/written only through its `SaveManager`, fail-soft (private mode / corrupt data → in-memory defaults). No other game persists.
+- **Three.js (vendored, r147 UMD) + GLTFLoader** — Neon Rush only; classic same-origin `<script src>` giving `THREE` + `THREE.GLTFLoader` (ES-module builds break under `file://`; CDN breaks the CSP; r147 is the last with classic-script loaders). Never upgrade past r147 or swap for a CDN without solving both.
+- **Vendored CC0 assets** — Neon Rush `assets/` (3 GLB characters + `models/city/` textured buildings & police-car GLBs, synthwave music, Kenney SFX; see `assets/CREDITS.md`). Loaded via `fetch`/GLTFLoader → **blocked under pure `file://`** (Chrome CORS), so a double-clicked file degrades to primitive skins + synth SFX (still playable); full on any http(s) origin incl. the deployed site. Music `<audio>` works from `file://`.
+- **Web Audio API + `<audio>`** — Neon Rush plays real SFX (decoded buffers) + a looping music element, each with a synth fallback; the drone siren stays synth. Other games use procedural tap tones only.
+- **Deploy target:** Cloudflare Pages (static). `_headers` applies CSP (`'unsafe-inline'` for the site's inline script/style; all else same-origin) + cache policy.
+
+---
+
+### How to keep this file healthy
+- Add a module row the moment you create a module; delete the row when you delete it.
+- If a flow changes, update its bullets in the same change — a stale map is worse than no map.
+- If this file passes ~150 lines, you're inlining detail that belongs in code. Consolidate.

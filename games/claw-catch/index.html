@@ -2358,6 +2358,15 @@
         window.addEventListener("orientationchange", scheduleRelayout);
         if (window.ResizeObserver) {
           new ResizeObserver(scheduleRelayout).observe($("stage"));
+          // The HUD pill grows as the score gains digits: keep the streak chip hugging its right edge.
+          new ResizeObserver(function () {
+            if (!running || !lay.hudR || $("hud").getBoundingClientRect().height < 1) return;
+            var sr = canvas.getBoundingClientRect(),
+              hr = $("hud").getBoundingClientRect();
+            lay.hudL = hr.left - sr.left;
+            lay.hudR = hr.right - sr.left;
+            publishCssVars();
+          }).observe($("hud"));
         }
 
         // ============================================================
@@ -2855,14 +2864,25 @@
         // other prizes, and overlaps are resolved with positional correction AND velocity impulses (so a
         // resting stack stays still instead of sinking and jittering). Prizes also tumble (rot/av).
         function stepPile(dt) {
-          var i, j, p, q;
+          integratePrizes(dt);
+          // Contact relaxation: a few passes keep it cheap and stable for ≤36 prizes.
+          for (var pass = 0; pass < PILE_SEPARATION_PASSES; pass++) {
+            for (var i = 0; i < bin.length; i++) {
+              for (var j = i + 1; j < bin.length; j++) contactPair(bin[i], bin[j]);
+            }
+            clampToTray();
+          }
+          spinPrizes(dt);
+        }
+
+        // Gravity + motion + the floor and side walls.
+        function integratePrizes(dt) {
           var left = lay.trayL,
             right = lay.trayR,
-            floor = lay.floorY,
-            n = bin.length;
+            floor = lay.floorY;
           var damp = Math.min(1, PILE_FRICTION * dt);
-          for (i = 0; i < n; i++) {
-            p = bin[i];
+          for (var i = 0; i < bin.length; i++) {
+            var p = bin[i];
             p.touch = false;
             p.vy += PILE_GRAVITY * dt;
             p.x += p.vx * dt;
@@ -2883,61 +2903,62 @@
               if (p.vx > 0) p.vx = -p.vx * 0.3;
             }
           }
-          // Contact relaxation: a few passes keep it cheap and stable for ≤36 prizes.
-          for (var pass = 0; pass < PILE_SEPARATION_PASSES; pass++) {
-            for (i = 0; i < n; i++) {
-              p = bin[i];
-              for (j = i + 1; j < n; j++) {
-                q = bin[j];
-                var dx = q.x - p.x,
-                  dy = q.y - p.y;
-                var minDist = p.rad + q.rad;
-                var d2 = dx * dx + dy * dy;
-                if (d2 >= minDist * minDist) continue;
-                var dist = Math.sqrt(d2) || 0.0001;
-                var nx = dx / dist,
-                  ny = dy / dist;
-                var corr = (minDist - dist) * 0.5;
-                p.x -= nx * corr;
-                p.y -= ny * corr;
-                q.x += nx * corr;
-                q.y += ny * corr;
-                p.touch = q.touch = true;
-                var rvx = q.vx - p.vx,
-                  rvy = q.vy - p.vy;
-                var vn = rvx * nx + rvy * ny;
-                if (vn < 0) {
-                  var jn = (-vn * (1 + PILE_RESTITUTION)) / 2;
-                  p.vx -= jn * nx;
-                  p.vy -= jn * ny;
-                  q.vx += jn * nx;
-                  q.vy += jn * ny;
-                  // Coulomb friction along the contact tangent.
-                  var vt = rvx * -ny + rvy * nx;
-                  var jt = clamp(-vt / 2, -PILE_TANGENT_MU * jn, PILE_TANGENT_MU * jn);
-                  p.vx -= jt * -ny;
-                  p.vy -= jt * nx;
-                  q.vx += jt * -ny;
-                  q.vy += jt * nx;
-                }
-              }
-            }
-            // Re-clamp to the floor and walls so nothing is pushed through.
-            for (i = 0; i < n; i++) {
-              p = bin[i];
-              if (p.y > floor - p.rad) p.y = floor - p.rad;
-              if (p.x < left + p.rad) p.x = left + p.rad;
-              else if (p.x > right - p.rad) p.x = right - p.rad;
-            }
+        }
+
+        // Re-clamp to the floor and walls so a contact push never forces a prize through them.
+        function clampToTray() {
+          for (var i = 0; i < bin.length; i++) {
+            var p = bin[i];
+            if (p.y > lay.floorY - p.rad) p.y = lay.floorY - p.rad;
+            if (p.x < lay.trayL + p.rad) p.x = lay.trayL + p.rad;
+            else if (p.x > lay.trayR - p.rad) p.x = lay.trayR - p.rad;
           }
-          // Tumble: spin blends toward rolling speed while touching, and decays.
+        }
+
+        // One pair of prizes: push apart (positional) and, if closing, exchange an impulse with a little
+        // restitution and Coulomb friction along the contact tangent.
+        function contactPair(p, q) {
+          var dx = q.x - p.x,
+            dy = q.y - p.y;
+          var minDist = p.rad + q.rad;
+          var d2 = dx * dx + dy * dy;
+          if (d2 >= minDist * minDist) return;
+          var dist = Math.sqrt(d2) || 0.0001;
+          var nx = dx / dist,
+            ny = dy / dist;
+          var corr = (minDist - dist) * 0.5;
+          p.x -= nx * corr;
+          p.y -= ny * corr;
+          q.x += nx * corr;
+          q.y += ny * corr;
+          p.touch = q.touch = true;
+          var rvx = q.vx - p.vx,
+            rvy = q.vy - p.vy;
+          var vn = rvx * nx + rvy * ny;
+          if (vn >= 0) return;
+          if (vn < -LAND_TICK_V && !quietPile) onLand(q.y > p.y ? q : p);
+          var jn = (-vn * (1 + PILE_RESTITUTION)) / 2;
+          p.vx -= jn * nx;
+          p.vy -= jn * ny;
+          q.vx += jn * nx;
+          q.vy += jn * ny;
+          var vt = rvx * -ny + rvy * nx;
+          var jt = clamp(-vt / 2, -PILE_TANGENT_MU * jn, PILE_TANGENT_MU * jn);
+          p.vx -= jt * -ny;
+          p.vy -= jt * nx;
+          q.vx += jt * -ny;
+          q.vy += jt * nx;
+        }
+
+        // Tumble: spin blends toward rolling speed while touching, and decays.
+        function spinPrizes(dt) {
           var spinDecay = Math.min(1, 4 * dt),
             roll = Math.min(1, PILE_ROLL_FRICTION * dt);
-          for (i = 0; i < n; i++) {
-            p = bin[i];
+          for (var i = 0; i < bin.length; i++) {
+            var p = bin[i];
             if (p.touch) {
               p.av += (p.vx / p.rad - p.av) * Math.min(1, 10 * dt);
-              if (p.y < floor - p.rad - 1) p.vx -= p.vx * roll; // resting on prizes: rolling friction
+              if (p.y < lay.floorY - p.rad - 1) p.vx -= p.vx * roll; // resting on prizes: rolling friction
             }
             p.av -= p.av * spinDecay;
             p.rot += p.av * dt;
@@ -2945,12 +2966,13 @@
         }
 
         var lastLandTs = 0;
+        // A hard landing (on the floor or on the heap): a soft tick + a 3-particle dust puff, both throttled
+        // to one per 80ms so a refill burst never spams.
         function onLand(p) {
           var now = nowMs();
-          if (now - lastLandTs > 80) {
-            lastLandTs = now;
-            soundLand();
-          }
+          if (now - lastLandTs < 80) return;
+          lastLandTs = now;
+          soundLand();
           spawnDust(p.x, p.y + p.rad * 0.8);
         }
 
@@ -3046,6 +3068,7 @@
               openAmount = 1;
               break;
             case Phase.DROP:
+              dropTargetL = computeDropDepth(); // follow a heap that is still settling under the claw
               currentL = lay.lRest + (dropTargetL - lay.lRest) * easeOut(clamp(t / DROP_MS, 0, 1));
               openAmount = 1;
               if (t >= DROP_MS) enterClose(now);
@@ -3305,81 +3328,70 @@
         // ---- scoring: base × streak multiplier, the double bonus, golden time ----
         function bankCarried(now) {
           var list = carried2 ? [carried, carried2] : [carried];
-          var base = 0,
-            gold = false,
-            bestR = 1,
-            i;
-          for (i = 0; i < list.length; i++) {
-            base += list[i].points;
-            if (list[i].golden) gold = true;
-            if (list[i].r > bestR) bestR = list[i].r;
+          var info = { base: 0, gold: false, bestR: 1, dbl: list.length === 2, first: list[0] };
+          for (var i = 0; i < list.length; i++) {
+            info.base += list[i].points;
+            if (list[i].golden) info.gold = true;
+            if (list[i].r > info.bestR) info.bestR = list[i].r;
             caughtList.push({ e: list[i].e, g: list[i].golden });
           }
-          var dbl = list.length === 2;
           if (carried.logEntry) carried.logEntry.out = "bank";
-          var prevMult = multFor(streak);
+          info.prevMult = multFor(streak);
           streak++;
           if (streak > topStreak) topStreak = streak;
-          var mult = multFor(streak);
-          var pts = base * mult + (dbl ? DOUBLE_BONUS : 0);
-          score += pts;
+          info.mult = multFor(streak);
+          info.pts = info.base * info.mult + (info.dbl ? DOUBLE_BONUS : 0);
+          info.pair = info.dbl ? list[0].e + list[1].e : "";
+          score += info.pts;
           prizesCaught += list.length;
-          if (pts > bestCatch) bestCatch = pts;
-          var main = list[0];
+          if (info.pts > bestCatch) bestCatch = info.pts;
           carried = carried2 = null;
           fallers.length = 0;
 
-          // payoff: popup + sparkles + rim flash + door bump (+ shake/flash for the big ones)
-          var color = gold
-            ? "#f4c26b"
-            : bestR === 3
-              ? "#f4c26b"
-              : bestR === 2
-                ? "#e5bdc4"
-                : "#ffffff";
-          spawnPopup(
-            lay.chuteCx,
-            lay.holeY - lay.prizeR * 1.1,
-            "+" + pts + (mult > 1 ? " ×" + mult : ""),
-            color,
-          );
-          if (dbl) spawnPopup(lay.chuteCx, lay.holeY - lay.prizeR * 2.4, "DOUBLE!", "#7cffb2");
-          sparkle(lay.chuteCx, lay.holeY, bestR === 3 || gold ? 14 : 10, color);
+          catchPayoff(now, info);
+          if (info.gold) addBonusTime(now);
+          updateScoreHud();
+          updateStreakChip(info.mult > info.prevMult);
+          catchToast(info);
+        }
+
+        // The payoff: popup + sparkles + rim flash + door bump (+ shake/flash for the big ones) + sound.
+        function catchPayoff(now, c) {
+          var big = c.bestR === 3 || c.gold;
+          var color = big ? "#f4c26b" : c.bestR === 2 ? "#e5bdc4" : "#ffffff";
+          var label = "+" + c.pts + (c.mult > 1 ? " ×" + c.mult : "");
+          spawnPopup(lay.chuteCx, lay.holeY - lay.prizeR * 1.1, label, color);
+          if (c.dbl) spawnPopup(lay.chuteCx, lay.holeY - lay.prizeR * 2.4, "DOUBLE!", "#7cffb2");
+          sparkle(lay.chuteCx, lay.holeY, big ? 14 : 10, color);
           rimFlashUntil = now + 200;
           bumpUntil = now + 220;
-          if (!reduceMotion && (bestR === 3 || gold || dbl)) shakeUntil = now + 160;
-          if (bestR === 3 || gold) flashUntil = now + 40;
-          soundCatch(gold ? 3 : bestR);
-          if (mult > prevMult)
+          if (!reduceMotion && (big || c.dbl)) shakeUntil = now + 160;
+          if (big) flashUntil = now + 40;
+          soundCatch(c.gold ? 3 : c.bestR);
+          if (c.mult > c.prevMult) {
             later(function () {
-              soundStreak(mult);
+              soundStreak(c.mult);
             }, 260);
-
-          if (gold) addBonusTime(now);
-          updateScoreHud();
-          updateStreakChip(mult > prevMult);
-
-          var toast;
-          if (gold) toast = ["Golden! +" + pts + " · +5s", main.e + " · Golden", "gold"];
-          else if (dbl) toast = ["DOUBLE! +" + pts, list[0].e + list[1].e, "good"];
-          else if (mult > prevMult)
-            toast = ["🔥 ×" + mult + " streak!", "+" + pts + " · " + main.e, "gold"];
-          else
-            toast = [
-              "Nice catch! +" + pts,
-              main.e + " · " + (main.golden ? "Golden" : RARITY[main.r].label),
-              "good",
-            ];
-          if (!gold && mult === 1 && streak === 2) toast[1] += " · 1 more for ×2!";
+          }
+        }
+        function catchToast(c) {
+          var f = c.first,
+            toast;
+          if (c.gold) toast = ["Golden! +" + c.pts + " · +5s", f.e + " · Golden", "gold"];
+          else if (c.dbl) toast = ["DOUBLE! +" + c.pts, c.pair, "good"];
+          else if (c.mult > c.prevMult)
+            toast = ["🔥 ×" + c.mult + " streak!", "+" + c.pts + " · " + f.e, "gold"];
+          else toast = ["Nice catch! +" + c.pts, f.e + " · " + RARITY[f.r].label, "good"];
+          if (!c.gold && c.mult === 1 && streak === 2) toast[1] += " · 1 more for ×2!";
           setFeedback(toast[0], toast[1], toast[2]);
           announce(
-            (dbl ? "Double! " : "Caught ") +
+            (c.dbl ? "Double! " : "Caught ") +
               "plus " +
-              pts +
+              c.pts +
               ". Score " +
               score +
-              (mult > 1 ? ". Streak multiplier " + mult : "") +
-              (gold ? ". Plus 5 seconds" : "") +
+              (c.mult > 1 ? ". Streak multiplier " + c.mult : "") +
+              (c.gold ? ". Plus 5 seconds" : "") +
               ".",
           );
         }

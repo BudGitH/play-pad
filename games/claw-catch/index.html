@@ -599,7 +599,8 @@
         gap: 12px;
         padding: 10px clamp(12px, 4vw, 26px) calc(10px + env(safe-area-inset-bottom));
         /* A control panel in the cabinet's own colours — never a pale pink slab (B6). */
-        background: linear-gradient(
+        background-color: var(--md-sys-color-surface-container);
+        background-image: linear-gradient(
           180deg,
           var(--claw-frame, #15151c),
           var(--md-sys-color-surface-container-lowest)
@@ -2401,7 +2402,9 @@
           bin = [];
           var R = lay.prizeR,
             target = Math.max(3, Math.round(cfg.binCap * 0.85));
-          var rowN = Math.max(3, Math.floor(lay.trayW / (2.04 * R)));
+          var fullRow = Math.max(3, Math.floor(lay.trayW / (2.04 * R)));
+          // A mound is ~3 rows deep: size the base row to the stock (never wider than the tray).
+          var rowN = clamp(Math.ceil(target / 3) + 1, 3, fullRow);
           var cx = (lay.trayL + lay.trayR) / 2,
             step = 2.04 * R;
           var row = 0,
@@ -2443,7 +2446,7 @@
           bin.push(p);
           hopperFlashUntil = now + 150;
           soundClunk();
-          spawnLog.push({ x: p.x, y: p.y, golden: p.golden, t: now, R: R });
+          spawnLog.push({ x: p.x, y: p.y, golden: p.golden, t: now, R: R, cx: clawPos().x });
           if (spawnLog.length > 12) spawnLog.shift();
           return true;
         }

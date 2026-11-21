@@ -314,7 +314,11 @@
         border-radius: var(--md-sys-shape-corner-full);
         background: rgba(4, 2, 18, 0.62);
         color: #fff;
-        border: 1px solid rgba(255, 45, 149, 0.35);
+        /* neon edge: 1px cyan inner border + a 12px magenta outer glow */
+        border: 1px solid rgba(34, 229, 255, 0.55);
+        box-shadow:
+          inset 0 0 0 1px rgba(34, 229, 255, 0.18),
+          0 0 12px rgba(255, 45, 149, 0.45);
       }
       #hudScore {
         font-size: 15px;
@@ -408,7 +412,28 @@
         z-index: 1;
       }
       .pu-chip .pu-ico {
-        font-size: 16px;
+        font-size: 14px;
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        /* conic ring = time remaining (--p 0..1 set per paint) */
+        background: conic-gradient(var(--ring, #22e5ff) calc(var(--p, 1) * 360deg), rgba(255, 255, 255, 0.16) 0);
+      }
+      .pu-chip .pu-ico::before {
+        content: "";
+        position: absolute;
+        inset: 3px;
+        border-radius: 50%;
+        background: #0a0618;
+        z-index: -1;
+      }
+      #puMagnet {
+        --ring: #ff2d95;
+      }
+      #puHoverboard {
+        --ring: #ffd54a;
       }
       #puHoverboard {
         border-color: rgba(255, 213, 74, 0.55);
@@ -421,6 +446,19 @@
       }
       #puMagnet .pu-bar {
         background: rgba(255, 45, 149, 0.22);
+      }
+
+      /* Crash flash: 80 ms white pop (class toggled from JS; skipped under reduced motion). */
+      #flash {
+        position: absolute;
+        inset: 0;
+        z-index: 40;
+        background: #fff;
+        opacity: 0;
+        pointer-events: none;
+      }
+      #flash.on {
+        opacity: 0.5;
       }
 
       /* Transient in-run toast (power-up pickups, shield save) — opacity class, NOT a keyframe
@@ -565,12 +603,22 @@
         color: var(--md-sys-color-on-surface-variant);
         margin-top: 4px;
       }
+      /* Neon hero strip: the score spans the card, dark synthwave gradient with the score in gold. */
       .stat.hero {
-        border-color: var(--md-sys-color-primary);
-        background: var(--md-sys-color-surface-container-high);
+        grid-column: 1 / -1;
+        padding: 20px 8px;
+        border-color: rgba(34, 229, 255, 0.55);
+        background: linear-gradient(135deg, #160a45, #3a0f45);
+        box-shadow:
+          inset 0 0 0 1px rgba(34, 229, 255, 0.15),
+          0 0 18px rgba(255, 45, 149, 0.28);
       }
       .stat.hero .big {
-        color: var(--md-sys-color-tertiary);
+        color: #ffd54a;
+        font-size: 44px;
+      }
+      .stat.hero .cap {
+        color: rgba(255, 255, 255, 0.72);
       }
       .res-actions {
         display: flex;
@@ -772,6 +820,7 @@
             <span class="pu-ico">🛹</span><span>Hoverboard</span>
           </div>
         </div>
+        <div id="flash"></div>
         <div id="toast"></div>
         <div id="countdown"><div class="cnum" id="cnum">3</div></div>
         <div id="glFail">
@@ -3729,7 +3778,10 @@
 
         /* ══════════════════════ ObstacleSpawner ══════════════════════
      Pooled obstacles + coins + pickups. Waves come from a pattern table where every
-     entry keeps at least one survivable option — never pure random death walls. */
+     entry keeps at least one survivable option — never pure random death walls.
+     Obstacles are built from ONE shared material set and 3-4 merged meshes each (std body with a
+     baked window/livery atlas, a vertex-coloured emissive mesh, an additive halo/underglow mesh)
+     instead of up to 20 window meshes per train. Coins are a single InstancedMesh + halo. */
         var obstaclePool = { barrier: [], lowTrain: [], tallTrain: [] };
         var activeObstacles = [];
         var coinPool = [],
@@ -3744,106 +3796,390 @@
           tallTrain: { y0: 0, y1: 4.2, halfW: 1.1, len: 10 },
         };
 
-        // A row of glowing windows down both sides of a train car (emissive, no shadow cost worth culling).
-        function addWindows(g, mat, count, halfLen, y, halfW, w, h) {
-          for (var i = 0; i < count; i++) {
-            var z = -halfLen + (i + 0.5) * ((halfLen * 2) / count);
-            [-1, 1].forEach(function (s) {
-              var win = new THREE.Mesh(new THREE.BoxGeometry(0.06, h, w), mat);
-              win.position.set(s * halfW, y, z);
-              g.add(win);
+        /* ---- obstacle textures ---- */
+        function makeHazardTexture() {
+          // magenta/black 45 degree hazard stripes with gold edge lines (barrier crossbar)
+          var c = mkCanvas(512, 64),
+            x = c.getContext("2d");
+          x.fillStyle = "#0a0614";
+          x.fillRect(0, 0, 512, 64);
+          x.fillStyle = "#ff2d95";
+          for (var i = -2; i < 14; i++) {
+            x.beginPath();
+            x.moveTo(i * 48, 56);
+            x.lineTo(i * 48 + 22, 56);
+            x.lineTo(i * 48 + 22 + 48, 8);
+            x.lineTo(i * 48 + 48, 8);
+            x.closePath();
+            x.fill();
+          }
+          x.fillStyle = "#ffd54a";
+          x.fillRect(0, 0, 512, 8);
+          x.fillRect(0, 56, 512, 8);
+          return colorTex(c, false);
+        }
+        // Rounded-rect helper for window/lamp drawing
+        function rr(x, px, py, w, h, r) {
+          x.beginPath();
+          x.moveTo(px + r, py);
+          x.arcTo(px + w, py, px + w, py + h, r);
+          x.arcTo(px + w, py + h, px, py + h, r);
+          x.arcTo(px, py + h, px, py, r);
+          x.arcTo(px, py, px + w, py, r);
+          x.closePath();
+        }
+        // Tram atlas 1024x512: SIDE (0,0,1024,256) / FRONT (0,256,512,512) / REST (512,256,1024,512).
+        // Returns {map, emi}: base colour map + a black-background emissive map (windows, livery, lights).
+        function makeTramAtlas() {
+          var cm = mkCanvas(1024, 512),
+            ce = mkCanvas(1024, 512);
+          var m = cm.getContext("2d"),
+            e = ce.getContext("2d");
+          m.fillStyle = "#c0307a";
+          m.fillRect(0, 0, 1024, 512);
+          e.fillStyle = "#000";
+          e.fillRect(0, 0, 1024, 512);
+          // SIDE: skirt, window band, livery
+          m.fillStyle = "#3a0f3a";
+          m.fillRect(0, 196, 1024, 60);
+          m.fillStyle = "#e8509a";
+          m.fillRect(0, 0, 1024, 14); // roof-edge highlight
+          for (var i = 0; i < 4; i++) {
+            var wx = 40 + i * 245;
+            m.fillStyle = "#0a1226";
+            rr(m, wx, 56, 200, 96, 18);
+            m.fill();
+            var g = e.createLinearGradient(0, 56, 0, 152);
+            g.addColorStop(0, "#9ff3ff");
+            g.addColorStop(1, "#2bc8e8");
+            e.fillStyle = g;
+            rr(e, wx, 56, 200, 96, 18);
+            e.fill();
+          }
+          e.fillStyle = "#22e5ff";
+          e.fillRect(0, 168, 1024, 10); // cyan livery stripe
+          m.fillStyle = "#22e5ff";
+          m.fillRect(0, 168, 1024, 10);
+          // FRONT: windscreen, headlights, grille
+          m.fillStyle = "#a82868";
+          m.fillRect(0, 256, 512, 256);
+          m.fillStyle = "#0a1226";
+          rr(m, 56, 280, 400, 96, 22);
+          m.fill();
+          e.fillStyle = "#22e5ff";
+          rr(e, 64, 288, 384, 22, 10);
+          e.fill();
+          m.fillStyle = "#3a0f3a";
+          m.fillRect(0, 440, 512, 72);
+          [112, 400].forEach(function (cx) {
+            e.fillStyle = "#ffd54a";
+            e.beginPath();
+            e.arc(cx, 412, 26, 0, Math.PI * 2);
+            e.fill();
+            m.fillStyle = "#fff6c8";
+            m.beginPath();
+            m.arc(cx, 412, 26, 0, Math.PI * 2);
+            m.fill();
+          });
+          e.fillStyle = "#ff2d95";
+          e.fillRect(40, 472, 432, 8);
+          // REST: plain hull
+          m.fillStyle = "#8c2260";
+          m.fillRect(512, 256, 512, 256);
+          return { map: colorTex(cm, false), emi: colorTex(ce, false) };
+        }
+        // Maglev atlas 1024x1024: SIDE (0,0,1024,512) / FRONT (0,512,512,1024) / REST (512,512,1024,1024).
+        function makeMaglevAtlas() {
+          var cm = mkCanvas(1024, 1024),
+            ce = mkCanvas(1024, 1024);
+          var m = cm.getContext("2d"),
+            e = ce.getContext("2d"),
+            i;
+          m.fillStyle = "#1b1240";
+          m.fillRect(0, 0, 1024, 1024);
+          e.fillStyle = "#000";
+          e.fillRect(0, 0, 1024, 1024);
+          // SIDE: panel lines, two window decks, cyan livery at 3.4 m
+          m.strokeStyle = "#2c1d66";
+          m.lineWidth = 3;
+          for (i = 1; i < 8; i++) {
+            m.beginPath();
+            m.moveTo(i * 128, 0);
+            m.lineTo(i * 128, 512);
+            m.stroke();
+          }
+          m.fillStyle = "#12092e";
+          m.fillRect(0, 440, 1024, 72); // skirt
+          for (i = 0; i < 8; i++) {
+            [112, 290].forEach(function (wy, di) {
+              m.fillStyle = "#0a0a1e";
+              rr(m, i * 128 + 22, wy, 84, 96, 14);
+              m.fill();
+              e.fillStyle = (i * 3 + di) % 5 === 0 ? "#ffb35a" : "#5fe8ff";
+              e.globalAlpha = 0.9;
+              rr(e, i * 128 + 22, wy, 84, 96, 14);
+              e.fill();
+              e.globalAlpha = 1;
             });
           }
+          e.fillStyle = "#22e5ff";
+          e.fillRect(0, 64, 1024, 14);
+          m.fillStyle = "#22e5ff";
+          m.fillRect(0, 64, 1024, 14);
+          e.fillStyle = "#ff2d95";
+          e.fillRect(0, 410, 1024, 8); // magenta lower trim
+          // FRONT: a lit wall — frame, destination board, windscreen, quad lights
+          m.fillStyle = "#160b38";
+          m.fillRect(0, 512, 512, 512);
+          e.fillStyle = "#22e5ff";
+          e.fillRect(0, 512, 512, 16);
+          e.fillRect(0, 1008, 512, 16);
+          e.fillRect(0, 512, 16, 512);
+          e.fillRect(496, 512, 16, 512);
+          m.fillStyle = "#000";
+          rr(m, 56, 560, 400, 120, 14);
+          m.fill();
+          e.fillStyle = "#001018";
+          rr(e, 56, 560, 400, 120, 14);
+          e.fill();
+          e.fillStyle = "#22e5ff";
+          e.textAlign = "center";
+          e.textBaseline = "middle";
+          e.font = 'bold 76px "Arial Black", Arial, sans-serif';
+          e.shadowColor = "#22e5ff";
+          e.shadowBlur = 14;
+          e.fillText("NEON EXP", 256, 622);
+          e.shadowBlur = 0;
+          m.fillStyle = "#0a0a1e";
+          rr(m, 56, 710, 400, 130, 20);
+          m.fill();
+          e.fillStyle = "#1a8fb0";
+          rr(e, 56, 710, 400, 22, 10);
+          e.fill();
+          [
+            [110, 920],
+            [190, 920],
+            [322, 920],
+            [402, 920],
+          ].forEach(function (p) {
+            e.fillStyle = "#ffd54a";
+            e.beginPath();
+            e.arc(p[0], p[1], 30, 0, Math.PI * 2);
+            e.fill();
+            m.fillStyle = "#fff6c8";
+            m.beginPath();
+            m.arc(p[0], p[1], 30, 0, Math.PI * 2);
+            m.fill();
+          });
+          // REST
+          m.fillStyle = "#120a30";
+          m.fillRect(512, 512, 512, 512);
+          return { map: colorTex(cm, false), emi: colorTex(ce, false) };
+        }
+        // Box whose six faces each sample their own atlas rectangle [u0,v0,u1,v1] (px,nx,py,ny,pz,nz).
+        function atlasBox(w, h, d, rects) {
+          var g = new THREE.BoxGeometry(w, h, d);
+          var uv = g.attributes.uv;
+          for (var f = 0; f < 6; f++)
+            for (var k = 0; k < 4; k++) {
+              var i = f * 4 + k,
+                r = rects[f];
+              uv.setXY(i, r[0] + uv.getX(i) * (r[2] - r[0]), r[1] + uv.getY(i) * (r[3] - r[1]));
+            }
+          return g;
+        }
+        function atlasRect(W, H, x0, y0, x1, y1) {
+          return [x0 / W, 1 - y1 / H, x1 / W, 1 - y0 / H];
+        }
+        function pointUV(g, u, v) {
+          var uv = g.attributes.uv;
+          for (var i = 0; i < uv.count; i++) uv.setXY(i, u, v);
+          return g;
+        }
+
+        // Shared materials + geometries (built once; every pooled obstacle reuses them)
+        var OB = null;
+        function obstacleKit() {
+          if (OB) return OB;
+          var tram = makeTramAtlas(),
+            mag = makeMaglevAtlas(),
+            haz = makeHazardTexture();
+          var std = function (map, emi) {
+            return new THREE.MeshStandardMaterial({
+              map: map,
+              emissive: 0xffffff,
+              emissiveMap: emi,
+              emissiveIntensity: 1.3,
+              roughness: 0.5,
+              metalness: 0.3,
+              envMapIntensity: 0.5,
+            });
+          };
+          OB = {
+            tramMat: std(tram.map, tram.emi),
+            magMat: std(mag.map, mag.emi),
+            hazMat: new THREE.MeshStandardMaterial({
+              map: haz,
+              emissive: 0xffffff,
+              emissiveMap: haz,
+              emissiveIntensity: 1.2,
+              roughness: 0.5,
+              metalness: 0.2,
+            }),
+            darkMat: new THREE.MeshStandardMaterial({
+              vertexColors: true,
+              roughness: 0.55,
+              metalness: 0.35,
+              envMapIntensity: 0.5,
+            }),
+            emiMat: new THREE.MeshBasicMaterial({ vertexColors: true }),
+            addMat: patchAdditiveFog(
+              new THREE.MeshBasicMaterial({
+                map: makeSpriteTexture(),
+                vertexColors: true,
+                transparent: true,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false,
+              }),
+            ),
+          };
+          return OB;
+        }
+        function quadAt(w, h, x, y, z, ry, rx) {
+          // sprite-textured plane for the additive mesh (facing +z by default; rx=-PI/2 lies flat)
+          return mat4(x, y, z, w, h, 1, rx || 0, ry || 0);
+        }
+        function sphereAt(r, x, y, z) {
+          return new THREE.Matrix4().compose(
+            new THREE.Vector3(x, y, z),
+            new THREE.Quaternion(),
+            new THREE.Vector3(r, r, r),
+          );
+        }
+        function chevronAt(x, y, z, w, hex, k) {
+          // flat ">" chevron lying on the road pointing along -z (toward the barrier): two angled slats
+          var parts = [];
+          [-1, 1].forEach(function (s) {
+            parts.push(
+              bakeGeo(
+                new THREE.BoxGeometry(w * 0.62, 0.012, 0.16),
+                new THREE.Matrix4().compose(
+                  new THREE.Vector3(x + s * w * 0.27, y, z),
+                  new THREE.Quaternion().setFromAxisAngle(_Y, -s * 0.55),
+                  new THREE.Vector3(1, 1, 1),
+                ),
+                hex,
+                k,
+              ),
+            );
+          });
+          return parts;
         }
         function buildObstacleMesh(type) {
+          var kit = obstacleKit();
           var g = new THREE.Group();
+          var dark = [],
+            emi = [],
+            add = [];
+          var body = null;
           if (type === "barrier") {
-            var postMat = stdMat(0x2a3050, NEON.cyan, 0.35, true);
-            var barMat = stdMat(NEON.magenta, NEON.magenta, 1.2, false);
+            // dark posts with cyan caps; hazard-stripe crossbar with gold edges; telegraphing chevrons
             [-1, 1].forEach(function (s) {
-              var post = new THREE.Mesh(new THREE.CapsuleGeometry(0.08, 1.34, 3, 8), postMat);
-              post.position.set(s * 1.0, 0.75, 0);
-              var lamp = new THREE.Mesh(
-                new THREE.SphereGeometry(0.1, 10, 8),
-                stdMat(NEON.cyan, NEON.cyan, 1.4),
-              );
-              lamp.position.set(s * 1.0, 1.48, 0);
-              g.add(post, lamp);
+              dark.push(bakeGeo(new THREE.BoxGeometry(0.16, 1.55, 0.16), mat4(s * 1.03, 0.78, 0), 0x1a1d33));
+              dark.push(bakeGeo(new THREE.BoxGeometry(0.34, 0.08, 0.34), mat4(s * 1.03, 0.04, 0), 0x2a2d44));
+              emi.push(bakeGeo(new THREE.SphereGeometry(1, 10, 8), sphereAt(0.11, s * 1.03, 1.6, 0), NEON.cyan));
+              add.push(bakeGeo(new THREE.PlaneGeometry(1, 1), quadAt(1.2, 1.2, s * 1.03, 1.6, 0.05), NEON.cyan, 0.55));
             });
-            // rounded warning crossbar + a bright chevron core
-            var bar = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 2.1, 12), barMat);
-            bar.rotation.z = Math.PI / 2;
+            var bar = new THREE.Mesh(new THREE.BoxGeometry(2.14, 0.4, 0.2), kit.hazMat);
             bar.position.y = 1.15;
-            var chevron = new THREE.Mesh(
-              new THREE.BoxGeometry(2.12, 0.14, 0.32),
-              stdMat(NEON.gold, NEON.gold, 1.3, true),
-            );
-            chevron.position.y = 1.15;
-            g.add(bar, chevron);
+            bar.castShadow = true;
+            g.add(bar);
+            [0.97, 1.33].forEach(function (yy) {
+              emi.push(bakeGeo(new THREE.BoxGeometry(2.16, 0.03, 0.22), mat4(0, yy, 0), NEON.gold));
+            });
+            [2.0, 3.1, 4.2].forEach(function (zz, i) {
+              chevronAt(0, 0.022, zz, 1.7, NEON.magenta, 0.6 - i * 0.12).forEach(function (cg) {
+                emi.push(cg);
+              });
+            });
+            body = new THREE.Mesh(mergeGeos(dark), kit.darkMat);
           } else if (type === "lowTrain") {
-            var body = new THREE.Mesh(
-              new THREE.BoxGeometry(2.0, 1.4, 5),
-              stdMat(0x8f1f63, NEON.magenta, 0.45, true),
+            // tram: rounded body, baked window band, gold headlights + halos, underglow, roof chevron
+            var Wd = 1024,
+              Hd = 512;
+            var tb = atlasBox(2.0, 1.2, 5, [
+              atlasRect(Wd, Hd, 0, 0, 1024, 256),
+              atlasRect(Wd, Hd, 0, 0, 1024, 256),
+              atlasRect(Wd, Hd, 512, 256, 1024, 512),
+              atlasRect(Wd, Hd, 512, 256, 1024, 512),
+              atlasRect(Wd, Hd, 0, 256, 512, 512),
+              atlasRect(Wd, Hd, 512, 256, 1024, 512),
+            ]);
+            tb.translate(0, 0.75, 0);
+            // half-cylinder arch along z: axis y -> z via rotateX(-PI/2); the +z half-circle lands above
+            var dome = new THREE.CylinderGeometry(1, 1, 5, 16, 1, false, -Math.PI / 2, Math.PI);
+            var domeG = bakeGeo(
+              dome,
+              new THREE.Matrix4().compose(
+                new THREE.Vector3(0, 1.35, 0),
+                new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0)),
+                new THREE.Vector3(1, 1, 0.2),
+              ),
             );
-            body.position.y = 0.78;
-            var roof = new THREE.Mesh(
-              new THREE.CapsuleGeometry(0.24, 1.7, 3, 8),
-              stdMat(0xa8397a, NEON.magenta, 0.5, true),
-            );
-            roof.rotation.x = Math.PI / 2;
-            roof.scale.set(1, 1, 0.9);
-            roof.position.set(0, 1.45, 0);
-            var stripe = new THREE.Mesh(
-              new THREE.BoxGeometry(2.04, 0.14, 5.02),
-              stdMat(NEON.cyan, NEON.cyan, 1.3),
-            );
-            stripe.position.y = 1.16;
-            var lightL = new THREE.Mesh(
-              new THREE.SphereGeometry(0.13, 10, 8),
-              stdMat(NEON.gold, NEON.gold, 1.6),
-            );
-            lightL.position.set(-0.6, 0.5, 2.52);
-            var lightR = lightL.clone();
-            lightR.position.x = 0.6;
-            g.add(body, roof, stripe, lightL, lightR);
-            addWindows(g, stdMat(NEON.cyan, NEON.cyan, 1.5), 4, 2.2, 0.85, 1.01, 0.6, 0.4);
+            // dome built from the tram atlas REST colour so it matches the hull
+            pointUV(domeG, 0.75, 0.25);
+            body = new THREE.Mesh(mergeGeos([bakeGeo(tb, null), domeG]), kit.tramMat);
+            [-0.62, 0.62].forEach(function (hx) {
+              emi.push(bakeGeo(new THREE.SphereGeometry(1, 10, 8), sphereAt(0.13, hx, 0.5, 2.5), NEON.gold));
+              add.push(bakeGeo(new THREE.PlaneGeometry(1, 1), quadAt(1.1, 1.1, hx, 0.5, 2.55), NEON.gold, 0.6));
+            });
+            emi.push(bakeGeo(new THREE.BoxGeometry(2.04, 0.05, 4.8), mat4(0, 0.13, 0), NEON.magenta)); // underglow strip
+            add.push(bakeGeo(new THREE.PlaneGeometry(1, 1), quadAt(2.6, 6.2, 0, 0.025, 0, 0, -Math.PI / 2), NEON.magenta, 0.4));
+            add.push(bakeGeo(new THREE.PlaneGeometry(1, 1), quadAt(2.0, 4.0, 0, 0.026, 4.4, 0, -Math.PI / 2), NEON.gold, 0.16)); // light spill
+            [-0.8, 0.8].forEach(function (cz) {
+              chevronAt(0, 1.56, cz, 1.0, NEON.gold, 1).forEach(function (cg) {
+                emi.push(cg);
+              });
+            });
           } else {
-            var body2 = new THREE.Mesh(
-              new THREE.BoxGeometry(2.1, 4.0, 10),
-              stdMat(0x2a1660, NEON.purple, 0.4, true),
+            // maglev: tall lit wall, LED destination board, quad headlights + halos, underglow
+            var Wm = 1024,
+              Hm = 1024;
+            var mb = atlasBox(2.1, 3.65, 10, [
+              atlasRect(Wm, Hm, 0, 0, 1024, 512),
+              atlasRect(Wm, Hm, 0, 0, 1024, 512),
+              atlasRect(Wm, Hm, 512, 512, 1024, 1024),
+              atlasRect(Wm, Hm, 512, 512, 1024, 1024),
+              atlasRect(Wm, Hm, 0, 512, 512, 1024),
+              atlasRect(Wm, Hm, 512, 512, 1024, 1024),
+            ]);
+            mb.translate(0, 2.125, 0);
+            var mdome = new THREE.CylinderGeometry(1, 1, 10, 16, 1, false, -Math.PI / 2, Math.PI);
+            var mdomeG = bakeGeo(
+              mdome,
+              new THREE.Matrix4().compose(
+                new THREE.Vector3(0, 3.95, 0),
+                new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0)),
+                new THREE.Vector3(1.05, 1, 0.25),
+              ),
             );
-            body2.position.y = 2.1;
-            var roof2 = new THREE.Mesh(
-              new THREE.CapsuleGeometry(0.4, 1.7, 3, 8),
-              stdMat(0x3a2080, NEON.purple, 0.45, true),
-            );
-            roof2.rotation.x = Math.PI / 2;
-            roof2.scale.set(1, 1, 0.8);
-            roof2.position.set(0, 4.05, 0);
-            var stripe2 = new THREE.Mesh(
-              new THREE.BoxGeometry(2.14, 0.2, 10.02),
-              stdMat(NEON.cyan, NEON.cyan, 1.2),
-            );
-            stripe2.position.y = 3.4;
-            var nose = new THREE.Mesh(
-              new THREE.BoxGeometry(1.8, 0.5, 0.4),
-              stdMat(NEON.gold, NEON.gold, 1.2, true),
-            );
-            nose.position.set(0, 0.6, 5.0);
-            var wsL = new THREE.Mesh(
-              new THREE.SphereGeometry(0.16, 10, 8),
-              stdMat(NEON.gold, NEON.gold, 1.6),
-            );
-            wsL.position.set(-0.6, 1.2, 5.02);
-            var wsR = wsL.clone();
-            wsR.position.x = 0.6;
-            g.add(body2, roof2, stripe2, nose, wsL, wsR);
-            addWindows(g, stdMat(NEON.cyan, NEON.cyan, 1.4), 5, 4.6, 2.7, 1.06, 0.7, 0.5); // upper deck
-            addWindows(g, stdMat(NEON.cyan, NEON.cyan, 1.4), 5, 4.6, 1.5, 1.06, 0.7, 0.5); // lower deck
+            pointUV(mdomeG, 0.75, 0.25);
+            body = new THREE.Mesh(mergeGeos([bakeGeo(mb, null), mdomeG]), kit.magMat);
+            [-0.62, -0.28, 0.28, 0.62].forEach(function (hx) {
+              add.push(bakeGeo(new THREE.PlaneGeometry(1, 1), quadAt(1.4, 1.4, hx * 1.2, 0.9, 5.06), NEON.gold, 0.55));
+            });
+            emi.push(bakeGeo(new THREE.BoxGeometry(2.14, 0.05, 9.8), mat4(0, 0.28, 0), NEON.cyan)); // underglow strip
+            add.push(bakeGeo(new THREE.PlaneGeometry(1, 1), quadAt(2.8, 11, 0, 0.025, 0, 0, -Math.PI / 2), NEON.cyan, 0.35));
+            add.push(bakeGeo(new THREE.PlaneGeometry(1, 1), quadAt(2.2, 5, 0, 0.026, 7.4, 0, -Math.PI / 2), NEON.cyan, 0.14));
           }
-          g.traverse(function (o) {
-            if (o.isMesh) o.castShadow = true;
-          });
+          body.castShadow = true;
+          g.add(body);
+          if (emi.length) g.add(new THREE.Mesh(mergeGeos(emi), kit.emiMat));
+          if (add.length) {
+            var am = new THREE.Mesh(mergeGeos(add), kit.addMat);
+            am.renderOrder = 2;
+            g.add(am);
+          }
           return g;
         }
         function getObstacle(type) {
@@ -3881,27 +4217,89 @@
           activeObstacles.push(ob);
           return ob;
         }
-        var coinGeo = null,
-          coinMat = null,
-          pickupGeos = null;
+
+        /* ---- coins: ONE InstancedMesh (beveled lathe disc) + ONE additive halo InstancedMesh ---- */
+        var COIN_CAP = 160;
+        var coinInst = null,
+          coinHalo = null,
+          coinBurst = null,
+          coinPops = [];
         if (renderer) {
-          coinGeo = new THREE.CylinderGeometry(0.3, 0.3, 0.07, 14);
-          coinMat = new THREE.MeshStandardMaterial({
-            color: NEON.gold,
-            emissive: NEON.gold,
-            emissiveIntensity: 0.7,
-            roughness: 0.3,
-            metalness: 0.7,
+          // profile: recessed bright face inside a raised darker rim, ~0.7 m across, 0.1 m thick
+          var prof = [
+            [0, 0.03],
+            [0.25, 0.03],
+            [0.27, 0.05],
+            [0.33, 0.05],
+            [0.35, 0.025],
+            [0.35, -0.025],
+            [0.33, -0.05],
+            [0.27, -0.05],
+            [0.25, -0.03],
+            [0, -0.03],
+          ].map(function (p) {
+            return new THREE.Vector2(p[0], p[1]);
           });
+          var coinGeo = new THREE.LatheGeometry(prof, 24);
+          coinGeo.rotateZ(Math.PI / 2); // stand it on its edge: face normal along x, spun about Y
+          var cpos = coinGeo.attributes.position,
+            ccol = new Float32Array(cpos.count * 3);
+          var cFace = new THREE.Color(0xffe27a),
+            cRim = new THREE.Color(0xd9951a);
+          for (var ci = 0; ci < cpos.count; ci++) {
+            var rad = Math.sqrt(cpos.getY(ci) * cpos.getY(ci) + cpos.getZ(ci) * cpos.getZ(ci));
+            var face = rad < 0.255 ? cFace : cRim;
+            ccol[ci * 3] = face.r;
+            ccol[ci * 3 + 1] = face.g;
+            ccol[ci * 3 + 2] = face.b;
+          }
+          coinGeo.setAttribute("color", new THREE.BufferAttribute(ccol, 3));
+          coinInst = makeInst(
+            coinGeo,
+            new THREE.MeshStandardMaterial({
+              vertexColors: true,
+              emissive: NEON.gold,
+              emissiveIntensity: 0.55,
+              roughness: 0.25,
+              metalness: 0.85,
+              envMapIntensity: 1.2,
+            }),
+            COIN_CAP + 24,
+          );
+          coinInst.count = 0;
+          scene.add(coinInst);
+          coinHalo = makeInst(
+            new THREE.PlaneGeometry(1, 1),
+            patchAdditiveFog(
+              new THREE.MeshBasicMaterial({
+                map: makeSpriteTexture(),
+                color: 0xffffff,
+                transparent: true,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false,
+              }),
+            ),
+            COIN_CAP + 24,
+          );
+          coinHalo.renderOrder = 2;
+          for (var ch = 0; ch < COIN_CAP + 24; ch++)
+            coinHalo.setColorAt(ch, _tc.set(NEON.gold).multiplyScalar(0.5));
+          coinHalo.count = 0;
+          scene.add(coinHalo);
+          // pooled gold burst on collect (world-space Points, ring-buffer cursor)
+          coinBurst = makeParticles(96, 0.2, NEON.gold);
+          var cb = coinBurst.userData;
+          cb.vx = new Float32Array(cb.count);
+          cb.vy = new Float32Array(cb.count);
+          cb.vz = new Float32Array(cb.count);
+          cb.life = new Float32Array(cb.count);
+          cb.max = new Float32Array(cb.count);
+          cb.next = 0;
+          scene.add(coinBurst);
         }
         function getCoin() {
           for (var i = 0; i < coinPool.length; i++) if (!coinPool[i].active) return coinPool[i];
-          var c = { mesh: null, active: false, x: 0, y: 0, z: 0 };
-          if (renderer) {
-            c.mesh = new THREE.Mesh(coinGeo, coinMat);
-            c.mesh.rotation.z = Math.PI / 2;
-            scene.add(c.mesh);
-          }
+          var c = { active: false, x: 0, y: 0, z: 0, phase: Math.random() * 6.28 };
           coinPool.push(c);
           return c;
         }
@@ -3911,13 +4309,87 @@
           c.x = x;
           c.y = y;
           c.z = z;
-          if (c.mesh) {
-            c.mesh.visible = true;
-            c.mesh.position.set(x, y, z);
-          }
+          c.phase = Math.random() * 6.28;
           activeCoins.push(c);
         }
+        // collect: a 0.12 s scale pop on the coin + a short gold burst (60% of the particles off the high tier)
+        function coinCollectFx(x, y, z) {
+          if (!coinInst) return;
+          coinPops.push({ x: x, y: y, z: z, t: 0 });
+          var u = coinBurst.userData,
+            n = Math.round(16 * TIERS[quality.tier].particles);
+          for (var k = 0; k < n; k++) {
+            var i = u.next;
+            u.next = (u.next + 1) % u.count;
+            var a = Math.random() * 6.283,
+              sp = 2 + Math.random() * 3;
+            u.pos[i * 3] = x;
+            u.pos[i * 3 + 1] = y;
+            u.pos[i * 3 + 2] = z;
+            u.vx[i] = Math.cos(a) * sp;
+            u.vy[i] = 1 + Math.random() * 3;
+            u.vz[i] = Math.sin(a) * sp + 2;
+            u.max[i] = u.life[i] = 0.3 + Math.random() * 0.25;
+          }
+        }
+        function updateCoinFx(dt) {
+          if (!coinBurst) return;
+          var u = coinBurst.userData,
+            base = u.base;
+          for (var i = 0; i < u.count; i++) {
+            if (u.life[i] <= 0) {
+              u.col[i * 3] = u.col[i * 3 + 1] = u.col[i * 3 + 2] = 0;
+              continue;
+            }
+            u.life[i] -= dt;
+            u.vy[i] -= 9 * dt;
+            u.pos[i * 3] += u.vx[i] * dt;
+            u.pos[i * 3 + 1] += u.vy[i] * dt;
+            u.pos[i * 3 + 2] += u.vz[i] * dt;
+            var t = u.life[i] > 0 ? u.life[i] / u.max[i] : 0;
+            u.col[i * 3] = base.r * t;
+            u.col[i * 3 + 1] = base.g * t;
+            u.col[i * 3 + 2] = base.b * t;
+          }
+          coinBurst.geometry.attributes.position.needsUpdate = true;
+          coinBurst.geometry.attributes.color.needsUpdate = true;
+        }
+        // Write every active coin (+ collect pops) into the instanced meshes: spin 5 rad/s, bob 3 Hz.
+        function writeCoins(dt) {
+          if (!coinInst) return;
+          var n = Math.min(activeCoins.length, COIN_CAP),
+            i,
+            c;
+          for (i = 0; i < n; i++) {
+            c = activeCoins[i];
+            var bob = prefersReduced ? 0 : 0.08 * Math.sin(elapsed * 18.85 + c.phase);
+            setInst(coinInst, i, c.x, c.y + bob, c.z, 1, 1, 1, prefersReduced ? c.phase : elapsed * 5 + c.phase);
+            setInst(coinHalo, i, c.x, c.y + bob, c.z, 0.9, 0.9, 1, 0, true);
+          }
+          var m = n;
+          for (i = coinPops.length - 1; i >= 0; i--) {
+            var p = coinPops[i];
+            p.t += dt;
+            if (p.t >= 0.12) {
+              coinPops.splice(i, 1);
+              continue;
+            }
+            if (m < COIN_CAP + 24) {
+              var sc = 1 + 0.5 * (p.t / 0.12);
+              setInst(coinInst, m, p.x, p.y, p.z, sc, sc, sc, elapsed * 5, false);
+              setInst(coinHalo, m, p.x, p.y, p.z, 0.9 * sc, 0.9 * sc, 1, 0, true);
+              m++;
+            }
+          }
+          coinInst.count = coinHalo.count = m;
+          coinInst.instanceMatrix.needsUpdate = true;
+          coinHalo.instanceMatrix.needsUpdate = true;
+        }
+
+        /* ---- pickups: glowing crystal + cage + halo + ground ring in the power-up colour ---- */
         var PICKUP_STYLE = { magnet: NEON.magenta, sneakers: NEON.cyan, hoverboard: NEON.gold };
+        var pickupGeo = null,
+          ringGeo = null;
         function getPickup(kind) {
           for (var i = 0; i < pickupPool.length; i++)
             if (!pickupPool[i].active) {
@@ -3928,9 +4400,9 @@
           if (renderer) {
             p.mesh = new THREE.Group();
             // Faceted power-crystal: a solid glowing core inside a brighter wireframe cage.
-            var geo = new THREE.OctahedronGeometry(0.4, 0);
+            pickupGeo = pickupGeo || new THREE.OctahedronGeometry(0.4, 0);
             p.inner = new THREE.Mesh(
-              geo,
+              pickupGeo,
               new THREE.MeshStandardMaterial({
                 color: 0xffffff,
                 emissive: 0xffffff,
@@ -3944,8 +4416,33 @@
               new THREE.WireframeGeometry(new THREE.OctahedronGeometry(0.5, 0)),
               new THREE.LineBasicMaterial({ color: 0xffffff }),
             );
-            p.mesh.add(p.inner, p.cage);
+            p.halo = new THREE.Sprite(
+              patchAdditiveFog(
+                new THREE.SpriteMaterial({
+                  map: makeSpriteTexture(),
+                  transparent: true,
+                  blending: THREE.AdditiveBlending,
+                  depthWrite: false,
+                }),
+              ),
+            );
+            p.halo.scale.set(1.5, 1.5, 1);
+            ringGeo = ringGeo || new THREE.RingGeometry(0.4, 0.62, 28);
+            p.ring = new THREE.Mesh(
+              ringGeo,
+              patchAdditiveFog(
+                new THREE.MeshBasicMaterial({
+                  transparent: true,
+                  blending: THREE.AdditiveBlending,
+                  depthWrite: false,
+                  side: THREE.DoubleSide,
+                }),
+              ),
+            );
+            p.ring.rotation.x = -Math.PI / 2;
+            p.mesh.add(p.inner, p.cage, p.halo);
             scene.add(p.mesh);
+            scene.add(p.ring);
           }
           pickupPool.push(p);
           return p;
@@ -3958,12 +4455,18 @@
           p.z = z;
           if (p.mesh) {
             p.mesh.visible = true;
+            p.ring.visible = true;
             p.mesh.position.set(p.x, 1.2, z);
-            p.inner.material.emissive.setHex(PICKUP_STYLE[kind]);
-            p.inner.material.color.setHex(PICKUP_STYLE[kind]);
-            p.cage.material.color.setHex(PICKUP_STYLE[kind]);
+            var hex = PICKUP_STYLE[kind];
+            p.inner.material.emissive.setHex(hex);
+            p.inner.material.color.setHex(hex);
+            p.cage.material.color.setHex(hex);
+            p.halo.material.color.setHex(hex);
+            p.ring.material.color.setHex(hex).multiplyScalar(0.7);
+            p.ring.position.set(p.x, 0.03, z);
           }
           activePickups.push(p);
+          return p;
         }
 
         // Pattern table: '.'=clear  B=barrier  L=low train  T=tall train.
@@ -4011,12 +4514,16 @@
             });
             activeCoins.forEach(function (c) {
               c.active = false;
-              if (c.mesh) c.mesh.visible = false;
             });
             activePickups.forEach(function (p) {
               p.active = false;
-              if (p.mesh) p.mesh.visible = false;
+              if (p.mesh) {
+                p.mesh.visible = false;
+                p.ring.visible = false;
+              }
             });
+            coinPops.length = 0;
+            if (coinInst) coinInst.count = coinHalo.count = 0;
             activeObstacles.length = 0;
             activeCoins.length = 0;
             activePickups.length = 0;
@@ -4091,13 +4598,8 @@
                 c.x += (player.x - c.x) * Math.min(1, dt * 10);
                 c.y += (player.y + 1.0 - c.y) * Math.min(1, dt * 10);
               }
-              if (c.mesh) {
-                c.mesh.position.set(c.x, c.y, c.z);
-                c.mesh.rotation.y += dt * 4;
-              }
               if (c.z > KILL_Z) {
                 c.active = false;
-                if (c.mesh) c.mesh.visible = false;
                 activeCoins.splice(i, 1);
               }
             }
@@ -4108,13 +4610,21 @@
                 p.mesh.position.z = p.z;
                 p.mesh.rotation.y += dt * 2.4;
                 p.mesh.position.y = 1.2 + Math.sin(elapsed * 3 + i) * 0.15;
+                p.ring.position.z = p.z;
+                var rs = 1 + 0.12 * Math.sin(elapsed * 4 + i);
+                p.ring.scale.set(rs, rs, 1);
               }
               if (p.z > KILL_Z) {
                 p.active = false;
-                if (p.mesh) p.mesh.visible = false;
+                if (p.mesh) {
+                  p.mesh.visible = false;
+                  p.ring.visible = false;
+                }
                 activePickups.splice(i, 1);
               }
             }
+            writeCoins(dt);
+            updateCoinFx(dt);
             // scenery: road dashes, pavement, facades, lamps, towers
             worldTick(move);
           },
@@ -4164,7 +4674,7 @@
                 Math.abs(c.y - (player.y + 1.0)) < 1.25
               ) {
                 c.active = false;
-                if (c.mesh) c.mesh.visible = false;
+                coinCollectFx(c.x, c.y, c.z);
                 activeCoins.splice(i, 1);
                 runCoins++;
                 score += COIN_SCORE;
@@ -4176,7 +4686,10 @@
               var p = activePickups[i];
               if (Math.abs(p.z) < 1.0 && Math.abs(p.x - player.x) < 0.9 && player.y < 2.2) {
                 p.active = false;
-                if (p.mesh) p.mesh.visible = false;
+                if (p.mesh) {
+                  p.mesh.visible = false;
+                  p.ring.visible = false;
+                }
                 activePickups.splice(i, 1);
                 activatePowerup(p.kind);
               }

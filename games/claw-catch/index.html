@@ -1525,6 +1525,7 @@
           if (layoutRaf) cancelAnimationFrame(layoutRaf);
           layoutRaf = 0;
           clearLater();
+          publishDebug(); // keep the test mirror honest once the loop has stopped
         }
         function show(s) {
           if ($("game").classList.contains("active") && s !== "game") teardownGame();

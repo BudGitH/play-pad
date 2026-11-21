@@ -1735,7 +1735,7 @@
               .replace("#include <common>", "#include <common>\nuniform vec3 uRimColor;\nuniform float uRimStr;")
               .replace(
                 "#include <emissivemap_fragment>",
-                "#include <emissivemap_fragment>\n totalEmissiveRadiance += uRimColor * uRimStr * pow( 1.0 - saturate( dot( normalize( normal ), normalize( vViewPosition ) ) ), 2.5 );",
+                "#include <emissivemap_fragment>\n totalEmissiveRadiance += uRimColor * uRimStr * pow( 1.0 - saturate( dot( normalize( normal ), normalize( vViewPosition ) ) ), 3.2 );",
               );
           };
           mat.customProgramCacheKey = function () {
@@ -3124,8 +3124,8 @@
             yaw: Math.PI,
             lift: 0,
             headTop: 0.85,
-            rim: [NEON.cyan, 0.9],
-            crouch: { sx: 1.1, sy: 0.6, sz: 1.1, pitch: -0.4 },
+            rim: [NEON.cyan, 0.75],
+            crouch: { sx: 1.1, sy: 0.58, sz: 1.1, pitch: -0.4 },
             fx: function (m) {
               if (m.map) {
                 _remapCache = _remapCache || hueRemapTexture(m.map);
@@ -3155,8 +3155,8 @@
             ridePitch: -0.1,
             spin: true,
             headTop: 0.31,
-            rim: [NEON.magenta, 0.7],
-            crouch: { sx: 1.08, sy: 0.66, sz: 1.08, pitch: -0.35 },
+            rim: [NEON.magenta, 0.6],
+            crouch: { sx: 1.1, sy: 0.45, sz: 1.1, pitch: -0.6, y: -0.16 }, // squats down onto the deck
             fx: function (m, nm) {
               if (/SciFi_Light_Accent/i.test(nm)) {
                 m.emissive.set(NEON.cyan);
@@ -3179,8 +3179,8 @@
             yaw: Math.PI,
             lift: 0,
             headTop: 0.6,
-            rim: [NEON.magenta, 0.8],
-            crouch: { sx: 1.12, sy: 0.62, sz: 1.12, pitch: -0.55 },
+            rim: [NEON.magenta, 0.7],
+            crouch: { sx: 1.2, sy: 0.45, sz: 1.2, pitch: -0.6 },
             fx: function (m, nm) {
               if (nm === "Main") {
                 m.color.set(0xd9e2f2);
@@ -3457,7 +3457,7 @@
               var ride = cfg.ridePitch && c.onGround && st !== "crash" ? cfg.ridePitch * (1 - e) : 0;
               pose.rotation.x = pc.pitch * e + ride;
               var bob = cfg.board && c.onGround && st !== "crash" ? 0.03 * Math.sin(this.clock * 37.7) : 0;
-              pose.position.y = (cfg.lift || 0) + bob;
+              pose.position.y = (cfg.lift || 0) + (pc.y || 0) * e + bob;
               if (board) board.position.y = bob;
               // board 360: spin the whole wrap about Y over the first 0.55 s of air (easeOutCubic)
               this.spinYaw =
@@ -3470,7 +3470,7 @@
               var out = {},
                 sum = 0;
               uniq.forEach(function (u) {
-                var w = u.action.isRunning() ? u.action.getEffectiveWeight() : 0;
+                var w = u.action.isScheduled() && u.action.enabled ? u.action.getEffectiveWeight() : 0;
                 out[u.name] = +w.toFixed(3);
                 sum += w;
               });
@@ -4788,7 +4788,15 @@
         window.__neon = {
           // raw handles for QA scripts (scene graph walks, projections, draw-call info)
           get three() {
-            return { scene: scene, camera: camera, renderer: renderer, player: player, quality: quality };
+            return {
+              scene: scene,
+              camera: camera,
+              renderer: renderer,
+              player: player,
+              quality: quality,
+              models: MODEL_CFG,
+              droneGroup: droneGroup,
+            };
           },
           get state() {
             return {

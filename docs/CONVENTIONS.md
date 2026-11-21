@@ -26,7 +26,7 @@
 - **Type check:** N/A (vanilla JS)
 - **Hooks:** `git config core.hooksPath .githooks` once per clone (secret scan + lint on commit)
 - **CI:** `.github/workflows/ci.yml` runs secrets + lint + `npm audit` on every PR
-- **Deploy:** automatic — Cloudflare Pages Git integration deploys `main` (PRs get preview URLs). Before any manual deploy: `git pull` first (cloud sessions may have pushed commits).
+- **Deploy:** automatic — Cloudflare Pages Git integration deploys `main`; preview deployments are off. There is no manual deploy path — to ship, merge a PR.
 - **Build:** `TBD` (none — static, no build step)
 
 ## Naming & layout (this project)

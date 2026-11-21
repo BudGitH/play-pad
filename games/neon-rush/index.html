@@ -2165,6 +2165,28 @@
           t.anisotropy = 1;
           return t;
         }
+        // Height scale for a skyline block whose centre is `dx` px from straight ahead (the street runs at
+        // u = 0.5 of the ring): 0 inside a clear gap, then a smooth valley up to 1. Keeps the road vanishing
+        // into the haze and sun instead of ending at a dark wall.
+        function ringValley(dx, W) {
+          var gap = W * 0.035,
+            ramp = W * 0.1;
+          if (dx < gap) return 0;
+          if (dx >= gap + ramp) return 1;
+          var t = (dx - gap) / ramp;
+          return 0.15 + 0.85 * t * t * (3 - 2 * t);
+        }
+        // Atmospheric haze: silhouettes dissolve into the fog violet toward their base, so the far city reads
+        // as distance, not a flat cut-out. source-atop paints only over the buildings already drawn.
+        function hazeRing(x, W, H) {
+          x.globalCompositeOperation = "source-atop";
+          var haze = x.createLinearGradient(0, 0, 0, H);
+          haze.addColorStop(0.35, "rgba(42,17,80,0)");
+          haze.addColorStop(1, "rgba(42,17,80,0.9)");
+          x.fillStyle = haze;
+          x.fillRect(0, 0, W, H);
+          x.globalCompositeOperation = "source-over";
+        }
         // Skyline silhouette ring: dark #120a2e blocks with a few lit pixels, alpha-cut. Wraps seamlessly.
         function makeRingTexture() {
           var W = 2048,
@@ -2173,23 +2195,14 @@
             x = c.getContext("2d");
           var px = 0,
             lit = ["#ff2d95", "#22e5ff", "#ffb35a", "#7b3ff2"];
-          // The street runs straight at u = 0.5 of the ring. Keep a clear valley there (buildings ramp up
-          // from 15% height) so the road vanishes into the haze and sun instead of ending at a dark wall.
-          var AHEAD = W / 2,
-            GAP = W * 0.035,
-            RAMP = W * 0.1;
           while (px < W) {
             var bw = 14 + ((Math.random() * 30) | 0),
               bh = 26 + ((Math.random() * 78) | 0);
             if (Math.random() < 0.1) bh += 60; // the odd tall tower
-            var off0 = Math.abs(px + bw / 2 - AHEAD);
-            if (off0 < GAP + RAMP) {
-              var ramp = Math.max(0, (off0 - GAP) / RAMP); // 0 inside the gap, 1 at the ramp's far edge
-              bh *= 0.15 + 0.85 * ramp * ramp * (3 - 2 * ramp);
-              if (off0 < GAP) {
-                px += bw + ((Math.random() * 6) | 0);
-                continue; // nothing dead ahead
-              }
+            bh *= ringValley(Math.abs(px + bw / 2 - W / 2), W);
+            if (bh < 1) {
+              px += bw; // nothing dead ahead
+              continue;
             }
             x.fillStyle = "#120a2e";
             [0, -W].forEach(function (off) {
@@ -2209,15 +2222,7 @@
             x.globalAlpha = 1;
             px += bw + ((Math.random() * 6) | 0);
           }
-          // Atmospheric haze: the silhouettes dissolve into the fog violet toward their base, so the far
-          // city reads as distance (not a flat cut-out). source-atop paints only over the buildings.
-          x.globalCompositeOperation = "source-atop";
-          var haze = x.createLinearGradient(0, 0, 0, H);
-          haze.addColorStop(0.35, "rgba(42,17,80,0)");
-          haze.addColorStop(1, "rgba(42,17,80,0.9)");
-          x.fillStyle = haze;
-          x.fillRect(0, 0, W, H);
-          x.globalCompositeOperation = "source-over";
+          hazeRing(x, W, H);
           return colorTex(c, false);
         }
         // Night tower facade (128x256): dark glass + ~35% lit windows in warm/cyan/magenta. Tiles at a fixed metre size.
@@ -3654,6 +3659,9 @@
           return board;
         }
 
+        // Long on purpose (CODE_QUALITY #7): one builder owns every closure over the same per-skin state
+        // (bones, mixer, action map, pose pivots) that the `ctrl` state machine below shares; splitting
+        // it would only thread ~10 shared locals through helper arguments. Sections are commented.
         function buildGltfSkin(id) {
           if (gltfCache[id]) return gltfCache[id];
           var raw = gltfRaw[id];
@@ -4458,6 +4466,9 @@
           });
           return parts;
         }
+        // Long on purpose (CODE_QUALITY #7): a flat per-type recipe (barrier / train / ...) that bakes each
+        // part into the shared dark / emissive / additive buckets, so the draw-call budget (<=4 merged
+        // meshes per obstacle) is visible in one place; each branch is independent and commented.
         function buildObstacleMesh(type) {
           var kit = obstacleKit();
           var g = new THREE.Group();
@@ -5462,6 +5473,7 @@
         }
         function runCountdown(seq, goDelay) {
           var STEP_MS = 300;
+          clearCountdownTimers(); // also keeps the id list from growing run after run
           $("countdown").classList.add("active");
           seq.forEach(function (v, i) {
             countdownIds.push(

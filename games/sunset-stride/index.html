@@ -1471,6 +1471,8 @@
             musicPlaying = false,
             MUSIC_VOL = 0.34,
             duckF = 1;
+          var windWanted = false, // a run wants the wind bed (so unmuting mid-run can bring it back)
+            ensureFailed = false;
           var played = {},
             lastAt = {},
             streak = 0,
@@ -1483,6 +1485,7 @@
           }
           function ensure() {
             if (ctx) return true;
+            if (ensureFailed) return false; // one failed attempt is final: never leak a context per voice call
             try {
               var AC = window.AudioContext || window.webkitAudioContext;
               if (!AC) return false;
@@ -1499,20 +1502,26 @@
               sfx.connect(master);
               master.connect(comp);
               comp.connect(ctx.destination);
-              // one second of white noise shared by every noise voice
+              // 1.5 s of white noise shared by every noise voice
               var n = Math.floor(ctx.sampleRate * 1.5);
               noiseBuf = ctx.createBuffer(1, n, ctx.sampleRate);
               var d = noiseBuf.getChannelData(0);
               for (var i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
             } catch (e) {
+              try {
+                if (ctx && ctx.close) ctx.close();
+              } catch {
+                /* half-built context: nothing more to do */
+              }
               ctx = null;
+              ensureFailed = true;
               return false;
             }
             return true;
           }
           function resume() {
             try {
-              if (ctx && ctx.state === "suspended") ctx.resume();
+              if (ctx && ctx.state !== "running" && ctx.state !== "closed") ctx.resume(); // "suspended" and Safari's "interrupted"
             } catch {
               /* best-effort browser API; failure is non-fatal */
             }
@@ -1520,9 +1529,10 @@
           // Voices call this first: counts the trigger, rate-limits, and says whether sound can play right now.
           function voice(name, minGap) {
             mark(name);
-            if (save.muted || !ensure()) return false;
+            if (save.muted || document.hidden || !ensure()) return false; // nothing plays from a hidden tab
             var t = ctx.currentTime;
-            if (minGap && t - (lastAt[name] || -9) < minGap) return false;
+            if (minGap && t - (lastAt[name] === undefined ? -9 : lastAt[name]) < minGap)
+              return false;
             lastAt[name] = t;
             return true;
           }
@@ -1632,8 +1642,9 @@
               setMusicVol();
               if (musicEl) {
                 if (m) stopEl();
-                else if (musicPlaying) tryPlay();
+                else if (musicPlaying && !paused && !document.hidden) tryPlay(); // never restart music under the Pause dialog
               }
+              if (!m && windWanted && !wind && !paused && !document.hidden) A.windStart(); // muted start, unmuted mid-run
             },
             playMusic: function () {
               musicPlaying = true;
@@ -1656,7 +1667,8 @@
             musicRate: function (k) {
               if (!musicEl) return;
               try {
-                musicEl.playbackRate = 1 + 0.07 * clamp(k, 0, 1);
+                var r = Math.round((1 + 0.07 * clamp(k, 0, 1)) * 200) / 200; // 0.005 steps: no write every tick
+                if (r !== musicEl.playbackRate) musicEl.playbackRate = r;
               } catch {
                 /* best-effort browser API; failure is non-fatal */
               }
@@ -1853,6 +1865,7 @@
             /* ---------- wind bed: a continuous whoosh whose level and colour follow the speed ---------- */
             windStart: function () {
               mark("windStart");
+              windWanted = true;
               if (wind || save.muted || !ensure()) return;
               try {
                 var s = ctx.createBufferSource(),
@@ -1880,6 +1893,7 @@
               wind.f.frequency.setTargetAtTime(380 + 1500 * k, t, 0.2);
             },
             windStop: function () {
+              windWanted = false;
               if (!wind) return;
               var w = wind;
               wind = null;
@@ -1939,6 +1953,19 @@
               musicStepI = 0;
             },
           };
+          // Every cue is cosmetic: a throw inside one (a failed node, a NaN) must never reach the game loop that
+          // calls it, or one audio fault would freeze the whole game.
+          Object.keys(A).forEach(function (k) {
+            var fn = A[k];
+            if (typeof fn !== "function") return;
+            A[k] = function () {
+              try {
+                return fn.apply(A, arguments);
+              } catch (e) {
+                return undefined;
+              }
+            };
+          });
           return A;
         })();
 
@@ -3424,12 +3451,12 @@
             return c;
           }
           function cnt(n) {
-            return Math.max(1, Math.round(n * api.mult));
+            return n <= 0 ? 0 : Math.max(1, Math.round(n * api.mult)); // 0 stays 0 (reduced motion)
           }
           var D = { r: 0.93, g: 0.87, b: 0.77 }; // pale warm dust: reads against grey asphalt
           if (renderer) {
             soft = makePool(NS, false, "soft");
-            glow = makePool(NS > 0 ? NG : 0, true, "glint");
+            glow = makePool(NG, true, "glint");
           }
           var on = function () {
             return !!soft;
@@ -3476,6 +3503,12 @@
                 P.ex.fill(0);
                 P.size.fill(0);
                 P.alpha.fill(0);
+                var at = P.pts.geometry.attributes; // upload the cleared buffers: no ghost of the last run's dust
+                at.position.needsUpdate =
+                  at.aSize.needsUpdate =
+                  at.aAlpha.needsUpdate =
+                  at.aColor.needsUpdate =
+                    true;
               });
               moteAcc = 0;
             },
@@ -4265,6 +4298,11 @@
             stumble: function () {
               view.stumbleT = 1.0;
             },
+            // 0..1 position in the run cycle (the cycle has two foot plants): footfall audio and dust follow the
+            // clip itself, so they cannot drift against what the player sees. -1 when there is no run clip.
+            runPhase: function () {
+              return A.Run && clips.Run ? (A.Run.time / clips.Run.duration) % 1 : -1;
+            },
             update: function (dt, o) {
               var k = o && o.speed01 != null ? o.speed01 : 0.3;
               if (A.Run) A.Run.timeScale = 0.9 + 0.85 * k;
@@ -4761,6 +4799,7 @@
         /* ══════════════════════ PlayerController ══════════════════════
      Lane state + lerp, jump / slide physics, buffered input. Animation is delegated to runnerView
      (GLB or primitive). Hit handling lives in CollisionEngine / Chase. */
+        var STEP_AT = 0.65; // where in each half run-cycle the foot plants (calibrated against the clip's ankle minima)
         var powerups = { magnet: 0, sneakers: 0, shield: 0 };
         var player = {
           lane: 1,
@@ -4773,7 +4812,7 @@
           sliding: false,
           slideT: 0,
           fastFall: false,
-          stride: 0, // footfall phase (0..1) so audio + dust land on the run cycle's steps
+          stride: 0, // footfall phase (0..1): from the run clip when there is one, else integrated
           skidT: 0,
           invulnT: 0,
           airTime: 0.78,
@@ -4962,11 +5001,22 @@
             var k = clamp((speed - SPEED_BASE) / (SPEED_MAX - SPEED_BASE), 0, 1);
             if (phase === "running") {
               if (player.onGround && !player.sliding) {
-                player.stride += dt * 3.17 * (0.9 + 0.85 * k); // the run clip's footfalls per second
-                if (player.stride >= 1) {
-                  player.stride -= 1;
-                  AudioManager.step(k);
-                  FX.footstep(player.x, k);
+                var rp = runnerView && runnerView.runPhase ? runnerView.runPhase() : -1;
+                if (rp >= 0) {
+                  // locked to the GLB run clip: a footfall each time the cycle passes STEP_AT (two per cycle)
+                  var ph = (rp * 2 - STEP_AT + 2) % 1;
+                  if (ph < player.stride) {
+                    AudioManager.step(k);
+                    FX.footstep(player.x, k);
+                  }
+                  player.stride = ph;
+                } else {
+                  player.stride += dt * 3.17 * (0.9 + 0.85 * k); // primitive runner: the clip's footfalls per second
+                  if (player.stride >= 1) {
+                    player.stride -= 1;
+                    AudioManager.step(k);
+                    FX.footstep(player.x, k);
+                  }
                 }
               } else if (player.sliding && player.onGround) {
                 player.skidT += dt;

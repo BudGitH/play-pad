@@ -11,13 +11,14 @@
 
 ## Gate summary
 
-| Lens (dimension) | Agent verdict | Findings (C/H/M/L/I)                                                 | Blocking? |
-| ---------------- | ------------- | -------------------------------------------------------------------- | --------- |
-| ACCURACY         | PASS          | 0 / 0 / 3 / 6 / 1                                                    | no        |
-| QUALITY          | PASS          | 0 / 0 / 5 / 7 / 0                                                    | no        |
-| COMPLIANCE       | PASS          | 0 / 0 / 2 / 4 / 6                                                    | no        |
-| RISK (security)  | PASS          | 0 / 0 / 1 / 7 / 0                                                    | no        |
-| **Tests**        | PASS          | probe 50/50 · smoke 20/20 · `npm run check` 0 errors · secrets clean | no        |
+| Lens (dimension)                                              | Agent verdict | Findings (C/H/M/L/I)                                                       | Blocking? |
+| ------------------------------------------------------------- | ------------- | -------------------------------------------------------------------------- | --------- |
+| ACCURACY                                                      | PASS          | 0 / 0 / 3 / 6 / 1                                                          | no        |
+| QUALITY                                                       | PASS          | 0 / 0 / 5 / 7 / 0                                                          | no        |
+| COMPLIANCE                                                    | PASS          | 0 / 0 / 2 / 4 / 6                                                          | no        |
+| RISK (security)                                               | PASS          | 0 / 0 / 1 / 7 / 0                                                          | no        |
+| FX / AUDIO (post-panel addition, independent agent `a37bf2…`) | PASS          | 0 / 0 / 3 / 10 / 3                                                         | no        |
+| **Tests**                                                     | PASS          | probe (see below) · smoke 20/20 · `npm run check` 0 errors · secrets clean | no        |
 
 **Tool evidence (not re-reviewed by eye, per `docs/ENFORCEMENT.md`):** `npm run check` → ESLint 0 errors (`max-lines-per-function` warnings only, ledgered), Prettier clean; `npm run secrets` → clean; `npx playwright test` → 20 passed (hub ×8, every game opens, every game starts a round on phone + desktop, Sunset Stride included); `node tests/probes/stride-probe.mjs` → every acceptance criterion probed headless (WebGL via SwiftShader): animation weights in every state, slide pose + uniform scale, dogs behind the runner and on screen, stumble / caught / side-scrape / close call / input buffer / slide cancel, persistence + legacy import + corrupt save, all-assets-blocked and `file://` fallbacks, no-WebGL notice, reduced-motion (with a positive control), phone portrait framing, 3-minute soak.
 
@@ -79,7 +80,33 @@ All severities are the agents' own, re-checked by reproduction where marked.
 
 **Verified clean by the lens:** no `innerHTML` / `eval` / dynamic script injection / cross-origin URLs / message listeners; shader patches built from constants and `toFixed` numbers only; 0 CSP violations under the production header (photos, GLB parse, `<audio>` music, `data:` thumbnails); `three.min.js` / `GLTFLoader.js` byte-identical to the previous copies; garbage / truncated / 404 / hanging GLBs fall back with 0 errors; no-WebGL shows the notice; secrets scan clean. **Not exhaustively tested by the lens:** the new `quitRun` banking (phase-guarded, single bank) and the new helpers beyond the shader and allocation checks.
 
-**Re-check after the particles + audio work (owner request, same session):** the new `FX` / `AudioManager` code adds no DOM injection, no network access (every SFX is synthesised; the Kenney files are gone) and no new persisted state. The RISK lens ran on the build before that change; the new code was checked by the author with the probe (AC12), the CSP-neutral asset list, `npm run check` and `npm run secrets` only. That is a self-check, not an independent review.
+**The particles + audio work (owner request, added after the panel) got its own independent review** — see the next section. The earlier RISK lens ran on the build before that change.
+
+### FX / AUDIO (independent agent `a37bf2…`; ran headless Chromium on its own port: lifecycle, fault injection, node-leak counting, a 300 s sim; cannot judge how anything sounds or looks)
+
+| ID  | Sev  | What                                                                                              | Status                                                                                                                 |
+| --- | ---- | ------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| A1  | MED  | `M` (mute toggle) under the Pause dialog restarted the music                                      | **FIXED** — `setMuted` never restarts music / wind while paused or hidden; probe AC12                                  |
+| A2  | MED  | footsteps open-loop vs the free-running run clip (+50..+167 ms against the foot plant, drifting)  | **FIXED** — driven from the clip phase; measured 0 / ±17 ms in 4 fresh runs; probe AC12 (≤ 50 ms)                      |
+| Q1  | MED  | `FX.emit` 16 and `ring` 15 positional parameters                                                  | **TICKETED** — ledger `long-parameter-lists`, IDEAS                                                                    |
+| A3  | LOW  | new-best fanfare played from a hidden tab                                                         | **FIXED** — `voice()` refuses when `document.hidden`                                                                   |
+| A4  | LOW  | run started muted and unmuted mid-run had no wind bed                                             | **FIXED** — `windWanted`; probe AC12                                                                                   |
+| A5  | LOW  | `cnt(0)` emitted 1 particle under reduced motion                                                  | **FIXED**                                                                                                              |
+| A6  | LOW  | `FX.reset()` did not upload the cleared buffers (a frame of last run's dust)                      | **FIXED**                                                                                                              |
+| A7  | LOW  | 64 device-px point-size cap truncates big dust sprites, differs by DPR                            | **TICKETED** — IDEAS (visual judgement call)                                                                           |
+| R1  | LOW  | failed `ensure()` leaked an AudioContext per voice call (282 in 24 s)                             | **FIXED** — context closed, one failure is final                                                                       |
+| R2  | LOW  | context stuck non-running: voices pile up; `interrupted` not resumed; `lastAt` 0 treated as unset | **PARTLY FIXED** — resume on any non-running state, `lastAt` check; rate limit on `coin()` / `musicTick` in IDEAS      |
+| R3  | LOW  | `musicRate` wrote `playbackRate` every tick                                                       | **FIXED** — 0.005 steps                                                                                                |
+| R4  | INFO | a throw inside one audio call froze the game (`tick()` threw permanently)                         | **FIXED** — every public AudioManager method is wrapped (cosmetic, never fatal)                                        |
+| R5  | INFO | iOS Safari ignores `HTMLMediaElement.volume` (music level + catch duck)                           | **OPEN / UNVERIFIED** — no Safari here; IDEAS                                                                          |
+| Q2  | LOW  | doc / hygiene gaps (Tier-2 blocks, short names, a wrong comment, a dead expression)               | **PARTLY FIXED** — comment + dead expression; the rest in IDEAS                                                        |
+| Q3  | LOW  | the AC12 probe could not catch A1 / A3 / A4 / A6; "pool never overflows" was true by construction | **FIXED** — tautology removed, lifecycle + footfall-alignment checks added (ledger `probe-assertion-cannot-fail` → 2×) |
+
+Verified clean by the agent: FX adds exactly 2 draw calls; `file://` console clean; no `AudioContext` before a gesture; production CSP replayed with 0 violations; wind / music follow pause, hidden, caught, retry and quit; no node leaks in a 300 s run; pool wrap-around and pan / gain maths in range. **Not verified by anyone:** how the mix sounds, how the particles feel, Safari.
+
+### Persona round-1 usability findings (see `product-validation.md`)
+
+Raised by Dan / Maya / Sam, all fixed and probed (AC13) before the gate: Start below the fold, Esc quitting from Pause, HUD tabbable under the modal, 3-2-1 numeral pulse, shop focus / names, chords + key repeat, swipe on lift, phone-only labels, no keyboard retry.
 
 ## Blocker classification → response
 

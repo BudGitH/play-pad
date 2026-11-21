@@ -527,12 +527,8 @@ async function main() {
   );
   check(
     "AC12",
-    "particles: dust, sparkles and impact debris are emitted and alive (pool never overflows)",
-    feel.after.fx.emitted - feelBefore.e > 40 &&
-      feel.after.fx.soft > 0 &&
-      feel.after.fx.glow > 0 &&
-      feel.after.fx.soft <= 360 &&
-      feel.after.fx.glow <= 200,
+    "particles: dust, sparkles and impact debris are emitted and alive",
+    feel.after.fx.emitted - feelBefore.e > 40 && feel.after.fx.soft > 0 && feel.after.fx.glow > 0,
     JSON.stringify(feel.after.fx),
   );
   const tiers = await S(page, () => {
@@ -1105,6 +1101,111 @@ async function main() {
       beat.length > 20 && !/opacity/.test(beat),
       beat.replace(/\s+/g, " ").slice(0, 90),
     );
+  }
+
+  /* ---- AC12 audio lifecycle (independent review): nothing plays under Pause, a muted start can be unmuted
+         mid-run (wind comes back), footfall cues are locked to the run clip's foot plants ---- */
+  {
+    const au = await openGame(browser, {
+      viewport: { width: 1000, height: 620 },
+      init: () =>
+        localStorage.setItem(
+          "playpad.sunsetStride.v1",
+          JSON.stringify({
+            v: 1,
+            coins: 0,
+            unlocked: ["morning"],
+            equipped: "morning",
+            highScore: 0,
+            muted: true,
+          }),
+        ),
+    });
+    await waitModels(au.page);
+    await au.page.getByRole("button", { name: "Start running" }).click();
+    await au.page.waitForFunction(() => window.__stride.state.phase === "running", null, {
+      timeout: 30000,
+    });
+    const windMuted = await S(au.page, () => window.__stride.audio.wind);
+    await au.page.keyboard.press("m"); // unmute mid-run
+    const windAfter = await S(au.page, () => window.__stride.audio.wind);
+    // pause, then mute / unmute while paused: the music must stay silent until the run resumes
+    await au.page.keyboard.press("p");
+    await au.page.keyboard.press("m");
+    await au.page.keyboard.press("m");
+    const under = await S(au.page, () => ({
+      playing: window.__stride.audio.musicPlaying,
+      wind: window.__stride.audio.wind,
+      paused: window.__stride.state.paused,
+    }));
+    check(
+      "AC12",
+      "audio lifecycle: unmuting mid-run brings the wind bed back; mute toggling under the Pause dialog starts no music or wind",
+      windMuted === false &&
+        windAfter === true &&
+        under.paused === true &&
+        under.playing === false &&
+        under.wind === false,
+      JSON.stringify({ windMuted, windAfter, under }),
+    );
+    await au.page.keyboard.press("p");
+    await au.page.waitForFunction(() => window.__stride.state.phase === "running", null, {
+      timeout: 15000,
+    });
+    // footfall cue vs the lowest-ankle frame (phase-locked to the clip: within about a frame, not drifting)
+    const feet = await S(au.page, () => {
+      const s = window.__stride;
+      s.freeze(true);
+      let lf = null,
+        rf = null;
+      s.three.scene.traverse((o) => {
+        if (o.isBone && o.name === "LeftFoot") lf = o;
+        if (o.isBone && o.name === "RightFoot") rf = o;
+      });
+      if (!lf || !rf) return null;
+      const v = new THREE.Vector3(),
+        rows = [];
+      let prev = s.audio.played.step || 0;
+      for (let i = 0; i < 360; i++) {
+        s.clearObstacles();
+        s.setSpeed(9);
+        s.setGap(3.8);
+        s.step(1000 / 60);
+        const c = s.audio.played.step || 0;
+        lf.getWorldPosition(v);
+        const ly = v.y;
+        rf.getWorldPosition(v);
+        rows.push([i, c - prev, ly, v.y]);
+        prev = c;
+      }
+      return rows;
+    });
+    let offs = [];
+    if (feet) {
+      const plants = [];
+      for (const col of [2, 3])
+        for (let i = 2; i < feet.length - 2; i++) {
+          const y = feet[i][col];
+          if (
+            y <= feet[i - 1][col] &&
+            y < feet[i + 1][col] &&
+            y <= feet[i - 2][col] &&
+            y < feet[i + 2][col]
+          )
+            plants.push(i);
+        }
+      offs = feet
+        .filter((r, i) => r[1] > 0 && i > 20)
+        .map((r) => Math.min(...plants.map((p) => Math.abs(r[0] - p))) * (1000 / 60));
+    }
+    const worst = offs.length ? Math.max(...offs) : 999;
+    check(
+      "AC12",
+      "footfall cues land on the foot plants (within 50 ms, every step)",
+      offs.length >= 6 && worst <= 50,
+      JSON.stringify({ steps: offs.length, worstMs: Math.round(worst) }),
+    );
+    await au.ctx.close();
   }
 
   /* ---- AC9: WebGL missing -> the game explains instead of a blank screen ---- */

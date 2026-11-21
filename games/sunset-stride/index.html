@@ -380,11 +380,12 @@
         outline-offset: 2px;
       }
 
-      /* Power-up timer chips — bottom-centre, one per active power-up, bar drains right-to-left. */
+      /* Power-up timer chips — top-centre under the dog meter (the bottom is where the chasers run, so a chip
+         there hid the pack), one per active power-up, bar drains right-to-left. */
       #puDock {
         position: absolute;
         left: 50%;
-        bottom: max(14px, env(safe-area-inset-bottom));
+        top: calc(max(10px, env(safe-area-inset-top)) + 88px);
         transform: translateX(-50%);
         z-index: 30;
         display: flex;
@@ -6180,11 +6181,24 @@
         }
         // First-time hints: the first time each kind of obstacle shows up in a session, say what to do about it.
         var hintShown = {},
-          HINT = {
-            jump: "Low obstacle — swipe up to jump",
-            slide: "Overhead — swipe down to slide",
-            block: "Blocked — change lane",
-          };
+          hintTouch = (function () {
+            try {
+              return !!(window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
+            } catch (e) {
+              return false; // no matchMedia: assume a keyboard
+            }
+          })(),
+          HINT = hintTouch
+            ? {
+                jump: "Low obstacle — swipe up to jump",
+                slide: "Overhead — swipe down to slide",
+                block: "Blocked — swipe to change lane",
+              }
+            : {
+                jump: "Low obstacle — ↑ / W / Space to jump",
+                slide: "Overhead — ↓ / S to slide",
+                block: "Blocked — ← → / A D to change lane",
+              };
         function stepWorldObjects(move) {
           var i, o;
           for (i = activeObstacles.length - 1; i >= 0; i--) {

@@ -88,6 +88,11 @@ See `design-review.md`.
 - **Compliance:** CC0 attributions (Quaternius, ambientCG, OGA track) in `assets/CREDITS.md`; no PII.
 - **Quality:** four-tier comments on new modules; fallbacks documented in the game-local `CLAUDE.md`.
 - **Performance:** 60 fps target on a mid phone (medium tier), draw-call budget high ≤ 170 / low ≤ 110, textures 512 px.
+- **Verified by / NOT verified (stated so nobody has to guess):**
+  - _Verified (headless, software GL):_ draw-call and triangle budgets, animation weights, chase rules, persistence, fallbacks, particle / audio **triggers**, brightness of the frame.
+  - _Not verified:_ 60 fps on a real phone (software GL cannot say; tiers + auto-downgrade exist, a handset check is in `docs/IDEAS.md`); how the audio **sounds**; how the motion **feels**; first-run load time on a slow network. Payload is ≈ 3.5 MB (`music.ogg` ≈ 1.1 MB, `runner.glb` ≈ 0.67 MB, `three.min.js` ≈ 0.6 MB); models that finish downloading after a run has started apply from the **next** run, so a very slow first visit can show the primitive fallbacks once.
+  - _Known simplification:_ dog locomotion is the pack's `Walking` clip sped up (no run cycle exists in the CC0 dog), so legs read as a trot.
+  - _Success metrics 1 and 3_ (first-run readability; seeing why a hit was fatal) are judged by the persona panel and screenshots only, not measured with real players.
 
 ## Tech Lead feasibility
 

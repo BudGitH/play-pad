@@ -16,17 +16,17 @@ All assets are bundled locally so the game runs fully offline (no CDN, CSP-safe)
 
 Photographic PBR materials from **ambientCG** (ambientcg.com), CC0. Resized to 512 px JPEG; two normal maps kept.
 
-| File                           | ambientCG asset | Used for                                  |
-| ------------------------------ | --------------- | ----------------------------------------- |
-| `asphalt.jpg`, `asphalt_n.jpg` | Asphalt031      | Road                                      |
-| `paving.jpg`, `paving_n.jpg`   | PavingStones128 | Sidewalks                                 |
-| `brick_a.jpg`                  | Bricks051       | Facades                                   |
-| `brick_b.jpg`                  | Bricks042       | Facades (dark brick)                      |
-| `plaster.jpg`                  | Plaster002      | Facades (tinted per building)             |
-| `grass.jpg`                    | Grass004        | Ground beyond the buildings               |
-| `concrete.jpg`                 | Concrete034     | Curbs, gantry posts                       |
-| `planks.jpg`                   | Planks037A      | Crates                                    |
-| `hazard.jpg`                   | PaintedMetal016 | Hurdles and overhead bars (colour-graded) |
+| File                           | ambientCG asset | Used for                                   |
+| ------------------------------ | --------------- | ------------------------------------------ |
+| `asphalt.jpg`, `asphalt_n.jpg` | Asphalt031      | Road                                       |
+| `paving.jpg`, `paving_n.jpg`   | PavingStones128 | Sidewalks                                  |
+| `brick_a.jpg`                  | Bricks051       | Facades                                    |
+| `brick_b.jpg`                  | Bricks042       | Facades (dark brick)                       |
+| `plaster.jpg`                  | Plaster002      | Facades (tinted per building)              |
+| `grass.jpg`                    | Grass004        | Ground beyond the buildings                |
+| `concrete.jpg`                 | Concrete034     | Curbs, gantry posts                        |
+| `planks.jpg`                   | Planks037A      | Produce pallet and fruit cart              |
+| `hazard.jpg`                   | PaintedMetal016 | Road-works barrier, headroom sign (graded) |
 
 ## Audio (`assets/audio/`)
 

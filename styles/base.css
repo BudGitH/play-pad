@@ -131,6 +131,25 @@ button {
   color: transparent;
 }
 
+/* ---- Skip link ---------------------------------------------------------- */
+.skip-link {
+  position: absolute;
+  top: var(--md-sys-spacing-sm);
+  left: var(--md-sys-spacing-sm);
+  z-index: 100;
+  padding: var(--md-sys-spacing-sm) var(--md-sys-spacing-md);
+  transform: translateY(calc(-100% - var(--md-sys-spacing-sm)));
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface);
+  border: 1px solid var(--md-sys-color-outline);
+  border-radius: var(--md-sys-shape-corner-sm);
+  box-shadow: var(--md-sys-elevation-level2);
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
 /* ---- Focus (keyboard) --------------------------------------------------- */
 :focus-visible {
   outline: 3px solid var(--md-sys-color-primary);
@@ -161,9 +180,6 @@ button {
 }
 .state-layer:focus-visible::before {
   opacity: var(--md-sys-state-focus-opacity);
-}
-.state-layer:active::before {
-  opacity: var(--md-sys-state-pressed-opacity);
 }
 
 /* ---- Card --------------------------------------------------------------- */

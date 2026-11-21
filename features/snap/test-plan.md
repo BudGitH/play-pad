@@ -9,6 +9,8 @@
 **Ticket:** PLAY-002
 **Created:** 2026-06-21
 
+> **Superseded in part by PLAY-006 (see `features/playpad-revamp/test-plan.md`, 2026-11-21).** T-reveal, T-countdown-tap and T-overlay-teardown apply to round 1 and to resume-after-pause only; later rounds have no countdown (a random shuffle delay precedes each flip, and early taps stay no-penalty nudges).
+
 ---
 
 ## Coverage map (AC → test)

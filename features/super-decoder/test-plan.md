@@ -6,6 +6,8 @@
 **Ticket:** PLAY-004
 **Created:** 2026-06-27
 
+> **Superseded in part by PLAY-006 (see `features/playpad-revamp/test-plan.md`, 2026-11-21).** T-QUIT-2 and the AC-14 row ("quit mid 3-2-1") no longer exist as written: there is no start countdown, only a 700 ms "Code N of M" pill (still cleared inside `show()`). Peg-colour assertions are now shape assertions (solid dot / ring / pip). Everything else still applies.
+
 ---
 
 ## Coverage map (AC → test)

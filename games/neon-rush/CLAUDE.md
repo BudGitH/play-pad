@@ -41,6 +41,12 @@ First run is a snappy 3-2-1-GO at 300ms/step (~1.2s); **retries skip to a "GO!" 
 
 Hidden tab or window blur during `running`/`countdown` sets `paused` (phase is kept): `tick()` and the rAF loop freeze, audio is suspended, and a **"Paused" overlay** (`#pause`: Resume, Quit; tap anywhere resumes) comes up. **Space / Enter / P** resume, **Esc** quits through `quitRun()` (same path as the ✕), **P** also pauses a live run. Resuming replays a 3-2-1 (`runCountdown`, phase `countdown`: world frozen, collisions off) so the runner is never hit the instant the player returns. A crashed run is never paused (the crash is already banked synchronously in `onCrash`; a pause can neither bank nor drop it, and `onCrash` ignores calls while paused). `UIManager.show()` clears `paused` and the overlay, like every other teardown. Hooks: `__neon.pause()` / `.resume()` / `.state.paused`.
 
+## Theme, hooks and `file://` notes
+
+- **Theme:** Neon Rush deliberately does **not** load `scripts/theme.js`, so the hub's light/dark toggle never reaches it. The WebGL stage is dark regardless; the setup / shop / results chrome follows the OS scheme (light pink in a light system, QC-12 in `features/playpad-revamp/qa-report.md`, still open: either pin `<html data-theme="dark">` here or reword the `theme.js` header, which currently says "always dark").
+- **Hooks ship to production:** `window.__neon` is a local-only cheat surface (e.g. `grantCoins(n)` **persists** coins through `SaveManager`; `crash()` banks a run). Nothing leaves the page, there is no backend and no PII (QC-13).
+- **Console noise on `file://` is expected:** a double-clicked page logs ~17 CORS errors for the GLB `fetch`es while the primitive skins take over. On http(s) there must be none; the smoke test fails on any.
+
 ## Testing
 
 `window.__neon` exposes state + deterministic drivers (`forceSpawn`/`setSpeed`/`setDistance`/`setTension`/`step(ms)`/`crash`/`givePowerup`/`setQuality(tier)`) plus `.skin` (GLB vs primitive, state name, **per-action `weights` + `__sum`**, `clips`, `headY`/`topY`, bone `spread`, `pose`) — never verify animation from the state name, read `weights`/`spread` — and `.audio`, `.render` (`drawCalls`, `triangles`, `shadowCasters`), `.quality`, `.camera` (`fov`, `laneVisible`), `.scene.groundGap()`, `.three` (raw scene/camera/renderer for QA). Headless preview throttles rAF and often can't screenshot the WebGL canvas — verify logic through `step()` and the probes; verify visuals with occasional screenshots.

@@ -78,11 +78,11 @@ After any meaningful change, **before you finish**:
 
 > Keep this current via the maintenance step. Pointers to the key code, not a full listing.
 
-- **Hub / catalog:** `index.html` (renders from the registry) · `games.js` (`window.GAMES` — add a game here).
+- **Hub / catalog:** `index.html` (featured game, filter chips, grid, best/new badges — renders from the registry) · `games.js` (`window.GAMES` — add a game here; optional `tagline`/`added`/`best`) · `scripts/theme.js` (light/dark choice, applied before paint; games opt in with one `<script>` tag).
 - **Design system:** `styles/tokens.css` (MD3 tokens, light+dark) · `styles/base.css` (components, the rail).
 - **Games:** `games/<slug>/index.html` — today `games/colour-rush/`, `games/snap/`, `games/claw-catch/` (solo, Canvas), `games/super-decoder/` (solo, DOM logic), `games/neon-rush/` (solo, 3D Three.js — vendored `three.min.js` r147 + `GLTFLoader.js` + CC0 `assets/` (GLB characters, synthwave music, SFX) + a game-local `CLAUDE.md`; first game to persist to localStorage and first with vendored assets). (Reference-only, never shipped: `Old prototype/`.)
 - **Brand / deploy:** `icons/` · `manifest.webmanifest` · `_headers` · Cloudflare Pages Git integration (auto-deploys `main`; previews off).
-- **Tooling / CI:** `package.json` (dev-only) · `eslint.config.mjs` · `.prettierrc.json` · `tools/secret-scan.mjs` · `tests/smoke.spec.mjs` + `playwright.config.mjs` + `tools/serve.mjs` · `.githooks/pre-commit` · `.github/workflows/ci.yml` · `.github/` templates.
+- **Tooling / CI:** `package.json` (dev-only) · `eslint.config.mjs` · `.prettierrc.json` · `tools/secret-scan.mjs` · `tests/smoke.spec.mjs` + `tests/round-drivers.mjs` (per-game "start a round" drivers) + `playwright.config.mjs` + `tools/serve.mjs` · `.githooks/pre-commit` · `.github/workflows/ci.yml` · `.github/` templates.
 - **The full map:** `docs/ARCHITECTURE.md` (structure, data model, flows, modules).
 
 ---

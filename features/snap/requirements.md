@@ -8,6 +8,8 @@
 **Created:** 2026-06-21
 **Feature tier:** Prototype _(defaults to the project tier)_
 
+> **Superseded in part by PLAY-006 (see `features/playpad-revamp/`, `design-party-games.md`, 2026-11-21).** History below is kept as written. Stale: the per-round 3-2-1 (flow near line 77, AC-2, and AC-7's "intensity changes the countdown": the 3-2-1 now plays only in round 1 and after a pause; later rounds wait a random shuffle delay of 300-1100 ms, frantic 200-600 ms, and intensity still changes reveal / inter-round timing); "Persistence / high scores" out of scope still holds (Snap saves nothing). New behaviour not described here: avatar + colour identity with shape glyphs, light Pink + black ink, 2 players preselected, sticky Start, Gentle mode, keys A / L / Q / P, two-tap quit + Esc, pause on hidden (resume = 3-2-1), "SNAP!" + reaction time, confetti.
+
 ---
 
 ## What & why

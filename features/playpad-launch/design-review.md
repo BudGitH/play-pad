@@ -6,6 +6,8 @@
 **Ticket:** PLAY-001
 **Date:** 2026-06-21
 
+> **Superseded in part by PLAY-006 (see `features/playpad-revamp/design-hub.md`, 2026-11-21).** The chosen catalog option 4 ("Horizontal scroll selection") was replaced by a featured hero + filter chips + responsive grid. The other chosen options (name, auto light/dark, rebuild Colour Rush fresh) still stand; the manual toggle that option 2 left for later now exists.
+
 ---
 
 ## 1. Diverge — options on the table

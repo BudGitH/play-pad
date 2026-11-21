@@ -6,6 +6,8 @@
 **Ticket:** PLAY-003
 **Created:** 2026-06-27
 
+> **Superseded in part by PLAY-006 (see `features/playpad-revamp/test-plan.md`, 2026-11-21).** T-refill-cap / T-refill-resume now describe hopper refills into a heaped pile (`binCap` is derived from the tray size); the 3-2-1 plays once per visit to setup, then a 600 ms GO. Other tests still apply.
+
 ---
 
 ## Coverage map (AC → test)

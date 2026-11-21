@@ -1,6 +1,6 @@
 # Feature: PlayPad revamp (hub + all five games)
 
-**Status:** IN PROGRESS
+**Status:** VALIDATED (QA PASS by severity · PM PASS · persona gate PASS: see `qa-report.md`, `product-validation.md`, `test-plan.md`). Awaiting merge to `main`; open items before the next deploy are the owner's call on the `tap-target-size` ledger `STOP_SHIP` and a last QA look at the Claw Catch and Neon Rush fix commits (`f038e53`, `e3e2544`, `4e10b6e`).
 **Owner:** @BudGitH
 **Ticket:** PLAY-006
 **Created:** 2026-11-21

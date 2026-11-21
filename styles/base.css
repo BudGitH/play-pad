@@ -131,19 +131,15 @@ button {
   color: transparent;
 }
 
-/* ---- Skip link ---------------------------------------------------------- */
 .skip-link {
   position: absolute;
-  top: var(--md-sys-spacing-sm);
-  left: var(--md-sys-spacing-sm);
+  top: 8px;
+  left: 8px;
   z-index: 100;
-  padding: var(--md-sys-spacing-sm) var(--md-sys-spacing-md);
-  transform: translateY(calc(-100% - var(--md-sys-spacing-sm)));
+  padding: 8px 12px;
   background: var(--md-sys-color-surface-container-high);
   color: var(--md-sys-color-on-surface);
-  border: 1px solid var(--md-sys-color-outline);
-  border-radius: var(--md-sys-shape-corner-sm);
-  box-shadow: var(--md-sys-elevation-level2);
+  transform: translateY(-150%);
 }
 
 .skip-link:focus {

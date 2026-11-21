@@ -1351,6 +1351,7 @@
         var PILE_TANGENT_MU = 0.35; // Coulomb friction between touching prizes
         var LAND_TICK_V = 400; // px/s — landing faster than this ticks + puffs dust
         var MAX_PARTICLES = 40;
+        var MAX_CANVAS_PX = 4.2e6; // backing-store budget (≈ a 1366×640 stage at 2×)
 
         // Drop sequence phases (named strings so devtools shows meaning).
         var Phase = {
@@ -1433,6 +1434,7 @@
           nextBurstTs = 0,
           hopperFlashUntil = 0;
         var spawnLog = []; // last few hopper spawns (test hook: where each new prize first appeared)
+        var grabLog = []; // test hook: one entry per grab {r, golden, prox, out: empty|miss|carry|slip|drop|bank}
 
         // score
         var score = 0,
@@ -1477,9 +1479,6 @@
         }
         function curTheme() {
           return THEMES[themeIndex];
-        }
-        function prizePoints(p) {
-          return p.golden ? GOLDEN.points : RARITY[p.r].points;
         }
         function nowMs() {
           return performance.now();
@@ -1850,7 +1849,11 @@
             cssH = canvas.clientHeight;
           if (cssW < 2 || cssH < 2) return false; // hidden / not laid out yet
           // Cap the retina buffer at 2× — a 2.5–3× tablet quadruples fill cost for no visible gain.
-          dpr = Math.min(window.devicePixelRatio || 1, 2);
+          // …and budget the total backing-store pixels, so a big desktop stage stays smooth too.
+          dpr = Math.max(
+            1,
+            Math.min(window.devicePixelRatio || 1, 2, Math.sqrt(MAX_CANVAS_PX / (cssW * cssH))),
+          );
           var pw = Math.round(cssW * dpr),
             ph = Math.round(cssH * dpr);
           if (canvas.width !== pw || canvas.height !== ph) {
@@ -2116,39 +2119,53 @@
           paintHopper(g);
         }
 
-        // The hopper: a pipe out of the right wall ending in a nozzle; refill prizes drop from its mouth.
+        // The hopper: a funnel hanging under the rail, fed by a pipe out of the right wall. Refill prizes
+        // drop from its mouth (the flap and the clunk are drawn live).
         function paintHopper(g) {
           var L = lay,
             R = L.prizeR;
-          var mouthY = L.hopMouthY,
-            pipeH = R * 1.3,
-            pipeY = mouthY - R * 0.85 - pipeH / 2;
-          var x0 = L.hopX - R * 1.0;
-          var mg = g.createLinearGradient(0, pipeY - pipeH / 2, 0, pipeY + pipeH / 2);
-          mg.addColorStop(0, "#d7dae4");
-          mg.addColorStop(0.5, "#9aa0b1");
-          mg.addColorStop(1, "#596070");
-          g.fillStyle = mg;
-          roundRect(g, x0, pipeY - pipeH / 2, L.innerR - x0 + 2, pipeH, 5);
-          g.fill();
-          // nozzle: flares down to the mouth
+          var topY = L.railY + 10,
+            botY = L.hopMouthY - 7,
+            topW = R * 1.3,
+            botW = R * 0.64;
+          var mg = g.createLinearGradient(L.hopX - topW, 0, L.hopX + topW, 0);
+          mg.addColorStop(0, "#6e7384");
+          mg.addColorStop(0.35, "#e3e6ee");
+          mg.addColorStop(1, "#656b7c");
+          // feed pipe from the wall into the funnel's side
+          var pg = g.createLinearGradient(0, topY, 0, topY + R * 0.7);
+          pg.addColorStop(0, "#dfe2ea");
+          pg.addColorStop(1, "#6b7182");
+          g.fillStyle = pg;
+          g.fillRect(L.hopX + topW * 0.6, topY + 2, L.innerR - (L.hopX + topW * 0.6) + 2, R * 0.62);
+          g.fillStyle = "rgba(244,194,107,0.9)";
+          g.fillRect(L.innerR - R * 0.55, topY + 2, 4, R * 0.62);
+          // funnel body
           g.beginPath();
-          g.moveTo(L.hopX - R * 0.95, pipeY + pipeH / 2 - 2);
-          g.lineTo(L.hopX + R * 0.95, pipeY + pipeH / 2 - 2);
-          g.lineTo(L.hopX + R * 0.78, mouthY - 3);
-          g.lineTo(L.hopX - R * 0.78, mouthY - 3);
+          g.moveTo(L.hopX - topW, topY);
+          g.lineTo(L.hopX + topW, topY);
+          g.lineTo(L.hopX + botW, botY);
+          g.lineTo(L.hopX - botW, botY);
           g.closePath();
           g.fillStyle = mg;
           g.fill();
-          g.strokeStyle = "rgba(0,0,0,0.4)";
+          g.strokeStyle = "rgba(0,0,0,0.45)";
           g.lineWidth = 1.5;
           g.stroke();
-          g.fillStyle = "rgba(0,0,0,0.55)";
-          g.fillRect(L.hopX - R * 0.78, mouthY - 5, R * 1.56, 4); // dark inside of the mouth
-          // hazard stripe band on the pipe
-          g.fillStyle = "rgba(244,194,107,0.85)";
-          g.fillRect(x0 + R * 0.5, pipeY - pipeH / 2, 5, pipeH);
-          g.fillRect(x0 + R * 0.5 + 11, pipeY - pipeH / 2, 5, pipeH);
+          // rim + dark opening
+          g.fillStyle = "#cfd3dd";
+          g.beginPath();
+          g.ellipse(L.hopX, topY, topW, 4.5, 0, 0, Math.PI * 2);
+          g.fill();
+          g.fillStyle = "#23262f";
+          g.beginPath();
+          g.ellipse(L.hopX, topY, topW * 0.82, 2.8, 0, 0, Math.PI * 2);
+          g.fill();
+          // nozzle collar with a hazard stripe
+          g.fillStyle = "#4b5060";
+          g.fillRect(L.hopX - botW - 4, botY, botW * 2 + 8, 7);
+          g.fillStyle = "rgba(244,194,107,0.9)";
+          g.fillRect(L.hopX - botW - 4, botY + 2, botW * 2 + 8, 2.5);
         }
 
         // ---- static front layer: frame/bezel + marquee band + front lip + bay glass ----
@@ -2974,8 +2991,9 @@
             bestY = Infinity;
           for (var i = 0; i < bin.length; i++) {
             var p = bin[i];
-            if (Math.abs(p.x - cx) <= cfg.grabRadius && p.y < bestY) {
-              bestY = p.y;
+            var rank = p.forced ? -Infinity : p.y; // a test-forced prize always wins the pick
+            if (Math.abs(p.x - cx) <= cfg.grabRadius && rank < bestY) {
+              bestY = rank;
               best = p;
             }
           }
@@ -3014,6 +3032,12 @@
           return n >= 6 ? 3 : n >= 3 ? 2 : 1;
         }
 
+        // How wide the prongs stand when they hug a prize of radius `rad` (instead of a clenched fist that
+        // hides it): the prong splay is 0.22s + 0.62s·open, so match it to the prize's half-width.
+        function holdOpenFor(rad) {
+          return clamp((rad * 0.98) / lay.clawS - 0.22, 0.1, 0.9) / 0.62;
+        }
+
         function updateSequence(now) {
           var t = now - phaseStartTs;
           switch (phase) {
@@ -3027,11 +3051,12 @@
               if (t >= DROP_MS) enterClose(now);
               break;
             case Phase.CLOSE:
+              var closeTo = pickTarget(clawPos().x) ? holdOpenFor(pickRes.p.rad) : 0;
               // A 2px "thunk" as the prongs meet the pile, then they clamp.
               currentL =
                 dropTargetL +
                 (reduceMotion ? 0 : 2 * Math.sin(Math.PI * clamp(t / THUNK_MS, 0, 1)));
-              openAmount = 1 - clamp(t / CLOSE_MS, 0, 1);
+              openAmount = 1 - clamp(t / CLOSE_MS, 0, 1) * (1 - closeTo);
               if (t >= CLOSE_MS) {
                 resolveGrab(now);
                 enterLift(now);
@@ -3040,7 +3065,7 @@
             case Phase.LIFT:
               currentL =
                 dropTargetL + (lay.lRest - dropTargetL) * easeInOut(clamp(t / LIFT_MS, 0, 1));
-              openAmount = 0;
+              openAmount = carried ? openAmount : openAmount * 0.8; // a missed grab snaps shut
               // Only travel to the bay if we're actually holding a prize; an empty grab (or one that
               // slipped on lift) just lifts straight back up and returns to idle in place.
               if (t >= LIFT_MS) {
@@ -3056,7 +3081,6 @@
               break;
             case Phase.RETURN:
               currentL = lay.lRest;
-              openAmount = 0;
               // The dramatic mid-carry betrayal: once we're past the scheduled fraction of the trip, a
               // doomed prize lets go and tumbles back into the pile — no bay, no points.
               if (carried && carried.willSuddenDrop) {
@@ -3071,7 +3095,10 @@
               break;
             case Phase.RELEASE:
               currentL = lay.lRest;
-              openAmount = clamp(t / RELEASE_MS, 0, 1);
+              openAmount = carried
+                ? holdOpenFor(carried.rad) +
+                  (1 - holdOpenFor(carried.rad)) * clamp(t / RELEASE_MS, 0, 1)
+                : clamp(t / RELEASE_MS, 0, 1);
               updateRelease(now, t);
               break;
           }
@@ -3106,7 +3133,8 @@
           }
           // Prongs quiver a touch while struggling to hold on.
           if (phase === Phase.LIFT || phase === Phase.RETURN) {
-            openAmount = 0.05 + 0.05 * Math.abs(Math.sin(now * 0.022)) + (lurch > 0 ? 0.12 : 0);
+            var hold = holdOpenFor(carried.rad);
+            openAmount = hold - 0.05 * Math.abs(Math.sin(now * 0.022)) - (lurch > 0 ? 0.1 : 0);
           }
         }
 
@@ -3130,6 +3158,7 @@
         function resolveGrab(now) {
           var c = clawPos();
           if (!pickTarget(c.x)) {
+            logGrab(null, 0, "empty");
             breakStreak("Empty grab", "Line up over the pile");
             wiggle(now);
             return;
@@ -3141,6 +3170,7 @@
           if (forced || Math.random() < odds.grab) {
             bin.splice(bin.indexOf(prize), 1);
             carried = prize;
+            carried.logEntry = logGrab(prize, prox, "carry");
             carried.prox = prox;
             carried.slipP = forced ? 0 : odds.slip;
             carried.willSuddenDrop = forced ? false : Math.random() < odds.midDrop;
@@ -3149,7 +3179,7 @@
             carried.capTs = now;
             carried.fromX = prize.x;
             carried.fromY = prize.y;
-            carried2 = forced ? null : pickSecond(prize, c.x, now);
+            carried2 = forced ? null : pickSecond(prize, c.x);
             if (carried2) {
               carried2.capTs = now;
               carried2.fromX = carried2.x;
@@ -3163,9 +3193,21 @@
             soundClack();
             setFeedback("Got it!", "Reeling it to the bay…", "good");
           } else {
+            logGrab(prize, prox, "miss");
             breakStreak("So close!", "It slipped the claw");
             wiggle(now);
           }
+        }
+        function logGrab(prize, prox, out) {
+          var e = {
+            r: prize ? prize.r : 0,
+            golden: !!(prize && prize.golden),
+            prox: prox,
+            out: out,
+          };
+          grabLog.push(e);
+          if (grabLog.length > 400) grabLog.shift();
+          return e;
         }
         function wiggle(now) {
           if (!reduceMotion) wiggleUntil = now + 80;
@@ -3173,7 +3215,7 @@
         }
 
         // The two-prize bonus (P2-5): a neighbour touching the grabbed prize, close to the claw, may come too.
-        function pickSecond(first, cx, now) {
+        function pickSecond(first, cx) {
           var best = null,
             bestD = Infinity;
           for (var i = 0; i < bin.length; i++) {
@@ -3204,6 +3246,7 @@
           bin.push(p);
         }
         function suddenDrop(now) {
+          if (carried.logEntry) carried.logEntry.out = "drop";
           releaseToPile(carried);
           if (carried2) releaseToPile(carried2);
           carried = carried2 = null;
@@ -3218,6 +3261,7 @@
           phaseStartTs = now;
           // A carried prize can still wriggle free on the way up — worse when the grab was off-centre.
           if (carried && Math.random() < carried.slipP) {
+            if (carried.logEntry) carried.logEntry.out = "slip";
             releaseToPile(carried);
             if (carried2) releaseToPile(carried2);
             carried = carried2 = null;
@@ -3272,6 +3316,7 @@
             caughtList.push({ e: list[i].e, g: list[i].golden });
           }
           var dbl = list.length === 2;
+          if (carried.logEntry) carried.logEntry.out = "bank";
           var prevMult = multFor(streak);
           streak++;
           if (streak > topStreak) topStreak = streak;
@@ -3423,7 +3468,8 @@
         // ============================================================
         //  HUD / FEEDBACK
         // ============================================================
-        var hudScoreShown = -1,
+        var barShown = -1,
+          hudScoreShown = -1,
           chipShown = "",
           clockShown = "",
           clockClass = "";
@@ -3498,8 +3544,11 @@
             $("progressFill").classList.toggle("urgent", urgent);
           }
           var total = durationSec * 1000 + bonusMs;
-          $("progressFill").style.transform =
-            "scaleX(" + clamp(remain / total, 0, 1).toFixed(4) + ")";
+          var bar = (clamp(remain / total, 0, 1) * 1000) | 0; // write only when the bar moves a pixel-ish
+          if (bar !== barShown) {
+            barShown = bar;
+            $("progressFill").style.transform = "scaleX(" + bar / 1000 + ")";
+          }
           if (urgent && totalS !== lastTickSec && totalS > 0) {
             lastTickSec = totalS;
             soundClockTick();
@@ -3691,10 +3740,12 @@
         function draw(now) {
           if (W < 2 || H < 2) return;
           ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-          ctx.clearRect(0, 0, W, H);
           ctx.globalAlpha = 1; // defensive: never let a stale alpha/state bleed across frames
           ctx.save();
-          if (shakeX || shakeY) ctx.translate(shakeX, shakeY);
+          if (shakeX || shakeY) {
+            ctx.clearRect(0, 0, W, H); // the opaque back layer repaints everything, except under a shake
+            ctx.translate(shakeX, shakeY);
+          }
           ctx.drawImage(layerBack, 0, 0, W, H);
           drawHopperFlap(now);
           drawPrizes(now);
@@ -3968,12 +4019,14 @@
           ctx.lineTo(c.x + wx, c.y - s * 0.98);
           ctx.stroke();
           drawSpring(cartX, lay.railY + 8, c.x + wx, c.y);
-          // A carried prize rides between the prongs (drawn before the claw so the prongs overlap it).
+          // The middle prong is the "far" one: it goes BEHIND a carried prize; the head and the two side
+          // prongs hug it from the front.
+          drawClaw(c.x + wx, c.y, theta, openAmount, true);
           if (carried && phase !== Phase.RELEASE) {
             drawPrize(carried, now);
             if (carried2) drawPrize(carried2, now);
           }
-          drawClaw(c.x + wx, c.y, theta, openAmount);
+          drawClaw(c.x + wx, c.y, theta, openAmount, false);
           if (carried && phase !== Phase.RELEASE) drawGripMeter(c.x + wx, c.y, s);
         }
 
@@ -3997,13 +4050,18 @@
 
         // A chunky metallic arcade claw: a top cap, a red collar, a body, and three hooked prongs that
         // splay open (open≈1) or clamp shut (open≈0). Scaled off the prize radius.
-        function drawClaw(x, y, ang, open) {
+        function drawClaw(x, y, ang, open, backPass) {
           var s = lay.clawS;
           ctx.save();
           ctx.translate(x, y);
           ctx.rotate(ang);
           ctx.lineJoin = "round";
           ctx.lineCap = "round";
+          if (backPass) {
+            drawClawProng(s, 0, open);
+            ctx.restore();
+            return;
+          }
           // Top cap / disc (cable mount).
           ctx.fillStyle = gfx.capGrad;
           roundRect(ctx, -s * 0.5, -s * 0.98, s * 1.0, s * 0.5, s * 0.22);
@@ -4033,7 +4091,6 @@
           // Three hooked prongs.
           drawClawProng(s, -1, open);
           drawClawProng(s, 1, open);
-          drawClawProng(s, 0, open);
           // Hinge knuckles on top of the prong bases.
           ctx.fillStyle = "#cfd3dd";
           ctx.beginPath();
@@ -4188,12 +4245,14 @@
             var p = popups[i],
               k = p.life / p.maxLife;
             var y = p.y - k * (reduceMotion ? 10 : 46);
+            var hw = ctx.measureText(p.text).width / 2 + 6;
+            var px = clamp(p.x, lay.innerL + hw, lay.innerR - hw); // keep it inside the cabinet
             ctx.globalAlpha = clamp(1.6 - k * 1.6, 0, 1);
             ctx.lineWidth = 4;
             ctx.strokeStyle = "rgba(0,0,0,0.55)";
-            ctx.strokeText(p.text, p.x, y);
+            ctx.strokeText(p.text, px, y);
             ctx.fillStyle = p.color;
-            ctx.fillText(p.text, p.x, y);
+            ctx.fillText(p.text, px, y);
           }
           ctx.restore();
         }
@@ -4207,6 +4266,35 @@
         dbg.catchOdds = catchOdds;
         dbg.multFor = multFor;
         dbg.SaveManager = SaveManager;
+        dbg.grabLog = grabLog;
+        // Live views of the state tests branch on (a stale mirror once made a test race the state machine).
+        function liveProp(name, read) {
+          Object.defineProperty(dbg, name, { get: read, enumerable: true, configurable: true });
+        }
+        liveProp("phase", function () {
+          return phase;
+        });
+        liveProp("running", function () {
+          return running;
+        });
+        liveProp("countingDown", function () {
+          return countingDown;
+        });
+        liveProp("paused", function () {
+          return paused;
+        });
+        liveProp("carried", function () {
+          return !!carried;
+        });
+        liveProp("score", function () {
+          return score;
+        });
+        liveProp("streak", function () {
+          return streak;
+        });
+        liveProp("frame", function () {
+          return frameCount;
+        });
         // Test helpers (no-ops outside an active round). The prize is built by the SAME factory as every
         // other prize (no NaN physics) and its grab/slip/drop rolls are made certain.
         dbg.forcePrizeUnderTip = function (rarity, opts) {
@@ -4238,18 +4326,10 @@
           d.cartX = cartX;
           d.theta = theta;
           d.omega = omega;
-          d.phase = phase;
-          d.score = score;
           d.prizesCaught = prizesCaught;
           d.bestCatch = bestCatch;
           d.bin = bin;
           d.binLength = bin.length;
-          d.carried = !!carried;
-          d.running = running;
-          d.countingDown = countingDown;
-          d.paused = paused;
-          d.frame = frameCount;
-          d.streak = streak;
           d.topStreak = topStreak;
           d.mult = multFor(streak);
           d.golden = goldenPresent();

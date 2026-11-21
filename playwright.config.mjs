@@ -11,6 +11,11 @@ export default defineConfig({
   use: {
     baseURL: `http://localhost:${PORT}`,
     ...devices["Desktop Chrome"],
+    // Optional: point at a pre-installed Chromium (e.g. cloud dev boxes) instead
+    // of the one `npx playwright install` downloads.
+    launchOptions: process.env.PW_CHROMIUM_PATH
+      ? { executablePath: process.env.PW_CHROMIUM_PATH }
+      : {},
   },
   webServer: {
     command: `node tools/serve.mjs ${PORT}`,

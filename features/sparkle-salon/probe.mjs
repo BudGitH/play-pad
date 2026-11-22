@@ -116,19 +116,17 @@ async function scrubPass(page, points, first, samples) {
   }
 }
 async function wipeSmudges(page) {
-  const spots = [
-    [232, 232],
-    [124, 352],
-    [280, 346],
-    [196, 408],
-    [178, 336],
-    [130, 250],
-    [272, 270],
-  ];
+  // the smudge positions come from the page itself (data-x / data-y on each .smudge group)
+  const spots = await S(page, () =>
+    [...document.querySelectorAll(".smudge")].map((e) => [
+      Number(e.dataset.x),
+      Number(e.dataset.y),
+    ]),
+  );
   for (let k = 0; k < 4; k++) {
-    for (const [x, y] of spots) {
+    for (const [i, [x, y]] of spots.entries()) {
       const c = await S(page, ([x, y]) => window.__salon.debug.unitsToClient(x, y), [x, y]);
-      if (k === 0 && x === 232) {
+      if (k === 0 && i === 0) {
         await page.mouse.move(c.x, c.y);
         await page.mouse.down();
       }
@@ -704,7 +702,7 @@ async function main() {
     {
       const t = await open(browser, { touch: true });
       await begin(t.page);
-      const p = await S(t.page, () => window.__salon.debug.unitsToClient(232, 232));
+      const p = await S(t.page, () => window.__salon.debug.unitsToClient(226, 232));
       await t.page.touchscreen.tap(p.x, p.y + 46);
       const prog = await progress(t.page);
       check(

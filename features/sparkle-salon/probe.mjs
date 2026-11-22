@@ -792,45 +792,171 @@ async function checkHairPalette(browser) {
   await k.ctx.close();
 }
 
-/** RT1-touch: first touch on each paint step shows the "paint with the tip" guide once; after ~4 s of nothing a ring
- *  pulses on the target (and not at all with reduced motion); touching hides it. Also AC-8c: the last step reads Skip. */
-async function checkTouchGuidance(browser) {
+// ---- real touch strokes (Playwright's touchscreen only taps), as the product panel's driver sends them ----
+async function touchPen(k) {
+  const cdp = await k.ctx.newCDPSession(k.page);
+  const send = (type, touchPoints) => cdp.send("Input.dispatchTouchEvent", { type, touchPoints });
+  return {
+    down: (x, y) => send("touchStart", [{ x, y, id: 1 }]),
+    up: () => send("touchEnd", []),
+    async stroke(points) {
+      for (const [x, y] of points) {
+        await send("touchMove", [{ x, y, id: 1 }]);
+        await k.page.waitForTimeout(10); // pacing only: the outcome is read from the page afterwards
+      }
+    },
+  };
+}
+/** Rows of a zigzag over a box: `rows`+1 horizontal passes of `per`+1 points, alternating direction. */
+function zigzag([x0, y0, x1, y1], rows, per) {
+  const pts = [];
+  for (let r = 0; r <= rows; r++) {
+    const y = y0 + ((y1 - y0) * r) / rows;
+    for (let i = 0; i <= per; i++)
+      pts.push([x0 + ((x1 - x0) * (r % 2 === 0 ? i : per - i)) / per, y]);
+  }
+  return pts;
+}
+/** Client-px box of the current step's paint region, once the camera has stopped gliding. */
+async function settledBox(page) {
+  const read = () =>
+    S(page, () => {
+      const d = window.__salon.debug;
+      const c = d.regionCells().map(([x, y]) => d.unitsToClient(x, y));
+      const xs = c.map((p) => p.x);
+      const ys = c.map((p) => p.y);
+      return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)].map(Math.round);
+    });
+  let prev = await read();
+  for (let i = 0; i < 20; i++) {
+    await page.waitForTimeout(150);
+    const now = await read();
+    if (now.every((v, j) => Math.abs(v - prev[j]) <= 1)) return now;
+    prev = now;
+  }
+  return prev;
+}
+const tipLift = (page) => S(page, () => window.__salon.debug.touchLift());
+
+/** RT2-finger: a child who puts a FINGER on the target and scrubs (4 rows over the target's box, real touch events)
+ *  paints it (>= 70%); one who aims the visible tool tip still completes it. The tool tip sits only a short, per-tool
+ *  distance above the fingertip, shorter on the small targets. */
+async function checkFingerOnTarget(browser) {
   const k = await open(browser, { touch: true });
   await begin(k.page);
-  await playTo(k.page, "shadow");
-  const guideOn = () =>
-    S(k.page, () => document.getElementById("tipGuide").classList.contains("on"));
-  const p = await S(k.page, () => window.__salon.debug.regionPoint(0.5));
-  const before = await guideOn();
-  await k.page.touchscreen.tap(p.x, p.y + 46); // a fingertip below the target: the tool sits 46 px above it
-  const first = await guideOn();
-  const geometry = await S(k.page, () => {
-    const line = document.querySelector("#tipGuide i").getBoundingClientRect();
-    const ring = document.querySelector("#tipGuide b").getBoundingClientRect();
-    return { line: Math.round(line.height), ringDiameter: Math.round(ring.width) };
-  });
-  const said = await S(k.page, () => document.getElementById("bubble").textContent);
-  await k.page.waitForFunction(
-    () => !document.getElementById("tipGuide").classList.contains("on"),
-    null,
-    { timeout: 4000 },
-  );
-  await k.page.touchscreen.tap(p.x, p.y + 46);
-  const again = await guideOn();
-  await S(k.page, () => window.__salon.debug.completeStep());
-  await goNext(k.page); // lens
-  await goNext(k.page); // mascara: a new paint step, a new first touch
-  const pm = await S(k.page, () => window.__salon.debug.regionPoint(0.5));
-  await k.page.touchscreen.tap(pm.x, pm.y + 46);
-  const nextStep = await guideOn();
+  const pen = await touchPen(k);
+  const rows = {};
+  for (const id of ["shadow", "mascara", "blush", "lips"]) {
+    await playTo(k.page, id);
+    const box = await settledBox(k.page);
+    const lift = await tipLift(k.page);
+    await pen.down(box[0], box[1]);
+    await pen.stroke(zigzag(box, 3, 10));
+    await pen.up();
+    const on = await progress(k.page);
+    await k.page.locator("#clearBtn").click();
+    const aimBox = [box[0], box[1] + lift, box[2], box[3] + lift];
+    await pen.down(aimBox[0], aimBox[1]);
+    await pen.stroke(zigzag(aimBox, 3, 10));
+    await pen.up();
+    rows[id] = { lift, on: +on.toFixed(2), aimed: +(await progress(k.page)).toFixed(2) };
+  }
+  const ids = Object.keys(rows);
   check(
-    "RT1-guide",
-    "first touch on a paint step shows a dotted line + pulse from fingertip to tool tip (once per step, with a hint)",
-    !before && first && geometry.line >= 40 && again === false && nextStep && /tip/i.test(said),
-    JSON.stringify({ before, first, geometry, again, nextStep, said }),
+    "RT2-finger",
+    "finger ON the target, 4 scrub rows: shadow, mascara, blush and lips all reach >= 70%; aiming the visible tip completes them; the lift is <= 34px on the small targets (lips, blush, mascara)",
+    ids.every((id) => rows[id].on >= 0.7 && rows[id].aimed >= 0.9) &&
+      rows.lips.lift <= 30 &&
+      rows.blush.lift <= 34 &&
+      rows.mascara.lift <= 34,
+    JSON.stringify(rows),
   );
   await k.ctx.close();
+}
 
+/** RT1-guide: a finger down on a paint step whose tip has not painted yet shows the dotted line + pulse and "Paint with
+ *  the tip!"; it STAYS (no timer) until a stroke adds coverage, hides when the finger lifts, and never returns on a
+ *  step where a stroke already painted; the next paint step shows it again. */
+async function checkTipGuide(browser) {
+  const k = await open(browser, { touch: true });
+  await begin(k.page);
+  const pen = await touchPen(k);
+  const guideOn = () =>
+    S(k.page, () => document.getElementById("tipGuide").classList.contains("on"));
+  const guideOff = () =>
+    k.page
+      .waitForFunction(() => !document.getElementById("tipGuide").classList.contains("on"), null, {
+        timeout: 2000,
+      })
+      .then(
+        () => true,
+        () => false,
+      );
+  await playTo(k.page, "shadow");
+  const box = await settledBox(k.page);
+  const lift = await tipLift(k.page);
+  const away = [box[0] + 20, box[1] - 100]; // a fingertip well above the lids: the tip cannot reach them
+  const before = await guideOn();
+  await pen.down(...away);
+  const first = await guideOn();
+  const geometry = await S(k.page, () => ({
+    line: Math.round(document.querySelector("#tipGuide i").getBoundingClientRect().height),
+    said: document.getElementById("bubble").textContent,
+  }));
+  await k.page.waitForTimeout(2400); // longer than the old fixed 1.8 s timer
+  const stays = await guideOn();
+  const lid = await S(k.page, () => window.__salon.debug.regionPoint(0.5)); // a real eyelid cell
+  await pen.stroke([
+    [lid.x, lid.y + lift],
+    [lid.x + 12, lid.y + lift + 2],
+  ]); // the tip now reaches the lids
+  const hidden = await guideOff();
+  await pen.up();
+  await pen.down(...away);
+  const again = await guideOn(); // this step is learned: not again
+  await pen.up();
+  await playTo(k.page, "mascara");
+  const box2 = await settledBox(k.page);
+  const away2 = [box2[0] + 20, box2[1] - 100];
+  await pen.down(...away2);
+  const nextStep = await guideOn(); // a new paint step: shown again
+  await pen.up();
+  const liftedHides = await guideOff();
+  await pen.down(...away2);
+  const reshown = await guideOn(); // nothing painted yet, so a second touch shows it again
+  await pen.up();
+  check(
+    "RT1-guide",
+    "touch guide (dotted line + pulse + 'Paint with the tip!') shows while a finger is down until a stroke adds coverage; no fixed timer; not again once painted; next paint step shows it",
+    !before &&
+      first &&
+      geometry.line === lift &&
+      /tip/i.test(geometry.said) &&
+      stays &&
+      hidden &&
+      !again &&
+      nextStep &&
+      liftedHides &&
+      reshown,
+    JSON.stringify({
+      before,
+      first,
+      geometry,
+      lift,
+      stays,
+      hidden,
+      again,
+      nextStep,
+      liftedHides,
+      reshown,
+    }),
+  );
+  await k.ctx.close();
+}
+
+/** RT1-nudge: after ~4 s of nothing on a paint step a ring pulses on the target; a touch hides it; never with reduced
+ *  motion. */
+async function checkNudge(browser) {
   // idle nudge (mouse is fine: nothing is touched)
   const n = await open(browser);
   await begin(n.page);
@@ -1710,7 +1836,7 @@ async function main() {
       const t = await open(browser, { touch: true });
       await begin(t.page);
       const p = await S(t.page, () => window.__salon.debug.unitsToClient(226, 232));
-      await t.page.touchscreen.tap(p.x, p.y + 46);
+      await t.page.touchscreen.tap(p.x, p.y + (await tipLift(t.page)));
       const prog = await progress(t.page);
       check(
         "AC-15g",
@@ -1790,7 +1916,9 @@ async function main() {
     // ------------------------------------------------------------------ RT-1 (product panel) + round-2 QA
     await checkToolsAtRest(browser);
     await checkHairPalette(browser);
-    await checkTouchGuidance(browser);
+    await checkFingerOnTarget(browser);
+    await checkTipGuide(browser);
+    await checkNudge(browser);
     await checkSkipLabel(browser);
     await checkOtherTab(browser);
     await checkWantsGrid(browser);

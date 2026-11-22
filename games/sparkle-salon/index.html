@@ -975,7 +975,7 @@
         box-shadow:
           0 0 0 3px var(--sp-pink-600),
           0 0 14px var(--sp-pink-500);
-        animation: tipPulse 0.7s ease-out 2;
+        animation: tipPulse 0.7s ease-out infinite;
       }
       @keyframes tipPulse {
         from {
@@ -4031,7 +4031,7 @@
             done: STEPS.map(() => false),
             skipped: STEPS.map(() => false),
             awarded: STEPS.map(() => false),
-            tipShown: STEPS.map(() => false), // the first-touch "paint with the tip" guide has been shown on this step
+            tipLearned: STEPS.map(() => false), // a touch stroke has already added coverage on this step: no more "paint with the tip" guide
             sel: {
               sponge: "pink",
               shadow: def("shadow"),
@@ -4500,6 +4500,7 @@
           kbd.x = stepDef.fx;
           kbd.y = stepDef.fy;
           toolHome.on = true;
+          hideTipGuide();
           touchIdle();
         }
         /** Pays a step's coins once; returns how many reached the wallet (0 when already paid or the wallet is full). */
@@ -4807,10 +4808,22 @@
         // ============================================================================================
         const toolEl = $("tool");
         const toolRingEl = $("toolRing");
-        const TOUCH_LIFT = 46; // px: touch tools sit above the fingertip so the finger never hides the work
+        // px the tool tip sits above the fingertip on touch, so the finger never hides the work. Small targets get a small
+        // lift: a finger placed ON the lips must still paint them, with the tip just clear of the fingertip pad.
+        const TOUCH_LIFTS = {
+          cleanse: 44,
+          shadow: 40,
+          mascara: 34,
+          blush: 32,
+          lips: 26,
+          stickers: 46,
+        };
+        const touchLift = () => TOUCH_LIFTS[STEPS[state.step].id] || 46;
+        // a fingertip is a blunt tool: on touch the brush reaches further, most of all on the smallest target (the lips)
+        const TOUCH_REACH = { shadow: 1.3, mascara: 1.5, blush: 1.6, lips: 1.8 };
         const pointer = { has: false, cx: 0, cy: 0 };
         const toolHome = { on: true, ax: 0, ay: 0 };
-        const stroke = { down: false, id: null, last: null, lastT: 0 };
+        const stroke = { down: false, id: null, last: null, touch: false, lastT: 0 };
         const kbd = { x: 200, y: 300, held: false };
 
         function placeTool(ax, ay) {
@@ -4826,35 +4839,36 @@
           placeTool(p.x, p.y);
         }
         function toolTipClient(e) {
-          const lift = e.pointerType === "touch" ? TOUCH_LIFT : 0;
+          const lift = e.pointerType === "touch" ? touchLift() : 0;
           return { cx: e.clientX, cy: e.clientY - lift };
         }
         // ---- guidance for small fingers: the tool tip, not the fingertip, does the painting ----
         const tipGuideEl = $("tipGuide");
         const nudgeEl = $("nudge");
         const NUDGE_AFTER = 4000; // ms of doing nothing on a paint step before its target starts to pulse
-        const TIP_GUIDE_MS = 1800;
         let tipGuideOn = false;
-        let tipGuideTimer = 0;
         let nudgeAt = null; // { x, y, r } in art units while the idle nudge is showing
         function placeTipGuide(e) {
           const p = toApp(e.clientX, e.clientY);
           tipGuideEl.style.transform =
             "translate3d(" + p.x.toFixed(1) + "px," + p.y.toFixed(1) + "px,0)";
         }
-        /** First touch on a paint step: a dotted line from the fingertip up to the tool tip, and a pulse where it paints. */
+        /** While a finger is down on a paint step that no stroke has painted yet: a dotted line from the fingertip up to the
+         *  tool tip and a pulse where it paints. It stays until a stroke adds coverage (or the finger lifts). */
         function showTipGuide(e) {
-          tipGuideEl.style.setProperty("--lift", TOUCH_LIFT + "px");
+          tipGuideEl.style.setProperty("--lift", touchLift() + "px");
           placeTipGuide(e);
           tipGuideOn = true;
           tipGuideEl.classList.add("on");
-          clearTimeout(tipGuideTimer);
-          tipGuideTimer = later(hideTipGuide, TIP_GUIDE_MS);
           say("Paint with the tip!", 2200);
         }
         function hideTipGuide() {
           tipGuideOn = false;
           tipGuideEl.classList.remove("on");
+        }
+        function learnedTip() {
+          run.tipLearned[state.step] = true;
+          hideTipGuide();
         }
         /** The part of the step's target still unpainted, as { x, y, r } in art units (null when there is none). */
         function nudgeTarget(stepDef) {
@@ -5002,7 +5016,7 @@
             const region = REGIONS[stepDef.id];
             const b = region.def.brush;
             touched = stampRegion(region, u.x, u.y, {
-              r: b.r * (tap ? 1.25 : 1),
+              r: b.r * (tap ? 1.25 : 1) * (stroke.touch ? TOUCH_REACH[stepDef.id] || 1.3 : 1),
               k: b.k * (tap ? 1.7 : 1),
               a: b.a * (tap ? 1.5 : 1),
               color: stepDef.id === "mascara" ? null : sel.c,
@@ -5042,15 +5056,17 @@
           const n = clamp(Math.ceil(dist / (r * 0.4)), 1, 40);
           const cx = e ? e.cx : undefined;
           const cy = e ? e.cy : undefined;
+          let touched = 0;
           for (let i = 1; i <= n; i++) {
             const t = i / n;
-            applyAt(
+            touched += applyAt(
               { x: lerp(last.x, u.x, t), y: lerp(last.y, u.y, t) },
               false,
               i === n ? cx : undefined,
               cy,
             );
           }
+          if (touched && tipGuideOn) learnedTip(); // the tip reached the work: the guide has done its job on this step
           const now = performance.now();
           const dt = Math.max(8, now - stroke.lastT);
           stroke.lastT = now;
@@ -5066,6 +5082,7 @@
           kbd.held = false;
           toolRingEl.classList.remove("on");
           toolEl.style.setProperty("--press", "0");
+          hideTipGuide();
           touchIdle();
         }
         function onPointerDown(e) {
@@ -5084,7 +5101,12 @@
           pointer.cy = tip.cy;
           stroke.down = true;
           stroke.id = e.pointerId;
+          stroke.touch = e.pointerType === "touch";
           stroke.lastT = performance.now();
+          const kind0 = STEPS[state.step].kind;
+          const guided =
+            stroke.touch && (kind0 === "paint" || kind0 === "wipe") && !run.tipLearned[state.step];
+          const before = guided ? stepProgress(state.step) : 0;
           if (STEPS[state.step].tool) {
             placeToolAtClient(tip.cx, tip.cy);
             toolEl.classList.add("on");
@@ -5093,12 +5115,11 @@
           }
           beginStroke(toUnits(tip.cx, tip.cy), tip.cx, tip.cy);
           const kind = STEPS[state.step].kind;
-          if (kind === "paint" || kind === "wipe") {
-            Sfx.fx.swish(300, STEPS[state.step].tool);
-            if (e.pointerType === "touch" && !run.tipShown[state.step]) {
-              run.tipShown[state.step] = true;
-              showTipGuide(e);
-            }
+          if (kind === "paint" || kind === "wipe") Sfx.fx.swish(300, STEPS[state.step].tool);
+          if (guided) {
+            if (stepProgress(state.step) > before)
+              run.tipLearned[state.step] = true; // the very first touch already painted
+            else showTipGuide(e);
           }
         }
         function onPointerMove(e) {
@@ -5148,6 +5169,7 @@
             }
             kbd.held = true;
             stroke.down = true;
+            stroke.touch = false;
             stroke.id = "kbd";
             stroke.lastT = performance.now();
             placeKbdTool();
@@ -5334,6 +5356,7 @@
             return region ? region.xs.map((x, i) => [x, region.ys[i]]) : [];
           },
           brushKey,
+          touchLift,
           addCoins: (n) => addCoins(n, true),
           /** QA/fidelity helpers: wear the reference "glam" look and set the camera without animation. */
           glam: () => {

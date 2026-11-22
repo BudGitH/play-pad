@@ -747,30 +747,6 @@
         font-size: 15px;
         line-height: 1.5;
       }
-      .steps {
-        margin: 0 0 16px;
-        padding: 0;
-        list-style: none;
-        display: grid;
-        gap: 6px;
-        font-size: 14px;
-      }
-      .steps li {
-        display: flex;
-        gap: 10px;
-        align-items: baseline;
-      }
-      .steps b {
-        flex: none;
-        width: 22px;
-        height: 22px;
-        border-radius: 50%;
-        display: grid;
-        place-items: center;
-        font-size: 12px;
-        background: var(--md-sys-color-primary-container);
-        color: var(--md-sys-color-on-primary-container);
-      }
       .btn {
         min-height: 52px;
         padding: 0 22px;
@@ -909,8 +885,7 @@
         border: 1px solid var(--bb-line);
         color: var(--md-sys-color-on-surface);
       }
-      .keys-touch,
-      .k-short {
+      .keys-touch {
         display: none;
       }
       body.touch .keys-kb {
@@ -932,12 +907,7 @@
           overflow: hidden;
           text-overflow: ellipsis;
         }
-        body.touch .k-long {
-          display: none;
-        }
-        body.touch .k-short {
-          display: inline;
-        } /* on a short screen the one touch line sits just above Start, where it is read before it scrolls away */
+        /* on a short screen the one touch line sits just above Start, where it is read before it scrolls away */
         .card {
           display: flex;
           flex-direction: column;
@@ -951,9 +921,6 @@
         }
         .card > .tag {
           order: 2;
-        }
-        .card > .steps {
-          order: 3;
         }
         .card > .keys-touch {
           order: 4;
@@ -973,9 +940,6 @@
         }
         .tag {
           margin: 4px 0 8px;
-        }
-        .steps {
-          display: none;
         }
         .card {
           padding: 12px 18px 14px;
@@ -1001,6 +965,288 @@
           gap: 4px;
         }
       }
+
+      /* ---------- Simple first run: only what the first request needs ---------- */
+      /* Until the first buddy has moved in, the coin and star counters, the Items menu and Look are
+         tucked away (the hotbar already holds the three things the first room needs). */
+      body.simple .adv,
+      body.simple #buildBtn,
+      body.simple #tLook {
+        display: none;
+      }
+
+      /* ---------- Help button + how-to overlay ---------- */
+      .help-btn {
+        font-size: 22px;
+        font-weight: 900;
+        background: var(--md-sys-color-tertiary-container);
+        color: var(--md-sys-color-on-tertiary-container);
+      }
+      #how {
+        z-index: 35;
+      }
+      .how-card {
+        width: min(760px, 100%);
+      }
+      .how-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      .how-steps {
+        list-style: none;
+        margin: 12px 0 16px;
+        padding: 0;
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+      }
+      .how-step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 12px 8px;
+        border-radius: 16px;
+        text-align: center;
+        background: var(--md-sys-color-surface-container-high);
+        border: 1px solid var(--bb-line);
+      }
+      .how-pic {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 4px;
+        min-height: 56px;
+        font-size: 26px;
+        line-height: 1;
+      }
+      .how-pic canvas {
+        width: 44px;
+        height: 44px;
+        image-rendering: pixelated;
+      }
+      .how-sym.pad {
+        display: grid;
+        place-items: center;
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        font-size: 20px;
+        background: var(--bb-glass);
+        border: 1px solid var(--bb-line);
+      }
+      /* a ticked box: the same look as the coach's picture ticks in the request card */
+      .how-box {
+        position: relative;
+        width: 44px;
+        height: 44px;
+        border-radius: 9px;
+        background: rgba(142, 224, 142, 0.22);
+        border: 2px solid #8ee08e;
+      }
+      .how-box::after {
+        content: "\2713";
+        position: absolute;
+        right: -5px;
+        bottom: -7px;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        font-size: 12px;
+        font-weight: 900;
+        background: #8ee08e;
+        color: #10300f;
+      }
+      .how-box canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+      .how-step p {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 800;
+        line-height: 1.3;
+      }
+      .how-step .num {
+        display: inline-grid;
+        place-items: center;
+        width: 22px;
+        height: 22px;
+        margin-right: 6px;
+        border-radius: 50%;
+        font-size: 12px;
+        vertical-align: 1px;
+        background: var(--md-sys-color-primary-container);
+        color: var(--md-sys-color-on-primary-container);
+      }
+      .for-touch {
+        display: none;
+      }
+      body.touch .for-touch {
+        display: inline;
+      }
+      body.touch .for-keys {
+        display: none;
+      }
+      @media (max-width: 640px) {
+        .how-steps {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+        .how-step p {
+          font-size: 15px;
+        }
+      }
+      @media (max-height: 560px) {
+        /* a short phone in landscape: one row of four compact steps and the button below */
+        #how {
+          padding: 8px;
+        }
+        .how-card {
+          padding: 10px 14px 12px;
+        }
+        .how-steps {
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 6px;
+          margin: 6px 0 10px;
+        }
+        .how-step {
+          padding: 6px 4px;
+          gap: 4px;
+        }
+        .how-pic {
+          min-height: 40px;
+          font-size: 20px;
+        }
+        .how-pic canvas,
+        .how-sym.pad {
+          width: 32px;
+          height: 32px;
+        }
+        .how-box {
+          width: 30px;
+          height: 30px;
+          margin: 0 3px 4px;
+        }
+        .how-box canvas {
+          width: 100%;
+          height: 100%;
+        }
+        .how-box::after {
+          width: 14px;
+          height: 14px;
+          font-size: 10px;
+          right: -4px;
+          bottom: -5px;
+        }
+        .how-step p {
+          font-size: 13px;
+        }
+        .how-step .num {
+          display: none;
+        }
+      }
+
+      /* ---------- Coach: one plain line saying what to do next, and what to look at ---------- */
+      .coach {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 6px;
+        padding: 6px 10px;
+        min-height: 48px;
+        box-sizing: border-box;
+        border-radius: 12px;
+        background: var(--md-sys-color-tertiary-container);
+        color: var(--md-sys-color-on-tertiary-container);
+        font-size: 17px;
+        font-weight: 800;
+        line-height: 1.2;
+      }
+      .coach-ico {
+        flex: none;
+        display: grid;
+        place-items: center;
+        width: 36px;
+        height: 36px;
+        font-size: 26px;
+        line-height: 1;
+      }
+      .coach-ico canvas {
+        width: 36px;
+        height: 36px;
+        image-rendering: pixelated;
+      }
+      .coach-strip {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 6px;
+      }
+      .coach-strip .cs {
+        position: relative;
+        width: 34px;
+        height: 34px;
+        border-radius: 9px;
+        background: rgba(255, 210, 150, 0.14);
+        border: 2px solid transparent;
+      }
+      .coach-strip .cs canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+        image-rendering: pixelated;
+      }
+      .coach-strip .cs.done {
+        background: rgba(142, 224, 142, 0.22);
+        border-color: #8ee08e;
+      }
+      .coach-strip .cs.done canvas {
+        opacity: 0.55;
+      }
+      .coach-strip .cs.done::after {
+        content: "\2713";
+        position: absolute;
+        right: -3px;
+        bottom: -5px;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        font-size: 11px;
+        font-weight: 900;
+        background: #8ee08e;
+        color: #10300f;
+      }
+      /* The control to use next (hotbar slot, pad, Build / Items button) pulses; with reduced
+         motion it keeps a steady ring instead. */
+      @keyframes bb-pulse {
+        0%,
+        100% {
+          box-shadow: 0 0 0 0 rgba(255, 207, 138, 0.95);
+        }
+        65% {
+          box-shadow: 0 0 0 11px rgba(255, 207, 138, 0);
+        }
+      }
+      .coach-pulse {
+        border-color: var(--md-sys-color-tertiary) !important;
+        background: var(--md-sys-color-tertiary-container) !important;
+        animation: bb-pulse 1.1s ease-out infinite;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .coach-pulse {
+          animation: none;
+          box-shadow: 0 0 0 4px var(--md-sys-color-tertiary);
+        }
+      }
     </style>
   </head>
   <body>
@@ -1022,7 +1268,7 @@
           <span class="ico" aria-hidden="true">&#8592;</span><span class="txt">PlayPad</span>
         </a>
         <div class="stats">
-          <span class="chip"
+          <span class="chip adv"
             ><span class="ico" aria-hidden="true">&#129689;</span
             ><span class="visually-hidden">Coins</span><b id="coinN">0</b></span
           >
@@ -1030,12 +1276,21 @@
             ><span class="ico" aria-hidden="true">&#127968;</span
             ><span class="visually-hidden">Buddies housed</span><b id="housedN">0</b></span
           >
-          <span class="chip"
+          <span class="chip adv"
             ><span class="ico" aria-hidden="true">&#9733;</span
             ><span class="visually-hidden">Happiness stars</span><b id="starN">0</b></span
           >
         </div>
         <span class="grow"></span>
+        <button
+          id="helpBtn"
+          class="chip-btn help-btn"
+          aria-label="How to play"
+          aria-haspopup="dialog"
+          aria-expanded="false"
+        >
+          <span aria-hidden="true">?</span>
+        </button>
         <button id="menuBtn" class="chip-btn" aria-label="Menu" aria-haspopup="dialog">
           <span aria-hidden="true">&#9776;</span>
         </button>
@@ -1052,6 +1307,11 @@
             <span aria-hidden="true">&#9662;</span>
           </button>
         </div>
+        <div id="coach" class="coach" role="status" aria-live="polite" hidden>
+          <span id="coachIco" class="coach-ico" aria-hidden="true"></span>
+          <span id="coachText"></span>
+        </div>
+        <div id="coachStrip" class="coach-strip" aria-hidden="true" hidden></div>
         <ul id="reqList"></ul>
         <div class="req-foot" id="reqFoot"></div>
         <div class="req-hint" id="reqHint"></div>
@@ -1142,46 +1402,22 @@
           PlayPad
         </a>
         <h1 class="brand">Brick Buddies</h1>
-        <p class="tag">
-          A cosy rainy hillside, a house full of ladders &mdash; and buddies who need a place to
-          live. Build their rooms block by block.
-        </p>
-        <ol class="steps">
-          <li>
-            <b aria-hidden="true">1</b
-            ><span>A buddy asks for a room &mdash; bedroom, kitchen, library&hellip;</span>
-          </li>
-          <li>
-            <b aria-hidden="true">2</b
-            ><span>Wall it in, back it, add a door, a light and furniture.</span>
-          </li>
-          <li>
-            <b aria-hidden="true">3</b
-            ><span>They move in, you earn coins to unlock fancier blocks.</span>
-          </li>
-        </ol>
+        <p class="tag">Build cosy rooms for your new buddies.</p>
         <button id="startBtn" class="btn primary">Start building</button>
         <div class="row">
+          <button id="titleHelp" class="btn quiet" aria-haspopup="dialog">
+            <span aria-hidden="true">?</span> How to play
+          </button>
           <button id="titleSound" class="btn quiet" aria-pressed="true">
             Sound: <span id="titleSoundState">on</span>
           </button>
         </div>
         <p class="note" id="saveNote" hidden></p>
         <p class="keys keys-kb">
-          <kbd>A</kbd>/<kbd>D</kbd> move &middot; <kbd>W</kbd>/<kbd>Space</kbd> jump &middot;
-          <kbd>click</kbd> place &middot; <kbd>right-click</kbd> break &middot;
-          <kbd>I J K L</kbd> aim &middot; <kbd>F</kbd> place &middot; <kbd>X</kbd> break &middot;
-          <kbd>1</kbd>&ndash;<kbd>0</kbd> hotbar &middot; <kbd>E</kbd> items
+          <kbd>A</kbd> <kbd>D</kbd> walk &middot; <kbd>F</kbd> or click to place &middot;
+          <b>?</b> help
         </p>
-        <p class="keys keys-touch">
-          <span class="k-long"
-            >Use the round pads to walk and jump &middot; tap a tile to place &middot; switch to
-            <b>Break</b> to remove &middot; <b>Items</b> opens the build menu</span
-          ><span class="k-short"
-            >Pads walk &middot; tap to place &middot; <b>Break</b> removes &middot; <b>Items</b> for
-            more</span
-          >
-        </p>
+        <p class="keys keys-touch">Pads walk &middot; tap to place &middot; <b>?</b> help</p>
       </div>
     </section>
 
@@ -1193,6 +1429,65 @@
       </p>
       <button id="staleReload" class="btn primary">Reload now</button>
     </div>
+
+    <!-- ========== How to play (first run + the ? button) ========== -->
+    <section id="how" class="overlay" role="dialog" aria-label="How to play" aria-modal="true">
+      <div class="card how-card">
+        <div class="how-head">
+          <h2>How to play</h2>
+          <button id="howClose" class="chip-btn" aria-label="Close how to play">
+            <span aria-hidden="true">&#10005;</span>
+          </button>
+        </div>
+        <ol class="how-steps">
+          <li class="how-step">
+            <div class="how-pic" aria-hidden="true">
+              <canvas data-face="pip" width="16" height="16"></canvas>
+              <span class="how-sym">&#128172;</span>
+              <canvas data-icon="bed" width="32" height="32"></canvas>
+            </div>
+            <p><b class="num" aria-hidden="true">1</b>Pip wants a room.</p>
+          </li>
+          <li class="how-step">
+            <div class="how-pic" aria-hidden="true">
+              <span class="how-sym pad">&#9664;</span>
+              <span class="how-sym pad">&#9654;</span>
+              <span class="how-sym pad">&#9650;</span>
+            </div>
+            <p>
+              <b class="num" aria-hidden="true">2</b
+              ><span class="for-touch">Use the round pads to walk.</span
+              ><span class="for-keys">Walk with A and D.</span>
+            </p>
+          </li>
+          <li class="how-step">
+            <div class="how-pic" aria-hidden="true">
+              <canvas data-icon="door" width="32" height="32"></canvas>
+              <span class="how-sym">&#10140;</span>
+              <span class="how-sym">&#128070;</span>
+            </div>
+            <p>
+              <b class="num" aria-hidden="true">3</b
+              ><span class="for-touch">Pick a block. Tap to place it.</span
+              ><span class="for-keys">Pick a block. Click or press F.</span>
+            </p>
+          </li>
+          <li class="how-step">
+            <div class="how-pic" aria-hidden="true">
+              <span class="how-box"><canvas data-icon="bed" width="32" height="32"></canvas></span>
+              <span class="how-box"
+                ><canvas data-icon="torch" width="32" height="32"></canvas
+              ></span>
+              <span class="how-box"><canvas data-icon="door" width="32" height="32"></canvas></span>
+              <span class="how-sym">&#10140;</span>
+              <span class="how-sym">&#127968;</span>
+            </div>
+            <p><b class="num" aria-hidden="true">4</b>Tick every box. Pip moves in!</p>
+          </li>
+        </ol>
+        <button id="howGo" class="btn primary">Let&rsquo;s go!</button>
+      </div>
+    </section>
 
     <!-- ========== Pause menu ========== -->
     <section id="menu" class="overlay" role="dialog" aria-label="Menu" aria-modal="true">
@@ -3201,9 +3496,29 @@
           [20, 27],
           [21, 27],
         ];
+        /**
+         * The first request's hut: roof, walls and back wall are already up on the flat plot left of the
+         * house, with the doorway left open. The first buddy then needs only a bed, a torch and a door
+         * (three taps), so a young child's first goal is a win rather than a 30-block recipe. Interior is
+         * 6 x 3; the right-hand wall faces the house and carries the doorway.
+         */
+        var HUT = { xL: HOUSE_X - 15, xR: HOUSE_X - 8, g: SURF };
+        function starterHut() {
+          var xL = HUT.xL;
+          var xR = HUT.xR;
+          var g = HUT.g; // the grass row the hut stands on
+          var x;
+          var y;
+          for (x = xL; x <= xR; x++) fg[(g - 4) * W + x] = T.PLANKS; // roof
+          for (y = g - 3; y <= g - 1; y++) fg[y * W + xL] = T.PLANKS; // left wall
+          fg[(g - 3) * W + xR] = T.PLANKS; // right wall above the doorway
+          for (y = g - 3; y <= g - 1; y++)
+            for (x = xL + 1; x <= xR - 1; x++) bg[y * W + x] = BGW.PLANKS; // back wall
+        }
         function buildStarter() {
           starterShell();
           starterOutside();
+          starterHut();
           starterTop();
           starterMid();
           starterGround();
@@ -4301,23 +4616,27 @@
         }
         /** Can this item go with its anchor tile at (tx, ty)? Returns {ok, reason}. */
         function canPlace(it, tx, ty, ignoreReach) {
-          var no = function (r) {
-            return { ok: false, reason: r };
+          // `code` is what code branches on (far | bounds | bedrock | there | blocked | standing |
+          // support | locked); `reason` is the words shown to the player.
+          var no = function (r, code) {
+            return { ok: false, reason: r, code: code };
           };
-          if (!ignoreReach && !playerReach(tx, ty)) return no("Too far away");
+          if (!ignoreReach && !playerReach(tx, ty)) return no("Too far away", "far");
           var tiles = it.tiles;
           for (var i = 0; i < tiles.length; i++) {
             var x = tx + tiles[i][0];
             var y = ty + tiles[i][1];
-            if (!inb(x, y)) return no("Outside the world");
-            if (y >= H - 2) return no("That is bedrock");
+            if (!inb(x, y)) return no("Outside the world", "bounds");
+            if (y >= H - 2) return no("That is bedrock", "bedrock");
           }
           if (it.layer === "bg") {
-            return getBg(tx, ty) === tiles[0][2] ? no("Already there") : { ok: true, reason: "" };
+            return getBg(tx, ty) === tiles[0][2]
+              ? no("Already there", "there")
+              : { ok: true, reason: "" };
           }
           for (var j = 0; j < tiles.length; j++) {
             var cur = getFg(tx + tiles[j][0], ty + tiles[j][1]);
-            if (cur !== T.AIR && cur !== T.TUFT) return no(blockerMessage(cur));
+            if (cur !== T.AIR && cur !== T.TUFT) return no(blockerMessage(cur), "blocked");
           }
           return placeRule(it, tx, ty, tiles);
         }
@@ -4348,7 +4667,7 @@
           if (solidItem) {
             for (var i = 0; i < tiles.length; i++) {
               var who = bodyAt(tx + tiles[i][0], ty + tiles[i][1]);
-              if (who) return { ok: false, reason: standingMessage(who) };
+              if (who) return { ok: false, reason: standingMessage(who), code: "standing" };
             }
           }
           var rule = it.rule;
@@ -4356,7 +4675,7 @@
           var points = supportPoints(rule, tx, ty, tiles);
           for (var k = 0; k < points.length; k++) {
             if (!supportOk(rule, points[k][0], points[k][1])) {
-              return { ok: false, reason: RULE_MESSAGE[rule] };
+              return { ok: false, reason: RULE_MESSAGE[rule], code: "support" };
             }
           }
           return { ok: true, reason: "" };
@@ -4369,7 +4688,8 @@
           });
         }
         function tryPlace(it, tx, ty) {
-          if (!isUnlocked(it)) return { ok: false, reason: "Locked: unlock it in the Items menu" };
+          if (!isUnlocked(it))
+            return { ok: false, reason: "Locked: unlock it in the Items menu", code: "locked" };
           var r = canPlace(it, tx, ty);
           if (!r.ok) return r;
           forcePlace(it, tx, ty);
@@ -4451,7 +4771,9 @@
             min: 6,
             needs: { bed: 1, light: 1 },
             reward: 40,
-            hint: "Tip: walk out the kitchen's left door and the porch door to the flat grass, and build a hut there. Plank walls and a roof (6 wide, 3 high inside), a Plank wall behind, then a door, a torch and a bed.",
+            hint: "Pip's hut is on the grass, left of the house. It only needs a bed, a torch and a door.",
+            hintFree:
+              "Build a room: Plank walls and a roof (6 wide, 3 high inside), a Plank wall behind, then a door, a torch and a bed.",
           },
           {
             type: "Kitchen",
@@ -4625,6 +4947,7 @@
           V.push(b);
           S.reqIndex = index; // the chain position is part of the save
           REQ = { index: index, def: def, buddy: b, state: "arriving", room: null, timer: 0 };
+          coachTimer = 0;
           reqTimed = index === 0 ? 10 : 6; // open once per new request, on touch screens too
           reqMoveT = 0;
           reqUser = null;
@@ -6143,6 +6466,7 @@
         /** Edge arrow pointing at the waiting buddy when they are off screen. */
         function drawBuddyArrow() {
           if (!REQ || (REQ.state !== "waiting" && REQ.state !== "arriving")) return;
+          if (COACH && COACH.kind === "walk") return; // the coach's own edge arrow points the way
           var b = REQ.buddy;
           var x = b.x * N - camL;
           var y = (b.y - 1) * N - camT;
@@ -6233,6 +6557,7 @@
           drawParticles(true);
           drawRooms();
           drawGhost();
+          drawCoach();
           drawBubbles();
           drawFloats();
           drawBuddyArrow();
@@ -6749,6 +7074,7 @@
           $("coinN").textContent = String(S.coins);
           $("housedN").textContent = String(S.housed);
           $("starN").textContent = String(S.happiness);
+          updateSimple();
         }
 
         // ---- hotbar ----
@@ -6786,6 +7112,7 @@
         }
         function selectSlot(i) {
           S.sel = (i + HOTBAR_SLOTS) % HOTBAR_SLOTS;
+          coachTimer = 0; // the coach reacts to the very next frame
           if (S.mode === "break") setMode("build");
           refreshHotbar();
           sfx.click();
@@ -6863,6 +7190,7 @@
         }
         function setMode(m) {
           S.mode = m;
+          coachTimer = 0;
           var b = $("modeBtn");
           b.dataset.mode = m;
           $("modeTxt").textContent = m === "break" ? "Break" : "Build";
@@ -7009,7 +7337,9 @@
             probe.room &&
             !probeClaimed
           );
-          var want = reqUser !== null ? reqUser : reqTimed > 0 || (!compact && candidate);
+          var coaching = !!(COACH && COACH.hut); // the coach line replaces the open checklist
+          var want =
+            reqUser !== null ? reqUser : !coaching && (reqTimed > 0 || (!compact && candidate));
           if (!$("build").hidden) want = false; // the build sheet has the floor; the card steps aside
           if (want !== reqOpen) setPanel(want);
         }
@@ -7088,7 +7418,8 @@
           $("reqFoot").textContent = list.length
             ? "Reward: " + def.reward + " coins and happiness stars"
             : "";
-          $("reqHint").textContent = list.length && S.reqIndex < 3 ? def.hint : "";
+          var hint = def.hintFree && !hutIntact() ? def.hintFree : def.hint;
+          $("reqHint").textContent = list.length && S.reqIndex < 3 ? hint : "";
           var face = $("reqFace").getContext("2d");
           face.clearRect(0, 0, 16, 16);
           face.drawImage(sprite(REQ.buddy.look), 0, 0, 16, 16, 0, 0, 16, 16);
@@ -7096,6 +7427,428 @@
         }
         function cap(s) {
           return s.charAt(0).toUpperCase() + s.slice(1);
+        }
+
+        // ===========================================================================
+        //  Help + coach: how a child who cannot read much learns the game in ~30 seconds
+        //  (feature: features/brick-buddies-onboarding/). The how-to is pictures with a few words; the
+        //  coach is one plain line plus a pulsing control and a world arrow saying what to do NEXT.
+        // ===========================================================================
+
+        // ---- how-to overlay (first run, and the ? button any time) ----
+        var HELP_KEY = "playpad.brickBuddies.help.v1"; // its own key: the save format is untouched
+        var helpOpen = false;
+        var helpSeen = false;
+        var helpPainted = false;
+        function readHelpSeen() {
+          try {
+            return localStorage.getItem(HELP_KEY) === "1";
+          } catch (e) {
+            return false;
+          }
+        }
+        function markHelpSeen() {
+          helpSeen = true;
+          try {
+            localStorage.setItem(HELP_KEY, "1");
+          } catch (e) {
+            /* private mode: it simply shows once per visit */
+          }
+        }
+        /** Draw the pixel pictures (item icons, Pip's face) into the how-to; done once, on first open. */
+        function paintHelp() {
+          if (helpPainted) return;
+          helpPainted = true;
+          Array.prototype.forEach.call($("how").querySelectorAll("canvas"), function (c) {
+            var g = c.getContext("2d");
+            g.imageSmoothingEnabled = false;
+            if (c.dataset.icon) g.drawImage(iconFor(c.dataset.icon), 0, 0);
+            else if (c.dataset.face)
+              g.drawImage(sprite(c.dataset.face), 0, 0, 16, 16, 0, 0, 16, 16);
+          });
+        }
+        function openHelp() {
+          if (helpOpen) return;
+          paintHelp();
+          helpOpen = true;
+          clearHeld(); // a held key or pad must not keep walking behind the card
+          endStroke();
+          $("how").classList.add("open");
+          $("helpBtn").setAttribute("aria-expanded", "true");
+          $("howGo").focus({ preventScroll: true });
+          if (S.phase !== "title") sfx.click();
+        }
+        function closeHelp() {
+          if (!helpOpen) return;
+          helpOpen = false;
+          $("how").classList.remove("open");
+          $("helpBtn").setAttribute("aria-expanded", "false");
+          markHelpSeen();
+          if (S.phase === "playing") view.focus({ preventScroll: true });
+          else if (S.phase === "title") $("startBtn").focus({ preventScroll: true });
+          if (S.phase !== "title") sfx.click();
+        }
+
+        // ---- coach ----
+        var COACH = null; // the current step: {sig, hut, kind, text, ico, pulse, world, strip}
+        var coachTimer = 0;
+        var coachPulseEl = null;
+        var HUT_JOBS = ["bed", "torch", "door"]; // the order the coach walks through (door last = the payoff)
+        /** True while the pre-built hut is still standing (an older save, or a wrecked hut, gets the plain coach). */
+        function hutIntact() {
+          var h = HUT;
+          return (
+            getFg(h.xL, h.g - 2) === T.PLANKS &&
+            getFg(h.xR, h.g - 3) === T.PLANKS &&
+            getFg(h.xL + 3, h.g - 4) === T.PLANKS &&
+            getBg(h.xL + 3, h.g - 2) === BGW.PLANKS
+          );
+        }
+        function hutHas(key) {
+          var h = HUT;
+          if (key === "door") return !!DOORS[getFg(h.xR, h.g - 1)];
+          for (var y = h.g - 3; y <= h.g - 1; y++)
+            for (var x = h.xL + 1; x <= h.xR - 1; x++) {
+              var id = getFg(x, y);
+              if (key === "bed" && id === T.BED_L) return true;
+              if (key === "torch" && (id === T.TORCH || id === T.LANTERN)) return true;
+            }
+          return false;
+        }
+        /** Where the coach points for a hut job: the planned spot, or any free interior spot that still works. */
+        function hutSpot(key) {
+          var h = HUT;
+          var it = ITEM_BY_KEY[key];
+          var planned =
+            key === "bed"
+              ? [h.xL + 2, h.g - 1]
+              : key === "torch"
+                ? [h.xL + 5, h.g - 2]
+                : [h.xR, h.g - 1];
+          var r = canPlace(it, planned[0], planned[1], true);
+          if (r.ok || key === "door" || r.code === "standing") return planned; // else look for a free spot
+          for (var y = h.g - 1; y >= h.g - 3; y--)
+            for (var x = h.xL + 1; x <= h.xR - 1; x++)
+              if (canPlace(it, x, y, true).ok) return [x, y];
+          return planned;
+        }
+        function footprint(it, spot) {
+          return it.tiles.map(function (t) {
+            return [spot[0] + t[0], spot[1] + t[1]];
+          });
+        }
+        function slotPulse(key) {
+          var i = S.hotbar.indexOf(key);
+          return i >= 0 ? { slot: i } : null;
+        }
+        /** One coach step. `ico` is {item} (a pixel icon) or {glyph}; `pulse` names the control to ring. */
+        function coachStep(kind, text, ico, extra) {
+          var c = {
+            kind: kind,
+            text: text,
+            ico: ico,
+            pulse: null,
+            world: null,
+            strip: null,
+            hut: false,
+            job: null, // {key, spot}: the item and anchor tile the coach is pointing at
+          };
+          Object.keys(extra || {}).forEach(function (k) {
+            c[k] = extra[k];
+          });
+          return c;
+        }
+        /** The first request, in the pre-built hut: walk there, then pick + place bed, torch and door. */
+        function planHutCoach() {
+          var strip = HUT_JOBS.map(function (k) {
+            return { key: k, done: hutHas(k) };
+          });
+          var job = strip.filter(function (j) {
+            return !j.done;
+          })[0];
+          if (!job) return null;
+          var it = ITEM_BY_KEY[job.key];
+          var spot = hutSpot(job.key);
+          var c = hutStep(it, spot, canPlace(it, spot[0], spot[1], false));
+          c.hut = true;
+          c.strip = strip;
+          c.job = { key: job.key, spot: spot };
+          return c;
+        }
+        /** "Pick the bed", plus the slot's key (5) when a keyboard is in use. */
+        function pickWords(it) {
+          var name = "Pick the " + it.name.toLowerCase();
+          var at = S.hotbar.indexOf(it.key);
+          return !touchMode && at >= 0 ? name + " (" + ((at + 1) % HOTBAR_SLOTS) + ")" : name;
+        }
+        /** Touch taps the glow; a mouse clicks it; until a mouse has moved, F places on it (no aiming). */
+        var mouseUsed = false;
+        function tapWords() {
+          if (touchMode) return "Tap the glowing spot";
+          return mouseUsed ? "Click the glowing spot" : "Press F on the glow";
+        }
+        var PLAIN_NAME = {};
+        PLAIN_NAME[T.PLANKS] = "plank";
+        PLAIN_NAME[T.BED_L] = "bed";
+        PLAIN_NAME[T.BED_R] = "bed";
+        PLAIN_NAME[T.TORCH] = "torch";
+        PLAIN_NAME[T.CHAIR] = "chair";
+        PLAIN_NAME[T.STONE] = "stone";
+        PLAIN_NAME[T.DIRT] = "dirt";
+        /** The footprint tiles that something already occupies (a plank the child put there, say). */
+        function blockersOf(tiles) {
+          return tiles.filter(function (t) {
+            var id = getFg(t[0], t[1]);
+            return id !== T.AIR && id !== T.TUFT;
+          });
+        }
+        /** Which single thing to say for the hut job `it` at `spot`, given what placing it would say. */
+        function hutStep(it, spot, res) {
+          var tiles = footprint(it, spot);
+          var world = { tiles: tiles, label: "Hut" };
+          if (res.code === "far") return walkStep(spot[0] + 0.5 < P.x, tiles);
+          if (res.code === "blocked") return clearStep(tiles);
+          var c;
+          if (S.mode === "break") {
+            c = coachStep("mode", "Switch to Build", { glyph: "\uD83D\uDD28" }, { world: world });
+            c.pulse = { id: "modeBtn" };
+          } else if (S.hotbar[S.sel] !== it.key) {
+            c = coachStep("pick", pickWords(it), { item: it.key }, { world: world });
+            c.pulse = slotPulse(it.key) || { id: "buildBtn" };
+          } else if (res.code === "standing") {
+            var east = it.key === "door" || P.x <= spot[0] + 1;
+            var glyph = east ? "\u25b6" : "\u25c0";
+            c = coachStep("step", "Step aside", { glyph: glyph }, { world: world });
+            c.pulse = touchMode ? { id: east ? "tRight" : "tLeft" } : null;
+          } else {
+            c = coachStep("tap", tapWords(), { item: it.key }, { world: world });
+          }
+          return c;
+        }
+        function walkStep(left, tiles) {
+          var text = touchMode ? "Walk to the hut" : "Walk to the hut (A D)";
+          var world = { tiles: tiles, label: "Hut", arrowOnly: true };
+          var c = coachStep("walk", text, { glyph: left ? "\u25c0" : "\u25b6" }, { world: world });
+          c.pulse = touchMode ? { id: left ? "tLeft" : "tRight" } : null;
+          return c;
+        }
+        /** Something is in the way of the glowing spot: say so, ring Break, then point at the block. */
+        function clearStep(tiles) {
+          var inWay = blockersOf(tiles);
+          var world = { tiles: inWay.length ? inWay : tiles, label: "Hut" };
+          if (S.mode !== "break") {
+            var c = coachStep("clear", "Switch to Break", { glyph: "\u26CF" }, { world: world });
+            c.pulse = { id: "modeBtn" };
+            return c;
+          }
+          var name = PLAIN_NAME[getFg(inWay[0][0], inWay[0][1])] || "block";
+          return coachStep("break", "Break the " + name, { glyph: "\u26CF" }, { world: world });
+        }
+        /** Later requests: name the first missing thing, and ring its hotbar slot or the Items button. */
+        function planGenericCoach() {
+          var def = REQ.def;
+          var pr = probe && !probeClaimed ? probe : null;
+          if (!pr || !(pr.room || pr.open))
+            return coachStep("build", "Build " + def.phrase, { item: "planks" });
+          var row = checklist(def, pr).filter(function (r) {
+            return r.ok !== true && !r.info;
+          })[0];
+          if (!row) return null;
+          var key = row.icon;
+          var text = coachWords(row, pr);
+          var it = ITEM_BY_KEY[key];
+          var c = coachStep("need", text, it ? { item: key } : { glyph: "↔" });
+          if (!it) return c;
+          var slot = S.hotbar.indexOf(key);
+          if (slot >= 0) {
+            if (!$("build").hidden && S.hotbar[S.sel] === key) {
+              c = coachStep("done-items", "Tap Done", { glyph: "✓" });
+              c.pulse = { id: "buildClose" };
+            } else if (S.hotbar[S.sel] !== key || S.mode === "break") c.pulse = { slot: slot };
+          } else if ($("build").hidden) {
+            c = coachStep("items", "Open Items", { item: key });
+            c.pulse = { id: "buildBtn" };
+          } else if (buildCat !== it.cat) {
+            c = coachStep("tab", "Open " + cap(it.cat), { item: key });
+            c.pulse = { tab: it.cat };
+          } else {
+            c = coachStep("unlock", "Pick the " + it.name.toLowerCase(), { item: key });
+            c.pulse = { item: key };
+          }
+          return c;
+        }
+        /** The plain-language imperative for one unmet checklist row. */
+        function coachWords(row, pr) {
+          if (row.icon === "planks") return pr.open ? "Close the gap" : "Build walls and a roof";
+          if (row.icon === "wallPlanks") return "Fill the back wall";
+          if (row.icon === "door") return "Add a door";
+          if (row.icon === "size")
+            return /^Too big/.test(row.text) ? "Make it smaller" : "Make it bigger";
+          return "Add " + row.text.replace(/ \(.*\)$/, "");
+        }
+        function planCoach() {
+          if (!REQ || S.phase !== "playing") return null;
+          if (REQ.state === "moving")
+            return coachStep("moving", REQ.buddy.name + " is moving in!", { glyph: "🏠" });
+          if (REQ.state === "next") return coachStep("next", "A new home!", { glyph: "🎉" });
+          if (REQ.index === 0 && hutIntact()) {
+            var hut = planHutCoach();
+            if (hut) return hut;
+          }
+          if (REQ.state === "arriving")
+            return coachStep("wait", REQ.buddy.name + " is coming!", { glyph: "👀" });
+          if (REQ.state !== "waiting") return null;
+          // nothing left to add: the buddy is about to notice (the room is checked every 0.25 s)
+          return (
+            planGenericCoach() ||
+            coachStep("wait", REQ.buddy.name + " is coming!", { glyph: "\uD83D\uDC40" })
+          );
+        }
+        function coachSig(c) {
+          if (!c) return "";
+          var s = c.kind + "|" + c.text + "|" + (c.ico.item || c.ico.glyph);
+          if (c.strip)
+            s += c.strip
+              .map(function (j) {
+                return j.key + (j.done ? "1" : "0");
+              })
+              .join("");
+          return s;
+        }
+        /** Ring the control to use next (and un-ring the last one). */
+        function setPulse(spec) {
+          var el = null;
+          if (spec) {
+            if (spec.slot !== undefined) el = $("hotbar").children[spec.slot];
+            else if (spec.id) el = $(spec.id);
+            else if (spec.tab) el = document.querySelector('.tab[data-cat="' + spec.tab + '"]');
+            else if (spec.item) {
+              var name = ITEM_BY_KEY[spec.item].name;
+              el = Array.prototype.filter.call(
+                document.querySelectorAll("#items .item"),
+                function (b) {
+                  return b.getAttribute("aria-label").indexOf(name) === 0;
+                },
+              )[0];
+            }
+          }
+          if (el === coachPulseEl) return;
+          if (coachPulseEl) coachPulseEl.classList.remove("coach-pulse");
+          coachPulseEl = el || null;
+          if (coachPulseEl) coachPulseEl.classList.add("coach-pulse");
+        }
+        function renderCoach(c) {
+          var box = $("coach");
+          var strip = $("coachStrip");
+          box.hidden = !c;
+          strip.hidden = !c || !c.strip;
+          if (!c) return;
+          $("coachText").textContent = c.text;
+          var ico = $("coachIco");
+          ico.textContent = "";
+          if (c.ico.item) ico.appendChild(rowIcon(c.ico.item));
+          else ico.textContent = c.ico.glyph;
+          strip.textContent = "";
+          (c.strip || []).forEach(function (j) {
+            var cell = document.createElement("span");
+            cell.className = "cs" + (j.done ? " done" : "");
+            cell.appendChild(rowIcon(j.key));
+            strip.appendChild(cell);
+          });
+        }
+        function refreshCoach() {
+          var c = planCoach();
+          var changed = coachSig(c) !== coachSig(COACH);
+          COACH = c;
+          if (changed) renderCoach(c);
+          setPulse(c && c.pulse);
+          if (changed) refreshUiRects();
+        }
+        function tickCoach(dt) {
+          coachTimer -= dt;
+          if (coachTimer > 0) return;
+          coachTimer = 0.2;
+          refreshCoach();
+        }
+        /** The pulsing outline + bouncing arrow on the tile(s) to use, or an edge arrow when it is off screen. */
+        function drawCoach() {
+          var w = COACH && COACH.world;
+          if (!w || S.phase !== "playing" || helpOpen) return;
+          var t = performance.now() / 1000;
+          var bob = reducedMotion ? 0 : Math.abs(Math.sin(t * 4)) * 0.3 * N;
+          var glow = reducedMotion ? 0.9 : 0.62 + 0.3 * Math.sin(t * 5);
+          var box = { l: 1e9, r: -1e9, top: 1e9, bot: -1e9 };
+          w.tiles.forEach(function (tt) {
+            var gx = tt[0] * N - camL;
+            var gy = tt[1] * N - camT;
+            box.l = Math.min(box.l, gx);
+            box.r = Math.max(box.r, gx + N);
+            box.top = Math.min(box.top, gy);
+            box.bot = Math.max(box.bot, gy + N);
+          });
+          var cx = (box.l + box.r) / 2;
+          var cy = (box.top + box.bot) / 2;
+          vctx.save();
+          if (cx > 0 && cx < vwD && cy > 0 && cy < vhD) {
+            if (!w.arrowOnly) drawGlowTiles(w.tiles, glow);
+            drawDownArrow(cx, box.top - 0.12 * N - bob);
+          } else {
+            // off screen: a label hugging the edge nearest the target, nudging toward it
+            var side = cx <= 0 ? -1 : cx >= vwD ? 1 : 0;
+            var text = (side < 0 ? "\u25c0 " : "") + w.label + (side > 0 ? " \u25b6" : "");
+            var px = clamp(cx, 60 * dpr, vwD - 60 * dpr) + side * bob;
+            pill(text, px, clamp(cy, vhD * 0.4, vhD * 0.58), 0.95, "#ffe3a8", "#3a2412");
+          }
+          vctx.restore();
+        }
+        /** A pulsing gold fill + outline on each tile of the spot to use. */
+        function drawGlowTiles(tiles, glow) {
+          vctx.globalAlpha = glow;
+          tiles.forEach(function (tt) {
+            var gx = tt[0] * N - camL;
+            var gy = tt[1] * N - camT;
+            vctx.fillStyle = "rgba(255,211,107,0.30)";
+            vctx.fillRect(gx, gy, N, N);
+            vctx.strokeStyle = "#ffd36b";
+            vctx.lineWidth = 3 * dpr;
+            vctx.strokeRect(gx + 1.5 * dpr, gy + 1.5 * dpr, N - 3 * dpr, N - 3 * dpr);
+          });
+          vctx.globalAlpha = 1;
+        }
+        /** A chunky white-gold arrow whose tip is at (x, tipY), pointing down at the tile. */
+        function drawDownArrow(x, tipY) {
+          var s = Math.max(N * 0.9, 26 * dpr);
+          vctx.beginPath();
+          vctx.moveTo(x, tipY);
+          vctx.lineTo(x - s * 0.55, tipY - s * 0.65);
+          vctx.lineTo(x - s * 0.22, tipY - s * 0.65);
+          vctx.lineTo(x - s * 0.22, tipY - s * 1.3);
+          vctx.lineTo(x + s * 0.22, tipY - s * 1.3);
+          vctx.lineTo(x + s * 0.22, tipY - s * 0.65);
+          vctx.lineTo(x + s * 0.55, tipY - s * 0.65);
+          vctx.closePath();
+          vctx.lineJoin = "round";
+          vctx.lineWidth = 4 * dpr;
+          vctx.strokeStyle = "rgba(40,20,8,0.9)";
+          vctx.stroke();
+          vctx.fillStyle = "#ffe08a";
+          vctx.fill();
+        }
+        /**
+         * Until the first buddy has moved in: no coin / star counters, no Items menu, no Look button.
+         * Only while the guided hut is there to follow (an older save, or a wrecked hut, plays as before).
+         */
+        function updateSimple() {
+          // the three things the first room needs must be on the bar, else the Items button stays
+          var kit = HUT_JOBS.every(function (k) {
+            return S.hotbar.indexOf(k) >= 0;
+          });
+          var simple = S.reqIndex === 0 && S.housed === 0 && kit && hutIntact();
+          if (document.body.classList.contains("simple") === simple) return;
+          document.body.classList.toggle("simple", simple);
+          fitHotbar();
+          refreshUiRects();
+          fitFloaters();
         }
 
         // ---- screens ----
@@ -7153,7 +7906,9 @@
           refreshHud();
           refreshRequestPanel(true);
           setMode("build");
+          refreshCoach();
           announce("Brick Buddies started. You are in the starter house.");
+          if (!helpSeen) openHelp(); // first run: the picture how-to, over the live scene
         }
         function resetWorld() {
           resetState();
@@ -7219,12 +7974,48 @@
         }
         function doAimAction(kind) {
           var t = aim.mode === "kb" ? aimTileKb() : [aim.tx, aim.ty];
+          // a keyboard player never has to aim at the coach's glowing spot: F places on it
+          var it = itemInHand();
+          if (kind === "place" && it && COACH && COACH.job && COACH.job.key === it.key)
+            t = COACH.job.spot;
           if (kind === "break") applyBreak(t[0], t[1], true);
           else applyPlace(t[0], t[1]);
+        }
+        /**
+         * Tapping ANY tile of the glowing spot places the coached item on it (a door is two tiles tall
+         * and a bed two wide: a child taps "the glow", not the one anchor tile the rules want).
+         */
+        function coachAnchor(tx, ty, it) {
+          var j = COACH && COACH.job;
+          if (!j || !it || it.key !== j.key) return null;
+          var hit = footprint(it, j.spot).some(function (t) {
+            return t[0] === tx && t[1] === ty;
+          });
+          return hit ? j.spot : null;
+        }
+        /** The coach's glowing spot was tapped with a different item in hand: nudge, do not place. */
+        function coachWrongItem(tx, ty, it) {
+          var j = COACH && COACH.job;
+          if (!j || COACH.kind !== "pick" || !it || it.key === j.key) return null;
+          var on = footprint(ITEM_BY_KEY[j.key], j.spot).some(function (t) {
+            return t[0] === tx && t[1] === ty;
+          });
+          return on ? ITEM_BY_KEY[j.key] : null;
         }
         function applyPlace(tx, ty) {
           if (interactAt(tx, ty)) return;
           var it = itemInHand();
+          var wanted = coachWrongItem(tx, ty, it);
+          if (wanted) {
+            failMsg("Pick the " + wanted.name.toLowerCase() + " first");
+            coachTimer = 0;
+            return;
+          }
+          var spot = coachAnchor(tx, ty, it);
+          if (spot) {
+            tx = spot[0];
+            ty = spot[1];
+          }
           if (!it) {
             failMsg("This slot is empty. Open Items to put something in it.");
             return;
@@ -7233,7 +8024,11 @@
           if (!r.ok) {
             failMsg(r.reason);
             aim.until = performance.now() + 700;
-          } else announce("Placed " + it.name + ".");
+          } else {
+            coachTimer = 0;
+            if (COACH) COACH.job = null; // a drag over the rest of the glow must not re-place it
+            announce("Placed " + it.name + ".");
+          }
         }
         function applyBreak(tx, ty, allowBg) {
           var r = tryBreak(tx, ty, allowBg);
@@ -7283,6 +8078,7 @@
             aim.has = true;
           },
           KeyF: aimWith("place"),
+          Enter: aimWith("place"),
           KeyX: aimWith("break"),
           BracketLeft: function () {
             selectSlot(S.sel - 1);
@@ -7333,6 +8129,14 @@
         }
         /** Esc and Tab behave the same in every phase; true when the key was consumed. */
         function globalKey(e) {
+          if (helpOpen) {
+            // the how-to has the floor: Esc closes it, Tab stays inside it, nothing reaches the game
+            if (e.code === "Escape") closeHelp();
+            else if (e.code === "Tab") trapTab(e, "how");
+            else return false;
+            e.preventDefault();
+            return true;
+          }
           if (e.code === "Escape") {
             if ($("confirm").classList.contains("open")) openConfirm(false);
             else if (!$("build").hidden) setBuild(false);
@@ -7351,7 +8155,7 @@
           var t = e.target;
           var onCtl = t && t.closest && t.closest("button, a[href], input, select, textarea");
           if ((e.code === "Space" || e.code === "Enter") && onCtl) return; // a focused control activates itself
-          if (globalKey(e) || S.phase !== "playing") return;
+          if (globalKey(e) || S.phase !== "playing" || helpOpen) return;
           sfx.init();
           if (gameKey(e)) e.preventDefault();
           mergeInput();
@@ -7463,6 +8267,7 @@
           var rec = ptrs.get(e.pointerId);
           var tile = tileFromEvent(e);
           if (e.pointerType === "mouse") {
+            mouseUsed = true;
             aim.tx = tile[0];
             aim.ty = tile[1];
             aim.mode = "mouse";
@@ -7634,6 +8439,13 @@
           });
           bindBackChip();
           onClick("titleSound", toggleSound);
+          onClick("titleHelp", openHelp);
+          onClick("helpBtn", function (e) {
+            openHelp();
+            releaseFocus(e);
+          });
+          onClick("howGo", closeHelp);
+          onClick("howClose", closeHelp);
           onClick("menuBtn", function () {
             setMenu(true);
           });
@@ -7942,6 +8754,7 @@
           updateAim();
           tickProbe(dt);
           tickPanel(dt);
+          tickCoach(dt);
           hudTimer += dt;
           if (hudTimer > 0.5) {
             hudTimer = 0;
@@ -8309,6 +9122,28 @@
             },
           };
         }
+        function hookCoach() {
+          return {
+            /** The coach's current step (kind, words, ringed control, world tiles), or null. */
+            coach: function () {
+              if (!COACH) return null;
+              return {
+                kind: COACH.kind,
+                text: COACH.text,
+                hut: COACH.hut,
+                pulse: coachPulseEl ? coachPulseEl.id || coachPulseEl.className : null,
+                tiles: COACH.world ? COACH.world.tiles : null,
+                strip: COACH.strip,
+              };
+            },
+            hut: function () {
+              return { xL: HUT.xL, xR: HUT.xR, g: HUT.g, intact: hutIntact() };
+            },
+            helpOpen: function () {
+              return helpOpen;
+            },
+          };
+        }
         function hookStorage() {
           return {
             save: function () {
@@ -8331,6 +9166,22 @@
             },
           };
         }
+        function hookConstants() {
+          return {
+            ids: T,
+            bgIds: BGW,
+            world: { w: W, h: H, houseX: HOUSE_X, houseY: HOUSE_Y },
+            saveKey: SAVE_KEY,
+            roomMin: ROOM_MIN,
+            roomMax: ROOM_MAX,
+            spawn: { player: START.player, visitor: START.visitor },
+            itemKeys: function () {
+              return ITEMS.map(function (i) {
+                return i.key;
+              });
+            },
+          };
+        }
         function installHook() {
           var api = {};
           Object.keys(HOOK_GETTERS).forEach(function (name) {
@@ -8341,26 +9192,14 @@
             });
           });
           api.debug = Object.assign(
-            {
-              ids: T,
-              bgIds: BGW,
-              world: { w: W, h: H, houseX: HOUSE_X, houseY: HOUSE_Y },
-              saveKey: SAVE_KEY,
-              roomMin: ROOM_MIN,
-              roomMax: ROOM_MAX,
-              spawn: { player: START.player, visitor: START.visitor },
-              itemKeys: function () {
-                return ITEMS.map(function (i) {
-                  return i.key;
-                });
-              },
-            },
+            hookConstants(),
             hookTiles(),
             hookWorldInfo(),
             hookRooms(),
             hookPeople(),
             hookBuddies(),
             hookEnvironment(),
+            hookCoach(),
             hookSoundMotion(),
             hookView(),
             hookStorage(),
@@ -8389,6 +9228,7 @@
           layout();
           updateCamera(0, true);
           buildHotbar();
+          helpSeen = readHelpSeen();
           bindUi();
           setMode("build");
           refreshMenu();

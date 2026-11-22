@@ -16,6 +16,7 @@
     <script src="../../scripts/theme.js"></script>
 
     <!-- Shared PlayPad design system -->
+    <script src="../../scripts/viewport.js"></script>
     <link rel="stylesheet" href="../../styles/tokens.css" />
     <link rel="stylesheet" href="../../styles/base.css" />
 
@@ -42,7 +43,13 @@
       }
       body {
         position: fixed;
-        inset: 0;
+        /* Sized to the VISIBLE height (scripts/viewport.js), not inset: 0 — on Android the fixed
+         box can run under the system bars and hide the bottom controls. */
+        top: 0;
+        left: 0;
+        right: 0;
+        height: min(100%, var(--pp-app-h, 100%)); /* never taller than the fixed box itself */
+        min-height: 0; /* cancels base.css body min-height: 100dvh, which would undo the line above */
         overflow: hidden;
         color-scheme: dark;
         --md-sys-color-primary: #ff6b85;
@@ -182,7 +189,7 @@
         );
         box-sizing: border-box;
         max-height: calc(
-          100vh - 150px
+          var(--pp-app-h, 100vh) - 150px
         ); /* fitFloaters() sets the exact free height above the dock */
         overflow-y: auto;
         overscroll-behavior: contain;
@@ -6641,7 +6648,8 @@
         var toastTimer = 0;
         /** Top edge (css px) of the lowest-reaching bottom controls: the dock, or the open build sheet. */
         function controlsTop() {
-          var top = window.innerHeight;
+          // body is the shell sized to the visible height (scripts/viewport.js), not the window
+          var top = document.body.clientHeight;
           Array.prototype.forEach.call(
             document.querySelectorAll("#hotbar, .hotrow .mode-btn, .tbtn, #build"),
             function (e) {
@@ -6686,7 +6694,7 @@
           var vw = document.documentElement.clientWidth;
           var left = 8;
           var right = vw - 8;
-          el.style.bottom = Math.round(window.innerHeight - floor + 8) + "px";
+          el.style.bottom = Math.round(document.body.clientHeight - floor + 8) + "px";
           el.style.left = "50%";
           el.style.maxWidth = "";
           var r = el.getBoundingClientRect();

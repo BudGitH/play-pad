@@ -1683,13 +1683,13 @@ async function main() {
       .filter((u) => u.startsWith(BASE))
       .every(
         (u) =>
-          /\/(games\/sparkle-salon\/(index\.html)?|styles\/(tokens|base)\.css|icons\/favicon\.svg)$/.test(
+          /\/(games\/sparkle-salon\/(index\.html)?|styles\/(tokens|base)\.css|icons\/favicon\.svg|scripts\/viewport\.js)$/.test(
             u.split("?")[0],
           ) || u === BASE + "/",
       );
     check(
       "AC-17",
-      "no console errors / failed requests, and nothing fetched beyond the page + shared css + favicon (no theme.js: the salon is pinned light)",
+      "no console errors / failed requests, and nothing fetched beyond the page + shared css + favicon + viewport.js (no theme.js: the salon is pinned light)",
       errors.length === 0 && foreign.length === 0 && allowed,
       errors.concat(foreign).join(" | ") || `${requests.length} requests`,
     );

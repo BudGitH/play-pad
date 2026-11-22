@@ -14,6 +14,7 @@
     <!-- Applies the player's saved light/dark choice (set on the hub) before first paint.
          Classic script, no defer: it must run before the stylesheets below paint. -->
     <script src="../../scripts/theme.js"></script>
+    <script src="../../scripts/viewport.js"></script>
 
     <!-- Shared PlayPad design system -->
     <link rel="stylesheet" href="../../styles/tokens.css" />
@@ -48,7 +49,13 @@
       }
       body {
         position: fixed;
-        inset: 0;
+        /* Sized to the VISIBLE height (scripts/viewport.js), not inset: 0 — on Android the fixed
+         box can run under the system bars and hide the bottom controls. */
+        top: 0;
+        left: 0;
+        right: 0;
+        height: min(100%, var(--pp-app-h, 100%)); /* never taller than the fixed box itself */
+        min-height: 0; /* cancels base.css body min-height: 100dvh, which would undo the line above */
         overflow: hidden;
         background: var(--md-sys-color-surface);
         color: var(--md-sys-color-on-surface);

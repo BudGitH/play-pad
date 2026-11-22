@@ -1172,6 +1172,7 @@
         gap: 6px;
       }
       .res-inner {
+        flex: none; /* never shrink below its content: a shrunk box centres its overflow and clips the top out of reach */
         width: 100%;
         max-width: 460px;
         margin: 0 auto;
@@ -1375,7 +1376,8 @@
         background: linear-gradient(
           180deg,
           rgba(247, 163, 200, 0) 0,
-          rgba(247, 163, 200, 0.96) 30%
+          rgba(247, 163, 200, 0.88) 45%,
+          rgba(247, 163, 200, 0.88) 100%
         );
       }
       .res-actions .big-btn {
@@ -1388,6 +1390,22 @@
       .res-actions[hidden],
       .res-card[hidden] {
         display: none;
+      }
+      /* narrow phones: both buttons share one row, so the bar stays one button tall */
+      @media (max-width: 380px) {
+        .res-actions {
+          flex-wrap: nowrap;
+          gap: 8px;
+          padding-left: 12px;
+          padding-right: 12px;
+          box-sizing: border-box;
+        }
+        .res-actions .big-btn {
+          flex: 1 1 0;
+          padding: 0 8px;
+          font-size: 17px;
+          white-space: nowrap;
+        }
       }
 
       /* ---------- Landscape phones / short viewports: stage left, tools in a column on the right ---------- */
@@ -1600,6 +1618,42 @@
       @media (max-height: 540px) and (min-width: 480px) {
         .wants {
           grid-template-columns: repeat(4, 1fr);
+        }
+      }
+      /* Short portrait phones: tighten the results so Play again and the "New best" line fit without scrolling */
+      @media (max-height: 700px) and (orientation: portrait) {
+        .res-inner {
+          padding-top: 42px;
+          gap: 4px;
+        }
+        .res-photo {
+          padding-bottom: 14px; /* room for the caption pill that hangs below the photo */
+        }
+        .photo {
+          width: min(60vw, 240px, calc((100dvh - 450px) * 0.75));
+          min-width: 132px;
+        }
+        .res-card {
+          padding: 6px 10px;
+        }
+      }
+      @media (max-height: 600px) and (orientation: portrait) {
+        .res-inner {
+          padding-top: 40px;
+        }
+        .photo {
+          min-width: 96px;
+        }
+        .star {
+          width: 40px;
+          height: 40px;
+        }
+        .star:nth-child(2) {
+          width: 46px;
+          height: 46px;
+        }
+        .earn {
+          font-size: 17px;
         }
       }
       @media (max-height: 700px) {
@@ -2769,6 +2823,7 @@
             unlock,
             setOn,
             applySound,
+            level: () => (ctx && master ? Number(master.gain.value.toFixed(3)) : null),
             setHidden,
             tick,
             stats,
@@ -4047,9 +4102,9 @@
             $(id).setAttribute("aria-pressed", Save.data.sound ? "true" : "false");
           Sfx.applySound(); // the toggle and the audio graph must agree
           if (run && state.phase === "playing") renderTray();
-          refreshUnlockSheet();
           say("Updated from another tab", 2200);
           announce("Coins and unlocks updated from another tab.");
+          refreshUnlockSheet(); // after the generic notice, so its own message ("already unlocked") is the one shown
         }
         Save.onExternalChange(adoptSavedState);
         const isUnlocked = (slot, opt) =>
@@ -5252,7 +5307,9 @@
         live("result", () => (run && run.result ? Object.assign({}, run.result) : null));
         live("stickers", () => stickersGrp.childNodes.length);
         live("kbd", () => ({ x: kbd.x, y: kbd.y, held: kbd.held }));
-        live("audio", () => Object.assign({ state: Sfx.ctxState(), on: Sfx.isOn() }, Sfx.stats));
+        live("audio", () =>
+          Object.assign({ state: Sfx.ctxState(), on: Sfx.isOn(), gain: Sfx.level() }, Sfx.stats),
+        );
         live("saved", () => JSON.parse(JSON.stringify(Save.data)));
         // Every helper is inert outside a live makeover EXCEPT addCoins (the probe seeds the wallet on the title screen) and
         // camera (a pure view change): the two documented exceptions in requirements.md AC-20.

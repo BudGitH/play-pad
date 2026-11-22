@@ -19,7 +19,7 @@
 | AC-5 Tap dab              | `AC-5`                                                                                                                 | e2e                      |
 | AC-6 Tap-to-choose        | `AC-6a` lenses, `AC-6b` accessories, `AC-6c` stickers                                                                  | e2e                      |
 | AC-7 Redo                 | `AC-7`                                                                                                                 | e2e                      |
-| AC-8 Next / Skip          | `AC-8a` (ready after done), `AC-8b` ("Photo!" on the last step)                                                        | e2e                      |
+| AC-8 Next / Skip          | `AC-8a` (ready after done), `AC-8b` ("Photo!" on the last step), `AC-8c` ("Skip" on all eight steps until done)        | e2e                      |
 | AC-9 Coins & unlocks      | `AC-9a` (lock badge, no Unlock when broke), `AC-9b` (spend + save + select), `AC-9c` (reload)                          | e2e                      |
 | AC-10 Persistence         | `AC-10a` (reload), `AC-10b` (hostile save), `AC-10c` (blocked storage)                                                 | integration              |
 | AC-11 Reveal              | `AC-11a` flash + stars, `AC-11b` coins banked, `AC-11c` `bestOverall`, `AC-11d` stars lit                              | e2e                      |
@@ -32,6 +32,7 @@
 | AC-18 file://             | `AC-18`                                                                                                                | e2e                      |
 | AC-19 Test hook           | `AC-19`                                                                                                                | e2e                      |
 | AC-20 QA-panel hardening  | `SS-C01`, `SS-C02`, `SS-C03`, `SS-C04`, `SS-C05`, `SS-C06`, `SS-C11a`/`b`, `SS-Q04`, `SS-Q07`, `SS-QA-03`, `SS-QA-05`  | e2e                      |
+| AC-21 Panel + round-2     | `RT1-hair`, `RT1-props`, `RT1-guide`, `RT1-nudge`, `R2-01` .. `R2-06` (R2-01/04 use two tabs)                          | e2e                      |
 
 ## Test cases
 
@@ -92,7 +93,7 @@ The Start button is a plain `<button>` whose accessible name is exactly "Start m
 
 ## Definition of done
 
-- [x] All probe checks pass (59/59 — see the report for the latest run).
+- [x] All probe checks pass (70/70 — see the report for the latest run).
 - [x] Every acceptance criterion in `requirements.md` is covered.
 - [x] The tests encode the **chosen** design (owner's reference): tray, tool cursor, step indicator, request card, photo.
 - [ ] `qa-report.md` is clean (no unresolved CRITICAL/HIGH) — **Phase 4, run by the orchestrator.**

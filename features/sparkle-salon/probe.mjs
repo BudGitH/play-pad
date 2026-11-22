@@ -661,6 +661,490 @@ async function checkMultiTab(browser) {
   await ctx.close();
 }
 
+// ================================================================== RT-1 + round-2 checks (RT1-*, R2-*)
+/** The visible tool's drawn extent (union of its parts' boxes: the svg itself is a bigger empty canvas). */
+const toolBox = (page) =>
+  S(page, () => {
+    const t = document.getElementById("tool");
+    const svg = [...t.querySelectorAll("svg")].find((e) => getComputedStyle(e).display !== "none");
+    if (!svg || !t.classList.contains("on")) return null;
+    let x0 = 1e9;
+    let y0 = 1e9;
+    let x1 = -1e9;
+    let y1 = -1e9;
+    for (const e of svg.querySelectorAll(":scope > g > *")) {
+      const r = e.getBoundingClientRect();
+      x0 = Math.min(x0, r.left);
+      y0 = Math.min(y0, r.top);
+      x1 = Math.max(x1, r.right);
+      y1 = Math.max(y1, r.bottom);
+    }
+    const fab = document.querySelector(".fab-row").getBoundingClientRect();
+    return { tool: t.dataset.tool, x0, y0, x1, y1, fabTop: fab.top, vw: innerWidth };
+  });
+
+/** Wait (the camera glides, the tool eases to its resting spot) until the tool is fully on screen above Redo / Skip. */
+async function settleTool(page) {
+  await page
+    .waitForFunction(
+      () => {
+        const t = document.getElementById("tool");
+        const svg = [...t.querySelectorAll("svg")].find(
+          (e) => getComputedStyle(e).display !== "none",
+        );
+        if (!svg || !t.classList.contains("on")) return false;
+        const fab = document.querySelector(".fab-row").getBoundingClientRect().top;
+        return [...svg.querySelectorAll(":scope > g > *")].every((e) => {
+          const r = e.getBoundingClientRect();
+          return r.left >= 0 && r.right <= innerWidth && r.top >= 0 && r.bottom <= fab;
+        });
+      },
+      null,
+      { timeout: 5000 },
+    )
+    .catch(() => {});
+  return toolBox(page);
+}
+/** Walk the eight steps; for each one that has a tool, record whether it rests fully on screen. */
+async function restOnEachStep(page, label, bad, seen) {
+  for (let i = 0; i < 8; i++) {
+    await page.waitForFunction((n) => window.__salon.step === n, i);
+    const stepId = await S(page, () => window.__salon.stepId);
+    if (!["lens", "acc"].includes(stepId)) {
+      const box = await settleTool(page);
+      const ok = box && box.x0 >= 0 && box.x1 <= box.vw && box.y0 >= 0 && box.y1 <= box.fabTop;
+      if (box) seen.add(box.tool);
+      if (!ok) bad.push(`${label} step ${i} ${JSON.stringify(box)}`);
+      if (label === "390x844" && i === 3) await shot(page, "390-wand-at-rest");
+      if (label === "390x844" && i === 5) await shot(page, "390-lipstick-at-rest");
+    }
+    await S(page, () => window.__salon.debug.nextStep());
+  }
+}
+/** RT1-props: at rest every tool (incl. the mascara wand's red heart tube and the lipstick) is fully on screen,
+ *  above the Redo / Skip row, at 390x844 and 360x640 on every step that has a tool. */
+async function checkToolsAtRest(browser) {
+  const bad = [];
+  const seen = new Set();
+  for (const viewport of [
+    { width: 390, height: 844 },
+    { width: 360, height: 640 },
+  ]) {
+    const k = await open(browser, { viewport, touch: true });
+    await begin(k.page);
+    await restOnEachStep(k.page, `${viewport.width}x${viewport.height}`, bad, seen);
+    await k.ctx.close();
+  }
+  check(
+    "RT1-props",
+    "every tool (sponge, brush, wand with its heart tube, lipstick, sticker) rests fully on screen above Redo/Skip at 390x844 and 360x640",
+    bad.length === 0 &&
+      ["sponge", "brush", "wand", "lipstick", "sticker"].every((t) => seen.has(t)),
+    bad.join(" | ") || [...seen].join(","),
+  );
+}
+
+/** RT1-hair: the owner's reference hair is lemon yellow, brightly lit with little dark shading. Same pixel measure as
+ *  the product panel's: pixels with hue 28-62deg, saturation >= .45 and value >= .5 on the 390x844 title screen. */
+async function checkHairPalette(browser) {
+  const k = await open(browser);
+  await k.page.waitForTimeout(400); // title entrance
+  const png = await k.page.screenshot({ type: "png" });
+  const probe = await browser.newPage();
+  const m = await probe.evaluate(async (b64) => {
+    const img = new Image();
+    img.src = "data:image/png;base64," + b64;
+    await img.decode();
+    const c = document.createElement("canvas");
+    c.width = img.width;
+    c.height = img.height;
+    const g = c.getContext("2d");
+    g.drawImage(img, 0, 0);
+    const d = g.getImageData(0, 0, c.width, c.height).data;
+    let n = 0;
+    let hue = 0;
+    let val = 0;
+    let dark = 0;
+    for (let i = 0; i < d.length; i += 4) {
+      const r = d[i] / 255;
+      const gg = d[i + 1] / 255;
+      const b = d[i + 2] / 255;
+      const mx = Math.max(r, gg, b);
+      const df = mx - Math.min(r, gg, b);
+      if (mx < 0.5 || df === 0 || df / mx < 0.45) continue;
+      let h = mx === r ? ((gg - b) / df + 6) % 6 : mx === gg ? (b - r) / df + 2 : (r - gg) / df + 4;
+      h *= 60;
+      if (h < 28 || h > 62) continue;
+      n++;
+      hue += h;
+      val += mx;
+      if (mx < 0.85) dark++;
+    }
+    return { n, hue: hue / n, val: val / n, dark: (dark / n) * 100 };
+  }, png.toString("base64"));
+  await probe.close();
+  check(
+    "RT1-hair",
+    "hair reads lemon like the reference: mean brightness >= 0.96, <= 4% darkened pixels, hue 42-45 degrees",
+    m.n > 20000 && m.val >= 0.96 && m.dark <= 4 && m.hue >= 41.8 && m.hue <= 45.2,
+    `n=${m.n} hue=${m.hue.toFixed(1)} brightness=${m.val.toFixed(3)} darkened=${m.dark.toFixed(2)}%`,
+  );
+  await k.ctx.close();
+}
+
+/** RT1-touch: first touch on each paint step shows the "paint with the tip" guide once; after ~4 s of nothing a ring
+ *  pulses on the target (and not at all with reduced motion); touching hides it. Also AC-8c: the last step reads Skip. */
+async function checkTouchGuidance(browser) {
+  const k = await open(browser, { touch: true });
+  await begin(k.page);
+  await playTo(k.page, "shadow");
+  const guideOn = () =>
+    S(k.page, () => document.getElementById("tipGuide").classList.contains("on"));
+  const p = await S(k.page, () => window.__salon.debug.regionPoint(0.5));
+  const before = await guideOn();
+  await k.page.touchscreen.tap(p.x, p.y + 46); // a fingertip below the target: the tool sits 46 px above it
+  const first = await guideOn();
+  const geometry = await S(k.page, () => {
+    const line = document.querySelector("#tipGuide i").getBoundingClientRect();
+    const ring = document.querySelector("#tipGuide b").getBoundingClientRect();
+    return { line: Math.round(line.height), ringDiameter: Math.round(ring.width) };
+  });
+  const said = await S(k.page, () => document.getElementById("bubble").textContent);
+  await k.page.waitForFunction(
+    () => !document.getElementById("tipGuide").classList.contains("on"),
+    null,
+    { timeout: 4000 },
+  );
+  await k.page.touchscreen.tap(p.x, p.y + 46);
+  const again = await guideOn();
+  await S(k.page, () => window.__salon.debug.completeStep());
+  await goNext(k.page); // lens
+  await goNext(k.page); // mascara: a new paint step, a new first touch
+  const pm = await S(k.page, () => window.__salon.debug.regionPoint(0.5));
+  await k.page.touchscreen.tap(pm.x, pm.y + 46);
+  const nextStep = await guideOn();
+  check(
+    "RT1-guide",
+    "first touch on a paint step shows a dotted line + pulse from fingertip to tool tip (once per step, with a hint)",
+    !before && first && geometry.line >= 40 && again === false && nextStep && /tip/i.test(said),
+    JSON.stringify({ before, first, geometry, again, nextStep, said }),
+  );
+  await k.ctx.close();
+
+  // idle nudge (mouse is fine: nothing is touched)
+  const n = await open(browser);
+  await begin(n.page);
+  await playTo(n.page, "blush");
+  const shown = await n.page
+    .waitForFunction(() => document.getElementById("nudge").classList.contains("on"), null, {
+      timeout: 8000,
+    })
+    .then(
+      () => true,
+      () => false,
+    );
+  const ring = await S(n.page, () => {
+    const r = document.getElementById("nudge").getBoundingClientRect();
+    return { w: Math.round(r.width), inside: r.left >= 0 && r.right <= innerWidth && r.top >= 0 };
+  });
+  const c = await S(n.page, () => window.__salon.debug.regionPoint(0.5));
+  await n.page.mouse.move(c.x, c.y);
+  await n.page.mouse.down();
+  const hidden = await n.page
+    .waitForFunction(() => !document.getElementById("nudge").classList.contains("on"), null, {
+      timeout: 1500,
+    })
+    .then(
+      () => true,
+      () => false,
+    );
+  await n.page.mouse.up();
+  await n.ctx.close();
+  const r = await open(browser, { reduced: true });
+  await begin(r.page);
+  await playTo(r.page, "blush");
+  const reducedShown = await r.page
+    .waitForFunction(() => document.getElementById("nudge").classList.contains("on"), null, {
+      timeout: 5500,
+    })
+    .then(
+      () => true,
+      () => false,
+    );
+  const reducedDisplay = await S(
+    r.page,
+    () => getComputedStyle(document.getElementById("nudge")).display,
+  );
+  await r.ctx.close();
+  check(
+    "RT1-nudge",
+    "after ~4 s idle on a paint step a ring pulses on the target; a touch hides it; reduced motion never shows it",
+    shown &&
+      ring.w >= 60 &&
+      ring.inside &&
+      hidden &&
+      reducedShown === false &&
+      reducedDisplay === "none",
+    JSON.stringify({ shown, ring, hidden, reducedShown, reducedDisplay }),
+  );
+}
+
+/** AC-8c: before the step is done the button reads "Skip" on every step, the last one included. */
+async function checkSkipLabel(browser) {
+  const k = await open(browser);
+  await begin(k.page);
+  const labels = [];
+  for (let i = 0; i < 8; i++) {
+    labels.push(await k.page.locator("#nextTxt").innerText());
+    if (i < 7) await goNext(k.page);
+  }
+  const aria = await k.page.locator("#nextBtn").getAttribute("aria-label");
+  check(
+    "AC-8c",
+    "the Next button reads 'Skip' on all eight steps until the step is done (the last step's label says it takes the photo)",
+    labels.every((t) => t === "Skip") && /photo/i.test(aria),
+    labels.join(",") + " | " + aria,
+  );
+  await k.ctx.close();
+}
+
+/** R2-01 + R2-04: another tab unlocks the same item while our sheet is open -> the sheet closes, the item is used and
+ *  nothing is charged; another tab muting the sound also silences this one (master gain follows). */
+async function checkOtherTab(browser) {
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  await ctx.addInitScript(withCoins(200));
+  const a = await ctx.newPage();
+  const b = await ctx.newPage();
+  await a.goto(URL);
+  await b.goto(URL);
+  await a.waitForFunction(() => window.__salon);
+  await b.waitForFunction(() => window.__salon);
+  await begin(a);
+  await playTo(a, "shadow");
+  await a.getByRole("button", { name: /Eye shadow: Mint, locked/ }).click();
+  await a.waitForFunction(() => document.querySelector("#unlockModal.open"));
+  await begin(b);
+  await playTo(b, "shadow");
+  await b.getByRole("button", { name: /Eye shadow: Mint, locked/ }).click();
+  await b.locator("#unlockYes").click();
+  await b.waitForFunction(() => window.__salon.saved.unlocked.includes("shadow:mint"));
+  const closed = await a
+    .waitForFunction(() => !document.querySelector("#unlockModal.open"), null, { timeout: 4000 })
+    .then(
+      () => true,
+      () => false,
+    );
+  const bCoins = await S(b, () => window.__salon.coins); // 200 + the step coins both tabs earned - the 50 B paid
+  const st = await S(a, () => ({
+    coins: window.__salon.coins,
+    saved: window.__salon.saved.coins,
+    mints: window.__salon.saved.unlocked.filter((u) => u === "shadow:mint").length,
+    used: !!document.querySelector('#tools .tool[data-opt="mint"][aria-pressed="true"]'),
+  }));
+  check(
+    "R2-01",
+    "another tab unlocked the item while our sheet was open: sheet closes, the item is used, no second charge",
+    closed && st.coins === bCoins && st.saved === bCoins && st.mints === 1 && st.used,
+    JSON.stringify({ closed, bCoins, ...st }),
+  );
+  // sound: A is playing music (a gesture unlocked audio); B mutes
+  await a
+    .waitForFunction(() => window.__salon.audio.gain > 0.5, null, { timeout: 8000 })
+    .catch(() => {});
+  const gain0 = await S(a, () => window.__salon.audio.gain);
+  await b.locator("#soundBtn2").click();
+  const muted = await a
+    .waitForFunction(
+      () => window.__salon.audio.on === false && window.__salon.audio.gain < 0.05,
+      null,
+      {
+        timeout: 4000,
+      },
+    )
+    .then(
+      () => true,
+      () => false,
+    );
+  const pressed = await a.locator("#soundBtn2").getAttribute("aria-pressed");
+  await b.locator("#soundBtn2").click();
+  const back = await a
+    .waitForFunction(
+      () => window.__salon.audio.on === true && window.__salon.audio.gain > 0.5,
+      null,
+      {
+        timeout: 4000,
+      },
+    )
+    .then(
+      () => true,
+      () => false,
+    );
+  check(
+    "R2-04",
+    "sound switched in another tab reaches this tab's audio graph (master gain 0 / 0.9), not just its toggle",
+    gain0 > 0.5 && muted && pressed === "false" && back,
+    JSON.stringify({ gain0, muted, pressed, back }),
+  );
+  await ctx.close();
+}
+
+/** R2-02: the request sheet's wishes grid is 2 columns unless there is room for 4 (short AND >= 480 wide), and never
+ *  overflows sideways. */
+async function checkWantsGrid(browser) {
+  const bad = [];
+  for (const [w, h, cols] of [
+    [320, 480, 2],
+    [375, 540, 2],
+    [390, 500, 2],
+    [360, 300, 2],
+    [479, 400, 2],
+    [568, 320, 4],
+    [844, 390, 4],
+    [390, 844, 2],
+  ]) {
+    const k = await open(browser, { viewport: { width: w, height: h } });
+    await startBtn(k.page).click();
+    await k.page.waitForFunction(() => document.querySelector("#reqModal.open"));
+    const r = await S(k.page, () => {
+      const m = document.getElementById("reqModal");
+      const sheet = m.querySelector(".sheet").getBoundingClientRect();
+      const ul = document.getElementById("reqWants");
+      return {
+        cols: getComputedStyle(ul).gridTemplateColumns.split(" ").length,
+        over:
+          m.scrollWidth > m.clientWidth ||
+          document.documentElement.scrollWidth > innerWidth ||
+          [...ul.children].some(
+            (li) =>
+              li.getBoundingClientRect().right > sheet.right + 0.5 ||
+              li.scrollWidth > li.clientWidth + 1,
+          ),
+      };
+    });
+    if (r.cols !== cols || r.over) bad.push(`${w}x${h} ${JSON.stringify(r)}`);
+    await k.ctx.close();
+  }
+  check(
+    "R2-02",
+    "request sheet wishes: 2 columns below 480px wide (4 only on short landscape), no horizontal overflow at 320x480 .. 844x390",
+    bad.length === 0,
+    bad.join(" | "),
+  );
+}
+
+/** R2-03: on short phones "New best" is not under the sticky button bar, and the landscape stars row is not clipped. */
+async function checkResultsLayout(browser) {
+  const bad = [];
+  for (const [w, h] of [
+    [360, 640],
+    [320, 568],
+    [375, 667],
+    [568, 320],
+  ]) {
+    const k = await open(browser, { viewport: { width: w, height: h } });
+    await begin(k.page);
+    await S(k.page, () => window.__salon.debug.skipToResults());
+    await k.page.waitForFunction(
+      () =>
+        window.__salon.phase === "results" &&
+        document.getElementById("resBest").textContent &&
+        !document.getElementById("resActions").hidden,
+      null,
+      { timeout: 12000 },
+    );
+    const at = (top) =>
+      S(
+        k.page,
+        (t) => {
+          const res = document.getElementById("results");
+          res.scrollTop = t ? res.scrollHeight : 0;
+          const R = (id) => document.querySelector(id).getBoundingClientRect();
+          return {
+            bestBottom: R("#resBest").bottom,
+            barTop: R("#resActions").top,
+            starsTop: R("#stars").top,
+            titleTop: R(".res-title").top,
+            hscroll: res.scrollWidth > res.clientWidth,
+          };
+        },
+        top,
+      );
+    const top = await at(false);
+    const end = await at(true);
+    const portrait = h > w;
+    const covered = portrait && top.bestBottom > top.barTop + 1;
+    const coveredEnd = end.bestBottom > end.barTop + 1;
+    const clipped = top.starsTop < 0 || top.titleTop < 0;
+    if (covered || coveredEnd || clipped || top.hscroll)
+      bad.push(`${w}x${h} ${JSON.stringify({ top, end })}`);
+    await k.ctx.close();
+  }
+  check(
+    "R2-03",
+    "results at 360x640, 320x568, 375x667 and 568x320: 'New best' clear of the button bar (at the top on portrait, always at the end), stars/title not clipped",
+    bad.length === 0,
+    bad.join(" | "),
+  );
+}
+
+/** R2-05 + R2-06: the "+10 coins" cheer only when coins were paid; unique ids; every --sp token is used; the lock
+ *  glyph clears 3:1 on its badge. */
+async function checkHousekeeping(browser) {
+  const k = await open(browser);
+  await begin(k.page);
+  await playTo(k.page, "acc");
+  const tiara = k.page.getByRole("button", { name: /Tiara: Pearl tiara/ });
+  await tiara.click();
+  const first = await S(k.page, () => document.getElementById("bubble").textContent);
+  await tiara.click(); // off: the step re-opens
+  await S(k.page, () => {
+    document.getElementById("bubble").textContent = "";
+  });
+  await tiara.click(); // on again: completes a second time, already paid
+  const second = await S(k.page, () => document.getElementById("bubble").textContent);
+  await k.ctx.close();
+
+  const t = await open(browser);
+  await begin(t.page);
+  await playTo(t.page, "shadow");
+  const css = await S(t.page, () => {
+    const lin = (c) => {
+      c /= 255;
+      return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+    };
+    const lum = ([r, g, b]) => 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+    const badge = document.querySelector(".tool.locked .badge");
+    const bg = getComputedStyle(badge)
+      .backgroundColor.match(/[\d.]+/g)
+      .slice(0, 3)
+      .map(Number);
+    const contrast = (lum([255, 255, 255]) + 0.05) / (lum(bg) + 0.05);
+    const text = [...document.querySelectorAll("style")].map((e) => e.textContent).join("\n");
+    const defined = [...text.matchAll(/^\s*(--sp-[a-z0-9-]+):/gm)].map((m) => m[1]);
+    const unused = defined.filter((d) => !text.includes(`var(${d}`));
+    const ids = {};
+    for (const e of document.querySelectorAll("[id]")) ids[e.id] = (ids[e.id] || 0) + 1;
+    return {
+      contrast,
+      unused,
+      dupes: Object.keys(ids).filter((i) => ids[i] > 1),
+    };
+  });
+  await t.ctx.close();
+  check(
+    "R2-05",
+    "the '+10 coins' cheer appears only when the step actually paid (not when Accessories is re-completed)",
+    /\+10 coins/.test(first) && second.length > 0 && !/coins/.test(second),
+    JSON.stringify({ first, second }),
+  );
+  check(
+    "R2-06",
+    "no duplicate ids, no unused --sp-* token, the lock glyph clears 3:1 on its badge",
+    css.dupes.length === 0 && css.unused.length === 0 && css.contrast >= 3,
+    JSON.stringify(css),
+  );
+}
+
 async function main() {
   const server = await ensureServer();
   const browser = await chromium.launch({
@@ -723,13 +1207,20 @@ async function main() {
     await page.getByRole("button", { name: "Let's glam!" }).click();
     await page.waitForFunction(() => !document.querySelector("#reqModal.open"));
     const fA = await S(page, () => window.__salon.frame);
-    await page.waitForTimeout(400);
+    // poll instead of sleeping a fixed 400 ms: a loaded machine runs fewer frames per second but still advances them
+    const t0 = Date.now();
+    const advanced = await page
+      .waitForFunction((from) => window.__salon.frame - from >= 8, fA, { timeout: 4000 })
+      .then(
+        () => true,
+        () => false,
+      );
     const fB = await S(page, () => window.__salon.frame);
     check(
       "AC-2b",
       "RAF loop runs while playing (frame increments)",
-      fB - fA >= 8,
-      `+${fB - fA} frames in 400ms`,
+      advanced,
+      `+${fB - fA} frames in ${Date.now() - t0}ms`,
     );
 
     const names = await page.locator("#dots li").count();
@@ -1295,6 +1786,16 @@ async function main() {
     await checkKbdLatch(browser);
     await checkAccessoriesAndGuards(browser);
     await checkMultiTab(browser);
+
+    // ------------------------------------------------------------------ RT-1 (product panel) + round-2 QA
+    await checkToolsAtRest(browser);
+    await checkHairPalette(browser);
+    await checkTouchGuidance(browser);
+    await checkSkipLabel(browser);
+    await checkOtherTab(browser);
+    await checkWantsGrid(browser);
+    await checkResultsLayout(browser);
+    await checkHousekeeping(browser);
 
     // ------------------------------------------------------------------ AC-18 file:// works
     {

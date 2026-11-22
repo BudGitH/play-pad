@@ -37,7 +37,7 @@ _Last updated: 2026-11-22 (PLAY-008 Sparkle Salon + PLAY-009 Brick Buddies; shar
   - `playpad.superDecoder.v1` `{v,best{quick,easy,normal,hard},bestOverall}`
   - `playpad.sunsetStride.v1` `{v,coins,unlocked[],equipped,highScore,muted}` (imports coins / best / mute once from the pre-rename `playpad.neonRush.v1`)
   - `playpad.sparkleSalon.v1` `{v,rev,coins,unlocked[],sound,looks[≤6],bestOverall}`
-  - `playpad.brickBuddies.v1` `{v,rev,…world (RLE+base64 fg/bg), coins, housed, reqIndex, buddies, claims, hotbar, sound, bestOverall}` (≈6 KB; a stale tab never overwrites a newer `rev`)
+  - `playpad.brickBuddies.v1` `{v,rev,…world (RLE+base64 fg/bg), coins, housed, req, buddies, claimRuns, hotbar, sound, bestOverall}` (≈6 KB; a stale tab never overwrites a newer `rev`)
   - Colour Rush and Snap persist nothing.
 - **Per-game state** (in-memory) — see each file's header comment: Colour Rush / Snap use a round state machine on `performance.now()` deadlines; Claw Catch has a `Phase` machine + prize pile in tray-normalised coordinates; Super Decoder has `session` / `code` + `Phase`; Sunset Stride has a pooled world + fixed-timestep sim (`SaveManager` is its only gateway to storage).
 - **Test hooks** — `window.__claw`, `__decoder`, `__stride`, `__salon`, `__buddies` mirror state for the smoke test and QA. They ship in production (local-only cheat surface, no backend).

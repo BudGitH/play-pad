@@ -103,14 +103,14 @@ export const ROUND_DRIVERS = {
     heartbeat: (page) => page.evaluate(() => window.__salon.frame),
   },
 
-  "block-haven": {
+  "brick-buddies": {
     start: "Start building",
-    signal: '__haven.phase === "playing", frame counter advancing',
+    signal: '__buddies.phase === "playing", frame counter advancing',
     async waitForRound(page) {
       await expect
-        .poll(() => page.evaluate(() => window.__haven?.phase), { timeout: ROUND_TIMEOUT_MS })
+        .poll(() => page.evaluate(() => window.__buddies?.phase), { timeout: ROUND_TIMEOUT_MS })
         .toBe("playing");
     },
-    heartbeat: (page) => page.evaluate(() => window.__haven.frame),
+    heartbeat: (page) => page.evaluate(() => window.__buddies.frame),
   },
 };

@@ -9,6 +9,11 @@
 
 ## ⏭️ Next (ready, not started)
 
+- **PLAY-010 — lint ratchet** (ledger `function-length`, 2nd): CI fails when `max-lines-per-function` / `max-depth` warnings rise above the committed baseline; then split the remaining long functions game by game.
+- **PLAY-011 — finish shared components** (ledger `duplicated-component-css`, 2nd): `.back-link` is now in base.css; move `.switch` and `#countdown` next.
+- **PLAY-012 — probes + smoke round two** (ledger `checkable-but-unenforced` 3rd, `primary-cta-below-fold` 2nd): a `probes` CI job (nightly + manual) for the Stride / Salon / Buddies probes; smoke asserts every primary CTA is in view without scrolling at 390×844 and 360×640, and that focus survives a pick.
+- **PLAY-013 — cross-game hardening scan** (ledger `multi-tab-save-overwrite`, `trust-boundary-tag-missing`, `colour-only-cue`, `held-key-stuck-on-blur`): apply the save `rev` guard + `TRUST_BOUNDARY` tags to Claw Catch, Super Decoder and Sunset Stride; add "shape as well as colour" to the design-review template.
+
 - **Close the STOP_SHIP ledger rows.** `tap-target-size` reached its 4th recurrence in PLAY-006 and the systemic fix (one `.switch` / `.back-link` in `styles/base.css`, then a shared `scripts/party.js` for the party `PALETTE` / `SHAPES` / avatars) is **not done**: the instances were fixed per copy. Do it (QC-04), or record an explicit risk acceptance. Same pass: `.chip-filter` hit area is 46px not 48 (`::after inset: -5px 0`, QC-10).
 - **Smoke test, round two** (QC-09 / QC-08 / QC-01): run every game's open check at 360×740, 768×1024 and 844×390 (today games run at 390×844 + 1366×800 only); reach results → Play again and a keyboard-only path; assert "focus `#quitBtn` in-round, press Space → setup screen" (the global-keydown recurrence); assert `__decoder.scoreGuess` on the AC-7 table and `__claw.catchOdds` bounds.
 - **Tooling:** flip `no-unused-vars` to `error` (0 warnings now; update the `eslint.config.mjs` comment and `ENFORCEMENT.md`). Split or justify the remaining long functions (28 `max-lines-per-function` warnings; worst: Claw `layout` 115, `paintBack` 87, Neon `makeMaglevAtlas` 84). Add the Tier-1 header block to `tests/*.mjs` and a real handle to `scripts/theme.js` (QC-14).

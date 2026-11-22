@@ -38,6 +38,16 @@
 /games/sunset-stride/index.html
   Cache-Control: public, max-age=0, must-revalidate
 
+/games/sparkle-salon/
+  Cache-Control: public, max-age=0, must-revalidate
+/games/sparkle-salon/index.html
+  Cache-Control: public, max-age=0, must-revalidate
+
+/games/brick-buddies/
+  Cache-Control: public, max-age=0, must-revalidate
+/games/brick-buddies/index.html
+  Cache-Control: public, max-age=0, must-revalidate
+
 # Vendored Three.js (version-pinned r147) + GLTFLoader + CC0 assets — safe to cache long
 /games/sunset-stride/three.min.js
   Cache-Control: public, max-age=604800

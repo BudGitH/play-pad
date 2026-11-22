@@ -878,6 +878,19 @@
       #tool.on {
         opacity: 1;
       }
+      /* the resting tool bobs gently: composited, so an idle screen does no per-frame main-thread work */
+      #tool.resting svg {
+        animation: toolBob 2.64s ease-in-out infinite;
+      }
+      @keyframes toolBob {
+        0%,
+        100% {
+          translate: 0 -4px;
+        }
+        50% {
+          translate: 0 4px;
+        }
+      }
       #tool svg {
         position: absolute;
         display: none;
@@ -1033,6 +1046,14 @@
         height: 100%;
         z-index: 40;
         pointer-events: none;
+      }
+      .twk {
+        position: absolute;
+        z-index: 40;
+        pointer-events: none;
+        opacity: 0;
+        background: center / contain no-repeat;
+        will-change: transform, opacity;
       }
       #flash {
         position: absolute;
@@ -2849,7 +2870,21 @@
         const cam = { zoom: 1, fx: 200, fy: 300 };
 
         /** Fit the 400x600 art into the host (contain), bottom-aligned, then apply the camera transform. */
+        /** Layout rects are read at most once per animation frame: every reader shares the snapshot, so a style write
+         *  (tool cursor, iris, nudge) is never followed by a forced synchronous layout. `loop` clears it each frame;
+         *  resize / camera moves clear it too. Sub-pixel staleness (the breathing sway) is invisible. */
+        const rectCache = new Map();
+        function rectOf(el) {
+          let r = rectCache.get(el);
+          if (!r) {
+            r = el.getBoundingClientRect();
+            rectCache.set(el, r);
+          }
+          return r;
+        }
+        const clearRects = () => rectCache.clear();
         function layoutStage(animate) {
+          clearRects(); // the stage is about to move: no reader may keep the old rects
           if (!stageHost) return;
           const hw = stageHost.clientWidth;
           const hh = stageHost.clientHeight;
@@ -2901,19 +2936,19 @@
         }
         /** Client px -> art units, and back (the rect already includes the camera + breathing transform). */
         function toUnits(cx, cy) {
-          const r = inner.getBoundingClientRect();
+          const r = rectOf(inner);
           return { x: ((cx - r.left) / r.width) * W, y: ((cy - r.top) / r.height) * H };
         }
         function toClient(x, y) {
-          const r = inner.getBoundingClientRect();
+          const r = rectOf(inner);
           return { x: r.left + (x / W) * r.width, y: r.top + (y / H) * r.height };
         }
         /** Client px -> app-local px (for the tool cursor and the fx canvas). */
         function toApp(cx, cy) {
-          const r = app.getBoundingClientRect();
+          const r = rectOf(app);
           return { x: cx - r.left, y: cy - r.top };
         }
-        const unitsPerPx = () => W / inner.getBoundingClientRect().width;
+        const unitsPerPx = () => W / rectOf(inner).width;
 
         // ============================================================================================
         // 5. REGIONS — coverage grids + bbox-sized paint canvases (rub-to-apply engine)
@@ -3642,41 +3677,82 @@
             p.rot += p.vr * dt;
           }
         }
+        /** Glowing stars are pre-rendered once per colour (shadowBlur per particle per frame was the costliest draw). */
+        const STAR_SPRITE_R = 24; // sprite star radius in sprite px; drawn scaled to each particle's size
+        const starSprites = new Map();
+        function starSprite(color) {
+          let sp = starSprites.get(color);
+          if (sp) return sp;
+          sp = document.createElement("canvas");
+          const pad = 12;
+          sp.width = sp.height = (STAR_SPRITE_R + pad) * 2;
+          const c = sp.getContext("2d");
+          c.translate(sp.width / 2, sp.height / 2);
+          c.fillStyle = color;
+          c.shadowColor = color;
+          c.shadowBlur = 8 * (STAR_SPRITE_R / 9); // matches the old 8px glow on a ~9px star
+          drawStar(c, STAR_SPRITE_R);
+          starSprites.set(color, sp);
+          return sp;
+        }
+        // Only the box the particles covered last frame is cleared (the full-screen clear + upload ran every frame).
+        let fxDirty = null;
+        /** Place the fx context at particle `p` (canvas px), rotated by p.rot and scaled by `k`. */
+        function fxAt(p, k) {
+          const c = Math.cos(p.rot) * k * fxDpr;
+          const sn = Math.sin(p.rot) * k * fxDpr;
+          fxCtx.setTransform(c, sn, -sn, c, fxDpr * p.x, fxDpr * p.y);
+        }
+        /** Draw one particle at life fraction `t` (alpha already set). */
+        function drawParticle(p, t) {
+          if (p.shape === "star") {
+            const sp = starSprite(p.color);
+            fxAt(p, (p.size * (1 - t * 0.4)) / STAR_SPRITE_R);
+            fxCtx.drawImage(sp, -sp.width / 2, -sp.height / 2);
+            return;
+          }
+          fxAt(p, 1);
+          fxCtx.fillStyle = p.color;
+          if (p.shape === "heart") drawHeart(fxCtx, p.size * (1 - t * 0.3) * 0.8);
+          else if (p.shape === "confetti")
+            fxCtx.fillRect(-p.size / 2, -p.size / 4, p.size, p.size / 2);
+          else if (p.shape === "bubble") {
+            fxCtx.strokeStyle = "rgba(255,255,255,.95)";
+            fxCtx.fillStyle = "rgba(255,255,255,.35)";
+            fxCtx.lineWidth = 1.5;
+            fxCtx.beginPath();
+            fxCtx.arc(0, 0, p.size, 0, 6.3);
+            fxCtx.fill();
+            fxCtx.stroke();
+          } else {
+            fxCtx.beginPath();
+            fxCtx.arc(0, 0, p.size * 0.35 * (1 - t * 0.5), 0, 6.3);
+            fxCtx.fill();
+          }
+        }
         function drawParticles() {
-          fxCtx.setTransform(fxDpr, 0, 0, fxDpr, 0, 0);
-          fxCtx.clearRect(0, 0, fxW, fxH);
+          fxCtx.setTransform(1, 0, 0, 1, 0, 0); // fxDirty is in canvas px
+          if (fxDirty) fxCtx.clearRect(fxDirty.x, fxDirty.y, fxDirty.w, fxDirty.h);
+          const box = { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity };
           for (const p of parts) {
             const t = p.life / p.max;
-            const a =
-              p.shape === "twinkle" ? Math.sin(t * Math.PI) : t < 0.7 ? 1 : 1 - (t - 0.7) / 0.3;
-            fxCtx.save();
-            fxCtx.globalAlpha = clamp(a, 0, 1);
-            fxCtx.translate(p.x, p.y);
-            fxCtx.rotate(p.rot);
-            fxCtx.fillStyle = p.color;
-            if (p.shape === "star" || p.shape === "twinkle") {
-              const sc = p.shape === "twinkle" ? 0.6 + 0.6 * Math.sin(t * Math.PI) : 1 - t * 0.4;
-              fxCtx.shadowColor = p.color;
-              fxCtx.shadowBlur = 8;
-              drawStar(fxCtx, p.size * sc);
-            } else if (p.shape === "heart") drawHeart(fxCtx, p.size * (1 - t * 0.3) * 0.8);
-            else if (p.shape === "confetti")
-              fxCtx.fillRect(-p.size / 2, -p.size / 4, p.size, p.size / 2);
-            else if (p.shape === "bubble") {
-              fxCtx.strokeStyle = "rgba(255,255,255,.95)";
-              fxCtx.fillStyle = "rgba(255,255,255,.35)";
-              fxCtx.lineWidth = 1.5;
-              fxCtx.beginPath();
-              fxCtx.arc(0, 0, p.size, 0, 6.3);
-              fxCtx.fill();
-              fxCtx.stroke();
-            } else {
-              fxCtx.beginPath();
-              fxCtx.arc(0, 0, p.size * 0.35 * (1 - t * 0.5), 0, 6.3);
-              fxCtx.fill();
-            }
-            fxCtx.restore();
+            const reach = p.size * 2.6 + 4; // covers the glow sprite, hearts and bubbles
+            box.x0 = Math.min(box.x0, p.x - reach);
+            box.y0 = Math.min(box.y0, p.y - reach);
+            box.x1 = Math.max(box.x1, p.x + reach);
+            box.y1 = Math.max(box.y1, p.y + reach);
+            fxCtx.globalAlpha = clamp(t < 0.7 ? 1 : 1 - (t - 0.7) / 0.3, 0, 1);
+            drawParticle(p, t);
           }
+          fxCtx.globalAlpha = 1;
+          fxCtx.setTransform(1, 0, 0, 1, 0, 0);
+          if (!parts.length) {
+            fxDirty = null;
+            return;
+          }
+          const x = Math.max(0, Math.floor(box.x0 * fxDpr));
+          const y = Math.max(0, Math.floor(box.y0 * fxDpr));
+          fxDirty = { x, y, w: Math.ceil(box.x1 * fxDpr) - x, h: Math.ceil(box.y1 * fxDpr) - y };
         }
         const TWINKLE_SPOTS = [
           [212, 58],
@@ -3690,26 +3766,45 @@
           [200, 372],
         ];
         let nextTwinkle = 0;
+        /** Ambient twinkles are a tiny pool of composited elements animated off the main thread: drawing them on the
+         *  full-screen fx canvas kept that canvas redrawing (and re-uploading) on almost every idle frame. */
+        const twinklePool = [];
+        let twinkleNext = 0;
+        function twinkleEl() {
+          if (twinklePool.length < 3) {
+            const el = document.createElement("i");
+            el.className = "twk";
+            el.setAttribute("aria-hidden", "true");
+            if (!twinkleEl.bg) twinkleEl.bg = "url(" + starSprite("#ffffff").toDataURL() + ")";
+            el.style.backgroundImage = twinkleEl.bg;
+            fxCv.after(el);
+            twinklePool.push(el);
+          }
+          const el = twinklePool[twinkleNext];
+          twinkleNext = (twinkleNext + 1) % 3;
+          return el;
+        }
         function twinkle(now) {
           if (reduceMotion || now < nextTwinkle) return;
           nextTwinkle = now + rand(600, 1400);
           const sp = pick(TWINKLE_SPOTS);
           const c = toClient(sp[0] + rand(-6, 6), sp[1] + rand(-6, 6));
           const p = toApp(c.x, c.y);
-          parts.push({
-            x: p.x,
-            y: p.y,
-            vx: 0,
-            vy: 0,
-            g: 0,
-            life: 0,
-            max: rand(0.9, 1.4),
-            size: rand(6, 11),
-            rot: 0,
-            vr: 0,
-            color: "#ffffff",
-            shape: "twinkle",
-          });
+          const el = twinkleEl();
+          // same look as a canvas twinkle: sprite px = 3 x star size; scale 0.6 -> 1.2 -> 0.6 while fading in and out
+          const d = 3 * rand(6, 11);
+          el.style.width = el.style.height = d.toFixed(1) + "px";
+          el.style.left = (p.x - d / 2).toFixed(1) + "px";
+          el.style.top = (p.y - d / 2).toFixed(1) + "px";
+          if (el.anim) el.anim.cancel();
+          el.anim = el.animate(
+            [
+              { opacity: 0, transform: "scale(0.6)" },
+              { opacity: 1, transform: "scale(1.2)" },
+              { opacity: 0, transform: "scale(0.6)" },
+            ],
+            { duration: rand(900, 1400), easing: "ease-in-out" },
+          );
         }
 
         // ============================================================================================
@@ -4193,6 +4288,10 @@
           const pct = Math.round(
             clamp(run.done[i] ? 1 : p / (stepDef.kind === "paint" ? DONE_AT : 1), 0, 1) * 100,
           );
+          // Skip the DOM writes when nothing visible changed (this runs on every brush move)
+          const key = i + "|" + pct + "|" + run.done.join() + "|" + run.skipped.join();
+          if (key === updateProgressUI.last) return;
+          updateProgressUI.last = key;
           const ring = $("ring");
           ring.style.setProperty("--p", String(pct));
           ring.classList.toggle("full", !!run.done[i]);
@@ -4830,7 +4929,7 @@
         const TOUCH_REACH = { shadow: 1.3, mascara: 1.5, blush: 1.6, lips: 1.8 };
         const pointer = { has: false, cx: 0, cy: 0 };
         const toolHome = { on: true, ax: 0, ay: 0 };
-        const stroke = { down: false, id: null, last: null, touch: false, lastT: 0 };
+        const stroke = { down: false, id: null, last: null, touch: false, lastT: 0, batch: false };
         const kbd = { x: 200, y: 300, held: false };
 
         function placeTool(ax, ay) {
@@ -4968,8 +5067,8 @@
         function homeSpot() {
           const ext = TOOL_EXT[STEPS[state.step].tool] || [-30, -30, 30, 30];
           const want = toClient(312, 410);
-          const wrap = stageWrap.getBoundingClientRect();
-          const fab = fabRow.getBoundingClientRect();
+          const wrap = rectOf(stageWrap);
+          const fab = rectOf(fabRow);
           const m = 12; // keeps the idle bob inside too
           const bottom = (fab.top > wrap.top + wrap.height / 2 ? fab.top : wrap.bottom) - m;
           const xLo = wrap.left + m - ext[0];
@@ -4980,14 +5079,15 @@
           };
         }
         /** At rest the tool hovers near the bottom-right of the stage, bobbing gently. */
-        function homeTool(now) {
+        function homeTool() {
           const c = homeSpot();
           const p = toApp(c.x, c.y);
-          const bob = reduceMotion ? 0 : Math.sin(now / 420) * 4;
-          const tx = p.x;
-          const ty = p.y + bob;
+          const dx = p.x - toolHome.ax;
+          const dy = p.y - toolHome.ay;
+          // Settled: no style write at all (the gentle bob is a CSS animation on the art, `#tool.resting svg`)
+          if (Math.abs(dx) < 0.2 && Math.abs(dy) < 0.2) return;
           const k = reduceMotion ? 1 : 0.18;
-          placeTool(toolHome.ax + (tx - toolHome.ax) * k, toolHome.ay + (ty - toolHome.ay) * k);
+          placeTool(toolHome.ax + dx * k, toolHome.ay + dy * k);
         }
         const stepRegion = () => {
           const stepDef = STEPS[state.step];
@@ -5041,7 +5141,7 @@
             if (regionProgress(region) >= DONE_AT && !run.done[state.step])
               completeStep(state.step);
           }
-          updateProgressUI();
+          if (!stroke.batch) updateProgressUI();
           return touched;
         }
         function placeSticker(u) {
@@ -5064,15 +5164,21 @@
           const cx = e ? e.cx : undefined;
           const cy = e ? e.cy : undefined;
           let touched = 0;
-          for (let i = 1; i <= n; i++) {
-            const t = i / n;
-            touched += applyAt(
-              { x: lerp(last.x, u.x, t), y: lerp(last.y, u.y, t) },
-              false,
-              i === n ? cx : undefined,
-              cy,
-            );
+          stroke.batch = true; // the progress ring / dots refresh once per move, not once per interpolated dab
+          try {
+            for (let i = 1; i <= n; i++) {
+              const t = i / n;
+              touched += applyAt(
+                { x: lerp(last.x, u.x, t), y: lerp(last.y, u.y, t) },
+                false,
+                i === n ? cx : undefined,
+                cy,
+              );
+            }
+          } finally {
+            stroke.batch = false;
           }
+          updateProgressUI();
           if (touched && tipGuideOn) learnedTip(); // the tip reached the work: the guide has done its job on this step
           const now = performance.now();
           const dt = Math.max(8, now - stroke.lastT);
@@ -5206,6 +5312,7 @@
         let hadParts = false;
         function loop(ts) {
           requestAnimationFrame(loop);
+          clearRects();
           const dt = Math.min(0.05, lastTs ? (ts - lastTs) / 1000 : 0.016);
           lastTs = ts;
           if (state.phase === "playing") state.frame++;
@@ -5213,7 +5320,10 @@
           nudgeTick(ts);
           twinkle(ts);
           irisFollow(ts);
-          if (state.phase === "playing" && toolHome.on && STEPS[state.step].tool) homeTool(ts);
+          const resting = state.phase === "playing" && toolHome.on && !!STEPS[state.step].tool;
+          if (resting) homeTool();
+          if (resting !== toolEl.classList.contains("resting"))
+            toolEl.classList.toggle("resting", resting);
           stepParticles(dt);
           if (parts.length || hadParts) {
             drawParticles();
@@ -5309,6 +5419,7 @@
         document.addEventListener("dblclick", (e) => e.preventDefault());
 
         function onResize() {
+          clearRects();
           sizeFx();
           layoutStage(false);
         }

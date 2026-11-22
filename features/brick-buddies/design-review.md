@@ -1,5 +1,7 @@
 # Design review — Brick Buddies (full path, owner reference as the chosen direction)
 
+**Reference image:** supplied privately by the owner (`house-ref.jpg`); it is intentionally **not committed** to this repo. The screenshots in `screens/` are ours.
+
 **Status:** CHOSEN — the owner supplied a reference image and demanded fidelity ("I do not accept less"), so there is nothing to diverge on: the reference **is** the direction. The four-option `mockups.html` is intentionally not produced; the rendered fidelity-loop screenshots in `screens/` are the record.
 
 ## Brief (PM)

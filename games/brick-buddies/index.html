@@ -27,7 +27,8 @@
       1 constants & tile table   2 pixel art   3 world & starter house   4 room detection
       5 lighting   6 player & villagers   7 build rules   8 audio   9 renderer
       10 save   11 UI & input   12 game loop & test hook (window.__buddies)
-    Design direction: the owner's reference image (features/brick-buddies/design-review.md).
+    Design direction: the owner's reference image (the image itself is intentionally not committed;
+    features/brick-buddies/design-review.md records the direction and the fidelity loop).
     Standards: docs/CODE_QUALITY.md; feature docs in features/brick-buddies/.
   -->
     <style>
@@ -102,9 +103,14 @@
         outline: none;
       }
       #view:focus-visible {
+        outline: none;
+        border-radius: 0;
+      }
+      /* The canvas ring is for keyboard players only (body.kbd): focus moved by script after a mouse
+         click must not frame the whole screen. */
+      body.kbd #view:focus-visible {
         outline: 3px solid var(--md-sys-color-primary);
         outline-offset: -3px;
-        border-radius: 0;
       }
 
       /* ---------- HUD ---------- */
@@ -996,8 +1002,10 @@
             <span>On-screen controls</span><span class="state">off</span>
           </button>
           <div class="zoomrow">
-            <button id="mZoomOut" class="btn quiet" aria-label="Zoom out">Zoom &minus;</button>
-            <button id="mZoomIn" class="btn quiet" aria-label="Zoom in">Zoom +</button>
+            <button id="mZoomOut" class="btn quiet" aria-label="Zoom &minus;, zoom out">
+              Zoom &minus;
+            </button>
+            <button id="mZoomIn" class="btn quiet" aria-label="Zoom +, zoom in">Zoom +</button>
           </div>
           <button id="mNew" class="btn quiet">New world&hellip;</button>
         </div>
@@ -1037,6 +1045,15 @@
     <script>
       (function () {
         "use strict";
+
+        // Naming key for the short module-level names (everything else is spelled out):
+        //   W, H     world size in tiles            T, BGW   foreground / background tile ids
+        //   S        the game state (coins, phase, hotbar...)      P   the player body
+        //   V        the buddies (villagers)        REQ      the current request
+        //   N        device pixels per tile on screen              TS  texture pixels per tile (16)
+        //   fg, bg   the two tile layers (Uint8Array, index y * W + x)
+        //   g        a 2D drawing context inside the pixel-art painters; rnd the seeded PRNG
+        //   vctx     the main canvas context; camL / camT the view's top-left in device pixels
 
         // ===========================================================================
         //  1. CONSTANTS, TILE TABLE, ITEM CATALOGUE
@@ -1357,6 +1374,7 @@
 
         // ===========================================================================
         //  2. PIXEL ART — every texture is drawn here, 16x16, with a fixed-seed RNG
+        //  (Painters are long lists of rectangles on purpose: pixel art is data, not logic.)
         // ===========================================================================
         function makeCanvas(w, h) {
           var c = document.createElement("canvas");
@@ -1574,8 +1592,8 @@
           for (var x = 0; x < 16; x++) {
             var h = 3 + (rnd() < 0.5 ? 1 : 0) + (rnd() < 0.2 ? 1 : 0);
             for (var y = 0; y < h; y++) {
-              var shade = y === 0 ? 20 : y === h - 1 ? -22 : jitter(rnd, 6);
-              paintPixel(g, x, y, shade([86, 150, 54], shade));
+              var tone = y === 0 ? 20 : y === h - 1 ? -22 : jitter(rnd, 6);
+              paintPixel(g, x, y, shade([86, 150, 54], tone));
             }
             if (rnd() < 0.35) paintPixel(g, x, h, shade([70, 124, 46], jitter(rnd, 6)));
           }
@@ -2507,8 +2525,9 @@
         }
 
         // ---------------------------------------------------------------------------
-        //  Starter house, drawn with helper calls in LOCAL coordinates (see features/brick-buddies/
-        //  design-review.md for the layout; ground floor row 16 is level with the left grass).
+        //  Starter house, drawn with helper calls in LOCAL coordinates: x 0..43 across, y 0 at the
+        //  tower roof; the ground-floor row (y 16) is level with the left-hand grass. The tower is
+        //  x 14..34 (roof y 0, floors y 5 / 11 / 16); the basement rooms sit at y 17..21 below it.
         // ---------------------------------------------------------------------------
         function putFg(x, y, id) {
           fg[(HOUSE_Y + y) * W + HOUSE_X + x] = id;
@@ -4657,11 +4676,27 @@
         function randBetween(a, b) {
           return a + Math.random() * (b - a);
         }
+        /** The one place a particle is made: x, y, life and colour c are required, the rest default. */
+        function spawnParticle(o) {
+          parts.push({
+            x: o.x,
+            y: o.y,
+            vx: o.vx || 0,
+            vy: o.vy || 0,
+            g: o.g || 0, // gravity (negative floats upward)
+            life: o.life,
+            max: o.max || o.life,
+            c: o.c,
+            s: o.s || 0.1, // size in tiles
+            t: o.t || 0, // 1 = confetti (drawn after the light map)
+            spin: o.spin || 0,
+          });
+        }
         function fxDebris(x, y, mat) {
           var c = MAT_COL[mat] || MAT_COL.wood;
           var n = reducedMotion ? 4 : 9;
           for (var i = 0; i < n; i++) {
-            parts.push({
+            spawnParticle({
               x: x,
               y: y,
               vx: randBetween(-3, 3),
@@ -4678,7 +4713,7 @@
         function fxDust(x, y, n) {
           if (reducedMotion) return;
           for (var i = 0; i < n; i++) {
-            parts.push({
+            spawnParticle({
               x: x + randBetween(-0.3, 0.3),
               y: y - 0.05,
               vx: randBetween(-1.4, 1.4),
@@ -4696,7 +4731,7 @@
           for (var i = 0; i < n; i++) {
             var a = randBetween(0, 6.283);
             var sp = randBetween(1, 4);
-            parts.push({
+            spawnParticle({
               x: x,
               y: y,
               vx: Math.cos(a) * sp,
@@ -4721,7 +4756,7 @@
         function fxConfetti(x, y) {
           var n = reducedMotion ? 14 : 70;
           for (var i = 0; i < n; i++) {
-            parts.push({
+            spawnParticle({
               x: x + randBetween(-0.6, 0.6),
               y: y,
               vx: randBetween(-5, 5),
@@ -4740,7 +4775,7 @@
           floats.push({ text: text, x: x, y: y, life: 2.2, max: 2.2, color: color });
         }
         function fxSplash(x, y) {
-          parts.push({
+          spawnParticle({
             x: x,
             y: y,
             vx: -1,
@@ -4752,7 +4787,7 @@
             s: 0.07,
             t: 0,
           });
-          parts.push({
+          spawnParticle({
             x: x,
             y: y,
             vx: 1,
@@ -5314,70 +5349,68 @@
           }
           return null;
         }
-        function drawRooms() {
-          var mine = roomOfPlayer();
+        function roomOnScreen(r, margin) {
+          return !(
+            r.x1 * N < camL - margin ||
+            r.x0 * N > camL + vwD + margin ||
+            r.y1 * N < camT - margin ||
+            r.y0 * N > camT + vhD + margin
+          );
+        }
+        /** Soft outline (and a faint fill for the room the player is in) of every valid room. */
+        function drawRoomOutlines(mine) {
           vctx.save();
           vctx.translate(-camL, -camT);
           vctx.scale(N, N);
           vctx.lineWidth = (2 * dpr) / N;
           vctx.lineJoin = "round";
           rooms.forEach(function (r) {
-            if (!r.valid) return;
-            if (
-              r.x1 * N < camL ||
-              r.x0 * N > camL + vwD ||
-              r.y1 * N < camT ||
-              r.y0 * N > camT + vhD
-            )
-              return;
+            if (!r.valid || !roomOnScreen(r, 0)) return;
             var isMine = r === mine;
-            var claimed = isOccupied(r);
             if (isMine) {
               vctx.fillStyle = "rgba(255,224,160,0.07)";
               r.cells.forEach(function (i) {
                 vctx.fillRect(i % W, (i / W) | 0, 1, 1);
               });
             }
-            vctx.strokeStyle = isMine
-              ? "rgba(255,226,160,0.8)"
-              : claimed
-                ? "rgba(255,214,150,0.2)"
-                : "rgba(140,235,160,0.55)";
+            var colour = isOccupied(r) ? "rgba(255,214,150,0.2)" : "rgba(140,235,160,0.55)";
+            vctx.strokeStyle = isMine ? "rgba(255,226,160,0.8)" : colour;
             vctx.stroke(roomPath(r));
           });
           vctx.restore();
-          if (!S.labels || ZOOM_CSS[zoomNow()] < 24) return;
+        }
+        /** Where a room's label goes: its top centre, nudged left of the objective card, or null to skip. */
+        function labelSpot(r, sz) {
+          var lx = ((r.x0 + r.x1 + 1) / 2) * N - camL;
+          var py = (r.y0 + 0.2) * N - camT + 10 * dpr;
+          if (lx < -100 || lx > vwD + 100 || py < -40 || py > vhD + 40) return null;
+          var box = function (x) {
+            return hitUi(x - sz.w / 2, py - sz.h / 2, x + sz.w / 2, py + sz.h / 2, 4 * dpr);
+          };
+          var hit = box(lx);
+          if (!hit) return { x: lx, y: py };
+          if (!hit.card) return null;
+          // slide left of the objective card if the room still reaches there; otherwise skip the label
+          var nx = hit.l - 6 * dpr - sz.w / 2;
+          return nx - sz.w / 2 < r.x0 * N - camL || box(nx) ? null : { x: nx, y: py };
+        }
+        function drawRoomLabels(mine) {
           rooms.forEach(function (r) {
             if (!r.valid) return;
-            var lx = ((r.x0 + r.x1 + 1) / 2) * N - camL;
-            var ly = (r.y0 + 0.2) * N - camT;
-            if (lx < -100 || lx > vwD + 100 || ly < -40 || ly > vhD + 40) return;
             var res = residentOf(r);
-            var label = r.types.length ? r.types[0] : "Room";
-            if (res) label += " · " + res.name;
+            var label = (r.types.length ? r.types[0] : "Room") + (res ? " · " + res.name : "");
+            var spot = labelSpot(r, pillSize(label));
+            if (!spot) return;
             var isMine = r === mine;
-            var sz = pillSize(label);
-            var py = ly + 10 * dpr;
-            var hit = hitUi(lx - sz.w / 2, py - sz.h / 2, lx + sz.w / 2, py + sz.h / 2, 4 * dpr);
-            if (hit) {
-              // slide left of the objective card if the room still reaches there; otherwise skip the label
-              if (!hit.card) return;
-              lx = hit.l - 6 * dpr - sz.w / 2;
-              if (
-                lx - sz.w / 2 < r.x0 * N - camL ||
-                hitUi(lx - sz.w / 2, py - sz.h / 2, lx + sz.w / 2, py + sz.h / 2, 4 * dpr)
-              )
-                return;
-            }
-            pill(
-              label,
-              lx,
-              py,
-              isMine ? 0.92 : 0.8,
-              isMine ? "#ffe3a8" : "#2a1d17",
-              isMine ? "#3a2412" : "#f3dcc0",
-            );
+            var fillCol = isMine ? "#ffe3a8" : "#2a1d17";
+            var inkCol = isMine ? "#3a2412" : "#f3dcc0";
+            pill(label, spot.x, spot.y, isMine ? 0.92 : 0.8, fillCol, inkCol);
           });
+        }
+        function drawRooms() {
+          var mine = roomOfPlayer();
+          drawRoomOutlines(mine);
+          if (S.labels && ZOOM_CSS[zoomNow()] >= 24) drawRoomLabels(mine);
         }
         function itemInHand() {
           var key = S.hotbar[S.sel];
@@ -5676,8 +5709,8 @@
             }
           }
           api.storedRev = storedRev;
-          api.snapshot = function () {
-            var buddies = V.filter(function (b) {
+          function snapshotBuddies() {
+            return V.filter(function (b) {
               return b.role !== "visitor";
             }).map(function (b) {
               return {
@@ -5689,6 +5722,8 @@
                 role: b.role,
               };
             });
+          }
+          api.snapshot = function () {
             return {
               v: 1,
               bestOverall: S.bestOverall,
@@ -5715,7 +5750,7 @@
                 time: +S.time.toFixed(3),
                 rain: S.rain,
                 cycle: S.cycle,
-                buddies: buddies,
+                buddies: snapshotBuddies(),
               },
             };
           };
@@ -5774,73 +5809,67 @@
             }
             return cells;
           }
+          function isItemKey(k) {
+            return typeof k === "string" && Object.prototype.hasOwnProperty.call(ITEM_BY_KEY, k);
+          }
+          function parseItemKeys(list) {
+            return Array.isArray(list) ? list.filter(isItemKey) : [];
+          }
+          function parseHotbar(list) {
+            if (!Array.isArray(list) || list.length !== HOTBAR_SLOTS) return DEFAULT_HOTBAR.slice();
+            return list.map(function (k, i) {
+              return isItemKey(k) ? k : DEFAULT_HOTBAR[i];
+            });
+          }
+          function parseLooted(list) {
+            if (!Array.isArray(list)) return [];
+            return list.slice(0, 200).filter(function (k) {
+              return typeof k === "string" && /^\d{1,3},\d{1,3}$/.test(k);
+            });
+          }
+          function parseBuddy(bd) {
+            var known = bd && Object.prototype.hasOwnProperty.call(BUDDY_LOOKS, bd.look);
+            if (!known || bd.look === "player") return null;
+            var name =
+              typeof bd.name === "string" ? bd.name.replace(/[^A-Za-z]/g, "").slice(0, 12) : "";
+            return {
+              look: bd.look,
+              name: name || "Buddy",
+              x: num(bd.x, 1, W - 1, START.player.x),
+              y: num(bd.y, 2, H - 3, START.player.y),
+              home: int(bd.home, -1, W * H - 1, -1),
+              role: bd.role === "idle" ? "idle" : "resident",
+            };
+          }
+          function parseBuddies(list) {
+            if (!Array.isArray(list)) return [];
+            return list.slice(0, 60).map(parseBuddy).filter(Boolean);
+          }
+          /** Every field is copied individually onto a fresh object; nothing parsed is merged or trusted. */
           function parseWorld(w) {
             if (!w || typeof w !== "object" || w.w !== W || w.h !== H) return null;
             var f = unrle(w.fg, W * H, NT - 1);
             var b = unrle(w.bg, W * H, NBG - 1);
             if (!f || !b) return null;
-            var out = {
+            return {
               fg: f,
               bg: b,
               coins: int(w.coins, 0, MAX_COINS, START_COINS),
               housed: int(w.housed, 0, 9999, 0),
               happiness: int(w.happiness, 0, 99999, 0),
               req: int(w.req, 0, 9999, 0),
-              sel: int(w.sel, 0, 9, 0),
+              sel: int(w.sel, 0, HOTBAR_SLOTS - 1, 0),
               px: num(w.px, 1, W - 1, START.player.x),
               py: num(w.py, 2, H - 3, START.player.y),
               time: num(w.time, 0, 1, 0.42),
               rain: w.rain !== false,
               cycle: w.cycle !== false,
-              unlocked: [],
-              hotbar: DEFAULT_HOTBAR.slice(),
-              claims: [],
-              looted: [],
-              buddies: [],
+              unlocked: parseItemKeys(w.unlocked),
+              hotbar: parseHotbar(w.hotbar),
+              claims: parseClaimRuns(w.claimRuns),
+              looted: parseLooted(w.looted),
+              buddies: parseBuddies(w.buddies),
             };
-            if (Array.isArray(w.unlocked)) {
-              w.unlocked.forEach(function (k) {
-                if (typeof k === "string" && Object.prototype.hasOwnProperty.call(ITEM_BY_KEY, k))
-                  out.unlocked.push(k);
-              });
-            }
-            if (Array.isArray(w.hotbar) && w.hotbar.length === HOTBAR_SLOTS) {
-              var hb = w.hotbar.map(function (k, i) {
-                return typeof k === "string" && Object.prototype.hasOwnProperty.call(ITEM_BY_KEY, k)
-                  ? k
-                  : DEFAULT_HOTBAR[i];
-              });
-              out.hotbar = hb;
-            }
-            out.claims = parseClaimRuns(w.claimRuns);
-            if (Array.isArray(w.looted)) {
-              w.looted.slice(0, 200).forEach(function (k) {
-                if (typeof k === "string" && /^\d{1,3},\d{1,3}$/.test(k)) out.looted.push(k);
-              });
-            }
-            if (Array.isArray(w.buddies)) {
-              w.buddies.slice(0, 60).forEach(function (bd) {
-                if (!bd || typeof bd !== "object") return;
-                var look =
-                  typeof bd.look === "string" &&
-                  bd.look !== "player" &&
-                  Object.prototype.hasOwnProperty.call(BUDDY_LOOKS, bd.look)
-                    ? bd.look
-                    : null;
-                if (!look) return;
-                var name =
-                  typeof bd.name === "string" ? bd.name.replace(/[^A-Za-z]/g, "").slice(0, 12) : "";
-                out.buddies.push({
-                  look: look,
-                  name: name || "Buddy",
-                  x: num(bd.x, 1, W - 1, START.player.x),
-                  y: num(bd.y, 2, H - 3, START.player.y),
-                  home: int(bd.home, -1, W * H - 1, -1),
-                  role: bd.role === "idle" ? "idle" : "resident",
-                });
-              });
-            }
-            return out;
           }
           api.read = function () {
             try {
@@ -5896,6 +5925,46 @@
           floats.length = 0;
           REQ = null;
         }
+        function keySet(list) {
+          var set = {};
+          list.forEach(function (k) {
+            set[k] = true;
+          });
+          return set;
+        }
+        /** Copy the validated world fields into the live game state. */
+        function applyWorldState(w) {
+          S.coins = w.coins;
+          S.housed = w.housed;
+          S.happiness = w.happiness;
+          S.reqIndex = w.req;
+          S.unlocked = keySet(w.unlocked);
+          S.looted = keySet(w.looted);
+          S.hotbar = w.hotbar;
+          S.sel = w.sel;
+          S.time = w.time;
+          S.rain = w.rain;
+          S.cycle = w.cycle;
+          S.bestOverall = Math.max(S.bestOverall, S.housed);
+          claimSet = new Set(w.claims);
+        }
+        function restoreBuddies(list) {
+          V.length = 0;
+          list.forEach(function (bd) {
+            var b = makeBuddy(bd.look, bd.name, bd.x, bd.y);
+            b.home = bd.home;
+            b.role = bd.role;
+            V.push(b);
+          });
+          if (!V.length) populateStarterBuddies();
+        }
+        /** Never start the player inside solid blocks; a door they were standing in opens, not lifts them. */
+        function freePlayerFromBlocks() {
+          var guard = 0;
+          P.opening = true;
+          while (boxOverlap(P.x, P.y, P.w, P.h) && guard++ < 60) P.y -= 1;
+          P.opening = false;
+        }
         function loadFromSave(sv) {
           saveRev = sv.rev;
           S.bestOverall = sv.bestOverall;
@@ -5904,45 +5973,15 @@
           S.labels = sv.labels;
           S.zoomIdx = sv.zoom;
           if (!sv.world) return false;
-          var w = sv.world;
-          fg.set(w.fg);
-          bg.set(w.bg);
+          fg.set(sv.world.fg);
+          bg.set(sv.world.bg);
           sanitizeWorld();
-          S.coins = w.coins;
-          S.housed = w.housed;
-          S.happiness = w.happiness;
-          S.reqIndex = w.req;
-          S.unlocked = {};
-          w.unlocked.forEach(function (k) {
-            S.unlocked[k] = true;
-          });
-          S.hotbar = w.hotbar;
-          S.sel = w.sel;
-          claimSet = new Set(w.claims);
-          S.looted = {};
-          w.looted.forEach(function (k) {
-            S.looted[k] = true;
-          });
-          S.time = w.time;
-          S.rain = w.rain;
-          S.cycle = w.cycle;
-          S.bestOverall = Math.max(S.bestOverall, S.housed);
-          P.x = w.px;
-          P.y = w.py;
+          applyWorldState(sv.world);
+          P.x = sv.world.px;
+          P.y = sv.world.py;
           P.vx = P.vy = 0;
-          V.length = 0;
-          w.buddies.forEach(function (bd) {
-            var b = makeBuddy(bd.look, bd.name, bd.x, bd.y);
-            b.home = bd.home;
-            b.role = bd.role;
-            V.push(b);
-          });
-          if (!V.length) populateStarterBuddies();
-          // never start the player inside solid blocks
-          var guard = 0;
-          P.opening = true; // a door they were standing in opens instead of lifting them onto the roof
-          while (boxOverlap(P.x, P.y, P.w, P.h) && guard++ < 60) P.y -= 1;
-          P.opening = false;
+          restoreBuddies(sv.world.buddies);
+          freePlayerFromBlocks();
           dirtyAll();
           return true;
         }
@@ -6237,6 +6276,39 @@
           var want = reqUser !== null ? reqUser : !compact && (reqTimed > 0 || candidate);
           if (want !== reqOpen) setPanel(want);
         }
+        var REQUEST_WHO = {
+          arriving: " is on the way",
+          moving: " is walking to the room",
+          next: " has moved in",
+          waiting: " asks for",
+        };
+        function renderChecklist(list) {
+          var ul = $("reqList");
+          ul.textContent = "";
+          list.forEach(function (it) {
+            var li = document.createElement("li");
+            li.className = it.ok === true ? "ok" : it.ok === false ? "bad" : "";
+            var mark = document.createElement("span");
+            mark.className = "tick";
+            mark.setAttribute("aria-hidden", "true");
+            mark.textContent = it.ok === true ? "✓" : it.ok === false ? "✗" : "○";
+            var text = document.createElement("span");
+            text.textContent =
+              (it.ok === true ? "Done: " : it.ok === false ? "Missing: " : "") + it.text;
+            li.appendChild(mark);
+            li.appendChild(text);
+            ul.appendChild(li);
+          });
+        }
+        /** "Pip asks for" plus a done/total count while the player stands in a room of their own. */
+        function requestWho(list) {
+          var doneN = list.filter(function (i) {
+            return i.ok === true;
+          }).length;
+          var counting = list.length > 1 && probe && probe.room && !probeClaimed;
+          var prog = counting ? " \u00b7 " + doneN + "/" + list.length : "";
+          return REQ.buddy.name + (REQUEST_WHO[REQ.state] || " asks for") + prog;
+        }
         function refreshRequestPanel(force) {
           if (!REQ) return;
           var def = REQ.def;
@@ -6252,38 +6324,10 @@
               .join("|");
           if (!force && sig === reqSig) return;
           reqSig = sig;
-          var whoTxt = {
-            arriving: " is on the way",
-            moving: " is walking to the room",
-            next: " has moved in",
-            waiting: " asks for",
-          };
-          var doneN = list.filter(function (i) {
-            return i.ok === true;
-          }).length;
-          var prog =
-            list.length > 1 && probe && probe.room && !probeClaimed
-              ? " \u00b7 " + doneN + "/" + list.length
-              : "";
-          $("reqWho").textContent = REQ.buddy.name + (whoTxt[REQ.state] || " asks for") + prog;
+          $("reqWho").textContent = requestWho(list);
           $("reqTitle").textContent =
             REQ.state === "next" ? "Moved in! Another buddy is coming…" : cap(def.phrase);
-          var ul = $("reqList");
-          ul.textContent = "";
-          list.forEach(function (it) {
-            var li = document.createElement("li");
-            li.className = it.ok === true ? "ok" : it.ok === false ? "bad" : "";
-            var t = document.createElement("span");
-            t.className = "tick";
-            t.setAttribute("aria-hidden", "true");
-            t.textContent = it.ok === true ? "✓" : it.ok === false ? "✗" : "○";
-            var s = document.createElement("span");
-            s.textContent =
-              (it.ok === true ? "Done: " : it.ok === false ? "Missing: " : "") + it.text;
-            li.appendChild(t);
-            li.appendChild(s);
-            ul.appendChild(li);
-          });
+          renderChecklist(list);
           $("reqFoot").textContent = list.length
             ? "Reward: " + def.reward + " coins and happiness stars"
             : "";
@@ -6434,139 +6478,126 @@
           var r = tryBreak(tx, ty, allowBg);
           if (!r.ok) failMsg(r.reason);
         }
-        function onKeyDown(e) {
-          if (e.ctrlKey || e.metaKey || e.altKey) return;
-          var t = e.target;
-          var onCtl =
-            t && t.closest && t.closest("button, a[href], input, select, textarea, [role='tab']");
-          if ((e.code === "Space" || e.code === "Enter") && onCtl) return; // a focused control activates itself
+        // Movement keys hold a direction while down; the table maps a key code to kb.l / r / u / d.
+        var HELD_KEYS = {
+          KeyA: "l",
+          ArrowLeft: "l",
+          KeyD: "r",
+          ArrowRight: "r",
+          KeyW: "u",
+          ArrowUp: "u",
+          Space: "u",
+          KeyS: "d",
+          ArrowDown: "d",
+        };
+        // The aim cursor keys also work held down (key repeat moves it further).
+        var AIM_KEYS = {
+          KeyI: [0, -1],
+          KeyK: [0, 1],
+          KeyJ: [-1, 0],
+          KeyL: [1, 0],
+        };
+        function aimWith(kind) {
+          return function () {
+            aim.mode = "kb";
+            aim.has = true;
+            doAimAction(kind);
+          };
+        }
+        // One-shot keys (a held key does not repeat the action).
+        var ONCE_KEYS = {
+          KeyE: function () {
+            setBuild($("build").hidden);
+          },
+          KeyB: function () {
+            setMode(S.mode === "break" ? "build" : "break");
+          },
+          KeyM: toggleSound,
+          KeyN: toggleMusic,
+          KeyC: function () {
+            aim.ox = P.face;
+            aim.oy = 0;
+            aim.autoFace = true;
+            aim.mode = "kb";
+            aim.has = true;
+          },
+          KeyF: aimWith("place"),
+          KeyX: aimWith("break"),
+          BracketLeft: function () {
+            selectSlot(S.sel - 1);
+          },
+          BracketRight: function () {
+            selectSlot(S.sel + 1);
+          },
+          Equal: function () {
+            setZoom(1);
+          },
+          NumpadAdd: function () {
+            setZoom(1);
+          },
+          Minus: function () {
+            setZoom(-1);
+          },
+          NumpadSubtract: function () {
+            setZoom(-1);
+          },
+        };
+        function pressHeldKey(e) {
+          var dir = HELD_KEYS[e.code];
+          kb[dir] = 1;
+          if (dir === "u" && !e.repeat) {
+            P.jumpBuf = JUMP_BUFFER;
+            if (e.code === "Space") P.leap = JUMP_BUFFER; // Space hops off a ladder; W / Up climb it
+          }
+        }
+        /** Handle a gameplay key; true when it was one of ours (so the browser default is cancelled). */
+        function gameKey(e) {
+          if (HELD_KEYS[e.code]) {
+            pressHeldKey(e);
+            return true;
+          }
+          if (AIM_KEYS[e.code]) {
+            kbAim(AIM_KEYS[e.code][0], AIM_KEYS[e.code][1]);
+            return true;
+          }
+          if (ONCE_KEYS[e.code]) {
+            if (!e.repeat) ONCE_KEYS[e.code]();
+            return true;
+          }
+          if (/^Digit[0-9]$/.test(e.code)) {
+            if (!e.repeat) selectSlot((+e.code.slice(5) + 9) % HOTBAR_SLOTS);
+            return true;
+          }
+          return false;
+        }
+        /** Esc and Tab behave the same in every phase; true when the key was consumed. */
+        function globalKey(e) {
           if (e.code === "Escape") {
             if ($("confirm").classList.contains("open")) openConfirm(false);
             else if (!$("build").hidden) setBuild(false);
             else if (S.phase !== "title") setMenu(!menuOpen);
             e.preventDefault();
-            return;
+            return true;
           }
           if (e.code === "Tab") {
-            if (trapTab(e, "confirm")) return;
-            trapTab(e, "menu");
-            return;
+            if (!trapTab(e, "confirm")) trapTab(e, "menu");
+            return true;
           }
-          if (S.phase !== "playing") return;
+          return false;
+        }
+        function onKeyDown(e) {
+          if (e.ctrlKey || e.metaKey || e.altKey) return;
+          var t = e.target;
+          var onCtl = t && t.closest && t.closest("button, a[href], input, select, textarea");
+          if ((e.code === "Space" || e.code === "Enter") && onCtl) return; // a focused control activates itself
+          if (globalKey(e) || S.phase !== "playing") return;
           sfx.init();
-          var used = true;
-          switch (e.code) {
-            case "KeyA":
-            case "ArrowLeft":
-              kb.l = 1;
-              break;
-            case "KeyD":
-            case "ArrowRight":
-              kb.r = 1;
-              break;
-            case "KeyW":
-            case "ArrowUp":
-            case "Space":
-              kb.u = 1;
-              if (!e.repeat) {
-                P.jumpBuf = JUMP_BUFFER;
-                if (e.code === "Space") P.leap = JUMP_BUFFER;
-              }
-              break;
-            case "KeyS":
-            case "ArrowDown":
-              kb.d = 1;
-              break;
-            case "KeyE":
-              if (!e.repeat) setBuild($("build").hidden);
-              break;
-            case "KeyB":
-              if (!e.repeat) setMode(S.mode === "break" ? "build" : "break");
-              break;
-            case "KeyM":
-              if (!e.repeat) toggleSound();
-              break;
-            case "KeyN":
-              if (!e.repeat) toggleMusic();
-              break;
-            case "KeyI":
-              kbAim(0, -1);
-              break;
-            case "KeyK":
-              kbAim(0, 1);
-              break;
-            case "KeyJ":
-              kbAim(-1, 0);
-              break;
-            case "KeyL":
-              kbAim(1, 0);
-              break;
-            case "KeyC":
-              aim.ox = P.face;
-              aim.oy = 0;
-              aim.autoFace = true;
-              aim.mode = "kb";
-              aim.has = true;
-              break;
-            case "KeyF":
-              if (!e.repeat) {
-                aim.mode = "kb";
-                aim.has = true;
-                doAimAction("place");
-              }
-              break;
-            case "KeyX":
-              if (!e.repeat) {
-                aim.mode = "kb";
-                aim.has = true;
-                doAimAction("break");
-              }
-              break;
-            case "BracketLeft":
-              if (!e.repeat) selectSlot(S.sel - 1);
-              break;
-            case "BracketRight":
-              if (!e.repeat) selectSlot(S.sel + 1);
-              break;
-            case "Equal":
-            case "NumpadAdd":
-              if (!e.repeat) setZoom(1);
-              break;
-            case "Minus":
-            case "NumpadSubtract":
-              if (!e.repeat) setZoom(-1);
-              break;
-            default:
-              used = false;
-              if (/^Digit[0-9]$/.test(e.code) && !e.repeat) {
-                selectSlot((+e.code.slice(5) + 9) % HOTBAR_SLOTS);
-                used = true;
-              }
-          }
-          if (used) e.preventDefault();
+          if (gameKey(e)) e.preventDefault();
           mergeInput();
           if (aim.autoFace && (kb.l || kb.r)) aim.ox = kb.l ? -1 : 1;
         }
         function onKeyUp(e) {
-          switch (e.code) {
-            case "KeyA":
-            case "ArrowLeft":
-              kb.l = 0;
-              break;
-            case "KeyD":
-            case "ArrowRight":
-              kb.r = 0;
-              break;
-            case "KeyW":
-            case "ArrowUp":
-            case "Space":
-              kb.u = 0;
-              break;
-            case "KeyS":
-            case "ArrowDown":
-              kb.d = 0;
-              break;
-          }
+          if (HELD_KEYS[e.code]) kb[HELD_KEYS[e.code]] = 0;
           mergeInput();
         }
         function clearHeld() {
@@ -6616,6 +6647,34 @@
           stroke = { kind: kind, last: "", first: true };
           strokeAt(tile[0], tile[1]);
         }
+        function newPointerRecord(e) {
+          return {
+            x: e.clientX,
+            y: e.clientY,
+            sx: e.clientX,
+            sy: e.clientY,
+            t: performance.now(),
+            type: e.pointerType,
+            moved: false,
+            tile: tileFromEvent(e),
+          };
+        }
+        /** Mouse buttons: left places (or breaks in Break mode), right breaks, middle pans. */
+        function mouseDown(e, rec) {
+          if (e.button === 1) {
+            rec.pan = true;
+            e.preventDefault();
+          } else if (e.button === 2) startStroke("break", rec.tile);
+          else if (e.button === 0) startStroke(S.mode === "break" ? "break" : "place", rec.tile);
+        }
+        function beginPinch() {
+          var a = Array.from(ptrs.values());
+          pinch = {
+            d: Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y),
+            mx: (a[0].x + a[1].x) / 2,
+            my: (a[0].y + a[1].y) / 2,
+          };
+        }
         function onPointerDown(e) {
           sfx.init();
           if (S.phase !== "playing") return;
@@ -6629,34 +6688,14 @@
           } catch (err) {
             /* capture is best effort */
           }
-          var rec = {
-            x: e.clientX,
-            y: e.clientY,
-            sx: e.clientX,
-            sy: e.clientY,
-            t: performance.now(),
-            type: e.pointerType,
-            moved: false,
-            tile: tileFromEvent(e),
-          };
+          var rec = newPointerRecord(e);
           ptrs.set(e.pointerId, rec);
           aim.mode = "mouse";
           if (e.pointerType === "mouse") {
-            if (e.button === 1) {
-              rec.pan = true;
-              e.preventDefault();
-            } else if (e.button === 2) startStroke("break", rec.tile);
-            else if (e.button === 0) startStroke(S.mode === "break" ? "break" : "place", rec.tile);
-            return;
-          }
-          if (ptrs.size === 2) {
+            mouseDown(e, rec);
+          } else if (ptrs.size === 2) {
             stroke = null;
-            var a = Array.from(ptrs.values());
-            pinch = {
-              d: Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y),
-              mx: (a[0].x + a[1].x) / 2,
-              my: (a[0].y + a[1].y) / 2,
-            };
+            beginPinch();
           }
         }
         function onPointerMove(e) {
@@ -6778,95 +6817,106 @@
             if (e.code === "Enter" || e.code === "Space") up();
           });
         }
-        function bindUi() {
-          $("startBtn").addEventListener("click", startGame);
-          $("titleSound").addEventListener("click", toggleSound);
-          $("menuBtn").addEventListener("click", function () {
+        function onClick(id, fn) {
+          $(id).addEventListener("click", fn);
+        }
+        /** After a mouse / touch click on a button, hand focus back so Space jumps instead of re-pressing it. */
+        function releaseFocus(e) {
+          if (e.detail > 0) e.currentTarget.blur();
+        }
+        /** A menu switch that just flips one saved setting. */
+        function onToggle(id, key) {
+          onClick(id, function () {
+            S[key] = !S[key];
+            refreshMenu();
+            saveDirty = true;
+          });
+        }
+        function bindTitleAndMenu() {
+          onClick("startBtn", startGame);
+          onClick("titleSound", toggleSound);
+          onClick("menuBtn", function () {
             setMenu(true);
           });
-          $("mResume").addEventListener("click", function () {
+          onClick("mResume", function () {
             setMenu(false);
           });
-          $("mSound").addEventListener("click", toggleSound);
-          $("mMusic").addEventListener("click", toggleMusic);
-          $("mRain").addEventListener("click", function () {
-            S.rain = !S.rain;
-            refreshMenu();
-            saveDirty = true;
-          });
-          $("mCycle").addEventListener("click", function () {
-            S.cycle = !S.cycle;
-            refreshMenu();
-            saveDirty = true;
-          });
-          $("mLabels").addEventListener("click", function () {
-            S.labels = !S.labels;
-            refreshMenu();
-            saveDirty = true;
-          });
-          $("mTouch").addEventListener("click", function () {
+          onClick("mSound", toggleSound);
+          onClick("mMusic", toggleMusic);
+          onToggle("mRain", "rain");
+          onToggle("mCycle", "cycle");
+          onToggle("mLabels", "labels");
+          onClick("mTouch", function () {
             touchOverride = !touchMode;
             touchMode = touchOverride;
             layout();
             refreshMenu();
           });
-          $("mZoomIn").addEventListener("click", function () {
+          onClick("mZoomIn", function () {
             setZoom(1);
           });
-          $("mZoomOut").addEventListener("click", function () {
+          onClick("mZoomOut", function () {
             setZoom(-1);
           });
-          $("mNew").addEventListener("click", function () {
+        }
+        function bindNewWorldConfirm() {
+          onClick("mNew", function () {
             openConfirm(true);
           });
-          $("cNo").addEventListener("click", function () {
+          onClick("cNo", function () {
             openConfirm(false);
           });
-          $("cYes").addEventListener("click", function () {
+          onClick("cYes", function () {
             openConfirm(false);
             setMenu(false);
             resetWorld();
           });
-          $("modeBtn").addEventListener("click", function (e) {
+        }
+        function bindBuildUi() {
+          onClick("modeBtn", function (e) {
             setMode(S.mode === "break" ? "build" : "break");
             sfx.click();
-            if (e.detail > 0) e.currentTarget.blur();
+            releaseFocus(e);
           });
-          $("buildBtn").addEventListener("click", function (e) {
+          onClick("buildBtn", function (e) {
             setBuild($("build").hidden);
-            if (e.detail > 0) e.currentTarget.blur();
+            releaseFocus(e);
           });
-          $("buildClose").addEventListener("click", function () {
+          onClick("buildClose", function () {
             setBuild(false);
           });
-          $("reqToggle").addEventListener("click", function (e) {
-            reqUser = !reqOpen;
-            setPanel(reqUser);
-            if (e.detail > 0) e.currentTarget.blur();
-          });
-          Array.prototype.forEach.call(document.querySelectorAll(".tab[data-cat]"), function (t) {
+          var tabs = document.querySelectorAll(".tab[data-cat]");
+          Array.prototype.forEach.call(tabs, function (t) {
             t.addEventListener("click", function () {
               buildCat = t.dataset.cat;
-              Array.prototype.forEach.call(
-                document.querySelectorAll(".tab[data-cat]"),
-                function (o) {
-                  o.setAttribute("aria-pressed", o === t ? "true" : "false");
-                },
-              );
+              Array.prototype.forEach.call(tabs, function (o) {
+                o.setAttribute("aria-pressed", o === t ? "true" : "false");
+              });
               renderItems();
               sfx.click();
             });
           });
-          $("tLook").addEventListener("click", function (e) {
+        }
+        function bindPanelAndLook() {
+          onClick("reqToggle", function (e) {
+            reqUser = !reqOpen;
+            setPanel(reqUser);
+            releaseFocus(e);
+          });
+          onClick("tLook", function (e) {
             lookMode = !lookMode;
             e.currentTarget.setAttribute("aria-pressed", lookMode ? "true" : "false");
             if (!lookMode) pan.x = pan.y = 0;
             sfx.click();
           });
+        }
+        function bindTouchButtons() {
           bindHold("tLeft", "l", false);
           bindHold("tRight", "r", false);
           bindHold("tJump", "u", true);
           bindHold("tDown", "d", false);
+        }
+        function bindCanvasPointer() {
           view.addEventListener("pointerdown", onPointerDown);
           view.addEventListener("pointermove", onPointerMove);
           view.addEventListener("pointerup", onPointerUp);
@@ -6878,6 +6928,23 @@
           view.addEventListener("contextmenu", function (e) {
             e.preventDefault();
           });
+        }
+        function bindWindowEvents() {
+          // which input is in use decides whether the canvas shows a focus ring (see body.kbd in the CSS)
+          window.addEventListener(
+            "keydown",
+            function () {
+              document.body.classList.add("kbd");
+            },
+            true,
+          );
+          window.addEventListener(
+            "pointerdown",
+            function () {
+              document.body.classList.remove("kbd");
+            },
+            true,
+          );
           window.addEventListener("keydown", onKeyDown);
           window.addEventListener("keyup", onKeyUp);
           window.addEventListener("blur", clearHeld);
@@ -6893,6 +6960,15 @@
             e.preventDefault();
           });
           document.addEventListener("visibilitychange", onVisibility);
+        }
+        function bindUi() {
+          bindTitleAndMenu();
+          bindNewWorldConfirm();
+          bindBuildUi();
+          bindPanelAndLook();
+          bindTouchButtons();
+          bindCanvasPointer();
+          bindWindowEvents();
         }
         var hiddenPaused = false;
         function onVisibility() {
@@ -6969,61 +7045,53 @@
           }
           return best;
         }
-        function tickAmbient(dt) {
+        function tickRainSound(dt) {
           ambTimer += dt;
-          if (ambTimer > 0.2) {
-            ambTimer = 0;
-            var ci = Math.floor(P.y - 0.5) * W + Math.floor(P.x);
-            var indoors = inb(Math.floor(P.x), Math.floor(P.y - 0.5)) ? lightSky[ci] < 0.5 : false;
-            sfx.rain(weather.k, indoors);
-          }
+          if (ambTimer < 0.2) return;
+          ambTimer = 0;
+          var cx = Math.floor(P.x);
+          var cy = Math.floor(P.y - 0.5);
+          var indoors = inb(cx, cy) ? lightSky[cy * W + cx] < 0.5 : false;
+          sfx.rain(weather.k, indoors);
+        }
+        function tickCrackle(dt) {
           crackleTimer += dt;
-          if (crackleTimer > 0.11) {
-            crackleTimer = 0;
-            var d = nearestEmitterDist();
-            if (d < 7 && Math.random() < (1 - d / 7) * 0.4) sfx.crackle(0.035 + (1 - d / 7) * 0.05);
+          if (crackleTimer <= 0.11) return;
+          crackleTimer = 0;
+          var d = nearestEmitterDist();
+          if (d < 7 && Math.random() < (1 - d / 7) * 0.4) sfx.crackle(0.035 + (1 - d / 7) * 0.05);
+        }
+        /** Embers drift up from furnaces and torches; portals shed blue motes. */
+        function spawnEmber() {
+          var e = emitters[(Math.random() * emitters.length) | 0];
+          if (!e || Math.abs(e.x - P.x) >= 24) return;
+          if (e.id === T.PORTAL_B || e.id === T.PORTAL_T) {
+            spawnParticle({
+              x: e.x + 0.5 + randBetween(-0.4, 0.4),
+              y: e.y + randBetween(0, 1),
+              vx: randBetween(-0.4, 0.4),
+              vy: randBetween(-1.2, -0.3),
+              life: randBetween(0.6, 1.0),
+              c: [140, 190, 255],
+              s: 0.07,
+            });
+          } else if (Math.abs(e.y - P.y) < 16) {
+            spawnParticle({
+              x: e.x + 0.5 + randBetween(-0.2, 0.2),
+              y: e.y + 0.3,
+              vx: randBetween(-0.3, 0.3),
+              vy: randBetween(-1.8, -0.8),
+              g: -0.4,
+              life: randBetween(0.6, 1.2),
+              c: [255, 170, 70],
+              s: 0.06,
+            });
           }
-          // embers drifting up from furnaces and torches
-          if (!reducedMotion && Math.random() < dt * 9) {
-            var e = emitters[(Math.random() * emitters.length) | 0];
-            if (
-              e &&
-              e.id !== T.PORTAL_T &&
-              e.id !== T.PORTAL_B &&
-              Math.abs(e.x - P.x) < 24 &&
-              Math.abs(e.y - P.y) < 16
-            ) {
-              parts.push({
-                x: e.x + 0.5 + randBetween(-0.2, 0.2),
-                y: e.y + 0.3,
-                vx: randBetween(-0.3, 0.3),
-                vy: randBetween(-1.8, -0.8),
-                g: -0.4,
-                life: randBetween(0.6, 1.2),
-                max: 1.2,
-                c: [255, 170, 70],
-                s: 0.06,
-                t: 0,
-              });
-            } else if (
-              e &&
-              (e.id === T.PORTAL_B || e.id === T.PORTAL_T) &&
-              Math.abs(e.x - P.x) < 24
-            ) {
-              parts.push({
-                x: e.x + 0.5 + randBetween(-0.4, 0.4),
-                y: e.y + randBetween(0, 1),
-                vx: randBetween(-0.4, 0.4),
-                vy: randBetween(-1.2, -0.3),
-                g: 0,
-                life: randBetween(0.6, 1.0),
-                max: 1,
-                c: [140, 190, 255],
-                s: 0.07,
-                t: 0,
-              });
-            }
-          }
+        }
+        function tickAmbient(dt) {
+          tickRainSound(dt);
+          tickCrackle(dt);
+          if (!reducedMotion && Math.random() < dt * 9) spawnEmber();
         }
         function tickProbe(dt) {
           probeTimer += dt;
@@ -7297,6 +7365,10 @@
             giveCoins: function (n) {
               addCoins(n);
             },
+          };
+        }
+        function hookBuddies() {
+          return {
             buddies: function () {
               return V.map(function (b) {
                 return {
@@ -7356,6 +7428,10 @@
             step: function (n) {
               for (var i = 0; i < n; i++) tick(STEP);
             },
+          };
+        }
+        function hookSoundMotion() {
+          return {
             reduced: function () {
               return {
                 reducedMotion: reducedMotion,
@@ -7458,7 +7534,9 @@
             hookWorldInfo(),
             hookRooms(),
             hookPeople(),
+            hookBuddies(),
             hookEnvironment(),
+            hookSoundMotion(),
             hookView(),
             hookStorage(),
           );

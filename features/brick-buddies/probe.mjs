@@ -176,6 +176,14 @@ try {
     assert((await btn.count()) === 1, "exactly one 'Start building' button");
     await btn.click();
     await page.waitForFunction(() => window.__buddies.phase === "playing");
+    const ringAfterClick = await dbg(
+      page,
+      () => getComputedStyle(document.getElementById("view")).outlineStyle,
+    );
+    assert(
+      ringAfterClick === "none",
+      "no canvas focus ring after a mouse start, got " + ringAfterClick,
+    );
     const f1 = await dbg(page, () => window.__buddies.frame);
     await sleep(600);
     const f2 = await dbg(page, () => window.__buddies.frame);
@@ -471,6 +479,7 @@ try {
         g1.aim.valid === g1.cp.ok && g1.aim.valid === true,
         "ghost should be valid (green) " + JSON.stringify(g1),
       );
+      assert(g1.aim.mark === "", "a valid ghost has no cross");
       const gp2 = await dbg(page, ([x, y]) => window.__buddies.debug.tileToScreen(x, y), [
         px - 4,
         py - 5,
@@ -489,6 +498,7 @@ try {
         g2.aim.valid === false && g2.cp.ok === false,
         "ghost should be invalid (red) in mid-air " + JSON.stringify(g2),
       );
+      assert(g2.aim.mark === "x", "an invalid ghost is crossed out, not only red (C-02)");
       // supports: mining the floor under furniture drops the furniture (engine-level, reach-checked)
       const cascade = await dbg(
         page,
@@ -541,9 +551,29 @@ try {
       rooms.length === 1 && rooms[0].valid && rooms[0].size === 24 && rooms[0].doors === 1,
       "closed room " + JSON.stringify(rooms),
     );
-    // open: a hole in the roof leaks to the sky -> not a room at all
+    // open: a hole in the roof leaks into the sky (a big open region) -> not a room at all.
+    // (The grid edge is a wall, so the "sky" must be big enough to count as open: 15 rows x 50.)
+    const sky = Array(15).fill(".".repeat(50));
+    const roof = "#".repeat(50).split("");
+    roof[3] = ".";
+    const withHole = [
+      ...sky,
+      roof.join(""),
+      ...["#,,,,,,#", "#,,,,,,#", "d,,,,,,#", "D,,,,,,#", "########"].map(
+        (r) => r + "#".repeat(42),
+      ),
+    ];
+    rooms = await det(withHole);
+    assert(
+      rooms.length === 0,
+      "a room open to the sky must not be detected: " + JSON.stringify(rooms),
+    );
+    // ...and a hole at the grid edge only leads out of the world, which is a wall: still a (leaky) room
     rooms = await det(["###.####", "#,,,,,,#", "#,,,,,,#", "d,,,,,,#", "D,,,,,,#", "########"]);
-    assert(rooms.length === 0, "an open room must not be detected: " + JSON.stringify(rooms));
+    assert(
+      rooms.length === 1 && !rooms[0].valid && rooms[0].backed === false,
+      "a hole that only reaches the world edge is not a sky leak: " + JSON.stringify(rooms),
+    );
     // missing background wall
     rooms = await det(["########", "#,,,,,,#", "#,,.,,,#", "d,,,,,,#", "D,,,,,,#", "########"]);
     assert(
@@ -582,6 +612,18 @@ try {
     // glass in the wall counts as boundary (does not leak)
     rooms = await det(["########", "#,,,,,,#", "G,,,,,,#", "d,,,,,,#", "D,,,,,,#", "########"]);
     assert(rooms.length === 1 && rooms[0].valid && rooms[0].glass === 1, "glass is a wall");
+    // F-03: a ladder INSIDE a sealed room is furniture, not a hatch: no entry -> invalid
+    rooms = await det(["########", "#,,L,,,#", "#,,L,,,#", "#,,L,,,#", "########"]);
+    assert(
+      rooms.length === 1 && !rooms[0].valid && rooms[0].hatches === 0 && rooms[0].doors === 0,
+      "a ladder inside a sealed room must not count as an entry " + JSON.stringify(rooms[0]),
+    );
+    // F-10: the world edge is a wall, so a room may use it as one (no phantom leak)
+    rooms = await det(["######", ",,,,,#", ",,,,,#", ",,,,,d", ",,,,,D", "######"]);
+    assert(
+      rooms.length === 1 && rooms[0].valid && rooms[0].size === 20 && rooms[0].doors === 1,
+      "a room against the world edge is enclosed " + JSON.stringify(rooms),
+    );
     // types
     const typed = async (rows) => (await det(rows))[0].types.join("/");
     const bedroom = await typed([
@@ -669,6 +711,10 @@ try {
           d.fill(a + 1, t - 3, b - 1, t - 1, d.bgIds.PLANKS, "bg"); // back wall
           d.placeItem("door", b, t - 1);
           d.placeItem("torch", a + 3, t - 2);
+          // also a Library (2 shelves + a chair): its first type is "Library", the request is "Bedroom"
+          d.placeItem("shelf", a + 4, t - 1);
+          d.placeItem("shelf", a + 5, t - 1);
+          d.placeItem("chair", a + 6, t - 1);
         },
         [x0, x1, top],
       );
@@ -730,6 +776,11 @@ try {
         timeout: 40000,
         polling: 40,
       });
+      const toastText = await page.locator("#toast").textContent();
+      assert(
+        /moved into the Bedroom/.test(toastText),
+        "the move-in toast names the requested type (F-12), got: " + toastText,
+      );
       await page.screenshot({ path: join(SHOTS, "room-complete.jpg") });
       const done = await dbg(page, () => ({
         coins: window.__buddies.coins,
@@ -806,8 +857,13 @@ try {
         coins: window.__buddies.coins,
         housed: window.__buddies.housed,
         best: window.__buddies.bestOverall,
+        req: window.__buddies.request.index,
       }),
       [hx + 3],
+    );
+    assert(
+      back.req === 1,
+      "the request chain continues after a reload (F-01), got index " + back.req,
     );
     assert(
       back.tile === IDS.BRICK && back.coins === coins && back.housed === 1 && back.best >= 1,
@@ -914,9 +970,11 @@ try {
           housed: window.__buddies.housed,
           best: window.__buddies.bestOverall,
           sound: window.__buddies.debug.audio().sound,
+          req: window.__buddies.request.index,
         }),
         [hx + 3],
       );
+      assert(fresh.req === 0, "a new world restarts the request chain, got " + fresh.req);
       assert(
         fresh.tile === 0 && fresh.coins === 80 && fresh.housed === 0,
         "world reset " + JSON.stringify(fresh),
@@ -936,6 +994,343 @@ try {
       return `record ${best0} kept, sound off kept, tiles + coins reset`;
     },
   );
+
+  // ---- QA round 1: one regression check per fix (F-xx = findings, C-xx = compliance) ----
+  const room = (page, pred) =>
+    page.evaluate(
+      (src) => window.__buddies.debug.rooms().find(new Function("r", "return " + src)),
+      pred,
+    );
+
+  await check(
+    "AC-6",
+    "F-02 claims cover the whole room: editing a cell does not free a starter room",
+    async () => {
+      const { page, ctx } = await openPage(browser);
+      await startGame(page);
+      await settle(page, 400);
+      const k = await room(page, "r.valid && r.occupied && r.types.includes('Kitchen')");
+      assert(k, "the starter kitchen is a valid occupied room");
+      // the room's FIRST cell (the old single-cell claim key): top row, leftmost cell of the region
+      const first = await dbg(
+        page,
+        (kk) => {
+          const d = window.__buddies.debug;
+          for (let x = kk.x0; x <= kk.x1; x++) {
+            const r = d.regionAt(x, kk.y0);
+            if (r.room && r.room.size === kk.size) return x;
+          }
+          return -1;
+        },
+        k,
+      );
+      assert(first >= 0, "found the first cell");
+      await dbg(
+        page,
+        ([x, y]) => window.__buddies.debug.place(x, y, window.__buddies.debug.ids.PLANKS),
+        [first, k.y0],
+      );
+      await sleep(500);
+      const after = await room(
+        page,
+        `r.valid && r.types.includes('Kitchen') && r.size === ${k.size - 1}`,
+      );
+      assert(
+        after && after.occupied === true,
+        "the edited kitchen is still occupied " + JSON.stringify(after),
+      );
+      // demolishing the room (filling it in) drops the claim; an emptied room is then new
+      const c0 = await dbg(page, () => window.__buddies.debug.claimedCells());
+      await dbg(
+        page,
+        (kk) =>
+          window.__buddies.debug.fill(
+            kk.x0,
+            kk.y0,
+            kk.x1,
+            kk.y1,
+            window.__buddies.debug.ids.PLANKS,
+          ),
+        k,
+      );
+      await sleep(500);
+      const c1 = await dbg(page, () => window.__buddies.debug.claimedCells());
+      assert(
+        c1 <= c0 - k.size + 1,
+        `stale claims are dropped when a room is built over (${c0} -> ${c1})`,
+      );
+      await dbg(page, (kk) => window.__buddies.debug.fill(kk.x0, kk.y0, kk.x1, kk.y1, 0), k);
+      await sleep(500);
+      const reborn = await room(
+        page,
+        `r.valid && r.x0 === ${k.x0} && r.y0 === ${k.y0} && r.x1 === ${k.x1}`,
+      );
+      assert(
+        reborn && reborn.occupied === false,
+        "a demolished and rebuilt room is a new, free room " + JSON.stringify(reborn),
+      );
+      await ctx.close();
+      return `kitchen stays occupied after an edit (${k.size} cells); demolishing frees it`;
+    },
+  );
+
+  await check(
+    "AC-4",
+    "F-04 a player saved standing in a doorway reloads in it, not on the roof",
+    async () => {
+      const { page, ctx } = await openPage(browser);
+      await startGame(page);
+      const hx = await dbg(page, () => window.__buddies.debug.world.houseX);
+      const x0 = hx - 24;
+      const top = await flatten(page, x0, x0 + 12);
+      await dbg(page, ([x, t]) => window.__buddies.debug.placeItem("door", x, t - 1), [
+        x0 + 5,
+        top,
+      ]);
+      await dbg(page, ([x, t]) => window.__buddies.debug.teleport(x + 0.5, t), [x0 + 5, top]);
+      await sleep(600);
+      const y0 = (await dbg(page, () => window.__buddies.player)).y;
+      await dbg(page, () => window.__buddies.debug.save());
+      await page.reload();
+      await page.waitForFunction(() => !!window.__buddies);
+      await startGame(page);
+      const y1 = (await dbg(page, () => window.__buddies.player)).y;
+      assert(
+        Math.abs(y1 - y0) < 0.5,
+        `the player stays in the doorway: y ${y0.toFixed(2)} -> ${y1.toFixed(2)}`,
+      );
+      await ctx.close();
+      return `saved y ${y0.toFixed(2)}, reloaded y ${y1.toFixed(2)}`;
+    },
+  );
+
+  await check("AC-3", "F-05 nobody can jump out of the top of the world", async () => {
+    const { page, ctx } = await openPage(browser);
+    await startGame(page);
+    const hx = await dbg(page, () => window.__buddies.debug.world.houseX);
+    const x = hx - 30;
+    await dbg(
+      page,
+      ([cx]) => {
+        const d = window.__buddies.debug;
+        d.fill(cx - 1, 3, cx + 1, 3, d.ids.PLANKS);
+        d.teleport(cx + 0.5, 3);
+      },
+      [x],
+    );
+    await sleep(500);
+    let minY = 99;
+    for (let j = 0; j < 3; j++) {
+      await page.keyboard.down("Space");
+      await sleep(80);
+      await page.keyboard.up("Space");
+      for (let i = 0; i < 14; i++) {
+        await sleep(40);
+        minY = Math.min(minY, (await dbg(page, () => window.__buddies.player)).y);
+      }
+    }
+    assert(
+      minY >= 1.8,
+      "the head stops at the world's ceiling (feet y >= 1.84), lowest feet y " + minY.toFixed(2),
+    );
+    await ctx.close();
+    return `lowest feet y ${minY.toFixed(2)} (ceiling stops the head at row 0)`;
+  });
+
+  await check(
+    "AC-4",
+    "F-06/F-07 doors fall with their floor; nothing stands on a door",
+    async () => {
+      const { page, ctx } = await openPage(browser);
+      await startGame(page);
+      const hx = await dbg(page, () => window.__buddies.debug.world.houseX);
+      const x0 = hx - 24;
+      const top = await flatten(page, x0, x0 + 12);
+      const r = await dbg(
+        page,
+        ([x, t]) => {
+          const d = window.__buddies.debug;
+          d.fill(x - 1, t, x + 1, t, d.ids.PLANKS); // a floor
+          d.placeItem("door", x, t - 1); // a door standing on it
+          d.teleport(x + 2.5, t - 1);
+          const onDoor = d.canPlace("chest", x, t - 3); // a chest whose "floor" would be the door's top
+          const mined = d.tryBreak(x, t); // mine the floor under the door
+          return { onDoor, mined, bottom: d.getTile(x, t - 1).fg, topTile: d.getTile(x, t - 2).fg };
+        },
+        [x0 + 5, top],
+      );
+      assert(
+        r.onDoor.ok === false,
+        "furniture must not stand on a door (F-07) " + JSON.stringify(r.onDoor),
+      );
+      assert(
+        r.mined.ok && r.bottom === 0 && r.topTile === 0,
+        "the door drops when its floor is mined (F-06) " + JSON.stringify(r),
+      );
+      await ctx.close();
+      return "chest on a door refused; door removed with its floor";
+    },
+  );
+
+  await check("AC-4", "F-08 a held mouse stroke stops editing when the game pauses", async () => {
+    const { page, ctx } = await openPage(browser);
+    await startGame(page);
+    await settle(page);
+    const p = await dbg(page, () => window.__buddies.player);
+    const a = [Math.floor(p.x), Math.floor(p.y) - 3];
+    const b = [a[0] - 2, a[1]]; // (two tiles right of the player the OPEN board hangs)
+    const sa = await dbg(page, ([x, y]) => window.__buddies.debug.tileToScreen(x, y), a);
+    const sb = await dbg(page, ([x, y]) => window.__buddies.debug.tileToScreen(x, y), b);
+    await page.mouse.move(sa.x, sa.y);
+    await page.mouse.down();
+    await sleep(150);
+    assert(
+      (await getTile(page, a[0], a[1])).fg === IDS.PLANKS,
+      "the stroke places where it starts",
+    );
+    await page.keyboard.press("Escape");
+    await sleep(150);
+    assert((await dbg(page, () => window.__buddies.phase)) === "paused", "Esc pauses");
+    await page.mouse.move(sb.x, sb.y, { steps: 4 });
+    await sleep(150);
+    await page.mouse.up();
+    assert(
+      (await getTile(page, b[0], b[1])).fg === 0,
+      "a held button must not edit the world while paused",
+    );
+    await ctx.close();
+    return "no edit while paused with the button held";
+  });
+
+  await check("AC-13", "F-09 opening and closing a door does not recompute light", async () => {
+    const { page, ctx } = await openPage(browser);
+    await startGame(page);
+    const hx = await dbg(page, () => window.__buddies.debug.world.houseX);
+    const x0 = hx - 24;
+    const top = await flatten(page, x0, x0 + 12);
+    await dbg(page, ([x, t]) => window.__buddies.debug.placeItem("door", x, t - 1), [x0 + 6, top]);
+    await dbg(page, ([x, t]) => window.__buddies.debug.teleport(x, t), [x0 + 3.5, top]);
+    await sleep(700);
+    const before = await dbg(page, () => window.__buddies.debug.stats());
+    let sawOpen = false;
+    await page.keyboard.down("ArrowRight");
+    for (let i = 0; i < 24; i++) {
+      await sleep(60);
+      sawOpen ||= (await getTile(page, x0 + 6, top - 1)).fg === IDS.DOORO_B;
+    }
+    await page.keyboard.up("ArrowRight");
+    await sleep(1500); // the door closes behind the player
+    const after = await dbg(page, () => window.__buddies.debug.stats());
+    assert(sawOpen, "the door opened as the player walked through");
+    assert(
+      after.lightRecomputes === before.lightRecomputes,
+      `door toggles need no light pass (${before.lightRecomputes} -> ${after.lightRecomputes})`,
+    );
+    assert(after.roomDetects === before.roomDetects, "door toggles need no room re-detection");
+    await ctx.close();
+    return "door opened and closed with 0 light passes and 0 room detections";
+  });
+
+  await check("AC-4", "F-11 a grass tuft drops when the block under it is mined", async () => {
+    const { page, ctx } = await openPage(browser);
+    await startGame(page);
+    const spot = await dbg(page, () => {
+      const d = window.__buddies.debug;
+      const hx = d.world.houseX;
+      const x = hx - 20;
+      const g = d.groundRow(x);
+      d.place(x, g - 1, d.ids.TUFT); // make sure there is one
+      d.teleport(x + 0.5, g);
+      return { x, g, there: d.getTile(x, g - 1).fg === d.ids.TUFT };
+    });
+    assert(spot.there, "a tuft sits on the grass");
+    const mined = await dbg(page, ([x, g]) => window.__buddies.debug.tryBreak(x, g), [
+      spot.x,
+      spot.g,
+    ]);
+    assert(mined.ok, "the grass block can be mined");
+    assert((await getTile(page, spot.x, spot.g - 1)).fg === 0, "the tuft is gone with its ground");
+    await ctx.close();
+    return "tuft removed with the block below";
+  });
+
+  await check("AC-7", "F-13 a stale second tab never overwrites newer progress", async () => {
+    const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+    const A = await openPage(browser, { context });
+    const B = await openPage(browser, { context }); // both load the same (empty) save revision
+    await startGame(A.page);
+    await startGame(B.page);
+    const hx = await dbg(A.page, () => window.__buddies.debug.world.houseX);
+    await dbg(
+      A.page,
+      ([x]) => {
+        const d = window.__buddies.debug;
+        d.giveCoins(300);
+        d.place(x, 12, d.ids.STONE);
+        d.save();
+      },
+      [hx + 3],
+    );
+    await sleep(400); // the storage event reaches tab B
+    const toastB = await B.page.locator("#toast").textContent();
+    assert(/another tab/i.test(toastB), "tab B is told progress moved on: " + toastB);
+    const wrote = await dbg(B.page, () => window.__buddies.debug.save());
+    assert(wrote === -2, "tab B refuses to save over newer progress, save() returned " + wrote);
+    const stored = JSON.parse(
+      await dbg(A.page, () => localStorage.getItem(window.__buddies.debug.saveKey)),
+    );
+    assert(
+      stored.world.coins >= 300 && typeof stored.rev === "number" && stored.rev >= 1,
+      "tab A's progress is intact",
+    );
+    await context.close();
+    return `tab B blocked (save -> ${wrote}), stored rev ${stored.rev}, coins ${stored.world.coins}`;
+  });
+
+  await check("AC-13", "F-14 glow sprites per frame are capped", async () => {
+    const { page, ctx } = await openPage(browser);
+    await startGame(page);
+    const hx = await dbg(page, () => window.__buddies.debug.world.houseX);
+    await dbg(
+      page,
+      ([x]) => {
+        const d = window.__buddies.debug;
+        d.fill(x - 30, 24, x - 1, 39, d.ids.TORCH); // 480 emitters in view
+        d.teleport(x - 15.5, d.groundRow(x - 15));
+      },
+      [hx],
+    );
+    await sleep(900);
+    const st = await dbg(page, () => window.__buddies.debug.stats());
+    assert(
+      st.glowsDrawn <= 256 && st.glowsDrawn >= 200,
+      "the glow pass is capped at 256 sprites, drew " + st.glowsDrawn,
+    );
+    await ctx.close();
+    return `drew ${st.glowsDrawn} glows with 480 emitters in view`;
+  });
+
+  await check("AC-12", "C-07 the pad row fits a 320px phone", async () => {
+    const { page, ctx } = await openPage(browser, {
+      viewport: { width: 320, height: 640 },
+      touch: true,
+      dsf: 2,
+    });
+    await startGame(page);
+    await settle(page, 600);
+    const r = await dbg(page, () => {
+      const out = {};
+      for (const id of ["tLeft", "tRight", "tDown", "tJump", "modeBtn", "buildBtn"]) {
+        const b = document.getElementById(id).getBoundingClientRect();
+        out[id] = [Math.round(b.left), Math.round(b.right)];
+      }
+      return { out, w: innerWidth, sw: document.documentElement.scrollWidth };
+    });
+    const clipped = Object.entries(r.out).filter(([, [l, rt]]) => l < 0 || rt > r.w);
+    assert(clipped.length === 0 && r.sw <= r.w, "controls clipped at 320px: " + JSON.stringify(r));
+    await ctx.close();
+    return "jump / pad / mode buttons all inside 320px";
+  });
 
   // ---- AC-9 lighting ---------------------------------------------------------
   await check("AC-9", "torch lights, underground is dark, recompute on change only", async () => {
@@ -1045,6 +1440,32 @@ try {
           .map((e) => e.id || e.className),
       );
       assert(unnamed.length === 0, "unnamed controls: " + unnamed.join(","));
+      // C-05: where a control shows text, its accessible name starts with that text
+      const mismatched = await dbg(page, () =>
+        [...document.querySelectorAll("button, a[href]")]
+          .map((e) => {
+            const copy = e.cloneNode(true);
+            copy
+              .querySelectorAll("[aria-hidden='true'], .visually-hidden")
+              .forEach((n) => n.remove());
+            const visible = copy.textContent.replace(/\s+/g, " ").trim().toLowerCase();
+            const name = (e.getAttribute("aria-label") || "").toLowerCase();
+            return { id: e.id || e.className, visible, name };
+          })
+          .filter((c) => c.visible && c.name && !c.name.startsWith(c.visible))
+          .map((c) => c.id + ": '" + c.name + "' vs visible '" + c.visible + "'"),
+      );
+      assert(
+        mismatched.length === 0,
+        "accessible name must start with the visible text: " + mismatched.join("; "),
+      );
+      assert(
+        (await dbg(
+          page,
+          () => document.querySelectorAll("[role='tab'], [role='tablist']").length,
+        )) === 0,
+        "category buttons are plain pressed-state buttons (C-06)",
+      );
       // keyboard-only start: the Start button has focus on load and the canvas is not a Tab stop (C-01)
       assert(
         (await dbg(page, () => document.activeElement.id)) === "startBtn",
@@ -1082,6 +1503,11 @@ try {
       await sleep(400);
       await page.keyboard.up("KeyA");
       assert((await dbg(page, () => window.__buddies.player)).x < x0 - 1, "A moves left");
+      assert(
+        (await dbg(page, () => getComputedStyle(document.getElementById("view")).outlineStyle)) !==
+          "none",
+        "the canvas shows a focus ring for keyboard players",
+      );
       await page.keyboard.press("Space");
       await sleep(150);
       assert(
@@ -1171,6 +1597,10 @@ try {
       const { page, ctx } = await openPage(browser, v);
       await settle(page, 700);
       await page.screenshot({ path: join(SHOTS, `title-${v.id}.jpg`) });
+      const backH = await dbg(page, () =>
+        Math.round(document.querySelector("#title .back-link").getBoundingClientRect().height),
+      );
+      assert(backH >= 48, "the title back link is at least 48px tall, got " + backH);
       const titleFits = await dbg(page, () => {
         const r = document.getElementById("startBtn").getBoundingClientRect();
         return { top: r.top, bottom: r.bottom, h: innerHeight };

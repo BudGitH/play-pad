@@ -73,7 +73,6 @@
         --bb-glass: rgba(24, 16, 13, 0.78);
         --bb-glass-strong: rgba(24, 16, 13, 0.94);
         --bb-line: rgba(255, 214, 160, 0.22);
-        --bb-warm: #ffcf8a;
         background: #0d0a0c;
         color: var(--md-sys-color-on-surface);
         font-family: var(--md-sys-typeface-plain);
@@ -81,14 +80,6 @@
         user-select: none;
         overscroll-behavior: none;
         touch-action: manipulation;
-      }
-      .vh {
-        position: absolute;
-        width: 1px;
-        height: 1px;
-        overflow: hidden;
-        clip-path: inset(50%);
-        white-space: nowrap;
       }
       button {
         font: inherit;
@@ -142,8 +133,8 @@
         align-items: center;
         justify-content: center;
         gap: 6px;
-        min-height: 44px;
-        min-width: 44px;
+        min-height: 48px;
+        min-width: 48px;
         padding: 0 14px;
         border-radius: 999px;
         background: var(--bb-glass);
@@ -158,7 +149,6 @@
         font-variant-numeric: tabular-nums;
       }
       .chip-btn {
-        min-width: 44px;
         padding: 0 12px;
       }
       .chip-btn:hover,
@@ -178,7 +168,7 @@
       #request {
         pointer-events: auto;
         position: absolute;
-        top: calc(60px + env(safe-area-inset-top));
+        top: calc(66px + env(safe-area-inset-top));
         right: calc(8px + env(safe-area-inset-right));
         width: min(
           330px,
@@ -220,8 +210,8 @@
       }
       #reqToggle {
         flex: none;
-        min-width: 44px;
-        min-height: 44px;
+        min-width: 48px;
+        min-height: 48px;
         border-radius: 12px;
         border: 0;
         background: transparent;
@@ -354,8 +344,8 @@
       }
       .mode-btn {
         flex: none;
-        min-width: 44px;
-        min-height: 44px;
+        min-width: 48px;
+        min-height: 48px;
         padding: 0 10px;
         border-radius: 14px;
         gap: 4px;
@@ -441,6 +431,20 @@
           height: 50px;
         }
       }
+      @media (max-width: 340px) {
+        /* 320px phones: everything on the pad row has to fit in 304px */
+        body.compact .tc {
+          gap: 4px;
+        }
+        body.compact .tbtn,
+        body.compact .tbtn.small,
+        body.compact .mode-btn {
+          width: 44px;
+          min-width: 44px;
+          height: 44px;
+          min-height: 44px;
+        }
+      }
 
       /* Phone in landscape: one bottom row (left pad | hotbar | right pad). */
       @media (orientation: landscape) and (max-height: 520px) {
@@ -481,7 +485,7 @@
       #toast {
         position: absolute;
         left: 50%;
-        top: calc(112px + env(safe-area-inset-top));
+        top: calc(120px + env(safe-area-inset-top));
         transform: translateX(-50%);
         max-width: min(92vw, 520px);
         padding: 10px 16px;
@@ -530,7 +534,7 @@
         flex-wrap: wrap;
       }
       .tab {
-        min-height: 44px;
+        min-height: 48px;
         padding: 0 14px;
         border-radius: 999px;
         border: 1px solid var(--bb-line);
@@ -538,7 +542,7 @@
         font-weight: 700;
         font-size: 14px;
       }
-      .tab[aria-selected="true"] {
+      .tab[aria-pressed="true"] {
         background: var(--md-sys-color-secondary-container);
         color: var(--md-sys-color-on-secondary-container);
         border-color: transparent;
@@ -621,21 +625,12 @@
         box-shadow: 0 18px 60px rgba(0, 0, 0, 0.55);
         backdrop-filter: blur(8px);
       }
+      /* The shared .back-link (styles/base.css) supplies size, shape and type; only the card's
+         tucked-in position is game-specific. */
       .back-link {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        min-height: 48px;
         margin: -8px 0 0 -10px;
         padding: 0 14px 0 8px;
-        border-radius: 999px;
-        color: var(--md-sys-color-on-surface-variant);
         text-decoration: none;
-        font-weight: 700;
-        font-size: 14px;
-      }
-      .back-link:hover {
-        color: var(--md-sys-color-on-surface);
       }
       .brand {
         margin: 0;
@@ -803,17 +798,12 @@
           gap: 4px;
         }
       }
-      @media (prefers-reduced-motion: reduce) {
-        #toast {
-          transition: none;
-        }
-      }
     </style>
   </head>
   <body>
     <canvas
       id="view"
-      tabindex="0"
+      tabindex="-1"
       role="application"
       aria-label="Brick Buddies world. Move with A and D or the arrow keys, jump with W or Space, climb ladders with W and S. Aim with I J K L, place with F, break with X, open the build menu with E."
     ></canvas>
@@ -821,21 +811,25 @@
     <!-- ========== HUD (shown while playing) ========== -->
     <div id="hud" hidden>
       <div class="hud-top">
-        <a class="chip back-link-chip" href="../../index.html" aria-label="Back to PlayPad">
+        <a
+          class="chip back-link-chip"
+          href="../../index.html"
+          aria-label="PlayPad, back to the hub"
+        >
           <span class="ico" aria-hidden="true">&#8592;</span><span class="txt">PlayPad</span>
         </a>
         <div class="stats">
           <span class="chip"
-            ><span class="ico" aria-hidden="true">&#129689;</span><span class="vh">Coins</span
-            ><b id="coinN">0</b></span
+            ><span class="ico" aria-hidden="true">&#129689;</span
+            ><span class="visually-hidden">Coins</span><b id="coinN">0</b></span
           >
           <span class="chip"
             ><span class="ico" aria-hidden="true">&#127968;</span
-            ><span class="vh">Buddies housed</span><b id="housedN">0</b></span
+            ><span class="visually-hidden">Buddies housed</span><b id="housedN">0</b></span
           >
           <span class="chip"
             ><span class="ico" aria-hidden="true">&#9733;</span
-            ><span class="vh">Happiness stars</span><b id="starN">0</b></span
+            ><span class="visually-hidden">Happiness stars</span><b id="starN">0</b></span
           >
         </div>
         <span class="grow"></span>
@@ -866,7 +860,7 @@
             id="modeBtn"
             class="chip-btn mode-btn"
             data-mode="build"
-            aria-label="Mode: Build. Press to switch to Break"
+            aria-label="Build mode. Press to switch to Break mode"
           >
             <span aria-hidden="true" id="modeIco">&#128296;</span>
             <span id="modeTxt" class="lbl">Build</span>
@@ -874,7 +868,7 @@
           <button
             id="buildBtn"
             class="chip-btn mode-btn"
-            aria-label="Open build menu"
+            aria-label="Items, open build menu"
             aria-haspopup="dialog"
           >
             <span aria-hidden="true">&#129521;</span><span class="lbl">Items</span>
@@ -915,16 +909,12 @@
     <!-- ========== Build menu ========== -->
     <section id="build" role="dialog" aria-label="Build menu" hidden>
       <div class="sheet-head">
-        <div class="tabs" role="tablist" aria-label="Categories">
-          <button class="tab" role="tab" data-cat="structure" aria-selected="true">
-            Structure
-          </button>
-          <button class="tab" role="tab" data-cat="furniture" aria-selected="false">
-            Furniture
-          </button>
-          <button class="tab" role="tab" data-cat="light" aria-selected="false">Light</button>
+        <div class="tabs" role="group" aria-label="Categories">
+          <button class="tab" data-cat="structure" aria-pressed="true">Structure</button>
+          <button class="tab" data-cat="furniture" aria-pressed="false">Furniture</button>
+          <button class="tab" data-cat="light" aria-pressed="false">Light</button>
         </div>
-        <button id="buildClose" class="tab" aria-label="Close build menu">Done</button>
+        <button id="buildClose" class="tab" aria-label="Done, close build menu">Done</button>
       </div>
       <p class="sheet-note" id="buildNote">Pick an item to put it in the selected hotbar slot.</p>
       <div id="items" role="group" aria-label="Items"></div>
@@ -935,7 +925,7 @@
     <!-- ========== Title ========== -->
     <section id="title" aria-label="Brick Buddies title">
       <div class="card">
-        <a class="back-link" href="../../index.html" aria-label="Back to PlayPad">
+        <a class="back-link" href="../../index.html" aria-label="PlayPad, back to the hub">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path
               d="M15 18l-6-6 6-6"
@@ -968,7 +958,7 @@
         </ol>
         <button id="startBtn" class="btn primary">Start building</button>
         <div class="row">
-          <button id="titleSound" class="btn quiet" aria-pressed="true" aria-label="Sound">
+          <button id="titleSound" class="btn quiet" aria-pressed="true">
             Sound: <span id="titleSoundState">on</span>
           </button>
         </div>
@@ -1042,7 +1032,7 @@
       </div>
     </section>
 
-    <div id="announcer" class="vh" role="status" aria-live="polite"></div>
+    <div id="announcer" class="visually-hidden" role="status" aria-live="polite"></div>
 
     <script>
       (function () {
@@ -1069,6 +1059,21 @@
         var ROOM_HARD_CAP = 700; // a flood fill bigger than this is open air, not a room
         var STEP = 1 / 60; // fixed simulation step (s)
         var DAY_LENGTH = 720; // seconds per full day / night cycle
+        // Feel and layout numbers (named so tuning is one edit):
+        var HOTBAR_SLOTS = 10;
+        var SLOT_PITCH = 48; // a 44px hotbar slot plus its 4px gap
+        var COYOTE_TIME = 0.1; // s after walking off a ledge in which a jump still works
+        var JUMP_BUFFER = 0.12; // s a jump press is remembered before landing
+        var ACCEL_GROUND = 60; // tiles/s^2 horizontal acceleration
+        var ACCEL_AIR = 32;
+        var DOOR_OPEN_FOR = 0.8; // s a door stays open after being pushed
+        var DOOR_HOLD = 0.7; // s it stays open while someone is in it
+        var STEP_SOUND_EVERY = 1.15; // tiles walked between footstep sounds
+        var CLIMB_DRIFT_TIME = 0.12; // s of sideways input that lets go of a ladder
+        var CLIMB_STEP_WINDOW = 0.35; // s after letting go in which a ledge can be stepped onto
+        var LADDER_SOUND_EVERY = 0.3; // s between ladder creaks
+        var BUDDY_WALK_SPEED = 2.5; // tiles/s
+        var BUDDY_DROP_SPEED = 9;
 
         // Foreground tile ids. Multi-tile items use one id per part (bed: L + R, door: top + bottom).
         var T = {
@@ -1138,7 +1143,8 @@
           T.DOOR_T,
           T.DOOR_B,
         ]);
-        // Light: glass lets sky and torch light through, every other solid blocks it hard.
+        // Light: glass lets sky and torch light through, every other solid blocks it hard. Doors block
+        // light in BOTH states, so opening and closing one never needs a new light pass.
         var OPAQUE = flags([
           T.PLANKS,
           T.BRICK,
@@ -1149,6 +1155,8 @@
           T.DEEP,
           T.DOOR_T,
           T.DOOR_B,
+          T.DOORO_T,
+          T.DOORO_B,
         ]);
         // Room boundary: solid blocks plus doors in either state.
         var BOUNDARY = flags([
@@ -1166,8 +1174,6 @@
           T.DOORO_B,
         ]);
         var DOORS = flags([T.DOOR_T, T.DOOR_B, T.DOORO_T, T.DOORO_B]);
-        // Things a player can mine away without a support check ("loose" decor).
-        var DECOR = flags([T.TUFT]);
 
         // Emitters: colour (0..1 per channel), strength k (>1 reaches further) and glow sprite colour.
         var EMIT = {};
@@ -1352,7 +1358,7 @@
         // ===========================================================================
         //  2. PIXEL ART — every texture is drawn here, 16x16, with a fixed-seed RNG
         // ===========================================================================
-        function mkc(w, h) {
+        function makeCanvas(w, h) {
           var c = document.createElement("canvas");
           c.width = w;
           c.height = h;
@@ -1360,16 +1366,16 @@
           g.imageSmoothingEnabled = false;
           return { c: c, g: g };
         }
-        function PX(g, x, y, c) {
+        function paintPixel(g, x, y, c) {
           g.fillStyle = c;
           g.fillRect(x, y, 1, 1);
         }
-        function RC(g, x, y, w, h, c) {
+        function paintRect(g, x, y, w, h, c) {
           g.fillStyle = c;
           g.fillRect(x, y, w, h);
         }
         /** colour array + brightness delta -> css colour */
-        function sh(c, d) {
+        function shade(c, d) {
           return (
             "rgb(" +
             (clamp(c[0] + d, 0, 255) | 0) +
@@ -1383,16 +1389,16 @@
         function rgba(r, g, b, a) {
           return "rgba(" + r + "," + g + "," + b + "," + a + ")";
         }
-        function jit(rnd, amt) {
+        function jitter(rnd, amt) {
           return (rnd() * 2 - 1) * amt;
         }
         function make(w, h, seed, fn) {
-          var o = mkc(w, h);
+          var o = makeCanvas(w, h);
           fn(o.g, mulberry32(seed));
           return o.c;
         }
         function crop(c, x, y, w, h) {
-          var o = mkc(w, h);
+          var o = makeCanvas(w, h);
           o.g.drawImage(c, x, y, w, h, 0, 0, w, h);
           return o.c;
         }
@@ -1404,10 +1410,10 @@
               var ny = (y + 0.5 - cy) / ry;
               var d = nx * nx + ny * ny;
               if (d > 1) continue;
-              var lit = (-nx - ny) * 0.5 + jit(rnd, 0.35);
+              var lit = (-nx - ny) * 0.5 + jitter(rnd, 0.35);
               var k = lit > 0.35 ? 2 : lit > -0.2 ? 1 : 0;
               if (d > 0.82) k = Math.max(0, k - 1);
-              PX(g, x, y, cols[k]);
+              paintPixel(g, x, y, cols[k]);
             }
           }
         }
@@ -1435,15 +1441,15 @@
         function paintPlanks(g, rnd, pal) {
           for (var row = 0; row < 4; row++) {
             var y0 = row * 4;
-            var tone = jit(rnd, 9);
+            var tone = jitter(rnd, 9);
             var phase = rnd() * 6.28;
             var freq = 0.3 + rnd() * 0.35;
             for (var x = 0; x < 16; x++) {
               var wave = Math.sin(x * freq + phase);
               for (var y = 0; y < 4; y++) {
                 var base = y === 0 ? pal.hi : y === 3 ? pal.lo : pal.base;
-                var d = tone + (y === 1 || y === 2 ? wave * 5 : 0) + jit(rnd, 2);
-                PX(g, x, y0 + y, sh(base, d));
+                var d = tone + (y === 1 || y === 2 ? wave * 5 : 0) + jitter(rnd, 2);
+                paintPixel(g, x, y0 + y, shade(base, d));
               }
             }
             // long grain streaks along the board (darker, then a lighter one)
@@ -1452,110 +1458,115 @@
               var gx = (rnd() * 8) | 0;
               var len = 5 + ((rnd() * 8) | 0);
               for (var i = 0; i < len && gx + i < 16; i++) {
-                PX(g, gx + i, gy, sh(k === 0 ? pal.lo : pal.hi, k === 0 ? 10 : -8));
+                paintPixel(g, gx + i, gy, shade(k === 0 ? pal.lo : pal.hi, k === 0 ? 10 : -8));
               }
             }
             if (rnd() < 0.22) {
               var kx = 2 + ((rnd() * 9) | 0); // knot: dark ring with a lighter eye
-              RC(g, kx, y0 + 1, 4, 2, sh(pal.lo, 2));
-              RC(g, kx + 1, y0 + 1, 2, 2, sh(pal.base, -26));
-              PX(g, kx + 1, y0 + 1, sh(pal.hi, -4));
+              paintRect(g, kx, y0 + 1, 4, 2, shade(pal.lo, 2));
+              paintRect(g, kx + 1, y0 + 1, 2, 2, shade(pal.base, -26));
+              paintPixel(g, kx + 1, y0 + 1, shade(pal.hi, -4));
             }
             if (rnd() < 0.55) {
-              PX(g, 1, y0 + 1, sh(pal.lo, -22)); // nails near the board ends
-              PX(g, 14, y0 + 2, sh(pal.lo, -22));
-              PX(g, 1, y0, sh(pal.hi, 12));
+              paintPixel(g, 1, y0 + 1, shade(pal.lo, -22)); // nails near the board ends
+              paintPixel(g, 14, y0 + 2, shade(pal.lo, -22));
+              paintPixel(g, 1, y0, shade(pal.hi, 12));
             }
             if ((row + (rnd() < 0.5 ? 0 : 1)) % 2 === 0) {
-              for (var j = 0; j < 3; j++) PX(g, 15, y0 + j, sh(pal.lo, -8)); // end joint on the tile edge
+              for (var j = 0; j < 3; j++) paintPixel(g, 15, y0 + j, shade(pal.lo, -8)); // end joint on the tile edge
+            }
+          }
+        }
+        /** One 7x3 brick starting at column bx of brick row `row` (mortar shows between bricks). */
+        function paintBrickCell(g, rnd, pal, bx, row) {
+          var tone = jitter(rnd, 13);
+          for (var y = 0; y < 3; y++) {
+            for (var x = 0; x < 7; x++) {
+              if (bx + x < 0 || bx + x > 15) continue;
+              var d = tone + (y === 0 ? 10 : y === 2 ? -10 : 0) + jitter(rnd, 4);
+              paintPixel(g, bx + x, row * 4 + y, shade(pal.brick, d));
             }
           }
         }
         function paintBrick(g, rnd, pal) {
-          RC(g, 0, 0, 16, 16, sh(pal.mortar, 0));
+          paintRect(g, 0, 0, 16, 16, shade(pal.mortar, 0));
           for (var r = 0; r < 4; r++) {
-            var off = (r & 1) * 4;
-            for (var k = -1; k < 3; k++) {
-              var bx = k * 8 + off;
-              var d = jit(rnd, 13);
-              for (var y = 0; y < 3; y++) {
-                for (var x = 0; x < 7; x++) {
-                  var px = bx + x;
-                  if (px < 0 || px > 15) continue;
-                  var dd = d + (y === 0 ? 10 : y === 2 ? -10 : 0) + jit(rnd, 4);
-                  PX(g, px, r * 4 + y, sh(pal.brick, dd));
-                }
-              }
-            }
+            for (var k = -1; k < 3; k++) paintBrickCell(g, rnd, pal, k * 8 + (r & 1) * 4, r);
           }
         }
-        function paintCobble(g, rnd, pal) {
-          var seeds = [];
-          for (var i = 0; i < 8; i++) seeds.push([rnd() * 16, rnd() * 16, jit(rnd, 1)]);
+        /** Which Voronoi seed owns each pixel of a 16x16 tile (wrapping, so the tile repeats cleanly). */
+        function cobbleCells(seeds) {
           var cell = [];
           for (var y = 0; y < 16; y++) {
             for (var x = 0; x < 16; x++) {
               var best = 0;
               var bd = 1e9;
-              for (var k = 0; k < seeds.length; k++) {
-                var dx = Math.abs(x + 0.5 - seeds[k][0]);
-                var dy = Math.abs(y + 0.5 - seeds[k][1]);
-                dx = Math.min(dx, 16 - dx);
-                dy = Math.min(dy, 16 - dy);
-                var d = dx * dx + dy * dy * 1.15;
+              seeds.forEach(function (sd, k) {
+                var dx = Math.abs(x + 0.5 - sd[0]);
+                var dy = Math.abs(y + 0.5 - sd[1]);
+                var d =
+                  Math.pow(Math.min(dx, 16 - dx), 2) + Math.pow(Math.min(dy, 16 - dy), 2) * 1.15;
                 if (d < bd) {
                   bd = d;
                   best = k;
                 }
-              }
+              });
               cell[y * 16 + x] = best;
             }
           }
-          for (var y2 = 0; y2 < 16; y2++) {
-            for (var x2 = 0; x2 < 16; x2++) {
-              var c = cell[y2 * 16 + x2];
-              var right = cell[y2 * 16 + ((x2 + 1) & 15)];
-              var down = cell[((y2 + 1) & 15) * 16 + x2];
-              var left = cell[y2 * 16 + ((x2 + 15) & 15)];
-              var up = cell[((y2 + 15) & 15) * 16 + x2];
-              var col;
-              if (right !== c || down !== c) col = sh(pal.edge, jit(rnd, 3));
-              else if (left !== c || up !== c) col = sh(pal.base, pal.v * 0.7 + jit(rnd, 3));
-              else col = sh(pal.base, seeds[c][2] * pal.v + jit(rnd, 4));
-              PX(g, x2, y2, col);
+          return cell;
+        }
+        function cobbleColor(cell, seeds, rnd, pal, x, y) {
+          var c = cell[y * 16 + x];
+          var edge = cell[y * 16 + ((x + 1) & 15)] !== c || cell[((y + 1) & 15) * 16 + x] !== c;
+          var lit = cell[y * 16 + ((x + 15) & 15)] !== c || cell[((y + 15) & 15) * 16 + x] !== c;
+          if (edge) return shade(pal.edge, jitter(rnd, 3));
+          if (lit) return shade(pal.base, pal.v * 0.7 + jitter(rnd, 3));
+          return shade(pal.base, seeds[c][2] * pal.v + jitter(rnd, 4));
+        }
+        function paintCobble(g, rnd, pal) {
+          var seeds = [];
+          for (var i = 0; i < 8; i++) seeds.push([rnd() * 16, rnd() * 16, jitter(rnd, 1)]);
+          var cell = cobbleCells(seeds);
+          for (var y = 0; y < 16; y++) {
+            for (var x = 0; x < 16; x++)
+              paintPixel(g, x, y, cobbleColor(cell, seeds, rnd, pal, x, y));
+          }
+        }
+        /** One 8x8 sandstone slab with a lit top-left edge and a dark bottom-right seam. */
+        function paintSlab(g, rnd, pal, ox, oy) {
+          var tone = jitter(rnd, 5);
+          for (var y = 0; y < 8; y++) {
+            for (var x = 0; x < 8; x++) {
+              var col = shade(pal.base, tone + jitter(rnd, 3));
+              if (x === 7 || y === 7) col = shade(pal.line, 0);
+              else if (x === 0 || y === 0) col = shade(pal.hi, tone);
+              paintPixel(g, ox + x, oy + y, col);
             }
           }
         }
         function paintSand(g, rnd, pal) {
           for (var sy = 0; sy < 2; sy++) {
-            for (var sx = 0; sx < 2; sx++) {
-              var d = jit(rnd, 5);
-              for (var y = 0; y < 8; y++) {
-                for (var x = 0; x < 8; x++) {
-                  var col = sh(pal.base, d + jit(rnd, 3));
-                  if (x === 7 || y === 7) col = sh(pal.line, 0);
-                  else if (x === 0 || y === 0) col = sh(pal.hi, d);
-                  PX(g, sx * 8 + x, sy * 8 + y, col);
-                }
-              }
-            }
+            for (var sx = 0; sx < 2; sx++) paintSlab(g, rnd, pal, sx * 8, sy * 8);
           }
-          for (var i = 0; i < 6; i++) PX(g, (rnd() * 16) | 0, (rnd() * 16) | 0, sh(pal.line, 8));
+          for (var i = 0; i < 6; i++) {
+            paintPixel(g, (rnd() * 16) | 0, (rnd() * 16) | 0, shade(pal.line, 8));
+          }
         }
         function paintDirt(g, rnd, base) {
           for (var y = 0; y < 16; y++) {
             for (var x = 0; x < 16; x++) {
-              var d = jit(rnd, 8);
+              var d = jitter(rnd, 8);
               if (rnd() < 0.18) d -= 16;
               else if (rnd() < 0.1) d += 14;
-              PX(g, x, y, sh(base, d));
+              paintPixel(g, x, y, shade(base, d));
             }
           }
           for (var p = 0; p < 2; p++) {
             var px = (rnd() * 13) | 0;
             var py = (rnd() * 13) | 0;
-            RC(g, px, py, 2, 2, sh([138, 128, 118], jit(rnd, 6)));
-            PX(g, px, py, sh([170, 160, 150], 0));
+            paintRect(g, px, py, 2, 2, shade([138, 128, 118], jitter(rnd, 6)));
+            paintPixel(g, px, py, shade([170, 160, 150], 0));
           }
         }
         function paintGrass(g, rnd) {
@@ -1563,87 +1574,93 @@
           for (var x = 0; x < 16; x++) {
             var h = 3 + (rnd() < 0.5 ? 1 : 0) + (rnd() < 0.2 ? 1 : 0);
             for (var y = 0; y < h; y++) {
-              var shade = y === 0 ? 20 : y === h - 1 ? -22 : jit(rnd, 6);
-              PX(g, x, y, sh([86, 150, 54], shade));
+              var shade = y === 0 ? 20 : y === h - 1 ? -22 : jitter(rnd, 6);
+              paintPixel(g, x, y, shade([86, 150, 54], shade));
             }
-            if (rnd() < 0.35) PX(g, x, h, sh([70, 124, 46], jit(rnd, 6)));
+            if (rnd() < 0.35) paintPixel(g, x, h, shade([70, 124, 46], jitter(rnd, 6)));
           }
         }
         function paintGlass(g) {
-          RC(g, 0, 0, 16, 16, rgba(176, 218, 236, 0.2));
-          RC(g, 0, 0, 16, 1, rgba(236, 248, 255, 0.7));
-          RC(g, 0, 15, 16, 1, rgba(120, 170, 196, 0.7));
-          RC(g, 0, 0, 1, 16, rgba(236, 248, 255, 0.7));
-          RC(g, 15, 0, 1, 16, rgba(120, 170, 196, 0.7));
-          for (var i = 0; i < 5; i++) PX(g, 3 + i, 3 + i, rgba(255, 255, 255, 0.55));
-          for (var j = 0; j < 3; j++) PX(g, 9 + j, 8 + j, rgba(255, 255, 255, 0.35));
+          paintRect(g, 0, 0, 16, 16, rgba(176, 218, 236, 0.2));
+          paintRect(g, 0, 0, 16, 1, rgba(236, 248, 255, 0.7));
+          paintRect(g, 0, 15, 16, 1, rgba(120, 170, 196, 0.7));
+          paintRect(g, 0, 0, 1, 16, rgba(236, 248, 255, 0.7));
+          paintRect(g, 15, 0, 1, 16, rgba(120, 170, 196, 0.7));
+          for (var i = 0; i < 5; i++) paintPixel(g, 3 + i, 3 + i, rgba(255, 255, 255, 0.55));
+          for (var j = 0; j < 3; j++) paintPixel(g, 9 + j, 8 + j, rgba(255, 255, 255, 0.35));
         }
         function paintLadder(g) {
           var rail = [160, 92, 48];
           var rung = [188, 118, 62];
-          RC(g, 3, 0, 2, 16, sh(rail, 0));
-          RC(g, 11, 0, 2, 16, sh(rail, 0));
-          RC(g, 3, 0, 1, 16, sh(rail, 26));
-          RC(g, 11, 0, 1, 16, sh(rail, 26));
-          RC(g, 4, 0, 1, 16, sh(rail, -26));
-          RC(g, 12, 0, 1, 16, sh(rail, -26));
+          paintRect(g, 3, 0, 2, 16, shade(rail, 0));
+          paintRect(g, 11, 0, 2, 16, shade(rail, 0));
+          paintRect(g, 3, 0, 1, 16, shade(rail, 26));
+          paintRect(g, 11, 0, 1, 16, shade(rail, 26));
+          paintRect(g, 4, 0, 1, 16, shade(rail, -26));
+          paintRect(g, 12, 0, 1, 16, shade(rail, -26));
           for (var y = 1; y < 16; y += 4) {
-            RC(g, 5, y, 6, 2, sh(rung, 0));
-            RC(g, 5, y, 6, 1, sh(rung, 24));
-            RC(g, 5, y + 1, 6, 1, sh(rung, -26));
+            paintRect(g, 5, y, 6, 2, shade(rung, 0));
+            paintRect(g, 5, y, 6, 1, shade(rung, 24));
+            paintRect(g, 5, y + 1, 6, 1, shade(rung, -26));
           }
         }
         function paintChest(g, rnd) {
           var wood = [150, 82, 42];
-          RC(g, 1, 4, 14, 12, sh([54, 28, 18], 0));
-          RC(g, 2, 5, 12, 10, sh(wood, 0));
+          paintRect(g, 1, 4, 14, 12, shade([54, 28, 18], 0));
+          paintRect(g, 2, 5, 12, 10, shade(wood, 0));
           for (var x = 2; x < 14; x++) {
-            PX(g, x, 5, sh(wood, 26));
-            PX(g, x, 9, sh([54, 28, 18], 0)); // lid seam
-            PX(g, x, 14, sh(wood, -30));
+            paintPixel(g, x, 5, shade(wood, 26));
+            paintPixel(g, x, 9, shade([54, 28, 18], 0)); // lid seam
+            paintPixel(g, x, 14, shade(wood, -30));
           }
           for (var i = 0; i < 12; i++)
-            PX(g, 2 + ((rnd() * 12) | 0), 6 + ((rnd() * 8) | 0), sh(wood, jit(rnd, 12)));
-          RC(g, 7, 4, 2, 12, sh([76, 74, 82], 0)); // iron band
-          RC(g, 7, 4, 1, 12, sh([112, 110, 120], 0));
-          RC(g, 7, 8, 2, 3, sh([232, 196, 92], 0)); // lock
-          PX(g, 8, 9, sh([120, 84, 20], 0));
+            paintPixel(
+              g,
+              2 + ((rnd() * 12) | 0),
+              6 + ((rnd() * 8) | 0),
+              shade(wood, jitter(rnd, 12)),
+            );
+          paintRect(g, 7, 4, 2, 12, shade([76, 74, 82], 0)); // iron band
+          paintRect(g, 7, 4, 1, 12, shade([112, 110, 120], 0));
+          paintRect(g, 7, 8, 2, 3, shade([232, 196, 92], 0)); // lock
+          paintPixel(g, 8, 9, shade([120, 84, 20], 0));
         }
         function paintBench(g, rnd) {
           var wood = [172, 100, 56];
-          RC(g, 1, 6, 14, 3, sh(wood, 0));
-          RC(g, 1, 6, 14, 1, sh(wood, 28));
-          RC(g, 1, 9, 14, 1, sh(wood, -40));
-          RC(g, 2, 10, 2, 6, sh(wood, -22));
-          RC(g, 12, 10, 2, 6, sh(wood, -22));
-          RC(g, 4, 11, 8, 1, sh(wood, -34));
-          RC(g, 4, 13, 8, 2, sh([112, 62, 34], 0)); // drawer
-          PX(g, 8, 14, sh([228, 196, 100], 0));
+          paintRect(g, 1, 6, 14, 3, shade(wood, 0));
+          paintRect(g, 1, 6, 14, 1, shade(wood, 28));
+          paintRect(g, 1, 9, 14, 1, shade(wood, -40));
+          paintRect(g, 2, 10, 2, 6, shade(wood, -22));
+          paintRect(g, 12, 10, 2, 6, shade(wood, -22));
+          paintRect(g, 4, 11, 8, 1, shade(wood, -34));
+          paintRect(g, 4, 13, 8, 2, shade([112, 62, 34], 0)); // drawer
+          paintPixel(g, 8, 14, shade([228, 196, 100], 0));
           // saw + hammer on top
-          RC(g, 3, 3, 6, 2, sh([176, 180, 190], 0));
-          for (var i = 0; i < 6; i += 2) PX(g, 3 + i, 5, sh([120, 124, 134], 0));
-          RC(g, 3, 4, 2, 3, sh([120, 70, 36], 0));
-          RC(g, 11, 3, 1, 4, sh([110, 62, 34], 0));
-          RC(g, 10, 2, 3, 2, sh([128, 130, 140], 0));
-          for (var k = 0; k < 4; k++) PX(g, 2 + ((rnd() * 12) | 0), 7, sh(wood, jit(rnd, 14)));
+          paintRect(g, 3, 3, 6, 2, shade([176, 180, 190], 0));
+          for (var i = 0; i < 6; i += 2) paintPixel(g, 3 + i, 5, shade([120, 124, 134], 0));
+          paintRect(g, 3, 4, 2, 3, shade([120, 70, 36], 0));
+          paintRect(g, 11, 3, 1, 4, shade([110, 62, 34], 0));
+          paintRect(g, 10, 2, 3, 2, shade([128, 130, 140], 0));
+          for (var k = 0; k < 4; k++)
+            paintPixel(g, 2 + ((rnd() * 12) | 0), 7, shade(wood, jitter(rnd, 14)));
         }
         function paintFurnace(g, rnd) {
           paintCobble(g, rnd, { base: [118, 114, 112], edge: [58, 56, 58], v: 12 });
-          RC(g, 0, 0, 16, 2, sh([96, 92, 92], 0));
-          RC(g, 0, 15, 16, 1, sh([50, 48, 50], 0));
-          RC(g, 3, 6, 10, 8, sh([26, 20, 22], 0)); // mouth
-          RC(g, 3, 6, 10, 1, sh([44, 36, 38], 0));
-          RC(g, 4, 10, 8, 4, sh([196, 82, 24], 0)); // embers
-          RC(g, 5, 11, 6, 3, sh([252, 150, 40], 0));
-          RC(g, 6, 12, 4, 2, sh([255, 214, 96], 0));
-          RC(g, 7, 8, 2, 3, sh([236, 110, 30], 0));
-          PX(g, 7, 7, sh([255, 170, 60], 0));
-          RC(g, 2, 5, 12, 1, sh([70, 66, 68], 0)); // lintel
+          paintRect(g, 0, 0, 16, 2, shade([96, 92, 92], 0));
+          paintRect(g, 0, 15, 16, 1, shade([50, 48, 50], 0));
+          paintRect(g, 3, 6, 10, 8, shade([26, 20, 22], 0)); // mouth
+          paintRect(g, 3, 6, 10, 1, shade([44, 36, 38], 0));
+          paintRect(g, 4, 10, 8, 4, shade([196, 82, 24], 0)); // embers
+          paintRect(g, 5, 11, 6, 3, shade([252, 150, 40], 0));
+          paintRect(g, 6, 12, 4, 2, shade([255, 214, 96], 0));
+          paintRect(g, 7, 8, 2, 3, shade([236, 110, 30], 0));
+          paintPixel(g, 7, 7, shade([255, 170, 60], 0));
+          paintRect(g, 2, 5, 12, 1, shade([70, 66, 68], 0)); // lintel
         }
         function paintShelf(g, rnd) {
           var wood = [136, 72, 40];
-          RC(g, 0, 0, 16, 16, sh(wood, -30));
-          RC(g, 0, 0, 16, 1, sh(wood, 18));
+          paintRect(g, 0, 0, 16, 16, shade(wood, -30));
+          paintRect(g, 0, 0, 16, 1, shade(wood, 18));
           var cols = [
             [190, 60, 52],
             [62, 112, 176],
@@ -1655,107 +1672,117 @@
           ];
           for (var s = 0; s < 2; s++) {
             var y0 = 2 + s * 7;
-            RC(g, 1, y0, 14, 5, sh([46, 24, 16], 0));
+            paintRect(g, 1, y0, 14, 5, shade([46, 24, 16], 0));
             var x = 1;
             while (x < 14) {
               var w = 2 + ((rnd() * 2) | 0);
               var h = 3 + ((rnd() * 3) | 0);
               var c = cols[(rnd() * cols.length) | 0];
-              RC(g, x, y0 + 5 - h, w, h, sh(c, jit(rnd, 8)));
-              PX(g, x, y0 + 5 - h, sh(c, 34));
+              paintRect(g, x, y0 + 5 - h, w, h, shade(c, jitter(rnd, 8)));
+              paintPixel(g, x, y0 + 5 - h, shade(c, 34));
               x += w;
               if (rnd() < 0.2) x += 1;
             }
-            RC(g, 1, y0 + 5, 14, 1, sh(wood, 24));
+            paintRect(g, 1, y0 + 5, 14, 1, shade(wood, 24));
           }
-          RC(g, 0, 14, 16, 2, sh(wood, -12));
-          RC(g, 0, 0, 1, 16, sh(wood, 8));
-          RC(g, 15, 0, 1, 16, sh(wood, -50));
+          paintRect(g, 0, 14, 16, 2, shade(wood, -12));
+          paintRect(g, 0, 0, 1, 16, shade(wood, 8));
+          paintRect(g, 15, 0, 1, 16, shade(wood, -50));
         }
         function paintCupboard(g, rnd, olive) {
           var body = olive ? [116, 122, 64] : [66, 42, 36];
           var dark = olive ? [74, 80, 38] : [38, 24, 22];
-          RC(g, 0, 0, 16, 16, sh(dark, 0));
-          RC(g, 1, 1, 14, 14, sh(body, 0));
-          RC(g, 1, 1, 14, 1, sh(body, 26));
-          RC(g, 2, 2, 5, 12, sh(body, -14));
-          RC(g, 9, 2, 5, 12, sh(body, -14));
-          RC(g, 2, 2, 5, 1, sh(body, 10));
-          RC(g, 9, 2, 5, 1, sh(body, 10));
-          RC(g, 7, 1, 2, 14, sh(dark, 0));
+          paintRect(g, 0, 0, 16, 16, shade(dark, 0));
+          paintRect(g, 1, 1, 14, 14, shade(body, 0));
+          paintRect(g, 1, 1, 14, 1, shade(body, 26));
+          paintRect(g, 2, 2, 5, 12, shade(body, -14));
+          paintRect(g, 9, 2, 5, 12, shade(body, -14));
+          paintRect(g, 2, 2, 5, 1, shade(body, 10));
+          paintRect(g, 9, 2, 5, 1, shade(body, 10));
+          paintRect(g, 7, 1, 2, 14, shade(dark, 0));
           if (olive) {
             for (var y = 4; y < 13; y += 3) {
-              RC(g, 3, y, 3, 1, sh(dark, 0));
-              RC(g, 10, y, 3, 1, sh(dark, 0));
+              paintRect(g, 3, y, 3, 1, shade(dark, 0));
+              paintRect(g, 10, y, 3, 1, shade(dark, 0));
             }
           }
-          PX(g, 6, 8, sh([222, 188, 90], 0));
-          PX(g, 9, 8, sh([222, 188, 90], 0));
+          paintPixel(g, 6, 8, shade([222, 188, 90], 0));
+          paintPixel(g, 9, 8, shade([222, 188, 90], 0));
           for (var i = 0; i < 6; i++)
-            PX(g, 1 + ((rnd() * 14) | 0), 1 + ((rnd() * 14) | 0), sh(body, jit(rnd, 10)));
+            paintPixel(
+              g,
+              1 + ((rnd() * 14) | 0),
+              1 + ((rnd() * 14) | 0),
+              shade(body, jitter(rnd, 10)),
+            );
         }
         function paintChair(g) {
           var wood = [170, 96, 52];
-          RC(g, 3, 2, 2, 14, sh(wood, -10));
-          RC(g, 3, 2, 1, 14, sh(wood, 18));
-          RC(g, 3, 2, 5, 2, sh(wood, 8));
-          RC(g, 5, 5, 2, 1, sh(wood, -18));
-          RC(g, 5, 7, 2, 1, sh(wood, -18));
-          RC(g, 3, 9, 9, 2, sh(wood, 0));
-          RC(g, 3, 9, 9, 1, sh(wood, 26));
-          RC(g, 10, 11, 2, 5, sh(wood, -24));
-          RC(g, 5, 11, 1, 5, sh(wood, -30));
-          RC(g, 4, 9, 7, 1, sh([186, 70, 60], 0)); // cushion
+          paintRect(g, 3, 2, 2, 14, shade(wood, -10));
+          paintRect(g, 3, 2, 1, 14, shade(wood, 18));
+          paintRect(g, 3, 2, 5, 2, shade(wood, 8));
+          paintRect(g, 5, 5, 2, 1, shade(wood, -18));
+          paintRect(g, 5, 7, 2, 1, shade(wood, -18));
+          paintRect(g, 3, 9, 9, 2, shade(wood, 0));
+          paintRect(g, 3, 9, 9, 1, shade(wood, 26));
+          paintRect(g, 10, 11, 2, 5, shade(wood, -24));
+          paintRect(g, 5, 11, 1, 5, shade(wood, -30));
+          paintRect(g, 4, 9, 7, 1, shade([186, 70, 60], 0)); // cushion
         }
         function paintPlant(g, rnd) {
           var pot = [192, 98, 58];
-          var leaf = [sh([40, 98, 48], 0), sh([68, 146, 66], 0), sh([112, 190, 92], 0)];
+          var leaf = [shade([40, 98, 48], 0), shade([68, 146, 66], 0), shade([112, 190, 92], 0)];
           blob(g, 8, 6, 5, 4.5, leaf, rnd);
           blob(g, 4, 8, 3.5, 3.5, leaf, rnd);
           blob(g, 12, 8, 3.5, 3.5, leaf, rnd);
-          RC(g, 7, 9, 2, 3, sh([44, 90, 40], 0));
-          RC(g, 3, 10, 10, 2, sh(pot, 18));
-          RC(g, 4, 12, 8, 4, sh(pot, 0));
-          RC(g, 4, 12, 2, 4, sh(pot, 20));
-          RC(g, 10, 12, 2, 4, sh(pot, -26));
-          RC(g, 4, 11, 8, 1, sh([64, 40, 30], 0));
+          paintRect(g, 7, 9, 2, 3, shade([44, 90, 40], 0));
+          paintRect(g, 3, 10, 10, 2, shade(pot, 18));
+          paintRect(g, 4, 12, 8, 4, shade(pot, 0));
+          paintRect(g, 4, 12, 2, 4, shade(pot, 20));
+          paintRect(g, 10, 12, 2, 4, shade(pot, -26));
+          paintRect(g, 4, 11, 8, 1, shade([64, 40, 30], 0));
         }
         function paintPlanter(g, rnd) {
-          var leaf = [sh([34, 92, 46], 0), sh([62, 140, 62], 0), sh([112, 192, 92], 0)];
+          var leaf = [shade([34, 92, 46], 0), shade([62, 140, 62], 0), shade([112, 192, 92], 0)];
           var offs = [-16, 0, 16];
           for (var o = 0; o < 3; o++) {
             blob(g, 3 + offs[o], 5, 5, 5, leaf, rnd);
             blob(g, 11 + offs[o], 5, 5, 5, leaf, rnd);
             blob(g, 7 + offs[o], 3, 4, 4, leaf, rnd);
           }
-          RC(g, 0, 9, 16, 7, sh([84, 56, 40], 0));
-          RC(g, 0, 9, 16, 2, sh([86, 150, 54], 0));
-          RC(g, 0, 9, 16, 1, sh([116, 182, 78], 0));
-          RC(g, 0, 15, 16, 1, sh([52, 34, 26], 0));
+          paintRect(g, 0, 9, 16, 7, shade([84, 56, 40], 0));
+          paintRect(g, 0, 9, 16, 2, shade([86, 150, 54], 0));
+          paintRect(g, 0, 9, 16, 1, shade([116, 182, 78], 0));
+          paintRect(g, 0, 15, 16, 1, shade([52, 34, 26], 0));
           for (var i = 0; i < 8; i++)
-            PX(g, (rnd() * 16) | 0, 11 + ((rnd() * 4) | 0), sh([84, 56, 40], jit(rnd, 16)));
+            paintPixel(
+              g,
+              (rnd() * 16) | 0,
+              11 + ((rnd() * 4) | 0),
+              shade([84, 56, 40], jitter(rnd, 16)),
+            );
         }
         function paintTorch(g) {
-          RC(g, 7, 7, 2, 8, sh([120, 76, 40], 0));
-          RC(g, 7, 7, 1, 8, sh([160, 106, 58], 0));
-          RC(g, 6, 11, 4, 2, sh([76, 76, 84], 0));
-          RC(g, 6, 4, 4, 4, sh([226, 104, 28], 0));
-          RC(g, 7, 2, 2, 5, sh([240, 140, 40], 0));
-          RC(g, 7, 4, 2, 3, sh([255, 204, 80], 0));
-          PX(g, 7, 1, sh([240, 120, 30], 0));
-          PX(g, 8, 5, sh([255, 244, 170], 0));
-          PX(g, 8, 4, sh([255, 244, 170], 0));
+          paintRect(g, 7, 7, 2, 8, shade([120, 76, 40], 0));
+          paintRect(g, 7, 7, 1, 8, shade([160, 106, 58], 0));
+          paintRect(g, 6, 11, 4, 2, shade([76, 76, 84], 0));
+          paintRect(g, 6, 4, 4, 4, shade([226, 104, 28], 0));
+          paintRect(g, 7, 2, 2, 5, shade([240, 140, 40], 0));
+          paintRect(g, 7, 4, 2, 3, shade([255, 204, 80], 0));
+          paintPixel(g, 7, 1, shade([240, 120, 30], 0));
+          paintPixel(g, 8, 5, shade([255, 244, 170], 0));
+          paintPixel(g, 8, 4, shade([255, 244, 170], 0));
         }
         function paintLantern(g) {
-          RC(g, 7, 0, 2, 3, sh([84, 84, 92], 0));
-          RC(g, 5, 3, 6, 2, sh([54, 46, 42], 0));
-          RC(g, 5, 5, 6, 7, sh([255, 206, 96], 0));
-          RC(g, 6, 6, 4, 5, sh([255, 232, 150], 0));
-          RC(g, 7, 7, 2, 3, sh([255, 250, 214], 0));
-          RC(g, 5, 5, 1, 7, sh([54, 46, 42], 0));
-          RC(g, 10, 5, 1, 7, sh([54, 46, 42], 0));
-          RC(g, 5, 12, 6, 2, sh([54, 46, 42], 0));
-          RC(g, 7, 14, 2, 1, sh([54, 46, 42], 0));
+          paintRect(g, 7, 0, 2, 3, shade([84, 84, 92], 0));
+          paintRect(g, 5, 3, 6, 2, shade([54, 46, 42], 0));
+          paintRect(g, 5, 5, 6, 7, shade([255, 206, 96], 0));
+          paintRect(g, 6, 6, 4, 5, shade([255, 232, 150], 0));
+          paintRect(g, 7, 7, 2, 3, shade([255, 250, 214], 0));
+          paintRect(g, 5, 5, 1, 7, shade([54, 46, 42], 0));
+          paintRect(g, 10, 5, 1, 7, shade([54, 46, 42], 0));
+          paintRect(g, 5, 12, 6, 2, shade([54, 46, 42], 0));
+          paintRect(g, 7, 14, 2, 1, shade([54, 46, 42], 0));
         }
         function paintPortal(g, rnd) {
           for (var y = 0; y < 32; y++) {
@@ -1765,121 +1792,131 @@
               var d = nx * nx + ny * ny;
               if (d > 1.18) continue;
               if (d > 1.0) {
-                PX(g, x, y, sh([46, 48, 62], jit(rnd, 6)));
+                paintPixel(g, x, y, shade([46, 48, 62], jitter(rnd, 6)));
               } else if (d > 0.8) {
-                PX(g, x, y, sh([170, 214, 255], jit(rnd, 10)));
+                paintPixel(g, x, y, shade([170, 214, 255], jitter(rnd, 10)));
               } else if (d > 0.55) {
-                PX(g, x, y, sh([70, 128, 240], jit(rnd, 14)));
+                paintPixel(g, x, y, shade([70, 128, 240], jitter(rnd, 14)));
               } else {
                 var sw = Math.sin(ny * 7 + nx * 3) * 0.5 + 0.5;
-                PX(g, x, y, sh([14 + sw * 30, 28 + sw * 50, 100 + sw * 80], jit(rnd, 8)));
+                paintPixel(
+                  g,
+                  x,
+                  y,
+                  shade([14 + sw * 30, 28 + sw * 50, 100 + sw * 80], jitter(rnd, 8)),
+                );
               }
             }
           }
           for (var i = 0; i < 9; i++)
-            PX(g, 4 + ((rnd() * 8) | 0), 4 + ((rnd() * 24) | 0), sh([220, 240, 255], 0));
+            paintPixel(g, 4 + ((rnd() * 8) | 0), 4 + ((rnd() * 24) | 0), shade([220, 240, 255], 0));
         }
         function paintDoor(g, rnd, top) {
           var wood = [138, 68, 38];
-          RC(g, 1, 0, 14, 16, sh([70, 34, 22], 0));
-          RC(g, 2, 0, 12, 16, sh(wood, 0));
-          for (var x = 2; x < 14; x += 3) RC(g, x, 0, 1, 16, sh(wood, -26));
-          RC(g, 2, 0, 12, 1, sh(wood, 30));
+          paintRect(g, 1, 0, 14, 16, shade([70, 34, 22], 0));
+          paintRect(g, 2, 0, 12, 16, shade(wood, 0));
+          for (var x = 2; x < 14; x += 3) paintRect(g, x, 0, 1, 16, shade(wood, -26));
+          paintRect(g, 2, 0, 12, 1, shade(wood, 30));
           if (top) {
-            RC(g, 4, 3, 8, 7, sh([60, 36, 28], 0));
-            RC(g, 5, 4, 6, 5, sh([150, 200, 224], 0));
-            RC(g, 5, 4, 6, 1, sh([214, 238, 250], 0));
-            RC(g, 7, 4, 2, 5, sh([60, 36, 28], 0));
-            RC(g, 5, 6, 6, 1, sh([60, 36, 28], 0));
+            paintRect(g, 4, 3, 8, 7, shade([60, 36, 28], 0));
+            paintRect(g, 5, 4, 6, 5, shade([150, 200, 224], 0));
+            paintRect(g, 5, 4, 6, 1, shade([214, 238, 250], 0));
+            paintRect(g, 7, 4, 2, 5, shade([60, 36, 28], 0));
+            paintRect(g, 5, 6, 6, 1, shade([60, 36, 28], 0));
           } else {
-            RC(g, 4, 3, 8, 10, sh(wood, -14));
-            RC(g, 4, 3, 8, 1, sh(wood, 22));
-            RC(g, 4, 12, 8, 1, sh(wood, -40));
-            RC(g, 11, 0, 2, 1, sh([222, 188, 90], 0));
-            RC(g, 11, 6, 2, 3, sh([228, 196, 96], 0));
-            PX(g, 11, 6, sh([255, 240, 170], 0));
+            paintRect(g, 4, 3, 8, 10, shade(wood, -14));
+            paintRect(g, 4, 3, 8, 1, shade(wood, 22));
+            paintRect(g, 4, 12, 8, 1, shade(wood, -40));
+            paintRect(g, 11, 0, 2, 1, shade([222, 188, 90], 0));
+            paintRect(g, 11, 6, 2, 3, shade([228, 196, 96], 0));
+            paintPixel(g, 11, 6, shade([255, 240, 170], 0));
           }
           for (var i = 0; i < 5; i++)
-            PX(g, 2 + ((rnd() * 12) | 0), (rnd() * 16) | 0, sh(wood, jit(rnd, 10)));
+            paintPixel(g, 2 + ((rnd() * 12) | 0), (rnd() * 16) | 0, shade(wood, jitter(rnd, 10)));
         }
         function paintDoorOpen(g) {
           var wood = [138, 68, 38];
-          RC(g, 0, 0, 3, 16, sh(wood, 0));
-          RC(g, 0, 0, 1, 16, sh(wood, 28));
-          RC(g, 2, 0, 1, 16, sh(wood, -34));
-          RC(g, 3, 0, 1, 16, rgba(0, 0, 0, 0.3));
-          RC(g, 0, 0, 16, 1, rgba(70, 34, 22, 0.0));
+          paintRect(g, 0, 0, 3, 16, shade(wood, 0));
+          paintRect(g, 0, 0, 1, 16, shade(wood, 28));
+          paintRect(g, 2, 0, 1, 16, shade(wood, -34));
+          paintRect(g, 3, 0, 1, 16, rgba(0, 0, 0, 0.3));
         }
         function paintBed(g, rnd) {
           var wood = [140, 76, 42];
           var red = [196, 58, 62];
-          RC(g, 0, 5, 3, 11, sh(wood, 0));
-          RC(g, 0, 5, 1, 11, sh(wood, 24));
-          RC(g, 0, 4, 3, 1, sh(wood, 30));
-          RC(g, 29, 8, 3, 8, sh(wood, 0));
-          RC(g, 31, 8, 1, 8, sh(wood, -34));
-          RC(g, 28, 7, 4, 1, sh(wood, 24));
-          RC(g, 1, 12, 30, 3, sh(wood, -14));
-          RC(g, 3, 9, 8, 4, sh([232, 228, 216], 0)); // sheet + pillow
-          RC(g, 4, 7, 6, 3, sh([248, 246, 238], 0));
-          RC(g, 4, 7, 6, 1, sh([255, 255, 255], 0));
-          RC(g, 4, 9, 6, 1, sh([200, 196, 188], 0));
-          RC(g, 11, 8, 18, 5, sh(red, 0)); // blanket
-          RC(g, 11, 8, 18, 1, sh(red, 30));
-          RC(g, 11, 12, 18, 1, sh(red, -34));
-          for (var x = 13; x < 29; x += 4) RC(g, x, 9, 2, 3, sh(red, -16));
-          RC(g, 11, 8, 2, 5, sh([240, 220, 190], 0));
-          RC(g, 1, 15, 2, 1, sh(wood, -40));
-          RC(g, 29, 15, 2, 1, sh(wood, -40));
+          paintRect(g, 0, 5, 3, 11, shade(wood, 0));
+          paintRect(g, 0, 5, 1, 11, shade(wood, 24));
+          paintRect(g, 0, 4, 3, 1, shade(wood, 30));
+          paintRect(g, 29, 8, 3, 8, shade(wood, 0));
+          paintRect(g, 31, 8, 1, 8, shade(wood, -34));
+          paintRect(g, 28, 7, 4, 1, shade(wood, 24));
+          paintRect(g, 1, 12, 30, 3, shade(wood, -14));
+          paintRect(g, 3, 9, 8, 4, shade([232, 228, 216], 0)); // sheet + pillow
+          paintRect(g, 4, 7, 6, 3, shade([248, 246, 238], 0));
+          paintRect(g, 4, 7, 6, 1, shade([255, 255, 255], 0));
+          paintRect(g, 4, 9, 6, 1, shade([200, 196, 188], 0));
+          paintRect(g, 11, 8, 18, 5, shade(red, 0)); // blanket
+          paintRect(g, 11, 8, 18, 1, shade(red, 30));
+          paintRect(g, 11, 12, 18, 1, shade(red, -34));
+          for (var x = 13; x < 29; x += 4) paintRect(g, x, 9, 2, 3, shade(red, -16));
+          paintRect(g, 11, 8, 2, 5, shade([240, 220, 190], 0));
+          paintRect(g, 1, 15, 2, 1, shade(wood, -40));
+          paintRect(g, 29, 15, 2, 1, shade(wood, -40));
           for (var i = 0; i < 6; i++)
-            PX(g, (rnd() * 28) | 0, 13 + ((rnd() * 2) | 0), sh(wood, jit(rnd, 14)));
+            paintPixel(g, (rnd() * 28) | 0, 13 + ((rnd() * 2) | 0), shade(wood, jitter(rnd, 14)));
         }
         function paintTable(g, rnd) {
           var wood = [172, 98, 54];
-          RC(g, 0, 7, 32, 3, sh(wood, 0));
-          RC(g, 0, 7, 32, 1, sh(wood, 30));
-          RC(g, 0, 9, 32, 1, sh(wood, -40));
-          RC(g, 2, 10, 28, 1, sh(wood, -30));
-          RC(g, 2, 11, 3, 5, sh(wood, -18));
-          RC(g, 27, 11, 3, 5, sh(wood, -18));
-          RC(g, 2, 11, 1, 5, sh(wood, 8));
-          RC(g, 8, 5, 6, 2, sh([236, 234, 226], 0)); // plate
-          RC(g, 9, 4, 4, 1, sh([200, 196, 190], 0));
-          RC(g, 22, 3, 3, 4, sh([214, 70, 64], 0)); // cup
-          RC(g, 22, 3, 3, 1, sh([250, 150, 140], 0));
-          PX(g, 25, 4, sh([214, 70, 64], 0));
-          for (var i = 0; i < 6; i++) PX(g, (rnd() * 32) | 0, 8, sh(wood, jit(rnd, 12)));
+          paintRect(g, 0, 7, 32, 3, shade(wood, 0));
+          paintRect(g, 0, 7, 32, 1, shade(wood, 30));
+          paintRect(g, 0, 9, 32, 1, shade(wood, -40));
+          paintRect(g, 2, 10, 28, 1, shade(wood, -30));
+          paintRect(g, 2, 11, 3, 5, shade(wood, -18));
+          paintRect(g, 27, 11, 3, 5, shade(wood, -18));
+          paintRect(g, 2, 11, 1, 5, shade(wood, 8));
+          paintRect(g, 8, 5, 6, 2, shade([236, 234, 226], 0)); // plate
+          paintRect(g, 9, 4, 4, 1, shade([200, 196, 190], 0));
+          paintRect(g, 22, 3, 3, 4, shade([214, 70, 64], 0)); // cup
+          paintRect(g, 22, 3, 3, 1, shade([250, 150, 140], 0));
+          paintPixel(g, 25, 4, shade([214, 70, 64], 0));
+          for (var i = 0; i < 6; i++)
+            paintPixel(g, (rnd() * 32) | 0, 8, shade(wood, jitter(rnd, 12)));
         }
         function paintPainting(g, rnd, sunset) {
           var frame = [96, 58, 30];
-          RC(g, 0, 0, 32, 16, sh(frame, 0));
-          RC(g, 1, 1, 30, 14, sh([206, 160, 76], 0));
-          RC(g, 2, 2, 28, 12, sh([40, 26, 20], 0));
+          paintRect(g, 0, 0, 32, 16, shade(frame, 0));
+          paintRect(g, 1, 1, 30, 14, shade([206, 160, 76], 0));
+          paintRect(g, 2, 2, 28, 12, shade([40, 26, 20], 0));
           for (var y = 3; y < 13; y++) {
             var t = (y - 3) / 10;
             var c = sunset
               ? [lerp(238, 120, t), lerp(120, 60, t), lerp(60, 90, t)]
               : [lerp(112, 178, t), lerp(156, 206, t), lerp(206, 230, t)];
-            RC(g, 3, y, 26, 1, sh(c, 0));
+            paintRect(g, 3, y, 26, 1, shade(c, 0));
           }
           if (sunset) {
-            RC(g, 13, 7, 6, 5, sh([255, 214, 110], 0));
-            RC(g, 14, 6, 4, 1, sh([255, 214, 110], 0));
+            paintRect(g, 13, 7, 6, 5, shade([255, 214, 110], 0));
+            paintRect(g, 14, 6, 4, 1, shade([255, 214, 110], 0));
           } else {
-            RC(g, 6, 5, 6, 2, sh([244, 246, 250], 0));
-            RC(g, 8, 4, 4, 1, sh([244, 246, 250], 0));
-            RC(g, 20, 6, 5, 1, sh([244, 246, 250], 0));
+            paintRect(g, 6, 5, 6, 2, shade([244, 246, 250], 0));
+            paintRect(g, 8, 4, 4, 1, shade([244, 246, 250], 0));
+            paintRect(g, 20, 6, 5, 1, shade([244, 246, 250], 0));
           }
           var hill = sunset ? [44, 30, 52] : [62, 126, 70];
-          RC(g, 3, 10, 26, 3, sh(hill, 0));
-          RC(g, 8, 9, 10, 1, sh(hill, 0));
-          RC(g, 22, 9, 5, 1, sh(hill, 0));
+          paintRect(g, 3, 10, 26, 3, shade(hill, 0));
+          paintRect(g, 8, 9, 10, 1, shade(hill, 0));
+          paintRect(g, 22, 9, 5, 1, shade(hill, 0));
           if (!sunset) {
-            RC(g, 21, 8, 4, 2, sh([196, 78, 56], 0)); // tiny red-roofed hut
-            RC(g, 22, 10, 2, 2, sh([240, 224, 190], 0));
+            paintRect(g, 21, 8, 4, 2, shade([196, 78, 56], 0)); // tiny red-roofed hut
+            paintRect(g, 22, 10, 2, 2, shade([240, 224, 190], 0));
           }
           for (var i = 0; i < 8; i++)
-            PX(g, 3 + ((rnd() * 26) | 0), 3 + ((rnd() * 10) | 0), rgba(255, 255, 255, 0.12));
+            paintPixel(
+              g,
+              3 + ((rnd() * 26) | 0),
+              3 + ((rnd() * 10) | 0),
+              rgba(255, 255, 255, 0.12),
+            );
         }
 
         // --- tiny 3x5 pixel font (only the letters the signs use) ---
@@ -1919,147 +1956,123 @@
         }
         function paintSign(g, rnd) {
           var wood = [150, 90, 48];
-          RC(g, 0, 0, 26, 2, sh([54, 54, 62], 0)); // iron bracket arm
-          RC(g, 0, 0, 3, 4, sh([54, 54, 62], 0));
-          RC(g, 5, 2, 1, 2, sh([90, 70, 50], 0));
-          RC(g, 23, 2, 1, 2, sh([90, 70, 50], 0));
-          RC(g, 3, 3, 26, 13, sh([54, 28, 18], 0));
-          RC(g, 4, 4, 24, 11, sh(wood, 0));
-          RC(g, 4, 14, 24, 1, sh(wood, -34));
+          paintRect(g, 0, 0, 26, 2, shade([54, 54, 62], 0)); // iron bracket arm
+          paintRect(g, 0, 0, 3, 4, shade([54, 54, 62], 0));
+          paintRect(g, 5, 2, 1, 2, shade([90, 70, 50], 0));
+          paintRect(g, 23, 2, 1, 2, shade([90, 70, 50], 0));
+          paintRect(g, 3, 3, 26, 13, shade([54, 28, 18], 0));
+          paintRect(g, 4, 4, 24, 11, shade(wood, 0));
+          paintRect(g, 4, 14, 24, 1, shade(wood, -34));
           for (var i = 0; i < 12; i++)
-            PX(g, 4 + ((rnd() * 24) | 0), 4 + ((rnd() * 10) | 0), sh(wood, jit(rnd, 14)));
-          drawText(g, "BRICK", 9, 4, 1, sh([248, 236, 206], 0));
-          drawText(g, "BUDDY", 9, 10, 1, sh([248, 236, 206], 0));
+            paintPixel(
+              g,
+              4 + ((rnd() * 24) | 0),
+              4 + ((rnd() * 10) | 0),
+              shade(wood, jitter(rnd, 14)),
+            );
+          drawText(g, "BRICK", 9, 4, 1, shade([248, 236, 206], 0));
+          drawText(g, "BUDDY", 9, 10, 1, shade([248, 236, 206], 0));
         }
         function paintBoard(g, rnd) {
           var wood = [120, 70, 40];
-          RC(g, 0, 2, 32, 13, sh([46, 24, 16], 0));
-          RC(g, 0, 2, 32, 1, sh(wood, 26));
-          RC(g, 1, 3, 30, 11, sh([232, 214, 170], 0)); // cream panel, tall enough for the 10px text
-          RC(g, 1, 3, 30, 1, sh([250, 238, 200], 0));
-          drawText(g, "OPEN", 2, 4, 2, sh([150, 40, 40], 0));
-          PX(g, 0, 3, sh([220, 220, 226], 0));
-          PX(g, 31, 3, sh([220, 220, 226], 0));
+          paintRect(g, 0, 2, 32, 13, shade([46, 24, 16], 0));
+          paintRect(g, 0, 2, 32, 1, shade(wood, 26));
+          paintRect(g, 1, 3, 30, 11, shade([232, 214, 170], 0)); // cream panel, tall enough for the 10px text
+          paintRect(g, 1, 3, 30, 1, shade([250, 238, 200], 0));
+          drawText(g, "OPEN", 2, 4, 2, shade([150, 40, 40], 0));
+          paintPixel(g, 0, 3, shade([220, 220, 226], 0));
+          paintPixel(g, 31, 3, shade([220, 220, 226], 0));
           for (var i = 0; i < 6; i++) {
-            PX(g, 1 + ((rnd() * 30) | 0), 14, sh(wood, jit(rnd, 12)));
+            paintPixel(g, 1 + ((rnd() * 30) | 0), 14, shade(wood, jitter(rnd, 12)));
           }
         }
         function paintTuft(g, rnd) {
           for (var b = 0; b < 5; b++) {
             var x = 2 + b * 3 + ((rnd() * 2) | 0);
             var h = 3 + ((rnd() * 5) | 0);
-            for (var y = 0; y < h; y++) PX(g, x, 15 - y, sh([78, 150, 58], y * 5 - 6));
-            if (rnd() < 0.4) PX(g, x + 1, 15 - h, sh([110, 180, 78], 0));
+            for (var y = 0; y < h; y++) paintPixel(g, x, 15 - y, shade([78, 150, 58], y * 5 - 6));
+            if (rnd() < 0.4) paintPixel(g, x + 1, 15 - h, shade([110, 180, 78], 0));
           }
         }
 
         var TEX_FG = [];
         var TEX_BG = [];
-        /** Build every tile texture once. Variants break up visible tiling. */
-        function buildTextures() {
-          function variants(n, seed, fn) {
-            var out = [];
-            for (var i = 0; i < n; i++) out.push(make(16, 16, seed + i * 977, fn));
-            return out;
-          }
-          TEX_FG[T.PLANKS] = variants(4, 11, function (g, r) {
-            paintPlanks(g, r, PAL.planks);
-          });
-          TEX_FG[T.BRICK] = variants(3, 23, function (g, r) {
-            paintBrick(g, r, PAL.brick);
-          });
-          TEX_FG[T.STONE] = variants(4, 37, function (g, r) {
-            paintCobble(g, r, PAL.cobble);
-          });
-          TEX_FG[T.DEEP] = variants(2, 41, function (g, r) {
-            paintCobble(g, r, PAL.deep);
-          });
-          TEX_FG[T.SAND] = variants(2, 53, function (g, r) {
-            paintSand(g, r, PAL.sand);
-          });
-          TEX_FG[T.DIRT] = variants(4, 61, function (g, r) {
-            paintDirt(g, r, PAL.dirt);
-          });
-          TEX_FG[T.GRASS] = variants(3, 71, function (g, r) {
-            paintGrass(g, r);
-          });
-          TEX_FG[T.GLASS] = [make(16, 16, 5, paintGlass)];
-          TEX_FG[T.LADDER] = [make(16, 16, 6, paintLadder)];
-          TEX_FG[T.CHEST] = [make(16, 16, 7, paintChest)];
-          TEX_FG[T.BENCH] = [make(16, 16, 8, paintBench)];
-          TEX_FG[T.FURNACE] = [make(16, 16, 9, paintFurnace)];
-          TEX_FG[T.SHELF] = variants(2, 10, paintShelf);
-          TEX_FG[T.CUPBOARD] = [
-            make(16, 16, 12, function (g, r) {
-              paintCupboard(g, r, false);
-            }),
-          ];
-          TEX_FG[T.LOCKER] = [
-            make(16, 16, 13, function (g, r) {
-              paintCupboard(g, r, true);
-            }),
-          ];
-          TEX_FG[T.CHAIR] = [make(16, 16, 14, paintChair)];
-          TEX_FG[T.PLANT] = [make(16, 16, 15, paintPlant)];
-          TEX_FG[T.PLANTER] = [make(16, 16, 16, paintPlanter)];
-          TEX_FG[T.TORCH] = [make(16, 16, 17, paintTorch)];
-          TEX_FG[T.LANTERN] = [make(16, 16, 18, paintLantern)];
-          TEX_FG[T.TUFT] = variants(3, 19, paintTuft);
-          TEX_FG[T.DOOR_T] = [
-            make(16, 16, 20, function (g, r) {
-              paintDoor(g, r, true);
-            }),
-          ];
-          TEX_FG[T.DOOR_B] = [
-            make(16, 16, 21, function (g, r) {
-              paintDoor(g, r, false);
-            }),
-          ];
-          TEX_FG[T.DOORO_T] = [make(16, 16, 22, paintDoorOpen)];
+        function textureVariants(n, seed, fn) {
+          var out = [];
+          for (var i = 0; i < n; i++) out.push(make(16, 16, seed + i * 977, fn));
+          return out;
+        }
+        /** Bind a painter's third argument (palette, flag...) so it fits make()'s (g, rnd) shape. */
+        function withArg(paint, arg) {
+          return function (g, rnd) {
+            paint(g, rnd, arg);
+          };
+        }
+        function single(seed, paint) {
+          return [make(16, 16, seed, paint)];
+        }
+        /** Solid blocks and terrain. Seeds are fixed so every device draws identical textures. */
+        function buildBlockTextures() {
+          TEX_FG[T.PLANKS] = textureVariants(4, 11, withArg(paintPlanks, PAL.planks));
+          TEX_FG[T.BRICK] = textureVariants(3, 23, withArg(paintBrick, PAL.brick));
+          TEX_FG[T.STONE] = textureVariants(4, 37, withArg(paintCobble, PAL.cobble));
+          TEX_FG[T.DEEP] = textureVariants(2, 41, withArg(paintCobble, PAL.deep));
+          TEX_FG[T.SAND] = textureVariants(2, 53, withArg(paintSand, PAL.sand));
+          TEX_FG[T.DIRT] = textureVariants(4, 61, withArg(paintDirt, PAL.dirt));
+          TEX_FG[T.GRASS] = textureVariants(3, 71, paintGrass);
+          TEX_FG[T.GLASS] = single(5, paintGlass);
+          TEX_FG[T.LADDER] = single(6, paintLadder);
+          TEX_FG[T.TUFT] = textureVariants(3, 19, paintTuft);
+        }
+        /** One-tile furniture, lights, doors and the portal. */
+        function buildFurnitureTextures() {
+          TEX_FG[T.CHEST] = single(7, paintChest);
+          TEX_FG[T.BENCH] = single(8, paintBench);
+          TEX_FG[T.FURNACE] = single(9, paintFurnace);
+          TEX_FG[T.SHELF] = textureVariants(2, 10, paintShelf);
+          TEX_FG[T.CUPBOARD] = single(12, withArg(paintCupboard, false));
+          TEX_FG[T.LOCKER] = single(13, withArg(paintCupboard, true));
+          TEX_FG[T.CHAIR] = single(14, paintChair);
+          TEX_FG[T.PLANT] = single(15, paintPlant);
+          TEX_FG[T.PLANTER] = single(16, paintPlanter);
+          TEX_FG[T.TORCH] = single(17, paintTorch);
+          TEX_FG[T.LANTERN] = single(18, paintLantern);
+          TEX_FG[T.DOOR_T] = single(20, withArg(paintDoor, true));
+          TEX_FG[T.DOOR_B] = single(21, withArg(paintDoor, false));
+          TEX_FG[T.DOORO_T] = single(22, paintDoorOpen);
           TEX_FG[T.DOORO_B] = TEX_FG[T.DOORO_T];
           var portal = make(16, 32, 24, paintPortal);
           TEX_FG[T.PORTAL_T] = [crop(portal, 0, 0, 16, 16)];
           TEX_FG[T.PORTAL_B] = [crop(portal, 0, 16, 16, 16)];
-          var pairs = [
-            [T.BED_L, T.BED_R, make(32, 16, 25, paintBed)],
-            [T.TABLE_L, T.TABLE_R, make(32, 16, 26, paintTable)],
-            [
-              T.PAINT_L,
-              T.PAINT_R,
-              make(32, 16, 27, function (g, r) {
-                paintPainting(g, r, false);
-              }),
-            ],
-            [
-              T.PAINT2_L,
-              T.PAINT2_R,
-              make(32, 16, 28, function (g, r) {
-                paintPainting(g, r, true);
-              }),
-            ],
-            [T.SIGN_L, T.SIGN_R, make(32, 16, 29, paintSign)],
-            [T.BOARD_L, T.BOARD_R, make(32, 16, 30, paintBoard)],
-          ];
-          pairs.forEach(function (p) {
-            TEX_FG[p[0]] = [crop(p[2], 0, 0, 16, 16)];
-            TEX_FG[p[1]] = [crop(p[2], 16, 0, 16, 16)];
+        }
+        /** Two-tile objects are painted on a 32x16 canvas and split into a left and a right tile. */
+        function buildPairTextures() {
+          [
+            [T.BED_L, T.BED_R, 25, paintBed],
+            [T.TABLE_L, T.TABLE_R, 26, paintTable],
+            [T.PAINT_L, T.PAINT_R, 27, withArg(paintPainting, false)],
+            [T.PAINT2_L, T.PAINT2_R, 28, withArg(paintPainting, true)],
+            [T.SIGN_L, T.SIGN_R, 29, paintSign],
+            [T.BOARD_L, T.BOARD_R, 30, paintBoard],
+          ].forEach(function (p) {
+            var wide = make(32, 16, p[2], p[3]);
+            TEX_FG[p[0]] = [crop(wide, 0, 0, 16, 16)];
+            TEX_FG[p[1]] = [crop(wide, 16, 0, 16, 16)];
           });
-
-          TEX_BG[BGW.PLANKS] = variants(3, 101, function (g, r) {
-            paintPlanks(g, r, PAL.planksBg);
-          });
-          TEX_BG[BGW.BRICK] = variants(3, 111, function (g, r) {
-            paintBrick(g, r, PAL.brickBg);
-          });
-          TEX_BG[BGW.STONE] = variants(3, 121, function (g, r) {
-            paintCobble(g, r, PAL.cobbleBg);
-          });
-          TEX_BG[BGW.SAND] = variants(2, 131, function (g, r) {
-            paintSand(g, r, PAL.sandBg);
-          });
-          TEX_BG[BGW.DIRT] = variants(3, 141, function (g, r) {
-            paintDirt(g, r, PAL.dirtBg);
-          });
+        }
+        function buildWallTextures() {
+          TEX_BG[BGW.PLANKS] = textureVariants(3, 101, withArg(paintPlanks, PAL.planksBg));
+          TEX_BG[BGW.BRICK] = textureVariants(3, 111, withArg(paintBrick, PAL.brickBg));
+          TEX_BG[BGW.STONE] = textureVariants(3, 121, withArg(paintCobble, PAL.cobbleBg));
+          TEX_BG[BGW.SAND] = textureVariants(2, 131, withArg(paintSand, PAL.sandBg));
+          TEX_BG[BGW.DIRT] = textureVariants(3, 141, withArg(paintDirt, PAL.dirtBg));
+        }
+        /** Build every tile texture once. Variants break up visible tiling. */
+        function buildTextures() {
+          buildBlockTextures();
+          buildFurnitureTextures();
+          buildPairTextures();
+          buildWallTextures();
         }
         function fgTex(id, x, y) {
           var v = TEX_FG[id];
@@ -2165,110 +2178,121 @@
         };
         var BUDDY_NAMES = ["pip", "mabel", "quill", "tobin", "fern", "juniper", "biscuit", "olive"];
 
-        function drawChar(g, ox, p, f) {
-          var shirtD = sh(p.shirt, -26);
-          var pants = sh(p.pants, 0);
-          var pantsD = sh(p.pants, -24);
+        // Pose tables, indexed by FRAME: [x, length] of the back and front leg; [x, y, w, h] of each arm.
+        var LEG_POSE = [
+          [
+            [5, 9],
+            [8, 9],
+          ], // idle
+          [
+            [3, 8],
+            [9, 9],
+          ], // walk A
+          [
+            [7, 9],
+            [4, 8],
+          ], // walk B
+          [
+            [4, 7],
+            [9, 6],
+          ], // jump
+          [
+            [5, 9],
+            [8, 6],
+          ], // climb A
+          [
+            [5, 6],
+            [8, 9],
+          ], // climb B
+          [
+            [5, 9],
+            [8, 9],
+          ], // wave
+        ];
+        var ARM_POSE = [
+          [
+            [2, 11, 2, 9],
+            [12, 11, 2, 9],
+          ],
+          [
+            [3, 12, 2, 8],
+            [11, 10, 2, 8],
+          ],
+          [
+            [3, 10, 2, 8],
+            [11, 12, 2, 8],
+          ],
+          [
+            [2, 5, 2, 8],
+            [12, 5, 2, 8],
+          ],
+          [
+            [2, 12, 2, 7],
+            [12, 3, 2, 9],
+          ],
+          [
+            [2, 3, 2, 9],
+            [12, 12, 2, 7],
+          ],
+          [
+            [2, 11, 2, 9],
+            [12, 3, 2, 9],
+          ],
+        ];
+        function drawLegs(g, ox, p, f) {
+          var legs = LEG_POSE[f];
           var shoe = "rgb(44,30,28)";
-          var skin = sh(p.skin, 0);
-          // legs
-          var lA;
-          var lB;
-          if (f === FRAME.WALK_A)
-            lA = [
-              [3, 8],
-              [9, 9],
-            ];
-          else if (f === FRAME.WALK_B)
-            lA = [
-              [7, 9],
-              [4, 8],
-            ];
-          else if (f === FRAME.JUMP)
-            lA = [
-              [4, 7],
-              [9, 6],
-            ];
-          else if (f === FRAME.CLIMB_A)
-            lA = [
-              [5, 9],
-              [8, 6],
-            ];
-          else if (f === FRAME.CLIMB_B)
-            lA = [
-              [5, 6],
-              [8, 9],
-            ];
-          else
-            lA = [
-              [5, 9],
-              [8, 9],
-            ];
-          lB = lA;
-          RC(g, ox + lB[0][0], 21, 3, lB[0][1], pantsD);
-          RC(g, ox + lB[0][0], 21 + lB[0][1] - 2, 3, 2, shoe);
-          RC(g, ox + lB[1][0], 21, 3, lB[1][1], pants);
-          RC(g, ox + lB[1][0], 21 + lB[1][1] - 2, 3, 2, shoe);
-          // torso
-          RC(g, ox + 4, 11, 8, 10, sh(p.shirt, 0));
-          RC(g, ox + 10, 11, 2, 10, shirtD);
-          RC(g, ox + 4, 11, 8, 1, sh(p.shirt, 22));
-          RC(g, ox + 4, 19, 8, 1, "rgb(58,42,30)");
+          [shade(p.pants, -24), shade(p.pants, 0)].forEach(function (col, i) {
+            paintRect(g, ox + legs[i][0], 21, 3, legs[i][1], col);
+            paintRect(g, ox + legs[i][0], 21 + legs[i][1] - 2, 3, 2, shoe);
+          });
+        }
+        function drawTorso(g, ox, p) {
+          paintRect(g, ox + 4, 11, 8, 10, shade(p.shirt, 0));
+          paintRect(g, ox + 10, 11, 2, 10, shade(p.shirt, -26));
+          paintRect(g, ox + 4, 11, 8, 1, shade(p.shirt, 22));
+          paintRect(g, ox + 4, 19, 8, 1, "rgb(58,42,30)");
           if (p.apron) {
-            RC(g, ox + 5, 13, 6, 7, sh(p.apron, 0));
-            RC(g, ox + 5, 13, 6, 1, sh(p.apron, -30));
+            paintRect(g, ox + 5, 13, 6, 7, shade(p.apron, 0));
+            paintRect(g, ox + 5, 13, 6, 1, shade(p.apron, -30));
           }
-          // arms
-          var backArm;
-          var frontArm;
-          if (f === FRAME.JUMP) {
-            backArm = [2, 5, 2, 8];
-            frontArm = [12, 5, 2, 8];
-          } else if (f === FRAME.CLIMB_A) {
-            backArm = [2, 12, 2, 7];
-            frontArm = [12, 3, 2, 9];
-          } else if (f === FRAME.CLIMB_B) {
-            backArm = [2, 3, 2, 9];
-            frontArm = [12, 12, 2, 7];
-          } else if (f === FRAME.WAVE) {
-            backArm = [2, 11, 2, 9];
-            frontArm = [12, 3, 2, 9];
-          } else if (f === FRAME.WALK_A) {
-            backArm = [3, 12, 2, 8];
-            frontArm = [11, 10, 2, 8];
-          } else if (f === FRAME.WALK_B) {
-            backArm = [3, 10, 2, 8];
-            frontArm = [11, 12, 2, 8];
-          } else {
-            backArm = [2, 11, 2, 9];
-            frontArm = [12, 11, 2, 9];
-          }
-          RC(g, ox + backArm[0], backArm[1], backArm[2], backArm[3], shirtD);
-          RC(g, ox + backArm[0], backArm[1] + backArm[3] - 2, 2, 2, sh(p.skin, -22));
-          RC(g, ox + frontArm[0], frontArm[1], frontArm[2], frontArm[3], sh(p.shirt, 8));
-          RC(g, ox + frontArm[0], frontArm[1] + frontArm[3] - 2, 2, 2, skin);
-          // head
-          RC(g, ox + 4, 2, 8, 9, skin);
-          RC(g, ox + 4, 2, 8, 3, sh(p.hair, 0));
-          RC(g, ox + 4, 5, 2, 3, sh(p.hair, 0));
-          RC(g, ox + 4, 2, 8, 1, sh(p.hair, 20));
-          RC(g, ox + 8, 6, 1, 2, "rgb(40,26,22)");
-          RC(g, ox + 10, 6, 1, 2, "rgb(40,26,22)");
-          RC(g, ox + 9, 9, 2, 1, sh(p.skin, -40));
+        }
+        function drawArms(g, ox, p, f) {
+          var back = ARM_POSE[f][0];
+          var front = ARM_POSE[f][1];
+          paintRect(g, ox + back[0], back[1], back[2], back[3], shade(p.shirt, -26));
+          paintRect(g, ox + back[0], back[1] + back[3] - 2, 2, 2, shade(p.skin, -22));
+          paintRect(g, ox + front[0], front[1], front[2], front[3], shade(p.shirt, 8));
+          paintRect(g, ox + front[0], front[1] + front[3] - 2, 2, 2, shade(p.skin, 0));
+        }
+        function drawHead(g, ox, p) {
+          paintRect(g, ox + 4, 2, 8, 9, shade(p.skin, 0));
+          paintRect(g, ox + 4, 2, 8, 3, shade(p.hair, 0));
+          paintRect(g, ox + 4, 5, 2, 3, shade(p.hair, 0));
+          paintRect(g, ox + 4, 2, 8, 1, shade(p.hair, 20));
+          paintRect(g, ox + 8, 6, 1, 2, "rgb(40,26,22)");
+          paintRect(g, ox + 10, 6, 1, 2, "rgb(40,26,22)");
+          paintRect(g, ox + 9, 9, 2, 1, shade(p.skin, -40));
           if (p.beard) {
-            RC(g, ox + 5, 8, 6, 3, sh(p.beard, 0));
-            RC(g, ox + 8, 9, 3, 1, sh(p.skin, -40));
+            paintRect(g, ox + 5, 8, 6, 3, shade(p.beard, 0));
+            paintRect(g, ox + 8, 9, 3, 1, shade(p.skin, -40));
           }
           if (p.hat) {
-            RC(g, ox + 4, 0, 8, 3, sh(p.hat, 0));
-            RC(g, ox + 4, 0, 8, 1, sh(p.hat, 26));
-            RC(g, ox + 8, 3, 6, 1, sh(p.hat, -30));
+            paintRect(g, ox + 4, 0, 8, 3, shade(p.hat, 0));
+            paintRect(g, ox + 4, 0, 8, 1, shade(p.hat, 26));
+            paintRect(g, ox + 8, 3, 6, 1, shade(p.hat, -30));
           }
           if (p.hood) {
-            RC(g, ox + 3, 1, 10, 4, sh(p.hood, 0));
-            RC(g, ox + 3, 5, 2, 6, sh(p.hood, -20));
-            RC(g, ox + 3, 1, 10, 1, sh(p.hood, 24));
+            paintRect(g, ox + 3, 1, 10, 4, shade(p.hood, 0));
+            paintRect(g, ox + 3, 5, 2, 6, shade(p.hood, -20));
+            paintRect(g, ox + 3, 1, 10, 1, shade(p.hood, 24));
           }
+        }
+        function drawChar(g, ox, p, f) {
+          drawLegs(g, ox, p, f);
+          drawTorso(g, ox, p);
+          drawArms(g, ox, p, f);
+          drawHead(g, ox, p);
         }
         /** Add a 1px dark outline around every opaque pixel so the small figures pop against dim walls. */
         function outline(o) {
@@ -2300,7 +2324,7 @@
         var SPRITES = {};
         function sprite(name) {
           if (SPRITES[name]) return SPRITES[name];
-          var o = mkc(16 * NFRAMES, 32);
+          var o = makeCanvas(16 * NFRAMES, 32);
           for (var f = 0; f < NFRAMES; f++) drawChar(o.g, f * 16, BUDDY_LOOKS[name], f);
           outline(o);
           SPRITES[name] = o.c;
@@ -2309,49 +2333,36 @@
 
         /** 32x32 icon for hotbar / build menu: footprint tiles drawn at 1x (multi-tile) or 2x (single). */
         function makeIcon(it) {
-          var o = mkc(32, 32);
+          var o = makeCanvas(32, 32);
           var tiles = it.tiles;
           if (it.layer === "bg") {
             o.g.drawImage(TEX_BG[tiles[0][2]][0], 0, 0, 16, 16, 0, 0, 32, 32);
-            RC(o.g, 0, 0, 32, 2, "rgba(255,255,255,0.12)");
+            paintRect(o.g, 0, 0, 32, 2, "rgba(255,255,255,0.12)");
             return o.c;
           }
           if (tiles.length === 1) {
-            var tx = TEX_FG[tiles[0][2]][0];
-            var bgc = it.rule === "block" ? null : "rgba(70,40,30,0.55)";
-            if (bgc) RC(o.g, 0, 0, 32, 32, bgc);
-            o.g.drawImage(tx, 0, 0, 16, 16, 0, 0, 32, 32);
+            if (it.rule !== "block") paintRect(o.g, 0, 0, 32, 32, "rgba(70,40,30,0.55)");
+            o.g.drawImage(TEX_FG[tiles[0][2]][0], 0, 0, 16, 16, 0, 0, 32, 32);
             return o.c;
           }
-          var minX = 9;
-          var minY = 9;
-          tiles.forEach(function (t) {
-            minX = Math.min(minX, t[0]);
-            minY = Math.min(minY, t[1]);
+          // multi-tile items are drawn at 1x, centred on a darker plate
+          var xs = tiles.map(function (t) {
+            return t[0];
           });
-          var maxX = -9;
-          var maxY = -9;
-          tiles.forEach(function (t) {
-            maxX = Math.max(maxX, t[0]);
-            maxY = Math.max(maxY, t[1]);
+          var ys = tiles.map(function (t) {
+            return t[1];
           });
-          var wTiles = maxX - minX + 1;
-          var hTiles = maxY - minY + 1;
+          var minX = Math.min.apply(null, xs);
+          var minY = Math.min.apply(null, ys);
+          var wTiles = Math.max.apply(null, xs) - minX + 1;
+          var hTiles = Math.max.apply(null, ys) - minY + 1;
           var offX = ((32 - wTiles * 16) / 2) | 0;
           var offY = ((32 - hTiles * 16) / 2) | 0;
-          RC(o.g, offX, offY, wTiles * 16, hTiles * 16, "rgba(70,40,30,0.55)");
+          paintRect(o.g, offX, offY, wTiles * 16, hTiles * 16, "rgba(70,40,30,0.55)");
           tiles.forEach(function (t) {
-            o.g.drawImage(
-              TEX_FG[t[2]][0],
-              0,
-              0,
-              16,
-              16,
-              offX + (t[0] - minX) * 16,
-              offY + (t[1] - minY) * 16,
-              16,
-              16,
-            );
+            var dx = offX + (t[0] - minX) * 16;
+            var dy = offY + (t[1] - minY) * 16;
+            o.g.drawImage(TEX_FG[t[2]][0], 0, 0, 16, 16, dx, dy, 16, 16);
           });
           return o.c;
         }
@@ -2370,9 +2381,9 @@
         function inb(x, y) {
           return x >= 0 && y >= 0 && x < W && y < H;
         }
-        /** Foreground tile; outside the world is solid at the sides and bottom, open sky above. */
+        /** Foreground tile; outside the world is solid on every side (the top is a ceiling). */
         function getFg(x, y) {
-          if (y < 0) return T.AIR;
+          if (y < 0) return T.DEEP; // the world has a ceiling: nobody can jump out of the top
           if (x < 0 || x >= W || y >= H) return T.DEEP;
           return fg[y * W + x];
         }
@@ -2407,12 +2418,11 @@
           markDirty(x, y);
           touchWorld();
         }
-        /** Door open / close: same room boundary either way, so no room re-detection and nothing to save. */
+        /** Door open / close: same room boundary and same light either way, so no re-detection, no light pass, nothing to save. */
         function setFgQuiet(x, y, id) {
           if (!inb(x, y) || fg[y * W + x] === id) return;
           fg[y * W + x] = id;
           markDirty(x, y);
-          lightDirty = true;
           worldRev++;
         }
         function setBg(x, y, id) {
@@ -2500,31 +2510,31 @@
         //  Starter house, drawn with helper calls in LOCAL coordinates (see features/brick-buddies/
         //  design-review.md for the layout; ground floor row 16 is level with the left grass).
         // ---------------------------------------------------------------------------
-        function lf(x, y, id) {
+        function putFg(x, y, id) {
           fg[(HOUSE_Y + y) * W + HOUSE_X + x] = id;
         }
-        function lb(x, y, id) {
+        function putBg(x, y, id) {
           bg[(HOUSE_Y + y) * W + HOUSE_X + x] = id;
         }
-        function lfr(x0, y0, x1, y1, id) {
-          for (var y = y0; y <= y1; y++) for (var x = x0; x <= x1; x++) lf(x, y, id);
+        function fillFg(x0, y0, x1, y1, id) {
+          for (var y = y0; y <= y1; y++) for (var x = x0; x <= x1; x++) putFg(x, y, id);
         }
-        function lbr(x0, y0, x1, y1, id) {
-          for (var y = y0; y <= y1; y++) for (var x = x0; x <= x1; x++) lb(x, y, id);
+        function fillBg(x0, y0, x1, y1, id) {
+          for (var y = y0; y <= y1; y++) for (var x = x0; x <= x1; x++) putBg(x, y, id);
         }
-        function put(key, x, y) {
+        function putItem(key, x, y) {
           var it = ITEM_BY_KEY[key];
           it.tiles.forEach(function (t) {
-            (it.layer === "bg" ? lb : lf)(x + t[0], y + t[1], t[2]);
+            (it.layer === "bg" ? putBg : putFg)(x + t[0], y + t[1], t[2]);
           });
         }
-        function rowOf(key, x0, x1, y) {
-          for (var x = x0; x <= x1; x++) put(key, x, y);
+        function putRow(key, x0, x1, y) {
+          for (var x = x0; x <= x1; x++) putItem(key, x, y);
         }
 
-        function starterShell() {
-          // carve the interiors, then raise walls and floors
-          lfr(14, 0, 34, 16, T.AIR);
+        /** Clear the tower and the basement rooms out of the terrain. */
+        function starterCarve() {
+          fillFg(14, 0, 34, 16, T.AIR);
           [
             [1, 17, 11, 21],
             [13, 17, 22, 21],
@@ -2533,138 +2543,147 @@
             [28, 23, 28, 29],
             [24, 30, 32, 33],
           ].forEach(function (r) {
-            lfr(r[0], r[1], r[2], r[3], T.AIR);
+            fillFg(r[0], r[1], r[2], r[3], T.AIR);
           });
-          lfr(14, 0, 14, 16, T.PLANKS);
-          lfr(34, 0, 34, 16, T.PLANKS);
-          lfr(14, 0, 34, 0, T.PLANKS);
-          lfr(14, 5, 34, 5, T.PLANKS);
-          lfr(14, 11, 34, 11, T.PLANKS);
-          lfr(14, 16, 34, 16, T.PLANKS);
-          // basement walls, dividers and floors
-          lfr(0, 16, 0, 22, T.BRICK);
-          lfr(12, 16, 12, 28, T.BRICK);
-          lfr(23, 16, 23, 28, T.STONE);
-          lfr(34, 17, 34, 22, T.STONE);
-          lfr(0, 22, 12, 22, T.PLANKS);
-          lfr(13, 22, 22, 22, T.SAND);
-          lfr(23, 22, 34, 22, T.STONE);
-          lfr(12, 28, 23, 28, T.BRICK);
-          lfr(23, 34, 33, 34, T.STONE);
-          lfr(1, 16, 11, 16, T.DIRT); // dirt roof of the left basement room, grass above it
-          for (var x = 1; x <= 11; x++) lf(x, 16, T.GRASS);
-          // back walls
-          lbr(15, 1, 33, 4, BGW.PLANKS);
-          lbr(15, 6, 33, 10, BGW.PLANKS);
-          lbr(15, 12, 33, 15, BGW.PLANKS);
-          lbr(1, 17, 11, 21, BGW.BRICK);
-          lbr(13, 17, 22, 21, BGW.SAND);
-          lbr(24, 17, 33, 21, BGW.STONE);
-          lbr(13, 23, 22, 27, BGW.PLANKS);
-          lbr(28, 23, 28, 29, BGW.STONE);
-          lbr(24, 30, 32, 33, BGW.STONE);
-          // windows, hatches (ladder holes in the floors), shafts
-          lfr(14, 2, 14, 3, T.GLASS);
-          lfr(14, 7, 14, 8, T.GLASS);
-          lfr(34, 2, 34, 3, T.GLASS);
-          lfr(31, 1, 31, 15, T.LADDER);
-          lfr(9, 16, 9, 21, T.LADDER);
-          lfr(14, 22, 14, 27, T.LADDER);
-          lfr(28, 22, 28, 33, T.LADDER);
-          // doors
-          put("door", 14, 15);
-          put("door", 34, 10);
-          put("door", 12, 21);
-          put("door", 23, 21);
+        }
+        /** Tower walls and floors, then the basement walls, dividers and floors. */
+        function starterWalls() {
+          fillFg(14, 0, 14, 16, T.PLANKS);
+          fillFg(34, 0, 34, 16, T.PLANKS);
+          [0, 5, 11, 16].forEach(function (row) {
+            fillFg(14, row, 34, row, T.PLANKS); // roof and the three floors
+          });
+          fillFg(0, 16, 0, 22, T.BRICK);
+          fillFg(12, 16, 12, 28, T.BRICK);
+          fillFg(23, 16, 23, 28, T.STONE);
+          fillFg(34, 17, 34, 22, T.STONE);
+          fillFg(0, 22, 12, 22, T.PLANKS);
+          fillFg(13, 22, 22, 22, T.SAND);
+          fillFg(23, 22, 34, 22, T.STONE);
+          fillFg(12, 28, 23, 28, T.BRICK);
+          fillFg(23, 34, 33, 34, T.STONE);
+          fillFg(1, 16, 11, 16, T.DIRT); // dirt roof of the left basement room, grass above it
+          for (var x = 1; x <= 11; x++) putFg(x, 16, T.GRASS);
+        }
+        function starterBackWalls() {
+          fillBg(15, 1, 33, 4, BGW.PLANKS);
+          fillBg(15, 6, 33, 10, BGW.PLANKS);
+          fillBg(15, 12, 33, 15, BGW.PLANKS);
+          fillBg(1, 17, 11, 21, BGW.BRICK);
+          fillBg(13, 17, 22, 21, BGW.SAND);
+          fillBg(24, 17, 33, 21, BGW.STONE);
+          fillBg(13, 23, 22, 27, BGW.PLANKS);
+          fillBg(28, 23, 28, 29, BGW.STONE);
+          fillBg(24, 30, 32, 33, BGW.STONE);
+        }
+        /** Windows, hatches (ladder holes in the floors), the long shaft and the doors. */
+        function starterOpenings() {
+          fillFg(14, 2, 14, 3, T.GLASS);
+          fillFg(14, 7, 14, 8, T.GLASS);
+          fillFg(34, 2, 34, 3, T.GLASS);
+          fillFg(31, 1, 31, 15, T.LADDER);
+          fillFg(9, 16, 9, 21, T.LADDER);
+          fillFg(14, 22, 14, 27, T.LADDER);
+          fillFg(28, 22, 28, 33, T.LADDER);
+          putItem("door", 14, 15);
+          putItem("door", 34, 10);
+          putItem("door", 12, 21);
+          putItem("door", 23, 21);
+        }
+        function starterShell() {
+          starterCarve();
+          starterWalls();
+          starterBackWalls();
+          starterOpenings();
         }
         function starterOutside() {
           // raised grass plot with leafy planters on the left, like the reference
           for (var x = 1; x <= 6; x++) {
-            lf(x, 15, T.GRASS);
-            lf(x, 16, T.DIRT);
+            putFg(x, 15, T.GRASS);
+            putFg(x, 16, T.DIRT);
           }
-          rowOf("planter", 2, 5, 14);
-          lf(1, 14, T.TUFT);
-          lf(6, 14, T.TUFT);
+          putRow("planter", 2, 5, 14);
+          putFg(1, 14, T.TUFT);
+          putFg(6, 14, T.TUFT);
           // porch: pillar + brick lintel hanging off the tower, with a lantern
-          lfr(11, 13, 11, 15, T.PLANKS);
-          lfr(11, 12, 13, 12, T.BRICK);
-          put("lantern", 12, 13);
+          fillFg(11, 13, 11, 15, T.PLANKS);
+          fillFg(11, 12, 13, 12, T.BRICK);
+          putItem("lantern", 12, 13);
           // brick steps down the right-hand slope and a balcony ledge
-          lfr(38, 18, 39, 18, T.BRICK);
-          lfr(40, 19, 41, 19, T.BRICK);
-          lfr(42, 20, 43, 20, T.BRICK);
-          lfr(35, 11, 38, 11, T.BRICK);
-          put("sign", 35, 4);
-          lf(36, 16, T.TUFT);
+          fillFg(38, 18, 39, 18, T.BRICK);
+          fillFg(40, 19, 41, 19, T.BRICK);
+          fillFg(42, 20, 43, 20, T.BRICK);
+          fillFg(35, 11, 38, 11, T.BRICK);
+          putItem("sign", 35, 4);
+          putFg(36, 16, T.TUFT);
         }
         function starterTop() {
-          put("bed", 16, 4);
-          put("torch", 19, 3);
-          put("painting", 21, 2);
-          put("painting2", 24, 2);
-          put("shelf", 26, 4);
-          put("shelf", 27, 4);
-          put("chair", 28, 4);
-          put("lantern", 29, 1);
-          put("chest", 33, 4);
-          put("torch", 16, 2);
+          putItem("bed", 16, 4);
+          putItem("torch", 19, 3);
+          putItem("painting", 21, 2);
+          putItem("painting2", 24, 2);
+          putItem("shelf", 26, 4);
+          putItem("shelf", 27, 4);
+          putItem("chair", 28, 4);
+          putItem("lantern", 29, 1);
+          putItem("chest", 33, 4);
+          putItem("torch", 16, 2);
         }
         function starterMid() {
-          rowOf("planter", 19, 28, 10);
-          put("plant", 16, 10);
-          put("plant", 17, 10);
-          put("torch", 17, 8);
-          put("torch", 29, 8);
-          put("lantern", 23, 6);
-          put("painting", 20, 7);
+          putRow("planter", 19, 28, 10);
+          putItem("plant", 16, 10);
+          putItem("plant", 17, 10);
+          putItem("torch", 17, 8);
+          putItem("torch", 29, 8);
+          putItem("lantern", 23, 6);
+          putItem("painting", 20, 7);
         }
         function starterGround() {
-          put("cupboard", 17, 15);
-          put("cupboard", 18, 15);
-          put("cupboard", 17, 14);
-          put("cupboard", 18, 14);
-          put("furnace", 22, 15);
-          put("furnace", 23, 15);
-          put("furnace", 22, 14);
-          put("table", 25, 15);
-          put("board", 25, 13);
-          put("bench", 27, 15);
-          put("chair", 28, 15);
-          lf(29, 15, T.STONE);
-          put("torch", 19, 13);
-          put("torch", 29, 13);
-          put("lantern", 24, 12);
-          put("portal", 33, 15);
+          putItem("cupboard", 17, 15);
+          putItem("cupboard", 18, 15);
+          putItem("cupboard", 17, 14);
+          putItem("cupboard", 18, 14);
+          putItem("furnace", 22, 15);
+          putItem("furnace", 23, 15);
+          putItem("furnace", 22, 14);
+          putItem("table", 25, 15);
+          putItem("board", 25, 13);
+          putItem("bench", 27, 15);
+          putItem("chair", 28, 15);
+          putFg(29, 15, T.STONE);
+          putItem("torch", 19, 13);
+          putItem("torch", 29, 13);
+          putItem("lantern", 24, 12);
+          putItem("portal", 33, 15);
         }
         function starterBasement() {
           // left (brick) bedroom
-          put("bed", 2, 21);
-          put("painting2", 5, 18);
-          put("shelf", 7, 21);
-          put("lantern", 4, 17);
-          put("torch", 8, 19);
-          put("plant", 11, 21);
+          putItem("bed", 2, 21);
+          putItem("painting2", 5, 18);
+          putItem("shelf", 7, 21);
+          putItem("lantern", 4, 17);
+          putItem("torch", 8, 19);
+          putItem("plant", 11, 21);
           // middle (sandstone) workshop
-          put("furnace", 17, 21);
-          put("chest", 19, 21);
-          put("bench", 20, 21);
-          put("lantern", 18, 17);
-          put("torch", 15, 19);
+          putItem("furnace", 17, 21);
+          putItem("chest", 19, 21);
+          putItem("bench", 20, 21);
+          putItem("lantern", 18, 17);
+          putItem("torch", 15, 19);
           // right (cobble) store room
-          put("locker", 26, 21);
-          put("locker", 27, 21);
-          put("locker", 31, 21);
-          put("locker", 32, 21);
-          put("torch", 29, 19);
-          put("torch", 25, 19);
+          putItem("locker", 26, 21);
+          putItem("locker", 27, 21);
+          putItem("locker", 31, 21);
+          putItem("locker", 32, 21);
+          putItem("torch", 29, 19);
+          putItem("torch", 25, 19);
           // pit under the workshop + the mine at the bottom of the long shaft
-          put("chest", 20, 27);
-          put("chest", 21, 27);
-          put("torch", 16, 25);
-          put("torch", 19, 25);
-          put("torch", 25, 31);
-          put("torch", 31, 31);
+          putItem("chest", 20, 27);
+          putItem("chest", 21, 27);
+          putItem("torch", 16, 25);
+          putItem("torch", 19, 25);
+          putItem("torch", 25, 31);
+          putItem("torch", 31, 31);
         }
         var STARTER_LOOT = [
           [33, 4],
@@ -2716,15 +2735,21 @@
 
         // ===========================================================================
         //  4. ROOM DETECTION — pure functions over (w, h, fg, bg); unit-testable from the probe
+        //  (the world edge counts as a wall; a ladder with a wall on both sides is a floor hatch)
         // ===========================================================================
+        /** True for a tile that walls a room in: the world edge, any solid block or door, or a floor hatch. */
         function isBoundaryAt(w, h, f, x, y) {
+          if (x < 0 || y < 0 || x >= w || y >= h) return true; // the world edge is a wall
           var t = f[y * w + x];
           if (BOUNDARY[t]) return true;
-          // A ladder in a floor (solid on both sides) is a hatch: it closes the room like a trapdoor.
-          if (t === T.LADDER && x > 0 && x < w - 1) {
-            return BOUNDARY[f[y * w + x - 1]] === 1 && BOUNDARY[f[y * w + x + 1]] === 1;
+          // A ladder in a floor (a wall on both sides) is a hatch: it closes the room like a trapdoor.
+          if (t === T.LADDER) {
+            return isWallTile(w, h, f, x - 1, y) && isWallTile(w, h, f, x + 1, y);
           }
           return false;
+        }
+        function isWallTile(w, h, f, x, y) {
+          return x < 0 || y < 0 || x >= w || y >= h || BOUNDARY[f[y * w + x]] === 1;
         }
         var DIRS = [
           [1, 0],
@@ -2732,109 +2757,112 @@
           [0, 1],
           [0, -1],
         ];
-        /** Summarise one closed region: backing, entries, contents, validity and type labels. */
-        function describeRoom(w, h, f, b, cells, opts) {
-          var min = opts.min || ROOM_MIN;
-          var max = opts.max || ROOM_MAX;
-          var c = {
-            bed: 0,
-            table: 0,
-            chair: 0,
-            shelf: 0,
-            furnace: 0,
-            bench: 0,
-            chest: 0,
-            plant: 0,
-            light: 0,
-            cupboard: 0,
-            locker: 0,
-            painting: 0,
-            ladder: 0,
-            portal: 0,
-            board: 0,
-          };
-          var x0 = w,
-            y0 = h,
-            x1 = 0,
-            y1 = 0,
-            backed = true;
-          var doors = {},
-            hatches = {},
-            glass = {};
+        var FURNITURE_KINDS = [
+          "bed",
+          "table",
+          "chair",
+          "shelf",
+          "furnace",
+          "bench",
+          "chest",
+          "plant",
+          "cupboard",
+          "locker",
+          "painting",
+          "board",
+        ];
+        var COUNT_BY_TILE = {};
+        COUNT_BY_TILE[T.BED_L] = "bed";
+        COUNT_BY_TILE[T.TABLE_L] = "table";
+        COUNT_BY_TILE[T.CHAIR] = "chair";
+        COUNT_BY_TILE[T.SHELF] = "shelf";
+        COUNT_BY_TILE[T.FURNACE] = "furnace";
+        COUNT_BY_TILE[T.BENCH] = "bench";
+        COUNT_BY_TILE[T.CHEST] = "chest";
+        COUNT_BY_TILE[T.PLANT] = "plant";
+        COUNT_BY_TILE[T.PLANTER] = "plant";
+        COUNT_BY_TILE[T.TORCH] = "light";
+        COUNT_BY_TILE[T.LANTERN] = "light";
+        COUNT_BY_TILE[T.CUPBOARD] = "cupboard";
+        COUNT_BY_TILE[T.LOCKER] = "locker";
+        COUNT_BY_TILE[T.PAINT_L] = "painting";
+        COUNT_BY_TILE[T.PAINT2_L] = "painting";
+        COUNT_BY_TILE[T.BOARD_L] = "board";
+        COUNT_BY_TILE[T.LADDER] = "ladder";
+        COUNT_BY_TILE[T.PORTAL_T] = "portal";
+
+        /** Pass 1 over a region: bounding box, furniture counts and whether every cell has a back wall. */
+        function countContents(w, h, f, b, cells) {
+          var c = {};
+          Object.keys(COUNT_BY_TILE).forEach(function (t) {
+            c[COUNT_BY_TILE[t]] = 0;
+          });
+          var box = { x0: w, y0: h, x1: 0, y1: 0, backed: true };
           cells.forEach(function (i) {
             var x = i % w;
             var y = (i / w) | 0;
-            x0 = Math.min(x0, x);
-            x1 = Math.max(x1, x);
-            y0 = Math.min(y0, y);
-            y1 = Math.max(y1, y);
-            if (!b[i]) backed = false;
-            var t = f[i];
-            if (t === T.BED_L) c.bed++;
-            else if (t === T.TABLE_L) c.table++;
-            else if (t === T.CHAIR) c.chair++;
-            else if (t === T.SHELF) c.shelf++;
-            else if (t === T.FURNACE) c.furnace++;
-            else if (t === T.BENCH) c.bench++;
-            else if (t === T.CHEST) c.chest++;
-            else if (t === T.PLANT || t === T.PLANTER) c.plant++;
-            else if (t === T.TORCH || t === T.LANTERN) c.light++;
-            else if (t === T.CUPBOARD) c.cupboard++;
-            else if (t === T.LOCKER) c.locker++;
-            else if (t === T.PAINT_L || t === T.PAINT2_L) c.painting++;
-            else if (t === T.BOARD_L) c.board++;
-            else if (t === T.LADDER) c.ladder++;
-            else if (t === T.PORTAL_T) c.portal++;
+            box.x0 = Math.min(box.x0, x);
+            box.x1 = Math.max(box.x1, x);
+            box.y0 = Math.min(box.y0, y);
+            box.y1 = Math.max(box.y1, y);
+            if (!b[i]) box.backed = false;
+            var kind = COUNT_BY_TILE[f[i]];
+            if (kind) c[kind]++;
+          });
+          box.counts = c;
+          return box;
+        }
+        /** Pass 2: the distinct doors, floor hatches and glass panes that touch the region. */
+        function scanEdges(w, h, f, cells) {
+          var doors = {};
+          var hatches = {};
+          var glass = {};
+          cells.forEach(function (i) {
             for (var d = 0; d < 4; d++) {
-              var nx = x + DIRS[d][0];
-              var ny = y + DIRS[d][1];
+              var nx = (i % w) + DIRS[d][0];
+              var ny = ((i / w) | 0) + DIRS[d][1];
               if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
               var ni = ny * w + nx;
               var nt = f[ni];
               if (DOORS[nt]) doors[ni] = 1;
               else if (nt === T.GLASS) glass[ni] = 1;
-              else if (nt === T.LADDER) hatches[ni] = 1;
+              else if (nt === T.LADDER && isBoundaryAt(w, h, f, nx, ny)) hatches[ni] = 1; // only real hatches
             }
           });
-          var nDoors = Object.keys(doors).length / 2; // each door is two tiles
-          var nHatch = Object.keys(hatches).length;
+          return {
+            doors: Math.ceil(Object.keys(doors).length / 2), // each door is two tiles
+            hatches: Object.keys(hatches).length,
+            glass: Object.keys(glass).length,
+          };
+        }
+        /** Summarise one closed region: backing, entries, contents, validity and type labels. */
+        function describeRoom(w, h, f, b, cells, opts) {
+          var min = opts.min || ROOM_MIN;
+          var max = opts.max || ROOM_MAX;
+          var box = countContents(w, h, f, b, cells);
+          var edges = scanEdges(w, h, f, cells);
           var size = cells.length;
           var room = {
             cells: cells,
             size: size,
-            x0: x0,
-            y0: y0,
-            x1: x1,
-            y1: y1,
-            backed: backed,
-            doors: Math.ceil(nDoors),
-            hatches: nHatch,
-            glass: Object.keys(glass).length,
-            counts: c,
-            enclosed: true,
+            x0: box.x0,
+            y0: box.y0,
+            x1: box.x1,
+            y1: box.y1,
+            backed: box.backed,
+            doors: edges.doors,
+            hatches: edges.hatches,
+            glass: edges.glass,
+            counts: box.counts,
             tooBig: size > max,
             tooSmall: size < min,
           };
           room.entry = room.doors + room.hatches;
-          room.valid = !room.tooBig && !room.tooSmall && backed && room.entry > 0;
-          room.types = roomTypes(c, room.glass);
-          room.kinds = 0;
-          [
-            "bed",
-            "table",
-            "chair",
-            "shelf",
-            "furnace",
-            "bench",
-            "chest",
-            "plant",
-            "cupboard",
-            "locker",
-            "painting",
-            "board",
-          ].forEach(function (k) {
-            if (c[k] > 0) room.kinds++;
-          });
+          room.valid = !room.tooBig && !room.tooSmall && room.backed && room.entry > 0;
+          room.types = roomTypes(room.counts, room.glass);
+          room.kinds = FURNITURE_KINDS.filter(function (k) {
+            return room.counts[k] > 0;
+          }).length;
           return room;
         }
         function roomTypes(c, glass) {
@@ -2846,13 +2874,52 @@
           if (c.bed >= 1 && c.light >= 1) t.push("Bedroom");
           return t;
         }
+        /** Push the unvisited, non-wall neighbours of cell i; true when it touches a known-open region. */
+        function visitNeighbours(w, h, f, state, i, stack) {
+          for (var d = 0; d < 4; d++) {
+            var nx = (i % w) + DIRS[d][0];
+            var ny = ((i / w) | 0) + DIRS[d][1];
+            if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue; // the edge is a wall
+            var ni = ny * w + nx;
+            if (state[ni] === 2) return true;
+            if (state[ni] !== 0) continue;
+            if (isBoundaryAt(w, h, f, nx, ny)) {
+              state[ni] = 3;
+              continue;
+            }
+            state[ni] = 1;
+            stack.push(ni);
+          }
+          return false;
+        }
         /**
-         * Flood fill every empty region. A region that touches the world edge, the open sky or exceeds
-         * ROOM_HARD_CAP cells is "open" and ignored; the rest are rooms (valid or not, with the reason).
+         * Flood one region from cell s. state per cell: 0 unvisited, 1 in a room, 2 open (leaks to the
+         * sky or is bigger than ROOM_HARD_CAP), 3 boundary. Returns {cells, open}.
+         */
+        function fillRegion(w, h, f, state, s) {
+          var stack = [s];
+          var cells = [];
+          var open = false;
+          state[s] = 1;
+          while (stack.length && !open) {
+            var i = stack.pop();
+            cells.push(i);
+            open = visitNeighbours(w, h, f, state, i, stack) || cells.length > ROOM_HARD_CAP;
+          }
+          if (open) {
+            cells.concat(stack).forEach(function (ci) {
+              state[ci] = 2;
+            });
+          }
+          return { cells: cells, open: open };
+        }
+        /**
+         * Find every enclosed empty region. Regions that leak to the open sky (or exceed ROOM_HARD_CAP
+         * cells) are ignored; the rest are rooms, valid or not, with the reason.
          */
         function detectRooms(w, h, f, b, opts) {
           opts = opts || {};
-          var state = new Uint8Array(w * h); // 0 new, 1 room, 2 open
+          var state = new Uint8Array(w * h);
           var rooms = [];
           for (var s = 0; s < w * h; s++) {
             if (state[s] !== 0) continue;
@@ -2860,75 +2927,17 @@
               state[s] = 3;
               continue;
             }
-            var stack = [s];
-            var cells = [];
-            var open = false;
-            state[s] = 1;
-            while (stack.length && !open) {
-              var i = stack.pop();
-              cells.push(i);
-              var x = i % w;
-              var y = (i / w) | 0;
-              for (var d = 0; d < 4; d++) {
-                var nx = x + DIRS[d][0];
-                var ny = y + DIRS[d][1];
-                if (nx < 0 || ny < 0 || nx >= w || ny >= h) {
-                  open = true;
-                  break;
-                }
-                var ni = ny * w + nx;
-                if (state[ni] === 2) {
-                  open = true;
-                  break;
-                }
-                if (state[ni] !== 0) continue;
-                if (isBoundaryAt(w, h, f, nx, ny)) {
-                  state[ni] = 3;
-                  continue;
-                }
-                state[ni] = 1;
-                stack.push(ni);
-              }
-              if (cells.length > ROOM_HARD_CAP) open = true;
-            }
-            if (open) {
-              cells.forEach(function (ci) {
-                state[ci] = 2;
-              });
-              stack.forEach(function (ci) {
-                state[ci] = 2;
-              });
-            } else {
-              rooms.push(describeRoom(w, h, f, b, cells, opts));
-            }
+            var region = fillRegion(w, h, f, state, s);
+            if (!region.open) rooms.push(describeRoom(w, h, f, b, region.cells, opts));
           }
           return rooms;
         }
-        /** Flood fill from one cell (the player's) for the live checklist; returns {open, room?}. */
+        /** Flood from one cell (the player's) for the live checklist; returns {open, wall, room?}. */
         function regionAt(w, h, f, b, sx, sy, opts) {
-          if (sx < 0 || sy < 0 || sx >= w || sy >= h) return { open: true, room: null };
           if (isBoundaryAt(w, h, f, sx, sy)) return { open: false, room: null, wall: true };
-          var seen = new Uint8Array(w * h);
-          var stack = [sy * w + sx];
-          var cells = [];
-          seen[stack[0]] = 1;
-          while (stack.length) {
-            var i = stack.pop();
-            cells.push(i);
-            if (cells.length > ROOM_HARD_CAP) return { open: true, room: null };
-            var x = i % w;
-            var y = (i / w) | 0;
-            for (var d = 0; d < 4; d++) {
-              var nx = x + DIRS[d][0];
-              var ny = y + DIRS[d][1];
-              if (nx < 0 || ny < 0 || nx >= w || ny >= h) return { open: true, room: null };
-              var ni = ny * w + nx;
-              if (seen[ni] || isBoundaryAt(w, h, f, nx, ny)) continue;
-              seen[ni] = 1;
-              stack.push(ni);
-            }
-          }
-          return { open: false, room: describeRoom(w, h, f, b, cells, opts || {}) };
+          var region = fillRegion(w, h, f, new Uint8Array(w * h), sy * w + sx);
+          if (region.open) return { open: true, room: null };
+          return { open: false, room: describeRoom(w, h, f, b, region.cells, opts || {}) };
         }
         /** Test helper: ASCII picture -> {w,h,fg,bg}. # solid, D door, L ladder, . air, "b" air+backing... */
         function gridFromAscii(rows) {
@@ -2969,25 +2978,25 @@
         // ===========================================================================
         //  5. LIGHTING — per-tile RGB light map, recomputed only when the world changes
         // ===========================================================================
-        var lSky = new Float32Array(W * H);
-        var lR = new Float32Array(W * H);
-        var lG = new Float32Array(W * H);
-        var lB = new Float32Array(W * H);
+        var lightSky = new Float32Array(W * H);
+        var lightRed = new Float32Array(W * H);
+        var lightGreen = new Float32Array(W * H);
+        var lightBlue = new Float32Array(W * H);
         var emitters = [];
         var lightRecomputes = 0;
         function computeLight() {
           lightRecomputes++;
-          lSky.fill(0);
-          lR.fill(0);
-          lG.fill(0);
-          lB.fill(0);
+          lightSky.fill(0);
+          lightRed.fill(0);
+          lightGreen.fill(0);
+          lightBlue.fill(0);
           emitters.length = 0;
           var q = [];
           for (var x = 0; x < W; x++) {
             for (var y = 0; y < H; y++) {
               var i = y * W + x;
               if (OPAQUE[fg[i]] || bg[i]) break;
-              lSky[i] = 1;
+              lightSky[i] = 1;
               q.push(i);
             }
           }
@@ -2997,9 +3006,9 @@
             var em = EMIT[fg[j]];
             if (!em) continue;
             emitters.push({ x: j % W, y: (j / W) | 0, id: fg[j], em: em });
-            lR[j] = Math.max(lR[j], em.r * em.k);
-            lG[j] = Math.max(lG[j], em.g * em.k);
-            lB[j] = Math.max(lB[j], em.b * em.k);
+            lightRed[j] = Math.max(lightRed[j], em.r * em.k);
+            lightGreen[j] = Math.max(lightGreen[j], em.g * em.k);
+            lightBlue[j] = Math.max(lightBlue[j], em.b * em.k);
             q.push(j);
           }
           spreadBlock(q);
@@ -3008,7 +3017,7 @@
         function spreadSky(q) {
           for (var head = 0; head < q.length; head++) {
             var i = q[head];
-            var v = lSky[i];
+            var v = lightSky[i];
             var x = i % W;
             var y = (i / W) | 0;
             for (var d = 0; d < 4; d++) {
@@ -3017,8 +3026,8 @@
               if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
               var j = ny * W + nx;
               var nv = Math.fround(v * (OPAQUE[fg[j]] ? 0.74 : 0.9) - 0.004); // fround: the array is Float32
-              if (nv > lSky[j]) {
-                lSky[j] = nv;
+              if (nv > lightSky[j]) {
+                lightSky[j] = nv;
                 q.push(j);
               }
             }
@@ -3035,20 +3044,20 @@
               if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
               var j = ny * W + nx;
               var f = OPAQUE[fg[j]] ? 0.46 : 0.76;
-              var r = Math.fround(lR[i] * f - 0.005);
-              var g = Math.fround(lG[i] * f - 0.005);
-              var b = Math.fround(lB[i] * f - 0.005);
+              var r = Math.fround(lightRed[i] * f - 0.005);
+              var g = Math.fround(lightGreen[i] * f - 0.005);
+              var b = Math.fround(lightBlue[i] * f - 0.005);
               var more = false;
-              if (r > lR[j]) {
-                lR[j] = r;
+              if (r > lightRed[j]) {
+                lightRed[j] = r;
                 more = true;
               }
-              if (g > lG[j]) {
-                lG[j] = g;
+              if (g > lightGreen[j]) {
+                lightGreen[j] = g;
                 more = true;
               }
-              if (b > lB[j]) {
-                lB[j] = b;
+              if (b > lightBlue[j]) {
+                lightBlue[j] = b;
                 more = true;
               }
               if (more) q.push(j);
@@ -3071,7 +3080,6 @@
           hotbar: DEFAULT_HOTBAR.slice(),
           sel: 0,
           mode: "build", // build | break
-          claims: [], // cell indices, one per occupied room
           looted: {},
           time: 0.42, // 0 midnight, .5 noon
           rain: true,
@@ -3100,13 +3108,43 @@
           portalCd: 0,
           anim: 0,
           landV: 0,
-          hold: 0,
         };
-        var inp = { l: 0, r: 0, u: 0, d: 0, j: 0 }; // held directions (keyboard + touch merged)
+        var inp = { l: 0, r: 0, u: 0, d: 0 }; // held directions (keyboard + touch merged)
         var V = []; // villagers
         var doorTimers = {};
         var rooms = [];
+        // Cells of every room a buddy lives in (a whole room, not one cell, so editing a starter room
+        // cannot make it count as new). A room is occupied when most of its cells are claimed.
         var claimSet = new Set();
+        function isOccupied(room) {
+          var n = 0;
+          for (var i = 0; i < room.cells.length; i++) if (claimSet.has(room.cells[i])) n++;
+          return n * 2 >= room.cells.length;
+        }
+        function claimRoom(room) {
+          room.cells.forEach(function (c) {
+            claimSet.add(c);
+          });
+        }
+        /** Forget claims whose cells have been built over (the room was demolished). */
+        function pruneClaims() {
+          claimSet.forEach(function (c) {
+            if (SOLID[fg[c]]) claimSet.delete(c);
+          });
+        }
+        /** Claims as [start, length, start, length, ...] runs, for a compact save. */
+        function claimRuns() {
+          var cells = Array.from(claimSet).sort(function (a, b) {
+            return a - b;
+          });
+          var runs = [];
+          cells.forEach(function (c) {
+            var last = runs.length - 2;
+            if (last >= 0 && runs[last] + runs[last + 1] === c) runs[last + 1]++;
+            else runs.push(c, 1);
+          });
+          return runs;
+        }
         var probe = null; // live region around the player: {open, room, wall}
         var REQ = null; // the current request {index, def, buddy, state, room, ...}
 
@@ -3171,7 +3209,6 @@
             !boxOverlap(b.x, b.y - 1.0 - 1e-3, b.w, b.h)
           ) {
             b.y -= 1.0; // auto-step a one-tile ledge (kind to thumbs on a phone)
-            b.stepped = true;
             return false;
           }
           if (dx > 0) b.x = hit.minX - b.w / 2 - 1e-4;
@@ -3219,7 +3256,7 @@
         function openDoorAt(x, y) {
           var yb = doorBottomOf(x, y);
           if (setDoor(x, y, true)) sfx.door(true);
-          doorTimers[x + "," + yb] = 0.8;
+          doorTimers[x + "," + yb] = DOOR_OPEN_FOR;
         }
         function bodies() {
           var list = [P];
@@ -3236,7 +3273,7 @@
               if (Math.abs(b.x - (x + 0.5)) < 0.75 && b.y > yb - 1.2 && b.y - b.h < yb + 1)
                 hold = true;
             });
-            if (hold) doorTimers[k] = 0.7;
+            if (hold) doorTimers[k] = DOOR_HOLD;
             else doorTimers[k] -= dt;
             if (doorTimers[k] <= 0) {
               delete doorTimers[k];
@@ -3253,29 +3290,45 @@
             isLadder(cx, Math.floor(P.y - 1.6))
           );
         }
-        function tickClimb(dt, ax) {
+        /** Start or end a ladder grab from the held keys and what the body overlaps. */
+        function updateLadderGrab() {
           var cx = Math.floor(P.x);
+          var overTop = inp.d && isLadder(cx, Math.floor(P.y + 0.1)); // standing on a hatch, pressing down
           if (!P.climbing && (inp.u || inp.d) && onLadderNow()) P.climbing = true;
-          if (!P.climbing && inp.d && P.ground && isLadder(cx, Math.floor(P.y + 0.1)))
-            P.climbing = true;
-          if (P.climbing && !onLadderNow() && !(inp.d && isLadder(cx, Math.floor(P.y + 0.1)))) {
-            P.climbing = false;
+          if (!P.climbing && overTop && P.ground) P.climbing = true;
+          if (P.climbing && !onLadderNow() && !overTop) P.climbing = false;
+        }
+        /** Sideways input on a ladder: slide onto the rungs, or let go after a moment. */
+        function ladderSideways(dt, ax) {
+          if (!ax) {
+            P.climbDrift = 0;
+            P.x += (Math.floor(P.x) + 0.5 - P.x) * Math.min(1, 14 * dt); // slide onto the rungs
+            return;
           }
+          P.climbDrift += dt;
+          if (P.climbDrift > CLIMB_DRIFT_TIME) {
+            P.climbing = false;
+            P.climbDrift = 0;
+            P.climbRelease = CLIMB_STEP_WINDOW; // a short window in which walking sideways can step up onto a ledge
+          }
+        }
+        function ladderMove(dt, dy) {
+          moveBodyY(P, P.vy * dt);
+          if (dy > 0 && solidBelow(P)) P.climbing = false;
+          if (dy === 0) return;
+          P.climbT += dt;
+          if (P.climbT > LADDER_SOUND_EVERY) {
+            P.climbT = 0;
+            sfx.ladder();
+          }
+        }
+        function tickClimb(dt, ax) {
+          updateLadderGrab();
           if (!P.climbing) return false;
           var dy = (inp.d ? 1 : 0) - (inp.u ? 1 : 0);
           P.vy = dy * CLIMB;
           P.vx = 0;
-          if (ax) {
-            P.climbDrift += dt;
-            if (P.climbDrift > 0.12) {
-              P.climbing = false;
-              P.climbDrift = 0;
-              P.climbRelease = 0.35; // a short window in which walking sideways can step up onto a ledge
-            }
-          } else {
-            P.climbDrift = 0;
-            P.x += (cx + 0.5 - P.x) * Math.min(1, 14 * dt); // slide onto the rungs
-          }
+          ladderSideways(dt, ax);
           if (P.leap > 0) {
             // Space (not W / Up, which climb) hops off the ladder
             P.climbing = false;
@@ -3284,18 +3337,37 @@
             P.jumpBuf = 0;
             sfx.jump();
           }
-          if (P.climbing) {
-            moveBodyY(P, P.vy * dt);
-            if (dy > 0 && solidBelow(P)) P.climbing = false;
-            if (dy !== 0) {
-              P.climbT += dt;
-              if (P.climbT > 0.3) {
-                P.climbT = 0;
-                sfx.ladder();
-              }
-            }
-          }
+          if (P.climbing) ladderMove(dt, dy);
           return P.climbing;
+        }
+        /** Ordinary movement: accelerate, fall, jump (with coyote time and a buffered press), collide. */
+        function walkAndFall(dt, ax) {
+          var acc = P.ground ? ACCEL_GROUND : ACCEL_AIR;
+          P.vx += clamp(ax * RUN - P.vx, -acc * dt, acc * dt);
+          P.vy = Math.min(MAX_FALL, P.vy + GRAV * dt);
+          P.coyote = P.ground ? COYOTE_TIME : P.coyote - dt;
+          if (P.jumpBuf > 0 && P.coyote > 0) {
+            P.vy = -JUMP_V;
+            P.coyote = 0;
+            P.jumpBuf = 0;
+            P.ground = false;
+            sfx.jump();
+          }
+          P.landV = 0;
+          var oldX = P.x;
+          moveBodyX(P, P.vx * dt, true);
+          moveBodyY(P, P.vy * dt);
+          if (P.ground) P.stepD += Math.abs(P.x - oldX);
+        }
+        function landingAndFootsteps(wasGround) {
+          if (P.ground && !wasGround && P.landV > 6) {
+            sfx.land(P.landV);
+            fxDust(P.x, P.y, 4);
+          }
+          if (P.ground && P.stepD > STEP_SOUND_EVERY) {
+            P.stepD = 0;
+            sfx.step(surfaceOf(getFg(Math.floor(P.x), Math.floor(P.y + 0.1))));
+          }
         }
         function tickPlayer(dt) {
           var ax = (inp.r ? 1 : 0) - (inp.l ? 1 : 0);
@@ -3305,38 +3377,12 @@
           P.climbRelease = Math.max(0, (P.climbRelease || 0) - dt);
           P.portalCd = Math.max(0, P.portalCd - dt);
           P.opening = true; // the player pushes closed doors open
-          P.stepped = false;
           var wasGround = P.ground;
-          if (!tickClimb(dt, ax)) {
-            var target = ax * RUN;
-            var acc = P.ground ? 60 : 32;
-            P.vx += clamp(target - P.vx, -acc * dt, acc * dt);
-            P.vy = Math.min(MAX_FALL, P.vy + GRAV * dt);
-            P.coyote = P.ground ? 0.1 : P.coyote - dt;
-            if (P.jumpBuf > 0 && P.coyote > 0) {
-              P.vy = -JUMP_V;
-              P.coyote = 0;
-              P.jumpBuf = 0;
-              P.ground = false;
-              sfx.jump();
-            }
-            P.landV = 0;
-            var oldX = P.x;
-            moveBodyX(P, P.vx * dt, true);
-            moveBodyY(P, P.vy * dt);
-            if (P.ground) P.stepD += Math.abs(P.x - oldX);
-          }
+          if (!tickClimb(dt, ax)) walkAndFall(dt, ax);
           P.opening = false;
           P.ground = P.vy >= 0 && solidBelow(P);
           if (P.ground) P.vy = 0;
-          if (P.ground && !wasGround && P.landV > 6) {
-            sfx.land(P.landV);
-            fxDust(P.x, P.y, 4);
-          }
-          if (P.ground && P.stepD > 1.15) {
-            P.stepD = 0;
-            sfx.step(surfaceOf(getFg(Math.floor(P.x), Math.floor(P.y + 0.1))));
-          }
+          landingAndFootsteps(wasGround);
           P.x = clamp(P.x, 0.5, W - 0.5);
           if (P.y > H + 4) respawn();
           P.anim += dt * (Math.abs(P.vx) > 0.4 || P.climbing ? 1 : 0);
@@ -3409,9 +3455,6 @@
             climbing: false,
             emote: 0,
             role: "resident",
-            tx: 0,
-            ty: 0,
-            stuck: 0,
           };
         }
         function standBlocks(x, y) {
@@ -3430,55 +3473,48 @@
           return !standBlocks(x, y) && !standBlocks(x, y - 1);
         }
         /** Breadth-first search over standing cells: walk, step up, drop, climb ladders. */
+        /** The cell a walker can reach below a column: fall until something stands, within 14 tiles. */
+        function dropTarget(nx, y) {
+          for (var yy = y + 1; yy <= y + 14; yy++) {
+            if (!bodyFree(nx, yy)) return null;
+            if (nodeOK(nx, yy)) return [nx, yy];
+          }
+          return null;
+        }
+        /** Cells reachable in one move from standing cell (x, y): walk, step up, drop, climb. */
+        function pathNeighbours(x, y) {
+          var next = [];
+          [-1, 1].forEach(function (s) {
+            var nx = x + s;
+            var drop;
+            if (nodeOK(nx, y)) next.push([nx, y]);
+            else if (nodeOK(nx, y - 1) && bodyFree(x, y - 1) && !standBlocks(x, y - 2)) {
+              next.push([nx, y - 1]);
+            } else if (bodyFree(nx, y) && (drop = dropTarget(nx, y))) next.push(drop);
+          });
+          if (nodeOK(x, y - 1) && (isLadder(x, y - 1) || isLadder(x, y - 2))) next.push([x, y - 1]);
+          if (nodeOK(x, y + 1) && (isLadder(x, y + 1) || isLadder(x, y))) next.push([x, y + 1]);
+          return next;
+        }
+        /** Breadth-first search over standing cells; returns the list of cells or null. */
         function findPath(sx, sy, tx, ty) {
-          var key = function (x, y) {
-            return y * W + x;
-          };
           var prev = {};
           var q = [[sx, sy]];
-          prev[key(sx, sy)] = -1;
-          var goal = key(tx, ty);
-          var count = 0;
-          for (var head = 0; head < q.length && count < 5000; head++) {
-            var cur = q[head];
-            var x = cur[0];
-            var y = cur[1];
-            count++;
-            if (key(x, y) === goal) break;
-            var next = [];
-            for (var s = -1; s <= 1; s += 2) {
-              var nx = x + s;
-              if (nodeOK(nx, y)) next.push([nx, y]);
-              else if (nodeOK(nx, y - 1) && bodyFree(x, y - 1) && !standBlocks(x, y - 2))
-                next.push([nx, y - 1]);
-              else if (bodyFree(nx, y)) {
-                for (var yy = y + 1; yy <= y + 14; yy++) {
-                  if (!bodyFree(nx, yy)) break;
-                  if (nodeOK(nx, yy)) {
-                    next.push([nx, yy]);
-                    break;
-                  }
-                }
-              }
-            }
-            if (nodeOK(x, y - 1) && (isLadder(x, y - 1) || isLadder(x, y - 2)))
-              next.push([x, y - 1]);
-            if (nodeOK(x, y + 1) && (isLadder(x, y + 1) || isLadder(x, y))) next.push([x, y + 1]);
-            for (var n = 0; n < next.length; n++) {
-              var k = key(next[n][0], next[n][1]);
+          prev[sy * W + sx] = -1;
+          var goal = ty * W + tx;
+          for (var head = 0; head < q.length && head < 5000 && !(goal in prev); head++) {
+            var at = q[head][1] * W + q[head][0];
+            pathNeighbours(q[head][0], q[head][1]).forEach(function (n) {
+              var k = n[1] * W + n[0];
               if (prev[k] === undefined) {
-                prev[k] = key(x, y);
-                q.push(next[n]);
+                prev[k] = at;
+                q.push(n);
               }
-            }
+            });
           }
           if (prev[goal] === undefined) return null;
           var path = [];
-          var k2 = goal;
-          while (k2 !== -1) {
-            path.push([k2 % W, (k2 / W) | 0]);
-            k2 = prev[k2];
-          }
+          for (var k2 = goal; k2 !== -1; k2 = prev[k2]) path.push([k2 % W, (k2 / W) | 0]);
           return path.reverse();
         }
         function feetCell(b) {
@@ -3542,6 +3578,17 @@
             b.state = "wander";
           }
         }
+        /** Buddies open the doors they pass through (doors never block them). */
+        function openDoorsAround(b) {
+          var cx = Math.floor(b.x);
+          var cy = Math.floor(b.y);
+          for (var oy = -1; oy <= 0; oy++) {
+            for (var ox = -1; ox <= 1; ox++) {
+              var isNear = Math.abs(b.x - (cx + ox + 0.5)) < 1.2;
+              if (DOORS[getFg(cx + ox, cy + oy)] && isNear) openDoorAt(cx + ox, cy + oy);
+            }
+          }
+        }
         function stepAlongPath(b, dt) {
           var wp = b.path[b.pathI];
           if (!wp) {
@@ -3554,32 +3601,23 @@
           var ty = wp[1] + 1;
           var dx = tx - b.x;
           var dy = ty - b.y;
-          var sp = 2.5 * dt;
+          var sp = BUDDY_WALK_SPEED * dt;
           b.climbing =
             Math.abs(dx) < 0.3 &&
             dy !== 0 &&
             (isLadder(wp[0], wp[1]) || isLadder(wp[0], wp[1] - 1));
-          if (dy > 0.05 && !b.climbing) sp = 9 * dt; // dropping
+          if (dy > 0.05 && !b.climbing) sp = BUDDY_DROP_SPEED * dt; // dropping
           var dist = Math.hypot(dx, dy);
           if (dist <= sp) {
             b.x = tx;
             b.y = ty;
             b.pathI++;
-            b.stuck = 0;
           } else {
             b.x += (dx / dist) * sp;
             b.y += (dy / dist) * sp;
             if (Math.abs(dx) > 0.02) b.face = dx > 0 ? 1 : -1;
           }
-          // villagers open doors they pass through (doors are non-blocking for them)
-          var cx = Math.floor(b.x);
-          for (var oy = -1; oy <= 0; oy++) {
-            for (var ox = -1; ox <= 1; ox++) {
-              var ft = getFg(cx + ox, Math.floor(b.y) + oy);
-              if (DOORS[ft] && Math.abs(b.x - (cx + ox + 0.5)) < 1.2)
-                openDoorAt(cx + ox, Math.floor(b.y) + oy);
-            }
-          }
+          openDoorsAround(b);
           if (b.pathI >= b.path.length) {
             b.path = null;
             b.state = "idle";
@@ -3618,18 +3656,30 @@
           T.BOARD_L,
           T.BOARD_R,
         ]);
-        function supported(x, y) {
-          var t = getFg(x, y);
-          if (NEEDS_FLOOR[t]) return isSolid(x, y + 1);
-          if (t === T.LANTERN) return isSolid(x, y - 1);
-          if (t === T.TORCH)
-            return getBg(x, y) > 0 || isSolid(x - 1, y) || isSolid(x + 1, y) || isSolid(x, y + 1);
-          if (MOUNTED[t])
-            return getBg(x, y) > 0 || isSolid(x - 1, y) || isSolid(x + 1, y) || isSolid(x, y - 1);
-          if (t === T.LADDER) {
+        // What holds each kind of object up: "floor" (stands on a block), "hang" (from a block above),
+        // "mount" (torch: back wall or a neighbour), "paint" (hung on a back wall), "ladder".
+        var SUPPORT_KIND = {};
+        for (var sk = 0; sk < NT; sk++) {
+          if (NEEDS_FLOOR[sk]) SUPPORT_KIND[sk] = "floor";
+          if (MOUNTED[sk]) SUPPORT_KIND[sk] = "paint";
+        }
+        SUPPORT_KIND[T.LANTERN] = "hang";
+        SUPPORT_KIND[T.TORCH] = "mount";
+        SUPPORT_KIND[T.LADDER] = "ladder";
+        /** A block furniture can stand on. A door is solid but is not a floor. */
+        function isFloor(x, y) {
+          return isSolid(x, y) && !DOORS[getFg(x, y)];
+        }
+        /** The one support rule, used both to allow a placement and to keep an object in place. */
+        function supportOk(kind, x, y) {
+          var beside = isSolid(x - 1, y) || isSolid(x + 1, y);
+          if (kind === "floor") return isFloor(x, y + 1);
+          if (kind === "hang") return isSolid(x, y - 1);
+          if (kind === "mount") return getBg(x, y) > 0 || beside || isSolid(x, y + 1);
+          if (kind === "paint") return getBg(x, y) > 0 || beside || isSolid(x, y - 1);
+          if (kind === "ladder") {
             return (
-              isSolid(x - 1, y) ||
-              isSolid(x + 1, y) ||
+              beside ||
               isSolid(x, y - 1) ||
               isSolid(x, y + 1) ||
               isLadder(x, y - 1) ||
@@ -3637,6 +3687,10 @@
             );
           }
           return true;
+        }
+        function supported(x, y) {
+          var kind = SUPPORT_KIND[getFg(x, y)];
+          return kind ? supportOk(kind, x, y) : true;
         }
         function removeObject(x, y) {
           var t = getFg(x, y);
@@ -3649,24 +3703,30 @@
             });
           }
         }
+        /** Drop one loose object at (x, y) if its support is gone; true when something fell off. */
+        function dropIfUnsupported(x, y) {
+          var t = getFg(x, y);
+          if (t === T.TUFT) {
+            if (!isSolid(x, y + 1)) setFg(x, y, T.AIR); // a grass tuft needs ground under it
+            return false;
+          }
+          if (t === T.AIR || (SOLID[t] && !DOORS[t])) return false; // doors are solid but still need a floor
+          if (supported(x, y)) return false;
+          fxDebris(x + 0.5, y + 0.5, MATERIAL[t]);
+          removeObject(x, y);
+          sfx.place(MATERIAL[t], 0.6);
+          return true;
+        }
         /** After a removal, anything that was resting on / hanging from it falls off (recursively). */
         function settle(x, y) {
           var stack = [[x, y]];
           var guard = 0;
           while (stack.length && guard++ < 400) {
             var c = stack.pop();
-            for (var d = -1; d < 4; d++) {
-              var nx = d < 0 ? c[0] : c[0] + DIRS[d][0];
-              var ny = d < 0 ? c[1] : c[1] + DIRS[d][1];
-              var t = getFg(nx, ny);
-              if (t === T.AIR || SOLID[t] || DECOR[t]) continue;
-              if (!supported(nx, ny)) {
-                fxDebris(nx + 0.5, ny + 0.5, MATERIAL[t]);
-                removeObject(nx, ny);
-                sfx.place(MATERIAL[t], 0.6);
-                stack.push([nx, ny]);
-              }
-            }
+            [[0, 0]].concat(DIRS).forEach(function (d) {
+              if (dropIfUnsupported(c[0] + d[0], c[1] + d[1]))
+                stack.push([c[0] + d[0], c[1] + d[1]]);
+            });
           }
         }
         function playerReach(tx, ty) {
@@ -3708,56 +3768,43 @@
           }
           return placeRule(it, tx, ty, tiles);
         }
+        var RULE_MESSAGE = {
+          ladder: "A ladder needs a wall or another ladder beside it",
+          floor: "Needs a solid floor under it",
+          hang: "Hangs from a block above it",
+          mount: "Needs a back wall or a block beside it",
+          paint: "Hang it on a back wall",
+        };
+        /** The footprint tiles that must be supported: the lowest tile of each column, or all of them. */
+        function supportPoints(rule, tx, ty, tiles) {
+          var points = [];
+          tiles.forEach(function (t) {
+            var x = tx + t[0];
+            var y = ty + t[1];
+            var covered = tiles.some(function (o) {
+              return tx + o[0] === x && ty + o[1] === y + 1;
+            });
+            if (rule === "paint" || !covered) points.push([x, y]);
+          });
+          return rule === "hang" || rule === "mount" || rule === "ladder" ? [[tx, ty]] : points;
+        }
         function placeRule(it, tx, ty, tiles) {
-          var no = function (r) {
-            return { ok: false, reason: r };
-          };
           var solidItem = tiles.some(function (t) {
             return SOLID[t[2]] === 1;
           });
           if (solidItem) {
             for (var i = 0; i < tiles.length; i++) {
-              if (overlapsBody(tx + tiles[i][0], ty + tiles[i][1]))
-                return no("Someone is standing there");
+              if (overlapsBody(tx + tiles[i][0], ty + tiles[i][1])) {
+                return { ok: false, reason: "Someone is standing there" };
+              }
             }
           }
           var rule = it.rule;
-          if (rule === "ladder") {
-            var ok =
-              isSolid(tx - 1, ty) ||
-              isSolid(tx + 1, ty) ||
-              isSolid(tx, ty - 1) ||
-              isSolid(tx, ty + 1) ||
-              isLadder(tx, ty - 1) ||
-              isLadder(tx, ty + 1);
-            return ok
-              ? { ok: true, reason: "" }
-              : no("A ladder needs a wall or another ladder beside it");
-          }
-          if (rule === "floor") {
-            for (var k = 0; k < tiles.length; k++) {
-              var x = tx + tiles[k][0];
-              var y = ty + tiles[k][1];
-              var below = tiles.some(function (t) {
-                return tx + t[0] === x && ty + t[1] === y + 1;
-              });
-              if (!below && !isSolid(x, y + 1)) return no("Needs a solid floor under it");
-            }
-          } else if (rule === "hang") {
-            if (!isSolid(tx, ty - 1)) return no("Hangs from a block above it");
-          } else if (rule === "mount") {
-            var okm =
-              getBg(tx, ty) > 0 ||
-              isSolid(tx - 1, ty) ||
-              isSolid(tx + 1, ty) ||
-              isSolid(tx, ty + 1);
-            if (!okm) return no("Needs a back wall or a block beside it");
-          } else if (rule === "paint") {
-            for (var m = 0; m < tiles.length; m++) {
-              var px = tx + tiles[m][0];
-              var py = ty + tiles[m][1];
-              if (!(getBg(px, py) > 0 || isSolid(px - 1, py) || isSolid(px + 1, py)))
-                return no("Hang it on a back wall");
+          if (!RULE_MESSAGE[rule]) return { ok: true, reason: "" };
+          var points = supportPoints(rule, tx, ty, tiles);
+          for (var k = 0; k < points.length; k++) {
+            if (!supportOk(rule, points[k][0], points[k][1])) {
+              return { ok: false, reason: RULE_MESSAGE[rule] };
             }
           }
           return { ok: true, reason: "" };
@@ -3925,12 +3972,7 @@
         function checklist(def, pr) {
           var room = pr && pr.room;
           var items = [];
-          if (
-            room &&
-            room.cells.some(function (c) {
-              return claimSet.has(c);
-            })
-          ) {
+          if (room && isOccupied(room)) {
             // An occupied room cannot satisfy a request: show the plain requirements instead.
             room = null;
             pr = null;
@@ -3964,9 +4006,7 @@
           return items;
         }
         function roomMatches(room, def) {
-          if (!room.valid || room.size < def.min) return false;
-          var cells = room.cells;
-          for (var i = 0; i < cells.length; i++) if (claimSet.has(cells[i])) return false;
+          if (!room.valid || room.size < def.min || isOccupied(room)) return false;
           return Object.keys(def.needs).every(function (k) {
             return haveOf(room, k) >= def.needs[k];
           });
@@ -3994,6 +4034,7 @@
           var goal = [Math.floor(v.x), Math.floor(v.y)];
           if (!sendBuddy(b, goal[0], goal[1])) poofBuddy(b, goal[0], goal[1]);
           V.push(b);
+          S.reqIndex = index; // the chain position is part of the save
           REQ = { index: index, def: def, buddy: b, state: "arriving", room: null, timer: 0 };
           reqTimed = 6;
           reqMoveT = 0;
@@ -4061,6 +4102,38 @@
           });
           return best || [room.cells[0] % W, (room.cells[0] / W) | 0];
         }
+        /** The buddy turns back: the player broke the room while they walked. */
+        function turnBack(b) {
+          REQ.state = "waiting";
+          b.emote = 1e9;
+          b.role = "visitor";
+          toast(b.name + " turned back: the room is not ready any more.");
+        }
+        /** Coins, stars, housed count and the save, then the celebration. */
+        function rewardMoveIn(b, room) {
+          var stars = 1 + (room.counts.light >= 2 ? 1 : 0) + (room.kinds >= 4 ? 1 : 0);
+          S.housed += 1;
+          S.happiness += stars;
+          S.bestOverall = Math.max(S.bestOverall, S.housed);
+          S.reqIndex = REQ.index + 1; // saved now, so a reload in the 4s gap still moves on
+          addCoins(REQ.def.reward);
+          fxConfetti(b.x, b.y - 1.5);
+          fxFloat("+" + REQ.def.reward + " coins", b.x, b.y - 2.3, "#ffd36b");
+          fxFloat("★".repeat(stars), b.x, b.y - 3.0, "#ffe08a");
+          sfx.fanfare();
+          sfx.coin();
+          var starText = stars + (stars > 1 ? " stars" : " star");
+          toast(
+            b.name +
+              " moved into the " +
+              REQ.def.type +
+              "! +" +
+              REQ.def.reward +
+              " coins, " +
+              starText,
+          );
+          announce(b.name + " moved in. Housed: " + S.housed + ".");
+        }
         function finishMoveIn() {
           var b = REQ.buddy;
           var spot = REQ.spot;
@@ -4069,46 +4142,17 @@
             return r.cells.indexOf(spot[1] * W + spot[0]) >= 0 && roomMatches(r, REQ.def);
           });
           if (!still) {
-            REQ.state = "waiting";
-            b.emote = 1e9;
-            b.role = "visitor";
-            toast(b.name + " turned back: the room is not ready any more.");
+            turnBack(b);
             return;
           }
-          if (
-            b.state === "walk" ||
-            Math.abs(b.x - (spot[0] + 0.5)) > 0.6 ||
-            Math.abs(b.y - (spot[1] + 1)) > 1.2
-          ) {
-            poofBuddy(b, spot[0], spot[1]);
-          }
-          var home = still.cells[0];
-          claimSet.add(home);
-          S.claims.push(home);
-          b.home = home;
+          var arrived =
+            Math.abs(b.x - (spot[0] + 0.5)) <= 0.6 && Math.abs(b.y - (spot[1] + 1)) <= 1.2;
+          if (b.state === "walk" || !arrived) poofBuddy(b, spot[0], spot[1]);
+          claimRoom(still);
+          b.home = spot[1] * W + spot[0];
           b.role = "resident";
           b.wait = 1.5;
-          var stars = 1 + (still.counts.light >= 2 ? 1 : 0) + (still.kinds >= 4 ? 1 : 0);
-          S.housed += 1;
-          S.happiness += stars;
-          S.bestOverall = Math.max(S.bestOverall, S.housed);
-          addCoins(REQ.def.reward);
-          fxConfetti(b.x, b.y - 1.5);
-          fxFloat("+" + REQ.def.reward + " coins", b.x, b.y - 2.3, "#ffd36b");
-          fxFloat("★".repeat(stars), b.x, b.y - 3.0, "#ffe08a");
-          sfx.fanfare();
-          sfx.coin();
-          toast(
-            b.name +
-              " moved into the " +
-              still.types[0] +
-              "! +" +
-              REQ.def.reward +
-              " coins, " +
-              stars +
-              (stars > 1 ? " stars" : " star"),
-          );
-          announce(b.name + " moved in. Housed: " + S.housed + ".");
+          rewardMoveIn(b, still);
           REQ.state = "next";
           REQ.timer = 4.5;
           saveDirty = true;
@@ -4127,13 +4171,9 @@
         }
         function claimStarterRooms() {
           claimSet = new Set();
-          S.claims = [];
           detectNow();
           rooms.forEach(function (r) {
-            if (r.valid) {
-              claimSet.add(r.cells[0]);
-              S.claims.push(r.cells[0]);
-            }
+            if (r.valid) claimRoom(r);
           });
         }
 
@@ -4412,7 +4452,7 @@
               src.connect(fl);
               fl.connect(g);
               src.start(0, Math.random() * 3);
-              return { g: g, out: g };
+              return g;
             };
             var hiss = mk("highpass", 1800, 0.5, 0.5);
             var body = mk("bandpass", 650, 0.5, 0.55);
@@ -4421,11 +4461,11 @@
             var lp = ctx.createBiquadFilter();
             lp.type = "lowpass";
             lp.frequency.value = 9000;
-            hiss.out.connect(sum);
-            body.out.connect(sum);
+            hiss.connect(sum);
+            body.connect(sum);
             sum.connect(lp);
             lp.connect(rainBus);
-            rainNodes = { sum: sum, lp: lp, hiss: hiss, body: body, wobble: 1, next: 0 };
+            rainNodes = { sum: sum, lp: lp, hiss: hiss, wobble: 1, next: 0 };
           }
           api.rain = function (intensity, indoors) {
             if (!rainNodes || !ctx) return;
@@ -4433,7 +4473,7 @@
             if (now > rainNodes.next) {
               rainNodes.next = now + 1.2 + Math.random() * 1.4;
               rainNodes.wobble = 0.86 + Math.random() * 0.28; // slow random drift so it never loops audibly
-              rainNodes.hiss.g.gain.setTargetAtTime(0.35 + Math.random() * 0.3, now, 0.8);
+              rainNodes.hiss.gain.setTargetAtTime(0.35 + Math.random() * 0.3, now, 0.8);
             }
             var vol = intensity * (indoors ? 0.38 : 1) * 0.7 * rainNodes.wobble;
             rainNodes.sum.gain.setTargetAtTime(S.sound ? vol : 0, now, 0.5);
@@ -4566,7 +4606,7 @@
         var parts = [];
         var floats = [];
         var vignette = null;
-        var lightCv = mkc(2, 2);
+        var lightCv = makeCanvas(2, 2);
         var glowCache = {};
         var clouds = [];
 
@@ -4614,7 +4654,7 @@
           dirt: [118, 78, 50],
           cloth: [196, 58, 62],
         };
-        function rnd(a, b) {
+        function randBetween(a, b) {
           return a + Math.random() * (b - a);
         }
         function fxDebris(x, y, mat) {
@@ -4624,13 +4664,13 @@
             parts.push({
               x: x,
               y: y,
-              vx: rnd(-3, 3),
-              vy: rnd(-5, -1),
+              vx: randBetween(-3, 3),
+              vy: randBetween(-5, -1),
               g: 16,
-              life: rnd(0.35, 0.7),
+              life: randBetween(0.35, 0.7),
               max: 0.7,
               c: c,
-              s: rnd(0.08, 0.16),
+              s: randBetween(0.08, 0.16),
               t: 0,
             });
           }
@@ -4639,33 +4679,33 @@
           if (reducedMotion) return;
           for (var i = 0; i < n; i++) {
             parts.push({
-              x: x + rnd(-0.3, 0.3),
+              x: x + randBetween(-0.3, 0.3),
               y: y - 0.05,
-              vx: rnd(-1.4, 1.4),
-              vy: rnd(-1.2, -0.2),
+              vx: randBetween(-1.4, 1.4),
+              vy: randBetween(-1.2, -0.2),
               g: 2,
-              life: rnd(0.25, 0.5),
+              life: randBetween(0.25, 0.5),
               max: 0.5,
               c: [170, 160, 150],
-              s: rnd(0.08, 0.14),
+              s: randBetween(0.08, 0.14),
               t: 0,
             });
           }
         }
         function fxBurst(x, y, c, n) {
           for (var i = 0; i < n; i++) {
-            var a = rnd(0, 6.283);
-            var sp = rnd(1, 4);
+            var a = randBetween(0, 6.283);
+            var sp = randBetween(1, 4);
             parts.push({
               x: x,
               y: y,
               vx: Math.cos(a) * sp,
               vy: Math.sin(a) * sp - 1,
               g: 3,
-              life: rnd(0.4, 0.8),
+              life: randBetween(0.4, 0.8),
               max: 0.8,
               c: c,
-              s: rnd(0.07, 0.13),
+              s: randBetween(0.07, 0.13),
               t: 0,
             });
           }
@@ -4682,17 +4722,17 @@
           var n = reducedMotion ? 14 : 70;
           for (var i = 0; i < n; i++) {
             parts.push({
-              x: x + rnd(-0.6, 0.6),
+              x: x + randBetween(-0.6, 0.6),
               y: y,
-              vx: rnd(-5, 5),
-              vy: rnd(-10, -3),
+              vx: randBetween(-5, 5),
+              vy: randBetween(-10, -3),
               g: reducedMotion ? 1.5 : 9,
-              life: rnd(1.4, 2.6),
+              life: randBetween(1.4, 2.6),
               max: 2.6,
               c: CONF[i % CONF.length],
-              s: rnd(0.1, 0.2),
+              s: randBetween(0.1, 0.2),
               t: 1,
-              spin: rnd(0, 6),
+              spin: randBetween(0, 6),
             });
           }
         }
@@ -4823,10 +4863,10 @@
         function daylight() {
           return clamp(0.5 + 0.7 * Math.sin((S.time - 0.25) * Math.PI * 2), 0, 1);
         }
-        function mix3(a, b, t) {
+        function mixColor(a, b, t) {
           return [lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2], b[2], t)];
         }
-        function css3(c, a) {
+        function rgbCss(c, a) {
           return (
             "rgb(" +
             (c[0] | 0) +
@@ -4840,12 +4880,12 @@
         function skyPalette() {
           var d = daylight();
           var rk = weather.k;
-          var top = mix3([10, 14, 34], mix3([112, 166, 230], [124, 130, 138], rk), d);
-          var hor = mix3([32, 38, 70], mix3([198, 218, 236], [180, 185, 190], rk), d);
+          var top = mixColor([10, 14, 34], mixColor([112, 166, 230], [124, 130, 138], rk), d);
+          var hor = mixColor([32, 38, 70], mixColor([198, 218, 236], [180, 185, 190], rk), d);
           var tint = Math.max(0, 1 - Math.abs(d - 0.5) * 3.2) * (1 - rk * 0.65);
-          hor = mix3(hor, [244, 150, 104], tint * 0.55);
-          var lightCol = mix3([46, 54, 96], mix3([240, 240, 238], [196, 201, 209], rk), d);
-          lightCol = mix3(lightCol, [255, 190, 150], tint * 0.25);
+          hor = mixColor(hor, [244, 150, 104], tint * 0.55);
+          var lightCol = mixColor([46, 54, 96], mixColor([240, 240, 238], [196, 201, 209], rk), d);
+          lightCol = mixColor(lightCol, [255, 190, 150], tint * 0.25);
           return { top: top, hor: hor, light: lightCol, d: d };
         }
         function hillH(i, seed, amp) {
@@ -4859,8 +4899,8 @@
         function drawSky(pal) {
           var hy = (SURF - 2) * N - camT;
           var g = vctx.createLinearGradient(0, (0 - 8) * N - camT, 0, hy + 4 * N);
-          g.addColorStop(0, css3(pal.top));
-          g.addColorStop(1, css3(pal.hor));
+          g.addColorStop(0, rgbCss(pal.top));
+          g.addColorStop(1, rgbCss(pal.hor));
           vctx.fillStyle = g;
           vctx.fillRect(0, 0, vwD, vhD);
           // sun / moon (only a faint glow behind the overcast when it is raining)
@@ -4901,18 +4941,18 @@
           }
           var drift = reducedMotion ? 0 : S.simTime * 0.15;
           var a = 0.1 + weather.k * 0.28;
-          vctx.fillStyle = css3(mix3(pal.hor, [255, 255, 255], 0.2), a);
+          vctx.fillStyle = rgbCss(mixColor(pal.hor, [255, 255, 255], 0.2), a);
           for (var k = 0; k < clouds.length; k++) {
             var c = clouds[k];
             var x = ((c.x + drift) % 120) - 12;
-            var px = x * N - camL * 0.12 + (camL * 0.12 > 0 ? 0 : 0);
+            var px = x * N - camL * 0.12;
             vctx.fillRect(px, c.y * N - camT * 0.3 - 4 * N, c.w * N, c.h * N);
             vctx.fillRect(px + N * 2, c.y * N - camT * 0.3 - 4 * N - N, c.w * N * 0.6, N);
           }
         }
         function drawHills(pal, par, seed, mixK, amp) {
           var base = (SURF + 1) * N - camT;
-          var col = css3(mix3(pal.hor, mix3(pal.top, [20, 20, 24], 0.5), mixK + 0.1));
+          var col = rgbCss(mixColor(pal.hor, mixColor(pal.top, [20, 20, 24], 0.5), mixK + 0.1));
           vctx.fillStyle = col;
           var step = N;
           var off = camL * par;
@@ -4927,27 +4967,25 @@
         }
 
         // ---- chunks (static tile layers cached as canvases) ----
+        /** Draw one tile (back wall, its edge shadow, then the foreground) into a chunk canvas. */
+        function paintChunkTile(g, x, y, dx, dy) {
+          var i = y * W + x;
+          var b = bg[i];
+          var f = fg[i];
+          if (b) {
+            g.drawImage(bgTex(b, x, y), dx, dy);
+            if (!SOLID[f]) bgShadow(g, x, y, dx, dy);
+          }
+          var tex = f ? fgTex(f, x, y) : null;
+          if (tex) g.drawImage(tex, dx, dy);
+        }
         function paintChunk(o, cx, cy) {
-          var g = o.g;
-          g.clearRect(0, 0, CHUNK * TS, CHUNK * TS);
+          o.g.clearRect(0, 0, CHUNK * TS, CHUNK * TS);
           for (var ty = 0; ty < CHUNK; ty++) {
             for (var tx = 0; tx < CHUNK; tx++) {
               var x = cx * CHUNK + tx;
               var y = cy * CHUNK + ty;
-              if (!inb(x, y)) continue;
-              var i = y * W + x;
-              var b = bg[i];
-              var f = fg[i];
-              var dx = tx * TS;
-              var dy = ty * TS;
-              if (b) {
-                g.drawImage(bgTex(b, x, y), dx, dy);
-                if (!SOLID[f]) bgShadow(g, x, y, dx, dy);
-              }
-              if (f) {
-                var tex = fgTex(f, x, y);
-                if (tex) g.drawImage(tex, dx, dy);
-              }
+              if (inb(x, y)) paintChunkTile(o.g, x, y, tx * TS, ty * TS);
             }
           }
         }
@@ -4972,7 +5010,7 @@
           var i = cy * CHUNKS_X + cx;
           var o = chunkCanv[i];
           if (!o) {
-            o = mkc(CHUNK * TS, CHUNK * TS);
+            o = makeCanvas(CHUNK * TS, CHUNK * TS);
             chunkCanv[i] = o;
             chunkDirty[i] = 1;
           }
@@ -5078,7 +5116,7 @@
         function glowSprite(c) {
           var k = c[0] + "," + c[1] + "," + c[2];
           if (glowCache[k]) return glowCache[k];
-          var o = mkc(64, 64);
+          var o = makeCanvas(64, 64);
           var g = o.g.createRadialGradient(32, 32, 0, 32, 32, 32);
           g.addColorStop(0, "rgba(" + k + ",1)");
           g.addColorStop(0.35, "rgba(" + k + ",0.35)");
@@ -5088,47 +5126,39 @@
           glowCache[k] = o.c;
           return o.c;
         }
-        function drawLighting(pal) {
-          var tx0 = Math.floor(camL / N) - 1;
-          var ty0 = Math.floor(camT / N) - 1;
-          var tw = Math.ceil(vwD / N) + 3;
-          var th = Math.ceil(vhD / N) + 3;
-          if (lightCv.c.width !== tw || lightCv.c.height !== th) {
-            lightCv = mkc(tw, th);
-          }
+        var GLOW_CAP = 256; // most glow sprites drawn per frame
+        var glowsDrawn = 0;
+        /** Light colour of one view tile: ambient + sky + block light + the builder's faint lamp. */
+        function tileLight(out, o, wx, wy, pal, amb, flick) {
+          var sky = 0;
+          var r = 0;
+          var g = 0;
+          var b = 0;
+          if (inb(wx, wy)) {
+            var i = wy * W + wx;
+            sky = lightSky[i];
+            r = lightRed[i] * flick;
+            g = lightGreen[i] * flick;
+            b = lightBlue[i] * flick;
+          } else if (wy < 0) sky = 1;
+          var dd = Math.hypot(wx + 0.5 - P.x, wy + 0.5 - (P.y - 1.0));
+          var lamp = Math.max(0, 1 - dd / 4.2) * 0.26; // so a dark cave is never pitch black
+          out[o] = Math.min(255, amb[0] + sky * pal.light[0] + (r + lamp) * 255);
+          out[o + 1] = Math.min(255, amb[1] + sky * pal.light[1] + (g + lamp * 0.85) * 255);
+          out[o + 2] = Math.min(255, amb[2] + sky * pal.light[2] + (b + lamp * 0.6) * 255);
+          out[o + 3] = 255;
+        }
+        /** The light map: 1 px per tile, smoothed up to the screen and multiplied over the scene. */
+        function drawLightMap(pal, tx0, ty0, tw, th) {
+          if (lightCv.c.width !== tw || lightCv.c.height !== th) lightCv = makeCanvas(tw, th);
           var img = lightCv.g.createImageData(tw, th);
-          var dat = img.data;
-          var amb = mix3([22, 18, 26], [38, 31, 32], pal.d);
+          var amb = mixColor([22, 18, 26], [38, 31, 32], pal.d);
           var flick = reducedMotion
             ? 1
             : 0.965 + 0.035 * Math.sin(S.simTime * 11.3) * Math.sin(S.simTime * 7.1 + 1);
-          var pr = P.y - 1.0;
           for (var y = 0; y < th; y++) {
             for (var x = 0; x < tw; x++) {
-              var wx = tx0 + x;
-              var wy = ty0 + y;
-              var o = (y * tw + x) * 4;
-              var sky = 0;
-              var r = 0;
-              var gg = 0;
-              var b = 0;
-              if (inb(wx, wy)) {
-                var i = wy * W + wx;
-                sky = lSky[i];
-                r = lR[i] * flick;
-                gg = lG[i] * flick;
-                b = lB[i] * flick;
-              } else if (wy < 0) sky = 1;
-              // the builder carries a faint lamp so a dark cave is never pitch black
-              var dd = Math.hypot(wx + 0.5 - P.x, wy + 0.5 - pr);
-              var pl = Math.max(0, 1 - dd / 4.2) * 0.26;
-              r += pl;
-              gg += pl * 0.85;
-              b += pl * 0.6;
-              dat[o] = Math.min(255, amb[0] + sky * pal.light[0] + r * 255);
-              dat[o + 1] = Math.min(255, amb[1] + sky * pal.light[1] + gg * 255);
-              dat[o + 2] = Math.min(255, amb[2] + sky * pal.light[2] + b * 255);
-              dat[o + 3] = 255;
+              tileLight(img.data, (y * tw + x) * 4, tx0 + x, ty0 + y, pal, amb, flick);
             }
           }
           lightCv.g.putImageData(img, 0, 0);
@@ -5138,24 +5168,43 @@
           vctx.imageSmoothingQuality = "low";
           vctx.drawImage(lightCv.c, 0, 0, tw, th, tx0 * N - camL, ty0 * N - camT, tw * N, th * N);
           vctx.restore();
-          // additive bloom around emitters so flames really glow
+        }
+        /** Additive bloom around emitters so flames really glow (nearest GLOW_CAP when the view is crowded). */
+        function drawEmitterGlows(tx0, ty0, tw, th) {
+          var seen = emitters.filter(function (e) {
+            return e.x >= tx0 - 5 && e.x <= tx0 + tw + 5 && e.y >= ty0 - 5 && e.y <= ty0 + th + 5;
+          });
+          if (seen.length > GLOW_CAP) {
+            var cx = (camL + vwD / 2) / N;
+            var cy = (camT + vhD / 2) / N;
+            seen.sort(function (a, b) {
+              return Math.hypot(a.x - cx, a.y - cy) - Math.hypot(b.x - cx, b.y - cy);
+            });
+            seen.length = GLOW_CAP;
+          }
+          glowsDrawn = seen.length;
           vctx.save();
           vctx.globalCompositeOperation = "lighter";
           vctx.imageSmoothingEnabled = true;
-          for (var e = 0; e < emitters.length; e++) {
-            var em = emitters[e];
-            if (em.x < tx0 - 5 || em.x > tx0 + tw + 5 || em.y < ty0 - 5 || em.y > ty0 + th + 5)
-              continue;
-            var fl = reducedMotion
+          seen.forEach(function (em) {
+            var flare = reducedMotion
               ? 1
               : 0.85 + 0.15 * Math.sin(S.simTime * 13 + em.x * 3.1 + em.y * 1.7);
             var size = (em.id === T.LANTERN ? 4.6 : em.id === T.FURNACE ? 3.6 : 3.8) * N;
-            vctx.globalAlpha = (em.id === T.PORTAL_T || em.id === T.PORTAL_B ? 0.28 : 0.36) * fl;
+            vctx.globalAlpha = (em.id === T.PORTAL_T || em.id === T.PORTAL_B ? 0.28 : 0.36) * flare;
             var gx = (em.x + 0.5) * N - camL;
             var gy = (em.y + 0.5) * N - camT;
             vctx.drawImage(glowSprite(em.em.glow), gx - size / 2, gy - size / 2, size, size);
-          }
+          });
           vctx.restore();
+        }
+        function drawLighting(pal) {
+          var tx0 = Math.floor(camL / N) - 1;
+          var ty0 = Math.floor(camT / N) - 1;
+          var tw = Math.ceil(vwD / N) + 3;
+          var th = Math.ceil(vhD / N) + 3;
+          drawLightMap(pal, tx0, ty0, tw, th);
+          drawEmitterGlows(tx0, ty0, tw, th);
         }
 
         // ---- overlays: room outlines, labels, ghost, bubbles ----
@@ -5212,19 +5261,18 @@
           }
           return false;
         }
-        function pill(text, cxp, cyp, alpha, fill, ink) {
+        /** A rounded label: `fillAlpha` fades only the pill, the text stays fully opaque (readable contrast). */
+        function pill(text, cxp, cyp, fillAlpha, fill, ink) {
           var sz = pillSize(text);
-          var w = sz.w;
-          var h = sz.h;
-          vctx.globalAlpha = alpha;
+          vctx.globalAlpha = fillAlpha;
           vctx.fillStyle = fill;
-          roundRect(cxp - w / 2, cyp - h / 2, w, h, h / 2);
+          roundRect(cxp - sz.w / 2, cyp - sz.h / 2, sz.w, sz.h, sz.h / 2);
           vctx.fill();
+          vctx.globalAlpha = 1;
           vctx.fillStyle = ink;
           vctx.textAlign = "center";
           vctx.textBaseline = "middle";
           vctx.fillText(text, cxp, cyp + dpr * 0.5);
-          vctx.globalAlpha = 1;
         }
         function roomPath(r) {
           if (r.path) return r.path;
@@ -5283,9 +5331,7 @@
             )
               return;
             var isMine = r === mine;
-            var claimed = r.cells.some(function (c) {
-              return claimSet.has(c);
-            });
+            var claimed = isOccupied(r);
             if (isMine) {
               vctx.fillStyle = "rgba(255,224,160,0.07)";
               r.cells.forEach(function (i) {
@@ -5327,7 +5373,7 @@
               label,
               lx,
               py,
-              isMine ? 0.92 : 0.5,
+              isMine ? 0.92 : 0.8,
               isMine ? "#ffe3a8" : "#2a1d17",
               isMine ? "#3a2412" : "#f3dcc0",
             );
@@ -5338,6 +5384,7 @@
           return ITEM_BY_KEY[key] || null;
         }
         var aim = {
+          mark: "",
           tx: 0,
           ty: 0,
           mode: "mouse",
@@ -5349,34 +5396,43 @@
           until: 0,
           autoFace: true,
         };
-        function drawGhost() {
-          if (!aim.has || S.phase !== "playing") return;
-          var x = aim.tx * N - camL;
-          var y = aim.ty * N - camT;
-          vctx.save();
-          if (S.mode === "break") {
-            var okb = playerReach(aim.tx, aim.ty) && getFg(aim.tx, aim.ty) !== T.DEEP;
-            vctx.strokeStyle = okb ? "rgba(255,120,100,0.95)" : "rgba(255,255,255,0.35)";
-            vctx.lineWidth = 2 * dpr;
-            vctx.strokeRect(x + dpr, y + dpr, N - 2 * dpr, N - 2 * dpr);
+        /** An X across one tile: the non-colour "cannot do that" cue, outlined so it reads on any wall. */
+        function drawCross(gx, gy) {
+          var pad = N * 0.22;
+          [
+            ["rgba(30,10,8,0.75)", 4.5],
+            ["#ffffff", 2],
+          ].forEach(function (line) {
+            vctx.strokeStyle = line[0];
+            vctx.lineWidth = line[1] * dpr;
             vctx.beginPath();
-            vctx.moveTo(x + N * 0.25, y + N * 0.25);
-            vctx.lineTo(x + N * 0.75, y + N * 0.75);
-            vctx.moveTo(x + N * 0.75, y + N * 0.25);
-            vctx.lineTo(x + N * 0.25, y + N * 0.75);
+            vctx.moveTo(gx + pad, gy + pad);
+            vctx.lineTo(gx + N - pad, gy + N - pad);
+            vctx.moveTo(gx + N - pad, gy + pad);
+            vctx.lineTo(gx + pad, gy + N - pad);
             vctx.stroke();
-            vctx.restore();
-            return;
-          }
+          });
+        }
+        function drawBreakCursor(x, y) {
+          var okb = playerReach(aim.tx, aim.ty) && getFg(aim.tx, aim.ty) !== T.DEEP;
+          vctx.strokeStyle = okb ? "rgba(255,120,100,0.95)" : "rgba(255,255,255,0.35)";
+          vctx.lineWidth = 2 * dpr;
+          vctx.strokeRect(x + dpr, y + dpr, N - 2 * dpr, N - 2 * dpr);
+          vctx.beginPath();
+          vctx.moveTo(x + N * 0.25, y + N * 0.25);
+          vctx.lineTo(x + N * 0.75, y + N * 0.75);
+          vctx.moveTo(x + N * 0.75, y + N * 0.25);
+          vctx.lineTo(x + N * 0.25, y + N * 0.75);
+          vctx.stroke();
+        }
+        function drawPlaceGhost(x, y) {
           var it = itemInHand();
-          if (!it) {
-            vctx.restore();
-            return;
-          }
+          if (!it) return;
           var res = canPlace(it, aim.tx, aim.ty);
           var locked = !isUnlocked(it);
           var ok = res.ok && !locked;
           aim.valid = ok;
+          aim.mark = ok ? "" : "x"; // green = fits; red AND crossed out = does not
           aim.reason = locked ? "Locked: unlock it in the Items menu" : res.reason;
           vctx.imageSmoothingEnabled = false;
           it.tiles.forEach(function (t) {
@@ -5391,7 +5447,16 @@
             vctx.strokeStyle = ok ? "rgba(150,255,170,0.95)" : "rgba(255,130,120,0.95)";
             vctx.lineWidth = 2 * dpr;
             vctx.strokeRect(gx + dpr, gy + dpr, N - 2 * dpr, N - 2 * dpr);
+            if (!ok) drawCross(gx, gy);
           });
+        }
+        function drawGhost() {
+          if (!aim.has || S.phase !== "playing") return;
+          vctx.save();
+          var x = aim.tx * N - camL;
+          var y = aim.ty * N - camT;
+          if (S.mode === "break") drawBreakCursor(x, y);
+          else drawPlaceGhost(x, y);
           vctx.restore();
         }
         function drawBubbles() {
@@ -5456,7 +5521,7 @@
         }
         function drawVignette() {
           if (!vignette) {
-            var o = mkc(vwD, vhD);
+            var o = makeCanvas(vwD, vhD);
             var g = o.g.createRadialGradient(
               vwD / 2,
               vhD / 2,
@@ -5601,6 +5666,16 @@
           function int(x, lo, hi, dflt) {
             return Math.floor(num(x, lo, hi, dflt));
           }
+          /** The revision number inside a raw save string (0 when absent or malformed). */
+          function storedRev(raw) {
+            try {
+              var d = raw ? JSON.parse(raw) : null;
+              return d && Number.isInteger(d.rev) ? clamp(d.rev, 0, 1e9) : 0;
+            } catch (e) {
+              return 0;
+            }
+          }
+          api.storedRev = storedRev;
           api.snapshot = function () {
             var buddies = V.filter(function (b) {
               return b.role !== "visitor";
@@ -5633,7 +5708,7 @@
                 unlocked: Object.keys(S.unlocked),
                 hotbar: S.hotbar.slice(),
                 sel: S.sel,
-                claims: S.claims.slice(),
+                claimRuns: claimRuns(),
                 looted: Object.keys(S.looted),
                 px: +P.x.toFixed(2),
                 py: +P.y.toFixed(2),
@@ -5644,10 +5719,22 @@
               },
             };
           };
+          /**
+           * Writes the save, or refuses (returns -2) when another tab has saved newer progress since
+           * this one loaded it, so a stale tab can never overwrite it. -1 = storage unavailable.
+           */
           api.write = function () {
+            if (saveBlocked) return -2;
             try {
-              var text = JSON.stringify(api.snapshot());
+              if (storedRev(localStorage.getItem(SAVE_KEY)) > saveRev) {
+                blockSaves();
+                return -2;
+              }
+              var snap = api.snapshot();
+              snap.rev = saveRev + 1;
+              var text = JSON.stringify(snap);
               localStorage.setItem(SAVE_KEY, text);
+              saveRev = snap.rev;
               return text.length;
             } catch (e) {
               return -1; // private mode / quota: play on, nothing persists
@@ -5665,6 +5752,7 @@
                 music: d.music !== false,
                 labels: d.labels !== false,
                 zoom: int(d.zoom, -1, ZOOM_CSS.length - 1, -1),
+                rev: int(d.rev, 0, 1e9, 0),
                 world: null,
               };
               out.world = parseWorld(d.world);
@@ -5673,6 +5761,19 @@
               return null;
             }
           };
+          /** [start, length, ...] pairs -> a list of cell indices; anything malformed yields no claims. */
+          function parseClaimRuns(runs) {
+            var cells = [];
+            if (!Array.isArray(runs) || runs.length % 2 || runs.length > 4000) return cells;
+            for (var i = 0; i < runs.length; i += 2) {
+              var start = runs[i];
+              var len = runs[i + 1];
+              var ok = Number.isInteger(start) && Number.isInteger(len) && start >= 0 && len >= 1;
+              if (!ok || start + len > W * H || cells.length + len > W * H) return [];
+              for (var k = 0; k < len; k++) cells.push(start + k);
+            }
+            return cells;
+          }
           function parseWorld(w) {
             if (!w || typeof w !== "object" || w.w !== W || w.h !== H) return null;
             var f = unrle(w.fg, W * H, NT - 1);
@@ -5703,7 +5804,7 @@
                   out.unlocked.push(k);
               });
             }
-            if (Array.isArray(w.hotbar) && w.hotbar.length === 10) {
+            if (Array.isArray(w.hotbar) && w.hotbar.length === HOTBAR_SLOTS) {
               var hb = w.hotbar.map(function (k, i) {
                 return typeof k === "string" && Object.prototype.hasOwnProperty.call(ITEM_BY_KEY, k)
                   ? k
@@ -5711,12 +5812,7 @@
               });
               out.hotbar = hb;
             }
-            if (Array.isArray(w.claims)) {
-              w.claims.slice(0, 500).forEach(function (c) {
-                if (typeof c === "number" && Number.isInteger(c) && c >= 0 && c < W * H)
-                  out.claims.push(c);
-              });
-            }
+            out.claims = parseClaimRuns(w.claimRuns);
             if (Array.isArray(w.looted)) {
               w.looted.slice(0, 200).forEach(function (k) {
                 if (typeof k === "string" && /^\d{1,3},\d{1,3}$/.test(k)) out.looted.push(k);
@@ -5785,7 +5881,7 @@
           S.hotbar = DEFAULT_HOTBAR.slice();
           S.sel = 0;
           S.mode = "build";
-          S.claims = [];
+          claimSet = new Set();
           S.looted = {};
           S.time = 0.42;
           S.rain = true;
@@ -5801,6 +5897,7 @@
           REQ = null;
         }
         function loadFromSave(sv) {
+          saveRev = sv.rev;
           S.bestOverall = sv.bestOverall;
           S.sound = sv.sound;
           S.music = sv.music;
@@ -5821,8 +5918,7 @@
           });
           S.hotbar = w.hotbar;
           S.sel = w.sel;
-          S.claims = w.claims.slice();
-          claimSet = new Set(S.claims);
+          claimSet = new Set(w.claims);
           S.looted = {};
           w.looted.forEach(function (k) {
             S.looted[k] = true;
@@ -5844,9 +5940,20 @@
           if (!V.length) populateStarterBuddies();
           // never start the player inside solid blocks
           var guard = 0;
+          P.opening = true; // a door they were standing in opens instead of lifting them onto the roof
           while (boxOverlap(P.x, P.y, P.w, P.h) && guard++ < 60) P.y -= 1;
+          P.opening = false;
           dirtyAll();
           return true;
+        }
+        var saveRev = 0; // revision of the save this tab last loaded or wrote
+        var saveBlocked = false;
+        /** Another tab saved newer progress: stop saving here so it is never overwritten. */
+        function blockSaves() {
+          if (saveBlocked) return;
+          saveBlocked = true;
+          toast("Progress was updated in another tab. Reload this page to continue from it.");
+          announce("Progress was updated in another tab. Reload to continue.");
         }
         function saveNow() {
           if (!saveReady) return;
@@ -5907,14 +6014,14 @@
         function buildHotbar() {
           var hb = $("hotbar");
           hb.textContent = "";
-          for (var i = 0; i < 10; i++) {
+          for (var i = 0; i < HOTBAR_SLOTS; i++) {
             var b = document.createElement("button");
             b.className = "slot";
             b.dataset.i = String(i);
             var k = document.createElement("span");
             k.className = "key";
             k.setAttribute("aria-hidden", "true");
-            k.textContent = String((i + 1) % 10);
+            k.textContent = String((i + 1) % HOTBAR_SLOTS);
             var c = document.createElement("canvas");
             c.width = 32;
             c.height = 32;
@@ -5932,7 +6039,7 @@
           if (e.detail > 0) e.currentTarget.blur();
         }
         function selectSlot(i) {
-          S.sel = (i + 10) % 10;
+          S.sel = (i + HOTBAR_SLOTS) % HOTBAR_SLOTS;
           if (S.mode === "break") setMode("build");
           refreshHotbar();
           sfx.click();
@@ -5951,7 +6058,7 @@
             slots[i].setAttribute("aria-pressed", sel ? "true" : "false");
             slots[i].setAttribute(
               "aria-label",
-              "Slot " + ((i + 1) % 10) + ": " + it.name + (isUnlocked(it) ? "" : " (locked)"),
+              ((i + 1) % HOTBAR_SLOTS) + ": " + it.name + (isUnlocked(it) ? "" : " (locked)"),
             );
             slots[i].title = it.name;
           }
@@ -5974,15 +6081,15 @@
             }
           });
           var avail = row.clientWidth - other - 6 * count;
-          var n = clamp(Math.floor((avail - 4) / 48), 3, 10);
-          hb.style.width = n * 48 + 4 + "px";
+          var n = clamp(Math.floor((avail - 4) / SLOT_PITCH), 3, HOTBAR_SLOTS);
+          hb.style.width = n * SLOT_PITCH + 4 + "px";
           hb.dataset.visible = String(n);
           scrollHotbar();
         }
         function scrollHotbar() {
           var hb = $("hotbar");
           var n = +hb.dataset.visible || 10;
-          hb.scrollLeft = clamp(S.sel - Math.floor(n / 2), 0, 10 - n) * 48;
+          hb.scrollLeft = clamp(S.sel - Math.floor(n / 2), 0, HOTBAR_SLOTS - n) * SLOT_PITCH;
         }
         /** Narrow portrait phone: move Build / Items between the pads and Look beside the hotbar. */
         function placeControls() {
@@ -6017,10 +6124,10 @@
           $("modeIco").textContent = m === "break" ? "⛏" : "🔨";
           b.setAttribute(
             "aria-label",
-            "Mode: " +
-              (m === "break" ? "Break" : "Build") +
-              ". Press to switch to " +
-              (m === "break" ? "Build" : "Break"),
+            (m === "break" ? "Break" : "Build") +
+              " mode. Press to switch to " +
+              (m === "break" ? "Build" : "Break") +
+              " mode",
           );
           refreshHotbar();
         }
@@ -6089,7 +6196,7 @@
           $("buildBtn").setAttribute("aria-expanded", open ? "true" : "false");
           if (open) {
             renderItems();
-            var first = el.querySelector(".tab[aria-selected='true']");
+            var first = el.querySelector(".tab[aria-pressed='true']");
             if (first) first.focus({ preventScroll: true });
           } else if (document.activeElement && el.contains(document.activeElement)) {
             view.focus({ preventScroll: true });
@@ -6191,18 +6298,24 @@
 
         // ---- screens ----
         var menuOpen = false;
+        /** One place to change phase, so the canvas is only a Tab stop while the world is being played. */
+        function setPhase(next) {
+          S.phase = next;
+          view.tabIndex = next === "playing" ? 0 : -1;
+          if (next !== "playing") endStroke();
+        }
         function setMenu(open) {
           if (S.phase === "title") return;
           menuOpen = open;
           $("menu").classList.toggle("open", open);
           $("menuBtn").setAttribute("aria-expanded", open ? "true" : "false");
           if (open) {
-            S.phase = "paused";
+            setPhase("paused");
             refreshMenu();
             $("mResume").focus();
             saveNow();
           } else {
-            S.phase = "playing";
+            setPhase("playing");
             lastTs = 0;
             view.focus({ preventScroll: true });
           }
@@ -6226,7 +6339,7 @@
         function startGame() {
           if (S.phase !== "title") return;
           sfx.init();
-          S.phase = "playing";
+          setPhase("playing");
           $("title").hidden = true;
           $("hud").hidden = false;
           view.focus({ preventScroll: true });
@@ -6245,8 +6358,6 @@
           newWorld();
           populateStarterBuddies();
           claimStarterRooms();
-          V.length = 0;
-          populateStarterBuddies();
           startRequest(0);
           saveDirty = true;
           saveNow();
@@ -6358,8 +6469,8 @@
             case "Space":
               kb.u = 1;
               if (!e.repeat) {
-                P.jumpBuf = 0.12;
-                if (e.code === "Space") P.leap = 0.12;
+                P.jumpBuf = JUMP_BUFFER;
+                if (e.code === "Space") P.leap = JUMP_BUFFER;
               }
               break;
             case "KeyS":
@@ -6428,7 +6539,7 @@
             default:
               used = false;
               if (/^Digit[0-9]$/.test(e.code) && !e.repeat) {
-                selectSlot((+e.code.slice(5) + 9) % 10);
+                selectSlot((+e.code.slice(5) + 9) % HOTBAR_SLOTS);
                 used = true;
               }
           }
@@ -6486,8 +6597,14 @@
           var py = (e.clientY - r.top) * (vhD / r.height);
           return [Math.floor((px + camL) / N), Math.floor((py + camT) / N)];
         }
+        /** Forget any held pointer (menu opened, tab hidden): a held button must not keep editing. */
+        function endStroke() {
+          stroke = null;
+          ptrs.clear();
+          pinch = null;
+        }
         function strokeAt(tx, ty) {
-          if (!stroke) return;
+          if (!stroke || S.phase !== "playing") return;
           var k = tx + "," + ty;
           if (stroke.last === k) return;
           stroke.last = k;
@@ -6630,7 +6747,7 @@
             e.preventDefault();
             sfx.init();
             tp[key] = 1;
-            if (jump) P.jumpBuf = 0.12;
+            if (jump) P.jumpBuf = JUMP_BUFFER;
             el.classList.add("on");
             try {
               el.setPointerCapture(e.pointerId);
@@ -6652,7 +6769,7 @@
           el.addEventListener("keydown", function (e) {
             if (e.code === "Enter" || e.code === "Space") {
               e.preventDefault();
-              if (jump) P.jumpBuf = 0.12;
+              if (jump) P.jumpBuf = JUMP_BUFFER;
               tp[key] = 1;
               mergeInput();
             }
@@ -6733,7 +6850,7 @@
               Array.prototype.forEach.call(
                 document.querySelectorAll(".tab[data-cat]"),
                 function (o) {
-                  o.setAttribute("aria-selected", o === t ? "true" : "false");
+                  o.setAttribute("aria-pressed", o === t ? "true" : "false");
                 },
               );
               renderItems();
@@ -6769,6 +6886,9 @@
             setTimeout(layout, 120);
           });
           window.addEventListener("pagehide", saveNow);
+          window.addEventListener("storage", function (e) {
+            if (e.key === SAVE_KEY && Save.storedRev(e.newValue) > saveRev) blockSaves();
+          });
           document.addEventListener("gesturestart", function (e) {
             e.preventDefault();
           });
@@ -6778,7 +6898,7 @@
         function onVisibility() {
           if (document.hidden) {
             if (S.phase === "playing") {
-              S.phase = "paused";
+              setPhase("paused");
               hiddenPaused = true;
             }
             clearHeld();
@@ -6788,7 +6908,7 @@
             sfx.resume();
             if (hiddenPaused) {
               hiddenPaused = false;
-              if (S.phase === "paused" && !menuOpen) S.phase = "playing";
+              if (S.phase === "paused" && !menuOpen) setPhase("playing");
             }
             lastTs = 0;
           }
@@ -6822,6 +6942,7 @@
         var crackleTimer = 0;
         function detectNow() {
           rooms = detectRooms(W, H, fg, bg);
+          pruneClaims();
           roomsDirty = false;
           roomDetects++;
         }
@@ -6832,7 +6953,7 @@
           if (S.rain && weather.k > 0.7) {
             weather.thunderAt -= dt;
             if (weather.thunderAt <= 0) {
-              weather.thunderAt = rnd(50, 110);
+              weather.thunderAt = randBetween(50, 110);
               if (!reducedMotion) weather.flash = 1;
               sfx.thunder();
             }
@@ -6853,7 +6974,7 @@
           if (ambTimer > 0.2) {
             ambTimer = 0;
             var ci = Math.floor(P.y - 0.5) * W + Math.floor(P.x);
-            var indoors = inb(Math.floor(P.x), Math.floor(P.y - 0.5)) ? lSky[ci] < 0.5 : false;
+            var indoors = inb(Math.floor(P.x), Math.floor(P.y - 0.5)) ? lightSky[ci] < 0.5 : false;
             sfx.rain(weather.k, indoors);
           }
           crackleTimer += dt;
@@ -6873,12 +6994,12 @@
               Math.abs(e.y - P.y) < 16
             ) {
               parts.push({
-                x: e.x + 0.5 + rnd(-0.2, 0.2),
+                x: e.x + 0.5 + randBetween(-0.2, 0.2),
                 y: e.y + 0.3,
-                vx: rnd(-0.3, 0.3),
-                vy: rnd(-1.8, -0.8),
+                vx: randBetween(-0.3, 0.3),
+                vy: randBetween(-1.8, -0.8),
                 g: -0.4,
-                life: rnd(0.6, 1.2),
+                life: randBetween(0.6, 1.2),
                 max: 1.2,
                 c: [255, 170, 70],
                 s: 0.06,
@@ -6890,12 +7011,12 @@
               Math.abs(e.x - P.x) < 24
             ) {
               parts.push({
-                x: e.x + 0.5 + rnd(-0.4, 0.4),
-                y: e.y + rnd(0, 1),
-                vx: rnd(-0.4, 0.4),
-                vy: rnd(-1.2, -0.3),
+                x: e.x + 0.5 + randBetween(-0.4, 0.4),
+                y: e.y + randBetween(0, 1),
+                vx: randBetween(-0.4, 0.4),
+                vy: randBetween(-1.2, -0.3),
                 g: 0,
-                life: rnd(0.6, 1.0),
+                life: randBetween(0.6, 1.0),
                 max: 1,
                 c: [140, 190, 255],
                 s: 0.07,
@@ -6914,12 +7035,7 @@
           if (key === probeKey) return;
           probeKey = key;
           probe = regionAt(W, H, fg, bg, cx, cy, {});
-          probeClaimed = !!(
-            probe.room &&
-            probe.room.cells.some(function (c) {
-              return claimSet.has(c);
-            })
-          );
+          probeClaimed = !!(probe.room && isOccupied(probe.room));
           refreshRequestPanel(false);
         }
         function tick(dt) {
@@ -6996,7 +7112,6 @@
             x1: r.x1,
             y1: r.y1,
             valid: r.valid,
-            enclosed: r.enclosed,
             backed: r.backed,
             doors: r.doors,
             hatches: r.hatches,
@@ -7005,50 +7120,46 @@
             tooSmall: r.tooSmall,
             types: r.types.slice(),
             counts: JSON.parse(JSON.stringify(r.counts)),
-            occupied: r.cells.some(function (c) {
-              return claimSet.has(c);
-            }),
+            occupied: isOccupied(r),
           };
         }
-        function installHook() {
-          var api = {};
-          function live(name, get) {
-            Object.defineProperty(api, name, { get: get, enumerable: true, configurable: true });
-          }
-          live("phase", function () {
+        // The test hook is built from small groups so each stays readable. Everything here is read-only
+        // state access or fixture building for the probe; the game itself never calls it.
+        var HOOK_GETTERS = {
+          phase: function () {
             return S.phase;
-          });
-          live("frame", function () {
+          },
+          frame: function () {
             return S.frame;
-          });
-          live("coins", function () {
+          },
+          coins: function () {
             return S.coins;
-          });
-          live("housed", function () {
+          },
+          housed: function () {
             return S.housed;
-          });
-          live("happiness", function () {
+          },
+          happiness: function () {
             return S.happiness;
-          });
-          live("bestOverall", function () {
+          },
+          bestOverall: function () {
             return S.bestOverall;
-          });
-          live("mode", function () {
+          },
+          mode: function () {
             return S.mode;
-          });
-          live("selected", function () {
+          },
+          selected: function () {
             return S.hotbar[S.sel];
-          });
-          live("hotbar", function () {
+          },
+          hotbar: function () {
             return S.hotbar.slice();
-          });
-          live("time", function () {
+          },
+          time: function () {
             return S.time;
-          });
-          live("raining", function () {
+          },
+          raining: function () {
             return S.rain;
-          });
-          live("player", function () {
+          },
+          player: function () {
             return {
               x: P.x,
               y: P.y,
@@ -7058,26 +7169,21 @@
               climbing: P.climbing,
               face: P.face,
             };
-          });
-          live("request", function () {
-            return REQ
-              ? {
-                  index: REQ.index,
-                  type: REQ.def.type,
-                  state: REQ.state,
-                  buddy: REQ.buddy.name,
-                  min: REQ.def.min,
-                  reward: REQ.def.reward,
-                }
-              : null;
-          });
-          api.debug = {
-            ids: T,
-            bgIds: BGW,
-            world: { w: W, h: H, houseX: HOUSE_X, houseY: HOUSE_Y },
-            saveKey: SAVE_KEY,
-            roomMin: ROOM_MIN,
-            roomMax: ROOM_MAX,
+          },
+          request: function () {
+            if (!REQ) return null;
+            return {
+              index: REQ.index,
+              type: REQ.def.type,
+              state: REQ.state,
+              buddy: REQ.buddy.name,
+              min: REQ.def.min,
+              reward: REQ.def.reward,
+            };
+          },
+        };
+        function hookTiles() {
+          return {
             getTile: function (x, y) {
               return { fg: getFg(x, y), bg: getBg(x, y) };
             },
@@ -7086,11 +7192,12 @@
               else setFg(x, y, id);
             },
             fill: function (x0, y0, x1, y1, id, layer) {
-              for (var y = y0; y <= y1; y++)
+              for (var y = y0; y <= y1; y++) {
                 for (var x = x0; x <= x1; x++) {
                   if (layer === "bg") setBg(x, y, id);
                   else setFg(x, y, id);
                 }
+              }
             },
             placeItem: function (key, x, y) {
               forcePlace(ITEM_BY_KEY[key], x, y);
@@ -7104,28 +7211,46 @@
             tryBreak: function (x, y) {
               return tryBreak(x, y, true);
             },
-            itemKeys: function () {
-              return ITEMS.map(function (i) {
-                return i.key;
+          };
+        }
+        function hookWorldInfo() {
+          return {
+            groundRow: function (x) {
+              return groundFeetY(x);
+            },
+            findPath: function (sx, sy, tx, ty) {
+              var p = findPath(sx, sy, tx, ty);
+              return p ? p.length : null;
+            },
+            countTiles: function (id) {
+              var n = 0;
+              for (var i = 0; i < fg.length; i++) if (fg[i] === id) n++;
+              return n;
+            },
+            ladderShafts: function () {
+              var cols = {};
+              for (var i = 0; i < fg.length; i++) {
+                if (fg[i] === T.LADDER) cols[i % W] = (cols[i % W] || 0) + 1;
+              }
+              return Object.keys(cols).filter(function (k) {
+                return cols[k] >= 4;
+              }).length;
+            },
+            light: function (x, y) {
+              if (lightDirty) computeLight();
+              var i = y * W + x;
+              return { sky: lightSky[i], block: (lightRed[i] + lightGreen[i] + lightBlue[i]) / 3 };
+            },
+            emitters: function () {
+              if (lightDirty) computeLight();
+              return emitters.map(function (e) {
+                return { x: e.x, y: e.y, id: e.id };
               });
             },
-            unlock: function (key) {
-              S.unlocked[key] = true;
-              refreshHotbar();
-            },
-            giveCoins: function (n) {
-              addCoins(n);
-            },
-            select: function (key) {
-              var i = S.hotbar.indexOf(key);
-              if (i < 0) {
-                S.hotbar[S.sel] = key;
-                i = S.sel;
-              }
-              S.sel = i;
-              setMode("build");
-              refreshHotbar();
-            },
+          };
+        }
+        function hookRooms() {
+          return {
             rooms: function () {
               if (roomsDirty) detectNow();
               return rooms.map(summariseRoom);
@@ -7141,6 +7266,13 @@
             checklist: function () {
               return REQ ? checklist(REQ.def, probe) : [];
             },
+            claimedCells: function () {
+              return claimSet.size;
+            },
+          };
+        }
+        function hookPeople() {
+          return {
             teleport: function (x, y) {
               P.x = x;
               P.y = y;
@@ -7148,6 +7280,60 @@
               P.climbing = false;
               updateCamera(0, true);
             },
+            select: function (key) {
+              var i = S.hotbar.indexOf(key);
+              if (i < 0) {
+                S.hotbar[S.sel] = key;
+                i = S.sel;
+              }
+              S.sel = i;
+              setMode("build");
+              refreshHotbar();
+            },
+            unlock: function (key) {
+              S.unlocked[key] = true;
+              refreshHotbar();
+            },
+            giveCoins: function (n) {
+              addCoins(n);
+            },
+            buddies: function () {
+              return V.map(function (b) {
+                return {
+                  name: b.name,
+                  look: b.look,
+                  x: b.x,
+                  y: b.y,
+                  state: b.state,
+                  role: b.role,
+                  home: b.home,
+                };
+              });
+            },
+            visitor: function () {
+              if (!REQ) return null;
+              return {
+                x: REQ.buddy.x,
+                y: REQ.buddy.y,
+                state: REQ.buddy.state,
+                reqState: REQ.state,
+              };
+            },
+            aim: function () {
+              return {
+                tx: aim.tx,
+                ty: aim.ty,
+                valid: aim.valid,
+                mark: aim.mark,
+                reason: aim.reason,
+                has: aim.has,
+                mode: aim.mode,
+              };
+            },
+          };
+        }
+        function hookEnvironment() {
+          return {
             setTime: function (t) {
               S.time = t;
               S.cycle = false;
@@ -7170,17 +7356,27 @@
             step: function (n) {
               for (var i = 0; i < n; i++) tick(STEP);
             },
-            light: function (x, y) {
-              if (lightDirty) computeLight();
-              var i = y * W + x;
-              return { sky: lSky[i], block: (lR[i] + lG[i] + lB[i]) / 3 };
+            reduced: function () {
+              return {
+                reducedMotion: reducedMotion,
+                flash: weather.flash,
+                shakeCapable: !reducedMotion,
+              };
             },
-            emitters: function () {
-              if (lightDirty) computeLight();
-              return emitters.map(function (e) {
-                return { x: e.x, y: e.y, id: e.id };
-              });
+            audio: function () {
+              return {
+                exists: sfx.exists(),
+                state: sfx.state(),
+                played: sfx.played,
+                thunders: sfx.thunders,
+                sound: S.sound,
+                music: S.music,
+              };
             },
+          };
+        }
+        function hookView() {
+          return {
             stats: function () {
               return {
                 chunkBuilds: chunkBuilds,
@@ -7193,7 +7389,13 @@
                 tileCss: N / dpr,
                 rainDrops: rainDrops.length,
                 particles: parts.length,
+                glowsDrawn: glowsDrawn,
               };
+            },
+            rainSample: function () {
+              return rainDrops.slice(0, 5).map(function (d) {
+                return [+d.x.toFixed(3), +d.y.toFixed(3)];
+              });
             },
             tileToScreen: function (x, y) {
               return { x: ((x + 0.5) * N - camL) / dpr, y: ((y + 0.5) * N - camT) / dpr };
@@ -7201,6 +7403,13 @@
             camera: function () {
               return { x: cam.x, y: cam.y, camL: camL, camT: camT };
             },
+            touchMode: function () {
+              return touchMode;
+            },
+          };
+        }
+        function hookStorage() {
+          return {
             save: function () {
               return Save.write();
             },
@@ -7216,84 +7425,43 @@
               var r = Save.parse(raw);
               return r ? { bestOverall: r.bestOverall, hasWorld: !!r.world } : null;
             },
-            buddies: function () {
-              return V.map(function (b) {
-                return {
-                  name: b.name,
-                  look: b.look,
-                  x: b.x,
-                  y: b.y,
-                  state: b.state,
-                  role: b.role,
-                  home: b.home,
-                };
-              });
-            },
-            visitor: function () {
-              return REQ
-                ? { x: REQ.buddy.x, y: REQ.buddy.y, state: REQ.buddy.state, reqState: REQ.state }
-                : null;
-            },
-            spawn: { player: START.player, visitor: START.visitor },
-            audio: function () {
-              return {
-                exists: sfx.exists(),
-                state: sfx.state(),
-                played: sfx.played,
-                thunders: sfx.thunders,
-                sound: S.sound,
-                music: S.music,
-              };
-            },
-            reduced: function () {
-              return {
-                reducedMotion: reducedMotion,
-                flash: weather.flash,
-                shakeCapable: !reducedMotion,
-              };
-            },
-            aim: function () {
-              return {
-                tx: aim.tx,
-                ty: aim.ty,
-                valid: aim.valid,
-                reason: aim.reason,
-                has: aim.has,
-                mode: aim.mode,
-              };
-            },
             resetWorld: function () {
               resetWorld();
             },
-            groundRow: function (x) {
-              return groundFeetY(x);
-            },
-            findPath: function (sx, sy, tx, ty) {
-              var p = findPath(sx, sy, tx, ty);
-              return p ? p.length : null;
-            },
-            rainSample: function () {
-              return rainDrops.slice(0, 5).map(function (d) {
-                return [+d.x.toFixed(3), +d.y.toFixed(3)];
-              });
-            },
-            countTiles: function (id) {
-              var n = 0;
-              for (var i = 0; i < fg.length; i++) if (fg[i] === id) n++;
-              return n;
-            },
-            ladderShafts: function () {
-              var cols = {};
-              for (var i = 0; i < fg.length; i++)
-                if (fg[i] === T.LADDER) cols[i % W] = (cols[i % W] || 0) + 1;
-              return Object.keys(cols).filter(function (k) {
-                return cols[k] >= 4;
-              }).length;
-            },
-            touchMode: function () {
-              return touchMode;
-            },
           };
+        }
+        function installHook() {
+          var api = {};
+          Object.keys(HOOK_GETTERS).forEach(function (name) {
+            Object.defineProperty(api, name, {
+              get: HOOK_GETTERS[name],
+              enumerable: true,
+              configurable: true,
+            });
+          });
+          api.debug = Object.assign(
+            {
+              ids: T,
+              bgIds: BGW,
+              world: { w: W, h: H, houseX: HOUSE_X, houseY: HOUSE_Y },
+              saveKey: SAVE_KEY,
+              roomMin: ROOM_MIN,
+              roomMax: ROOM_MAX,
+              spawn: { player: START.player, visitor: START.visitor },
+              itemKeys: function () {
+                return ITEMS.map(function (i) {
+                  return i.key;
+                });
+              },
+            },
+            hookTiles(),
+            hookWorldInfo(),
+            hookRooms(),
+            hookPeople(),
+            hookEnvironment(),
+            hookView(),
+            hookStorage(),
+          );
           Object.defineProperty(window, "__buddies", {
             value: api,
             enumerable: false,
@@ -7314,7 +7482,7 @@
             claimStarterRooms();
           }
           detectNow();
-          if (loaded && !S.claims.length) claimStarterRooms();
+          if (loaded && !claimSet.size) claimStarterRooms();
           layout();
           updateCamera(0, true);
           buildHotbar();
@@ -7332,6 +7500,7 @@
               " housed so far. Start building to carry on.";
           }
           saveReady = true;
+          $("startBtn").focus({ preventScroll: true });
           if (touchMode || window.innerWidth < 560) setPanel(false);
           installHook();
           requestAnimationFrame(loop);

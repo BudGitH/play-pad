@@ -513,7 +513,7 @@ try {
           window.__buddies.debug.spawn.player.y,
         ),
       );
-      await page.getByRole("button", { name: "Open build menu" }).click();
+      await page.getByRole("button", { name: "Items, open build menu" }).click();
       const before = await dbg(page, () => window.__buddies.coins);
       await page.getByRole("button", { name: /^Red brick, locked/ }).click();
       const after = await dbg(page, () => ({
@@ -1045,11 +1045,23 @@ try {
           .map((e) => e.id || e.className),
       );
       assert(unnamed.length === 0, "unnamed controls: " + unnamed.join(","));
-      // keyboard-only start: Tab to the button, Enter
+      // keyboard-only start: the Start button has focus on load and the canvas is not a Tab stop (C-01)
+      assert(
+        (await dbg(page, () => document.activeElement.id)) === "startBtn",
+        "Start building is focused on load",
+      );
+      assert(
+        (await dbg(page, () => document.getElementById("view").tabIndex)) === -1,
+        "the canvas is not a Tab stop on the title screen",
+      );
       for (let i = 0; i < 8; i++) {
         await page.keyboard.press("Tab");
-        if ((await dbg(page, () => document.activeElement.id)) === "startBtn") break;
+        assert(
+          (await dbg(page, () => document.activeElement.id)) !== "view",
+          "Tab never lands on the canvas while on the title screen",
+        );
       }
+      await page.focus("#startBtn");
       assert(
         (await dbg(page, () => document.activeElement.id)) === "startBtn",
         "Start button reachable by Tab",
@@ -1186,7 +1198,8 @@ try {
         const small = vis
           .filter(
             (e) =>
-              Math.min(e.getBoundingClientRect().width, e.getBoundingClientRect().height) < 43.5,
+              Math.min(e.getBoundingClientRect().width, e.getBoundingClientRect().height) <
+              (e.classList.contains("slot") ? 43.5 : 47.5),
           )
           .map(
             (e) =>
@@ -1214,7 +1227,10 @@ try {
         };
       });
       assert(m.sw <= m.iw, `horizontal scroll ${m.sw} > ${m.iw}`);
-      assert(m.small.length === 0, "controls under 44px: " + m.small.join(", "));
+      assert(
+        m.small.length === 0,
+        "HUD controls under 48px (hotbar slots 44): " + m.small.join(", "),
+      );
       assert(
         m.touchVisible === v.touch,
         `touch controls visible=${m.touchVisible}, expected ${v.touch}`,

@@ -45,7 +45,7 @@
         top: 0;
         left: 0;
         right: 0;
-        height: var(--pp-app-h, 100%);
+        height: min(100%, var(--pp-app-h, 100%)); /* never taller than the fixed box itself */
         min-height: 0; /* cancels base.css body min-height: 100dvh, which would undo the line above */
         overflow: hidden;
         background: var(--md-sys-color-surface);

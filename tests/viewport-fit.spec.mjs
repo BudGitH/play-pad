@@ -81,3 +81,34 @@ test("the shell follows the visible area when it changes (toolbar / chin moves)"
   }, HIDDEN_PX);
   await expect.poll(() => bottomOf(start)).toBeLessThanOrEqual(PHONE.height - HIDDEN_PX);
 });
+
+test("a browser that over-reports its height never makes the shell taller than the screen", async ({
+  page,
+}) => {
+  // The other failure mode: innerHeight and visualViewport both claim MORE than the real window.
+  await page.addInitScript((px) => {
+    const real = Object.getOwnPropertyDescriptor(window, "innerHeight").get.bind(window);
+    Object.defineProperty(window, "innerHeight", { configurable: true, get: () => real() + px });
+    const proto = Object.getPrototypeOf(window.visualViewport);
+    Object.defineProperty(proto, "height", { configurable: true, get: () => real() + px });
+  }, HIDDEN_PX);
+  await page.goto("/games/snap/");
+  const start = page.getByRole("button", { name: "Start", exact: true });
+  expect(await bottomOf(start)).toBeLessThanOrEqual(PHONE.height);
+});
+
+test("a change in visible height makes canvas games re-measure (window resize is fired)", async ({
+  page,
+}) => {
+  await fakeShorterVisibleArea(page, 0);
+  await page.goto("/games/colour-rush/");
+  await page.evaluate(() => {
+    window.__ppResizes = 0;
+    window.addEventListener("resize", () => window.__ppResizes++);
+  });
+  await page.evaluate((px) => {
+    window.__ppHidden = px;
+    window.visualViewport.dispatchEvent(new Event("resize"));
+  }, HIDDEN_PX);
+  expect(await page.evaluate(() => window.__ppResizes)).toBeGreaterThan(0);
+});

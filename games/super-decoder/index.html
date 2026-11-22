@@ -14,6 +14,7 @@
     <!-- Applies the player's saved light/dark choice (set on the hub) before first paint.
          Classic script, no defer: it must run before the stylesheets below paint. -->
     <script src="../../scripts/theme.js"></script>
+    <script src="../../scripts/viewport.js"></script>
 
     <!-- Shared PlayPad design system -->
     <link rel="stylesheet" href="../../styles/tokens.css" />
@@ -50,7 +51,8 @@
         /* Board sizing (D2): rows are sized from the viewport HEIGHT so all 10 fit without a board
          scroll in portrait and on desktop. 250px is the budget for the HUD + legend + deck chrome;
          10.6 = 10 rows + the active row's extra height + gaps. The 100vh line is the fallback for
-         browsers without dynamic viewport units. */
+         browsers without dynamic viewport units; --pp-app-h (scripts/viewport.js) is the measured
+         visible height and wins when present. */
         --sd-row-h: 44px;
         --sd-slot: min(44px, calc(var(--sd-row-h) - 11px));
         --sd-slot-active: 48px;
@@ -71,7 +73,13 @@
         :root {
           --sd-row-h: clamp(
             40px,
-            calc((100dvh - 250px - env(safe-area-inset-top) - env(safe-area-inset-bottom)) / 10.6),
+            calc(
+              (
+                  var(--pp-app-h, 100dvh) - 250px - env(safe-area-inset-top) -
+                    env(safe-area-inset-bottom)
+                ) /
+                10.6
+            ),
             60px
           );
         }
@@ -86,7 +94,13 @@
       }
       body {
         position: fixed;
-        inset: 0;
+        /* Sized to the VISIBLE height (scripts/viewport.js), not inset: 0 — on Android the fixed
+         box can run under the system bars and hide the bottom controls. */
+        top: 0;
+        left: 0;
+        right: 0;
+        height: var(--pp-app-h, 100%);
+        min-height: 0; /* cancels base.css body min-height: 100dvh, which would undo the line above */
         overflow: hidden;
         background: var(--md-sys-color-surface);
         color: var(--md-sys-color-on-surface);

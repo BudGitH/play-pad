@@ -918,6 +918,7 @@
         <div class="tabs" role="group" aria-label="Categories">
           <button class="tab" data-cat="structure" aria-pressed="true">Structure</button>
           <button class="tab" data-cat="furniture" aria-pressed="false">Furniture</button>
+          <button class="tab" data-cat="decor" aria-pressed="false">Decor</button>
           <button class="tab" data-cat="light" aria-pressed="false">Light</button>
         </div>
         <button id="buildClose" class="tab" aria-label="Done, close build menu">Done</button>
@@ -1134,8 +1135,17 @@
           BOARD_R: 37,
           PAINT2_L: 38,
           PAINT2_R: 39,
+          TOOLS: 40,
+          EMBLEM: 41,
+          WINDOW: 42,
+          JARS: 43,
+          RUG_L: 44,
+          RUG_R: 45,
+          POTS: 46,
+          BARRELS: 47,
+          CLOCK: 48,
         };
-        var NT = 40;
+        var NT = 49;
         // Background wall ids (a separate layer behind the foreground).
         var BGW = { NONE: 0, PLANKS: 1, BRICK: 2, STONE: 3, SAND: 4, DIRT: 5 };
         var NBG = 6;
@@ -1206,13 +1216,13 @@
         [T.BRICK, T.STONE, T.SAND, T.DEEP, T.FURNACE, T.PORTAL_T, T.PORTAL_B].forEach(function (i) {
           MATERIAL[i] = "stone";
         });
-        [T.GLASS, T.LANTERN].forEach(function (i) {
+        [T.GLASS, T.LANTERN, T.WINDOW, T.JARS].forEach(function (i) {
           MATERIAL[i] = "glass";
         });
         [T.DIRT, T.GRASS, T.TUFT, T.PLANT, T.PLANTER].forEach(function (i) {
           MATERIAL[i] = "dirt";
         });
-        [T.BED_L, T.BED_R].forEach(function (i) {
+        [T.BED_L, T.BED_R, T.RUG_L, T.RUG_R].forEach(function (i) {
           MATERIAL[i] = "cloth";
         });
         // What the player's footsteps sound like on top of a solid tile.
@@ -1236,6 +1246,8 @@
         PARTNERS[T.SIGN_R] = [[-1, 0]];
         PARTNERS[T.BOARD_L] = [[1, 0]];
         PARTNERS[T.BOARD_R] = [[-1, 0]];
+        PARTNERS[T.RUG_L] = [[1, 0]];
+        PARTNERS[T.RUG_R] = [[-1, 0]];
         PARTNERS[T.DOOR_T] = [[0, 1]];
         PARTNERS[T.DOOR_B] = [[0, -1]];
         PARTNERS[T.DOORO_T] = [[0, 1]];
@@ -1313,6 +1325,18 @@
         item("portal", "Portal", "light", 150, "floor", "fg", [
           [0, -1, T.PORTAL_T],
           [0, 0, T.PORTAL_B],
+        ]);
+        // Decor: small set-pieces that make a room feel lived in (each counts as "decor" for the stars).
+        item("tools", "Tool rack", "decor", 25, "paint", "fg", [[0, 0, T.TOOLS]]);
+        item("emblem", "Wall emblem", "decor", 30, "paint", "fg", [[0, 0, T.EMBLEM]]);
+        item("window", "Curtained window", "decor", 25, "paint", "fg", [[0, 0, T.WINDOW]]);
+        item("jars", "Jar shelf", "decor", 20, "paint", "fg", [[0, 0, T.JARS]]);
+        item("clock", "Wall clock", "decor", 25, "paint", "fg", [[0, 0, T.CLOCK]]);
+        item("pots", "Pot rack", "decor", 25, "hang", "fg", [[0, 0, T.POTS]]);
+        item("barrels", "Barrel stack", "decor", 30, "floor", "fg", [[0, 0, T.BARRELS]]);
+        item("rug", "Rug", "decor", 20, "floor", "fg", [
+          [0, 0, T.RUG_L],
+          [1, 0, T.RUG_R],
         ]);
         var ITEM_BY_KEY = {};
         ITEMS.forEach(function (it) {
@@ -1441,13 +1465,13 @@
           planksBg: { base: [64, 38, 25], hi: [78, 47, 30], lo: [38, 22, 14] },
           brick: { brick: [178, 66, 46], mortar: [112, 76, 64] },
           brickBg: { brick: [92, 36, 30], mortar: [50, 34, 34] },
-          cobble: { base: [128, 124, 120], edge: [64, 62, 64], v: 16 },
-          cobbleBg: { base: [60, 57, 60], edge: [32, 30, 34], v: 8 },
-          deep: { base: [58, 54, 68], edge: [26, 24, 34], v: 8 },
+          cobble: { base: [142, 114, 96], edge: [80, 54, 44], v: 16 },
+          cobbleBg: { base: [84, 56, 44], edge: [46, 30, 26], v: 8 },
+          deep: { base: [76, 54, 54], edge: [36, 24, 26], v: 8 },
           sand: { base: [218, 202, 166], line: [182, 164, 130], hi: [240, 228, 200] },
           sandBg: { base: [128, 116, 94], line: [98, 88, 72], hi: [142, 130, 106] },
-          dirt: [120, 80, 52],
-          dirtBg: [60, 40, 31],
+          dirt: [148, 90, 50],
+          dirtBg: [84, 48, 30],
         };
 
         /**
@@ -2013,6 +2037,196 @@
           }
         }
 
+        // ---- decor set-pieces (Phase-5 fidelity round): all original, all procedural ----
+        /** Wall tool rack: a plank rail with a saw, a hammer and a wrench hanging from it. */
+        function paintToolRack(g, rnd) {
+          var wood = [152, 90, 48];
+          paintRect(g, 1, 2, 14, 3, shade(wood, 0));
+          paintRect(g, 1, 2, 14, 1, shade(wood, 28));
+          paintRect(g, 1, 4, 14, 1, shade(wood, -38));
+          for (var i = 0; i < 5; i++)
+            paintPixel(g, 2 + ((rnd() * 12) | 0), 3, shade(wood, jitter(rnd, 16)));
+          [3, 8, 13].forEach(function (x) {
+            paintPixel(g, x, 3, shade([52, 32, 22], 0)); // pegs
+          });
+          paintRect(g, 2, 5, 3, 3, shade([120, 66, 34], 0)); // saw handle
+          paintRect(g, 2, 5, 1, 3, shade([160, 98, 54], 0));
+          paintRect(g, 3, 8, 3, 6, shade([184, 190, 202], 0)); // saw blade
+          paintRect(g, 3, 8, 1, 6, shade([226, 230, 238], 0));
+          for (var t = 0; t < 6; t += 2) paintPixel(g, 6, 9 + t, shade([116, 122, 136], 0));
+          paintRect(g, 8, 5, 1, 7, shade([128, 74, 38], 0)); // hammer
+          paintRect(g, 6, 11, 5, 3, shade([128, 132, 146], 0));
+          paintRect(g, 6, 11, 5, 1, shade([196, 200, 212], 0));
+          paintRect(g, 6, 13, 5, 1, shade([78, 80, 92], 0));
+          paintRect(g, 12, 5, 2, 3, shade([190, 192, 204], 0)); // wrench jaws + red grips
+          paintPixel(g, 13, 5, shade([60, 44, 36], 0));
+          paintRect(g, 12, 8, 2, 6, shade([200, 58, 46], 0));
+          paintRect(g, 12, 8, 1, 6, shade([236, 104, 80], 0));
+        }
+        /** Round wall emblem: bronze ring, navy field and a gold star. */
+        function paintEmblem(g) {
+          for (var y = 0; y < 16; y++) {
+            for (var x = 0; x < 16; x++) {
+              var dx = x + 0.5 - 8;
+              var dy = y + 0.5 - 8;
+              var d = Math.sqrt(dx * dx + dy * dy);
+              if (d > 7.4) continue;
+              var col = dy > 0 ? [40, 70, 122] : [52, 92, 152];
+              if (d > 6.4) col = [62, 38, 22];
+              else if (d > 5.1)
+                col = dx + dy < -2 ? [238, 192, 94] : dx + dy > 3 ? [150, 100, 40] : [204, 150, 62];
+              else if (d > 4.6) col = [70, 44, 26];
+              paintPixel(g, x, y, shade(col, 0));
+            }
+          }
+          var gold = shade([250, 214, 96], 0);
+          for (var k = 5; k <= 10; k++) {
+            paintPixel(g, 8, k, gold);
+            paintPixel(g, k, 8, gold);
+          }
+          [
+            [7, 7],
+            [9, 7],
+            [7, 9],
+            [9, 9],
+          ].forEach(function (c) {
+            paintPixel(g, c[0], c[1], gold);
+          });
+          paintPixel(g, 8, 8, shade([255, 246, 176], 0));
+        }
+        /** Window with red curtains, a brass rod and tie-backs; the view is a blue sky over green hills. */
+        function paintWindow(g) {
+          var frame = [140, 80, 42];
+          paintRect(g, 1, 1, 14, 14, shade(frame, -30));
+          paintRect(g, 2, 2, 12, 12, shade([150, 204, 238], 0));
+          paintRect(g, 2, 2, 12, 5, shade([178, 224, 248], 0));
+          paintRect(g, 2, 10, 12, 4, shade([112, 168, 100], 0));
+          paintRect(g, 7, 2, 2, 12, shade(frame, 0));
+          paintRect(g, 2, 7, 12, 1, shade(frame, 0));
+          paintRect(g, 1, 1, 14, 1, shade(frame, 24));
+          paintRect(g, 1, 14, 14, 1, shade(frame, -52));
+          paintRect(g, 0, 0, 16, 1, shade([228, 186, 82], 0)); // brass rod
+          [2, 10].forEach(function (x) {
+            paintRect(g, x, 1, 4, 12, shade([202, 62, 80], 0)); // curtains
+            paintRect(g, x, 1, 1, 12, shade([238, 112, 122], 0));
+            paintRect(g, x + 2, 1, 1, 12, shade([150, 40, 58], 0)); // pleat
+            paintRect(g, x, 8, 4, 1, shade([236, 196, 88], 0)); // tie-back
+          });
+        }
+        /** One jar: a body, a bright left edge and a gold lid just above it. */
+        function paintJar(g, x, y, w, h, col) {
+          paintRect(g, x, y, w, h, shade(col, 0));
+          paintRect(g, x, y, 1, h, shade(col, 34));
+          paintRect(g, x + w - 1, y, 1, h, shade(col, -34));
+          paintRect(g, x, y - 1, w, 1, shade([216, 172, 72], 0));
+        }
+        /** Two plank shelves of jars: jam, pickles, honey, plums, blueberries. */
+        function paintJars(g) {
+          var wood = [148, 86, 46];
+          [6, 14].forEach(function (y) {
+            paintRect(g, 0, y, 16, 2, shade(wood, 0));
+            paintRect(g, 0, y, 16, 1, shade(wood, 26));
+            paintRect(g, 0, y + 1, 16, 1, shade(wood, -40));
+          });
+          paintJar(g, 1, 3, 4, 3, [208, 54, 54]);
+          paintJar(g, 6, 2, 3, 4, [96, 156, 70]);
+          paintJar(g, 10, 3, 5, 3, [236, 174, 44]);
+          paintJar(g, 2, 10, 3, 4, [140, 82, 164]);
+          paintJar(g, 6, 11, 4, 3, [70, 110, 190]);
+          paintJar(g, 11, 10, 4, 4, [226, 120, 48]);
+        }
+        /** A woven runner lying on the floor: red field, cream border, teal diamonds, fringed ends. */
+        function paintRug(g) {
+          var edge = [238, 206, 132];
+          paintRect(g, 1, 11, 30, 5, shade(edge, 0));
+          paintRect(g, 2, 12, 28, 3, shade([176, 48, 46], 0));
+          paintRect(g, 1, 11, 30, 1, shade(edge, 22));
+          paintRect(g, 1, 15, 30, 1, shade([186, 150, 84], 0));
+          for (var x = 3; x < 29; x += 4) {
+            paintPixel(g, x, 13, shade([244, 206, 96], 0));
+            paintPixel(g, x + 1, 12, shade([44, 120, 140], 0));
+            paintPixel(g, x + 1, 14, shade([44, 120, 140], 0));
+            paintPixel(g, x + 2, 13, shade([44, 120, 140], 0));
+          }
+          for (var y = 11; y < 16; y += 2) {
+            paintPixel(g, 0, y, shade(edge, 0)); // fringe
+            paintPixel(g, 31, y, shade(edge, 0));
+          }
+        }
+        /** Iron rail on the ceiling with a copper pot, a frying pan and a ladle hanging from it. */
+        function paintPotRack(g) {
+          paintRect(g, 0, 0, 16, 2, shade([74, 72, 82], 0));
+          paintRect(g, 0, 0, 16, 1, shade([128, 126, 140], 0));
+          paintRect(g, 3, 2, 1, 2, shade([62, 60, 70], 0)); // hooks
+          paintRect(g, 9, 2, 1, 5, shade([62, 60, 70], 0)); // pan handle
+          paintRect(g, 14, 2, 1, 8, shade([62, 60, 70], 0)); // ladle handle
+          paintRect(g, 0, 4, 7, 1, shade([236, 150, 78], 0)); // pot rim
+          paintRect(g, 1, 5, 5, 5, shade([200, 112, 54], 0));
+          paintRect(g, 1, 5, 1, 5, shade([244, 160, 92], 0));
+          paintRect(g, 5, 5, 1, 5, shade([150, 78, 36], 0));
+          paintRect(g, 2, 10, 3, 1, shade([150, 78, 36], 0));
+          paintPixel(g, 0, 5, shade([150, 78, 36], 0));
+          paintPixel(g, 6, 5, shade([150, 78, 36], 0));
+          paintRect(g, 7, 7, 6, 3, shade([58, 58, 68], 0)); // pan
+          paintRect(g, 7, 7, 6, 1, shade([118, 118, 132], 0));
+          paintRect(g, 13, 10, 3, 2, shade([200, 112, 54], 0)); // ladle bowl
+          paintRect(g, 13, 10, 3, 1, shade([244, 160, 92], 0));
+        }
+        /** One barrel: bulging staves, two iron hoops, a lit left side and a shaded right side. */
+        function paintBarrel(g, x0, y0, w, h) {
+          for (var r = 0; r < h; r++) {
+            var inset = r === 0 || r === h - 1 ? 1 : 0;
+            paintRect(g, x0 + inset, y0 + r, w - inset * 2, 1, shade([140, 80, 42], 0));
+          }
+          for (var sx = 2; sx < w - 1; sx += 3)
+            paintRect(g, x0 + sx, y0 + 1, 1, h - 2, shade([108, 60, 30], 0));
+          paintRect(g, x0, y0 + 1, w, 1, shade([78, 80, 92], 0)); // hoops
+          paintRect(g, x0, y0 + h - 2, w, 1, shade([78, 80, 92], 0));
+          paintRect(g, x0, y0 + 2, 1, h - 4, shade([184, 112, 62], 0));
+          paintRect(g, x0 + w - 1, y0 + 2, 1, h - 4, shade([88, 48, 24], 0));
+          paintRect(g, x0 + 1, y0, w - 2, 1, shade([188, 116, 64], 0));
+        }
+        function paintBarrels(g) {
+          paintBarrel(g, 0, 8, 8, 8);
+          paintBarrel(g, 8, 8, 8, 8);
+          paintBarrel(g, 4, 0, 8, 8);
+        }
+        /** Round wall clock: brass rim, cream face, four ticks and two hands (ten past ten). */
+        function paintWallClock(g) {
+          for (var y = 0; y < 16; y++) {
+            for (var x = 0; x < 16; x++) {
+              var dx = x + 0.5 - 8;
+              var dy = y + 0.5 - 8;
+              var d = Math.sqrt(dx * dx + dy * dy);
+              if (d > 7.3) continue;
+              var col = [246, 234, 204];
+              if (d > 6.3) col = [96, 60, 24];
+              else if (d > 5.1)
+                col = dx + dy < -2 ? [240, 194, 96] : dx + dy > 3 ? [150, 100, 40] : [208, 154, 58];
+              paintPixel(g, x, y, shade(col, 0));
+            }
+          }
+          var ink = shade([70, 40, 24], 0);
+          [
+            [8, 3],
+            [12, 8],
+            [8, 12],
+            [3, 8],
+          ].forEach(function (c) {
+            paintPixel(g, c[0], c[1], ink);
+          });
+          [
+            [7, 7],
+            [6, 6],
+            [9, 7],
+            [10, 6],
+            [11, 5],
+          ].forEach(function (c) {
+            paintPixel(g, c[0], c[1], ink); // hands
+          });
+          paintPixel(g, 8, 8, shade([200, 60, 48], 0));
+        }
+
         var TEX_FG = [];
         var TEX_BG = [];
         function textureVariants(n, seed, fn) {
@@ -2055,6 +2269,13 @@
           TEX_FG[T.PLANTER] = single(16, paintPlanter);
           TEX_FG[T.TORCH] = single(17, paintTorch);
           TEX_FG[T.LANTERN] = single(18, paintLantern);
+          TEX_FG[T.TOOLS] = single(31, paintToolRack);
+          TEX_FG[T.EMBLEM] = single(32, paintEmblem);
+          TEX_FG[T.WINDOW] = single(33, paintWindow);
+          TEX_FG[T.JARS] = single(34, paintJars);
+          TEX_FG[T.POTS] = single(35, paintPotRack);
+          TEX_FG[T.BARRELS] = single(36, paintBarrels);
+          TEX_FG[T.CLOCK] = single(37, paintWallClock);
           TEX_FG[T.DOOR_T] = single(20, withArg(paintDoor, true));
           TEX_FG[T.DOOR_B] = single(21, withArg(paintDoor, false));
           TEX_FG[T.DOORO_T] = single(22, paintDoorOpen);
@@ -2072,6 +2293,7 @@
             [T.PAINT2_L, T.PAINT2_R, 28, withArg(paintPainting, true)],
             [T.SIGN_L, T.SIGN_R, 29, paintSign],
             [T.BOARD_L, T.BOARD_R, 30, paintBoard],
+            [T.RUG_L, T.RUG_R, 38, paintRug],
           ].forEach(function (p) {
             var wide = make(32, 16, p[2], p[3]);
             TEX_FG[p[0]] = [crop(wide, 0, 0, 16, 16)];
@@ -2704,6 +2926,54 @@
           putItem("torch", 25, 31);
           putItem("torch", 31, 31);
         }
+        /** Set-pieces that make every starter room feel lived in (>= 5 kinds of furnishing in each). */
+        var STARTER_DECOR = [
+          // library (top): a curtained window, a clock between the pictures, a runner on the floor
+          ["window", 18, 2],
+          ["clock", 23, 2],
+          ["rug", 20, 4],
+          // greenhouse (middle): windows and jars for the plant lover, a rack of pots, a barrel of soil
+          ["window", 24, 8],
+          ["jars", 27, 8],
+          ["pots", 26, 6],
+          ["barrels", 30, 10],
+          // kitchen (ground floor): pots over the furnaces, a clock, a rug where Barnaby stands
+          ["pots", 22, 12],
+          ["clock", 27, 13],
+          ["rug", 19, 15],
+          // bedroom (left basement): the round emblem from the plan, a rug, a snack shelf
+          ["emblem", 3, 19],
+          ["rug", 4, 21],
+          ["jars", 7, 19],
+          // workshop (middle basement)
+          ["tools", 20, 19],
+          ["barrels", 21, 21],
+          ["rug", 15, 21],
+          // store room (right basement): barrels, a tool rack, an emblem and jars
+          ["barrels", 30, 21],
+          ["tools", 32, 19],
+          ["emblem", 28, 19],
+          ["jars", 26, 19],
+          ["rug", 24, 21],
+          // pit under the workshop
+          ["barrels", 17, 27],
+          ["tools", 22, 25],
+          ["emblem", 18, 24],
+          ["rug", 15, 27],
+          ["jars", 17, 25],
+          // the mine at the bottom of the long shaft
+          ["barrels", 25, 33],
+          ["rug", 26, 33],
+          ["chest", 31, 33],
+          ["tools", 30, 31],
+          ["jars", 26, 31],
+          ["emblem", 32, 31],
+        ];
+        function starterDecor() {
+          STARTER_DECOR.forEach(function (d) {
+            putItem(d[0], d[1], d[2]);
+          });
+        }
         var STARTER_LOOT = [
           [33, 4],
           [19, 21],
@@ -2717,6 +2987,7 @@
           starterMid();
           starterGround();
           starterBasement();
+          starterDecor();
         }
         /** Where things start (world coordinates; y is the FEET row). */
         var START = {
@@ -2789,6 +3060,7 @@
           "locker",
           "painting",
           "board",
+          "decor",
         ];
         var COUNT_BY_TILE = {};
         COUNT_BY_TILE[T.BED_L] = "bed";
@@ -2807,6 +3079,11 @@
         COUNT_BY_TILE[T.PAINT_L] = "painting";
         COUNT_BY_TILE[T.PAINT2_L] = "painting";
         COUNT_BY_TILE[T.BOARD_L] = "board";
+        [T.TOOLS, T.EMBLEM, T.WINDOW, T.JARS, T.RUG_L, T.POTS, T.BARRELS, T.CLOCK].forEach(
+          function (t) {
+            COUNT_BY_TILE[t] = "decor";
+          },
+        );
         COUNT_BY_TILE[T.LADDER] = "ladder";
         COUNT_BY_TILE[T.PORTAL_T] = "portal";
 
@@ -3664,6 +3941,9 @@
           T.PORTAL_B,
           T.CUPBOARD,
           T.LOCKER,
+          T.RUG_L,
+          T.RUG_R,
+          T.BARRELS,
         ]);
         var MOUNTED = flags([
           T.PAINT_L,
@@ -3674,6 +3954,11 @@
           T.SIGN_R,
           T.BOARD_L,
           T.BOARD_R,
+          T.TOOLS,
+          T.EMBLEM,
+          T.WINDOW,
+          T.JARS,
+          T.CLOCK,
         ]);
         // What holds each kind of object up: "floor" (stands on a block), "hang" (from a block above),
         // "mount" (torch: back wall or a neighbour), "paint" (hung on a back wall), "ladder".
@@ -3683,6 +3968,7 @@
           if (MOUNTED[sk]) SUPPORT_KIND[sk] = "paint";
         }
         SUPPORT_KIND[T.LANTERN] = "hang";
+        SUPPORT_KIND[T.POTS] = "hang";
         SUPPORT_KIND[T.TORCH] = "mount";
         SUPPORT_KIND[T.LADDER] = "ladder";
         /** A block furniture can stand on. A door is solid but is not a floor. */
@@ -5162,6 +5448,7 @@
           return o.c;
         }
         var GLOW_CAP = 256; // most glow sprites drawn per frame
+        var UG_AMB = [112, 80, 62]; // the warm ambient of the underground (Phase-5 fidelity round)
         var glowsDrawn = 0;
         /** Light colour of one view tile: ambient + sky + block light + the builder's faint lamp. */
         function tileLight(out, o, wx, wy, pal, amb, flick) {
@@ -5178,16 +5465,21 @@
           } else if (wy < 0) sky = 1;
           var dd = Math.hypot(wx + 0.5 - P.x, wy + 0.5 - (P.y - 1.0));
           var lamp = Math.max(0, 1 - dd / 4.2) * 0.26; // so a dark cave is never pitch black
-          out[o] = Math.min(255, amb[0] + sky * pal.light[0] + (r + lamp) * 255);
-          out[o + 1] = Math.min(255, amb[1] + sky * pal.light[1] + (g + lamp * 0.85) * 255);
-          out[o + 2] = Math.min(255, amb[2] + sky * pal.light[2] + (b + lamp * 0.6) * 255);
+          // underground a warm earth glow replaces the cool night/day ambient (ramps in below the surface)
+          var ug = clamp((wy - SURF) / 3, 0, 1);
+          var a0 = amb[0] + (UG_AMB[0] - amb[0]) * ug;
+          var a1 = amb[1] + (UG_AMB[1] - amb[1]) * ug;
+          var a2 = amb[2] + (UG_AMB[2] - amb[2]) * ug;
+          out[o] = Math.min(255, a0 + sky * pal.light[0] + (r + lamp) * 255);
+          out[o + 1] = Math.min(255, a1 + sky * pal.light[1] + (g + lamp * 0.85) * 255);
+          out[o + 2] = Math.min(255, a2 + sky * pal.light[2] + (b + lamp * 0.6) * 255);
           out[o + 3] = 255;
         }
         /** The light map: 1 px per tile, smoothed up to the screen and multiplied over the scene. */
         function drawLightMap(pal, tx0, ty0, tw, th) {
           if (lightCv.c.width !== tw || lightCv.c.height !== th) lightCv = makeCanvas(tw, th);
           var img = lightCv.g.createImageData(tw, th);
-          var amb = mixColor([22, 18, 26], [38, 31, 32], pal.d);
+          var amb = mixColor([34, 22, 18], [54, 38, 30], pal.d);
           var flick = reducedMotion
             ? 1
             : 0.965 + 0.035 * Math.sin(S.simTime * 11.3) * Math.sin(S.simTime * 7.1 + 1);
@@ -5563,8 +5855,8 @@
               vhD / 2,
               Math.hypot(vwD, vhD) * 0.62,
             );
-            g.addColorStop(0, "rgba(10,6,4,0)");
-            g.addColorStop(1, "rgba(10,6,4,0.55)");
+            g.addColorStop(0, "rgba(18,8,4,0)");
+            g.addColorStop(1, "rgba(18,8,4,0.42)");
             o.g.fillStyle = g;
             o.g.fillRect(0, 0, vwD, vhD);
             vignette = o.c;
@@ -5643,6 +5935,8 @@
         PARTNER_EXPECT[T.SIGN_R] = [-1, 0, [T.SIGN_L]];
         PARTNER_EXPECT[T.BOARD_L] = [1, 0, [T.BOARD_R]];
         PARTNER_EXPECT[T.BOARD_R] = [-1, 0, [T.BOARD_L]];
+        PARTNER_EXPECT[T.RUG_L] = [1, 0, [T.RUG_R]];
+        PARTNER_EXPECT[T.RUG_R] = [-1, 0, [T.RUG_L]];
         PARTNER_EXPECT[T.DOOR_T] = [0, 1, [T.DOOR_B]];
         PARTNER_EXPECT[T.DOOR_B] = [0, -1, [T.DOOR_T]];
         PARTNER_EXPECT[T.PORTAL_T] = [0, 1, [T.PORTAL_B]];

@@ -1224,6 +1224,55 @@ try {
         m.canvas[0] === v.viewport.width * v.dsf,
         "canvas is DPR aware " + JSON.stringify(m.canvas),
       );
+      // zoom: a phone shows ~16-18 tiles across the short side so the house reads as a house
+      const z = await dbg(page, () => window.__buddies.debug.stats());
+      const across = z.canvas[v.viewport.width < v.viewport.height ? 0 : 1] / z.tilePx;
+      if (v.touch)
+        assert(
+          across >= 15 && across <= 19,
+          `phone default shows ${across.toFixed(1)} tiles across the short side`,
+        );
+      else
+        assert(
+          z.tileCss >= 32 && z.tileCss <= 40,
+          "desktop blocks are 32-40 css px, got " + z.tileCss,
+        );
+      // hotbar: only whole slots are visible (none clipped at either edge)
+      const clipped = await dbg(page, () => {
+        const hb = document.getElementById("hotbar").getBoundingClientRect();
+        return [...document.querySelectorAll("#hotbar .slot")]
+          .map((e) => e.getBoundingClientRect())
+          .filter((r) => {
+            const w = Math.min(r.right, hb.right - 3) - Math.max(r.left, hb.left + 3);
+            return w > 1 && w < r.width - 1;
+          }).length;
+      });
+      assert(clipped === 0, clipped + " hotbar slot(s) partially clipped");
+      // objective card: open at the start, header-only once settled (so it never hides the house)
+      const openAtStart = await page.evaluate(
+        () => !document.getElementById("request").classList.contains("collapsed"),
+      );
+      assert(
+        openAtStart === !v.touch,
+        "request card open at start: " + openAtStart + " (expected " + !v.touch + ")",
+      );
+      if (!v.touch) {
+        await sleep(6500);
+        assert(
+          await page.evaluate(() =>
+            document.getElementById("request").classList.contains("collapsed"),
+          ),
+          "request card should collapse to its header after ~6s",
+        );
+        await page.screenshot({ path: join(SHOTS, `play-${v.id}.jpg`) });
+        await page.locator("#reqToggle").click();
+        assert(
+          await page.evaluate(
+            () => !document.getElementById("request").classList.contains("collapsed"),
+          ),
+          "tapping the header expands the card",
+        );
+      }
       await ctx.close();
       return `no h-scroll, controls >=44px, HUD ~${(m.cover * 100).toFixed(0)}%, canvas ${m.canvas.join("x")} @${m.dpr}x`;
     });

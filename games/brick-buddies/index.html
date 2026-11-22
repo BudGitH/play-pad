@@ -290,19 +290,29 @@
         pointer-events: none;
       }
       .hotrow {
-        pointer-events: auto;
+        pointer-events: none; /* the row is full width; only its controls take taps */
         display: flex;
         align-items: center;
+        justify-content: center;
         gap: 6px;
-        max-width: 100%;
+        width: 100%;
         min-width: 0;
+      }
+      .hotrow > * {
+        pointer-events: auto;
+      }
+      .hotrow > .tbtn,
+      .hotrow > .mode-btn {
+        flex: none; /* never squeezed narrower than the 44px touch target */
       }
       #hotbar {
         display: flex;
+        flex: 0 0 auto;
         gap: 4px;
         padding: 4px;
         overflow-x: auto;
-        scroll-snap-type: x proximity;
+        scroll-snap-type: x mandatory; /* with fitHotbar() the visible width is whole slots: no clipped slot */
+        scroll-padding-left: 4px;
         scrollbar-width: none;
         background: var(--bb-glass);
         border: 1px solid var(--bb-line);
@@ -321,7 +331,7 @@
         border-radius: 10px;
         border: 2px solid transparent;
         background: rgba(255, 220, 170, 0.08);
-        scroll-snap-align: center;
+        scroll-snap-align: start;
       }
       .slot canvas {
         display: block;
@@ -400,6 +410,38 @@
         color: var(--md-sys-color-on-tertiary-container);
       }
 
+      /* Narrow portrait phone ("compact"): the hotbar gets its own full-width row above the pad row;
+         Build / Items become icon buttons between the pads; Look sits beside the hotbar. */
+      body.compact #dock {
+        gap: 6px;
+      }
+      body.compact .mode-btn {
+        min-width: 48px;
+        min-height: 48px;
+        padding: 0;
+        font-size: 20px;
+      }
+      body.compact .mode-btn .lbl {
+        display: none;
+      }
+      body.compact .tc {
+        gap: 8px;
+      }
+      body.compact .tbtn {
+        width: 56px;
+        height: 56px;
+      }
+      body.compact .tbtn.small {
+        width: 48px;
+        height: 48px;
+      }
+      @media (max-width: 360px) {
+        body.compact .tbtn {
+          width: 50px;
+          height: 50px;
+        }
+      }
+
       /* Phone in landscape: one bottom row (left pad | hotbar | right pad). */
       @media (orientation: landscape) and (max-height: 520px) {
         body.touch #dock {
@@ -418,7 +460,6 @@
         body.touch .hotrow {
           grid-column: 2;
           grid-row: 1;
-          justify-self: center;
         }
         body.touch .tcr {
           grid-column: 3;
@@ -828,7 +869,7 @@
             aria-label="Mode: Build. Press to switch to Break"
           >
             <span aria-hidden="true" id="modeIco">&#128296;</span>
-            <span id="modeTxt">Build</span>
+            <span id="modeTxt" class="lbl">Build</span>
           </button>
           <button
             id="buildBtn"
@@ -836,7 +877,7 @@
             aria-label="Open build menu"
             aria-haspopup="dialog"
           >
-            <span aria-hidden="true">&#129521;</span><span>Items</span>
+            <span aria-hidden="true">&#129521;</span><span class="lbl">Items</span>
           </button>
           <div id="hotbar" role="group" aria-label="Hotbar"></div>
         </div>
@@ -1372,8 +1413,8 @@
         }
 
         var PAL = {
-          planks: { base: [152, 76, 48], hi: [182, 102, 68], lo: [98, 45, 29] },
-          planksBg: { base: [66, 33, 24], hi: [78, 40, 29], lo: [40, 19, 14] },
+          planks: { base: [150, 88, 50], hi: [184, 118, 68], lo: [92, 52, 29] },
+          planksBg: { base: [64, 38, 25], hi: [78, 47, 30], lo: [38, 22, 14] },
           brick: { brick: [178, 66, 46], mortar: [112, 76, 64] },
           brickBg: { brick: [92, 36, 30], mortar: [50, 34, 34] },
           cobble: { base: [128, 124, 120], edge: [64, 62, 64], v: 16 },
@@ -1385,30 +1426,48 @@
           dirtBg: [60, 40, 31],
         };
 
+        /**
+         * Wooden boards: four 4px boards per tile, each running the FULL 16px width (so a wall reads as
+         * long horizontal planks, never as short staggered blocks like the brick). Each board has its
+         * own tone, flowing grain streaks, an occasional knot and nails near the ends; a hairline end
+         * joint sits only on the tile edge, and only on some boards (offset per tile variant).
+         */
         function paintPlanks(g, rnd, pal) {
           for (var row = 0; row < 4; row++) {
             var y0 = row * 4;
-            var jx = 3 + ((rnd() * 10) | 0);
-            var hasJoint = row === 0 || row === 2; // long boards: a butt joint only on alternate rows
-            var d0 = jit(rnd, 8);
+            var tone = jit(rnd, 9);
+            var phase = rnd() * 6.28;
+            var freq = 0.3 + rnd() * 0.35;
             for (var x = 0; x < 16; x++) {
+              var wave = Math.sin(x * freq + phase);
               for (var y = 0; y < 4; y++) {
                 var base = y === 0 ? pal.hi : y === 3 ? pal.lo : pal.base;
-                var d = d0 + jit(rnd, 3);
-                if (y === 1 && ((x * 7 + row * 3) & 7) === 0) d -= 9; // wood grain flecks
-                if (y === 2 && ((x * 5 + row * 11) & 7) === 0) d += 6;
+                var d = tone + (y === 1 || y === 2 ? wave * 5 : 0) + jit(rnd, 2);
                 PX(g, x, y0 + y, sh(base, d));
               }
             }
-            if (hasJoint) for (var j = 0; j < 3; j++) PX(g, jx, y0 + j, sh(pal.lo, -4)); // board joint
-            if (rnd() < 0.5) {
-              PX(g, (jx + 8) % 16, y0 + 1, sh(pal.lo, -16)); // nail
-              PX(g, (jx + 9) % 16, y0 + 1, sh(pal.lo, -2));
+            // long grain streaks along the board (darker, then a lighter one)
+            for (var k = 0; k < 2; k++) {
+              var gy = y0 + 1 + (k === 0 ? 0 : 1);
+              var gx = (rnd() * 8) | 0;
+              var len = 5 + ((rnd() * 8) | 0);
+              for (var i = 0; i < len && gx + i < 16; i++) {
+                PX(g, gx + i, gy, sh(k === 0 ? pal.lo : pal.hi, k === 0 ? 10 : -8));
+              }
             }
-            if (rnd() < 0.25) {
-              var kx = (rnd() * 12) | 0;
-              RC(g, kx, y0 + 1, 3, 2, sh(pal.lo, 4)); // knot
-              PX(g, kx + 1, y0 + 1, sh(pal.lo, -20));
+            if (rnd() < 0.22) {
+              var kx = 2 + ((rnd() * 9) | 0); // knot: dark ring with a lighter eye
+              RC(g, kx, y0 + 1, 4, 2, sh(pal.lo, 2));
+              RC(g, kx + 1, y0 + 1, 2, 2, sh(pal.base, -26));
+              PX(g, kx + 1, y0 + 1, sh(pal.hi, -4));
+            }
+            if (rnd() < 0.55) {
+              PX(g, 1, y0 + 1, sh(pal.lo, -22)); // nails near the board ends
+              PX(g, 14, y0 + 2, sh(pal.lo, -22));
+              PX(g, 1, y0, sh(pal.hi, 12));
+            }
+            if ((row + (rnd() < 0.5 ? 0 : 1)) % 2 === 0) {
+              for (var j = 0; j < 3; j++) PX(g, 15, y0 + j, sh(pal.lo, -8)); // end joint on the tile edge
             }
           }
         }
@@ -3936,6 +3995,9 @@
           if (!sendBuddy(b, goal[0], goal[1])) poofBuddy(b, goal[0], goal[1]);
           V.push(b);
           REQ = { index: index, def: def, buddy: b, state: "arriving", room: null, timer: 0 };
+          reqTimed = 6;
+          reqMoveT = 0;
+          reqUser = null;
           refreshRequestPanel(true);
           announce("A traveller arrives: " + b.name + " wants " + def.phrase + ".");
         }
@@ -4518,14 +4580,27 @@
             view.width = vwD;
             view.height = vhD;
           }
-          if (S.zoomIdx < 0) S.zoomIdx = DEFAULT_ZOOM;
-          N = Math.max(8, Math.round(ZOOM_CSS[S.zoomIdx] * dpr));
+          N = Math.max(8, Math.round(ZOOM_CSS[zoomNow()] * dpr));
           vignette = null;
           document.body.classList.toggle("touch", touchMode);
+          placeControls();
+          fitHotbar();
+          refreshUiRects();
+        }
+        /**
+         * Zoom level in use. S.zoomIdx -1 means "automatic": 32 css px tiles on a desktop, but on a
+         * phone about 17-18 tiles across the short side so the house reads as a house, not 2 rooms.
+         */
+        function zoomNow() {
+          if (S.zoomIdx >= 0) return S.zoomIdx;
+          var short = Math.min(vwD, vhD) / dpr;
+          if (short >= 600) return DEFAULT_ZOOM;
+          for (var i = 0; i < ZOOM_CSS.length; i++) if (ZOOM_CSS[i] >= short / 18) return i;
+          return DEFAULT_ZOOM;
         }
         function setZoom(delta) {
-          var z = clamp(S.zoomIdx + delta, 0, ZOOM_CSS.length - 1);
-          if (z === S.zoomIdx) return;
+          var z = clamp(zoomNow() + delta, 0, ZOOM_CSS.length - 1);
+          if (z === zoomNow()) return;
           S.zoomIdx = z;
           layout();
           saveDirty = true;
@@ -5093,11 +5168,54 @@
           vctx.arcTo(x, y, x + w, y, r);
           vctx.closePath();
         }
-        function pill(text, cxp, cyp, alpha, fill, ink) {
+        function pillSize(text) {
           var fs = Math.round(11 * dpr);
           vctx.font = "700 " + fs + "px system-ui, sans-serif";
-          var w = vctx.measureText(text).width + 14 * dpr;
-          var h = fs + 8 * dpr;
+          return { w: vctx.measureText(text).width + 14 * dpr, h: fs + 8 * dpr };
+        }
+        /** Screen rectangles (device px) of the HUD controls and the objective card. */
+        var uiRects = [];
+        function refreshUiRects() {
+          uiRects.length = 0;
+          if ($("hud").hidden) return;
+          var sel =
+            ".hud-top .chip, .hud-top .chip-btn, #request, #hotbar, .hotrow .mode-btn, .tbtn";
+          Array.prototype.forEach.call(document.querySelectorAll(sel), function (e) {
+            var r = e.getBoundingClientRect();
+            if (r.width > 0) {
+              uiRects.push({
+                l: r.left * dpr,
+                t: r.top * dpr,
+                r: r.right * dpr,
+                b: r.bottom * dpr,
+                card: e.id === "request",
+              });
+            }
+          });
+        }
+        function hitUi(l, t, r, b, pad) {
+          for (var i = 0; i < uiRects.length; i++) {
+            var u = uiRects[i];
+            if (l < u.r + pad && r > u.l - pad && t < u.b + pad && b > u.t - pad) return u;
+          }
+          return null;
+        }
+        function hitCharacter(l, t, r, b, skip) {
+          var list = V.concat([P]);
+          for (var i = 0; i < list.length; i++) {
+            var c = list[i];
+            if (c === skip) continue;
+            var cx = c.x * N - camL;
+            var cy = c.y * N - camT;
+            if (l < cx + N * 0.6 && r > cx - N * 0.6 && t < cy + 6 && b > cy - 2 * N - 6)
+              return true;
+          }
+          return false;
+        }
+        function pill(text, cxp, cyp, alpha, fill, ink) {
+          var sz = pillSize(text);
+          var w = sz.w;
+          var h = sz.h;
           vctx.globalAlpha = alpha;
           vctx.fillStyle = fill;
           roundRect(cxp - w / 2, cyp - h / 2, w, h, h / 2);
@@ -5182,7 +5300,7 @@
             vctx.stroke(roomPath(r));
           });
           vctx.restore();
-          if (!S.labels || ZOOM_CSS[S.zoomIdx] < 24) return;
+          if (!S.labels || ZOOM_CSS[zoomNow()] < 24) return;
           rooms.forEach(function (r) {
             if (!r.valid) return;
             var lx = ((r.x0 + r.x1 + 1) / 2) * N - camL;
@@ -5192,10 +5310,23 @@
             var label = r.types.length ? r.types[0] : "Room";
             if (res) label += " · " + res.name;
             var isMine = r === mine;
+            var sz = pillSize(label);
+            var py = ly + 10 * dpr;
+            var hit = hitUi(lx - sz.w / 2, py - sz.h / 2, lx + sz.w / 2, py + sz.h / 2, 4 * dpr);
+            if (hit) {
+              // slide left of the objective card if the room still reaches there; otherwise skip the label
+              if (!hit.card) return;
+              lx = hit.l - 6 * dpr - sz.w / 2;
+              if (
+                lx - sz.w / 2 < r.x0 * N - camL ||
+                hitUi(lx - sz.w / 2, py - sz.h / 2, lx + sz.w / 2, py + sz.h / 2, 4 * dpr)
+              )
+                return;
+            }
             pill(
               label,
               lx,
-              ly + 10 * dpr,
+              py,
               isMine ? 0.92 : 0.5,
               isMine ? "#ffe3a8" : "#2a1d17",
               isMine ? "#3a2412" : "#f3dcc0",
@@ -5302,16 +5433,26 @@
           var x = b.x * N - camL;
           var y = (b.y - 1) * N - camT;
           if (x > 0 && x < vwD && y > 0 && y < vhD) return;
-          var ax = clamp(x, 28 * dpr, vwD - 28 * dpr);
-          var ay = clamp(y, 150 * dpr, vhD - 150 * dpr);
-          pill(
-            (x < 0 ? "◀ " : "") + b.name + (x > vwD ? " ▶" : ""),
-            ax,
-            ay,
-            0.95,
-            "#ffe3a8",
-            "#3a2412",
-          );
+          var text = (x < 0 ? "\u25c0 " : "") + b.name + (x > vwD ? " \u25b6" : "");
+          var sz = pillSize(text);
+          var ax = clamp(x, sz.w / 2 + 8 * dpr, vwD - sz.w / 2 - 8 * dpr);
+          var base = clamp(y, 110 * dpr, vhD - 110 * dpr);
+          // try the natural height first, then step up and down until nothing is underneath
+          var steps = [0, -1, 1, -2, 2, -3, 3, -4, 4, -5, 5];
+          var ay = base;
+          for (var i = 0; i < steps.length; i++) {
+            var cy = base + steps[i] * (sz.h + 12 * dpr);
+            if (cy < 96 * dpr || cy > vhD - 96 * dpr) continue;
+            var l = ax - sz.w / 2;
+            var r = ax + sz.w / 2;
+            var t = cy - sz.h / 2;
+            var bt = cy + sz.h / 2;
+            if (!hitUi(l, t, r, bt, 4 * dpr) && !hitCharacter(l, t, r, bt, b)) {
+              ay = cy;
+              break;
+            }
+          }
+          pill(text, ax, ay, 0.78, "#ffe3a8", "#3a2412");
         }
         function drawVignette() {
           if (!vignette) {
@@ -5359,7 +5500,9 @@
             camT += Math.round((Math.random() - 0.5) * weather.flash * 4 * dpr);
           }
         }
+        var rectTick = 0;
         function renderFrame(dt) {
+          if (rectTick++ % 20 === 0) refreshUiRects();
           if (view.clientWidth > 0 && Math.round(view.clientWidth * dpr) !== vwD) layout();
           if (lightDirty) computeLight();
           updateCamera(dt, false);
@@ -5812,14 +5955,58 @@
             );
             slots[i].title = it.name;
           }
-          var cur = slots[S.sel];
-          if (cur && cur.scrollIntoView) {
-            try {
-              var hb = $("hotbar");
-              hb.scrollLeft = Math.max(0, cur.offsetLeft - hb.clientWidth / 2 + 22);
-            } catch (e) {
-              /* cosmetic */
+          scrollHotbar();
+        }
+        /**
+         * Show only WHOLE hotbar slots: measure the room the row has left beside the other controls
+         * and size the strip to n slots (48px pitch). The rest scrolls, snapping a slot at a time.
+         */
+        function fitHotbar() {
+          var hb = $("hotbar");
+          var row = hb.parentNode;
+          if ($("hud").hidden || !row.clientWidth) return;
+          var other = 0;
+          var count = 0;
+          Array.prototype.forEach.call(row.children, function (c) {
+            if (c !== hb && c.offsetWidth) {
+              other += c.offsetWidth;
+              count++;
             }
+          });
+          var avail = row.clientWidth - other - 6 * count;
+          var n = clamp(Math.floor((avail - 4) / 48), 3, 10);
+          hb.style.width = n * 48 + 4 + "px";
+          hb.dataset.visible = String(n);
+          scrollHotbar();
+        }
+        function scrollHotbar() {
+          var hb = $("hotbar");
+          var n = +hb.dataset.visible || 10;
+          hb.scrollLeft = clamp(S.sel - Math.floor(n / 2), 0, 10 - n) * 48;
+        }
+        /** Narrow portrait phone: move Build / Items between the pads and Look beside the hotbar. */
+        function placeControls() {
+          var narrow =
+            touchMode && window.innerWidth <= 560 && window.innerHeight > window.innerWidth;
+          document.body.classList.toggle("compact", narrow);
+          var row = document.querySelector(".hotrow");
+          var mid = document.querySelector(".tcc");
+          var mode = $("modeBtn");
+          var build = $("buildBtn");
+          var look = $("tLook");
+          var hb = $("hotbar");
+          if (narrow) {
+            if (mode.parentNode !== mid) {
+              mid.appendChild(mode);
+              mid.appendChild(build);
+            }
+            if (look.parentNode !== row) row.appendChild(look);
+          } else {
+            if (mode.parentNode !== row) {
+              row.insertBefore(mode, hb);
+              row.insertBefore(build, hb);
+            }
+            if (look.parentNode !== mid) mid.appendChild(look);
           }
         }
         function setMode(m) {
@@ -5912,6 +6099,37 @@
 
         // ---- request panel ----
         var reqSig = "";
+        // The objective card: open for the first 6 s of a request (or until the player has walked
+        // for a moment), then just its header so it never hides the house; it re-opens while the
+        // player stands in a candidate room of their own, or whenever tapped.
+        var reqOpen = true;
+        var reqUser = null; // null = automatic, true / false = the player's own choice
+        var reqTimed = 0;
+        var reqMoveT = 0;
+        var probeClaimed = false;
+        function setPanel(open) {
+          reqOpen = open;
+          $("request").classList.toggle("collapsed", !open);
+          $("reqToggle").setAttribute("aria-expanded", open ? "true" : "false");
+          refreshUiRects();
+        }
+        function tickPanel(dt) {
+          if (reqTimed > 0) {
+            reqTimed -= dt;
+            if (inp.l || inp.r) reqMoveT += dt;
+            if (reqMoveT > 1.2) reqTimed = 0;
+          }
+          var compact = touchMode || window.innerWidth < 560;
+          var candidate = !!(
+            REQ &&
+            REQ.state === "waiting" &&
+            probe &&
+            probe.room &&
+            !probeClaimed
+          );
+          var want = reqUser !== null ? reqUser : !compact && (reqTimed > 0 || candidate);
+          if (want !== reqOpen) setPanel(want);
+        }
         function refreshRequestPanel(force) {
           if (!REQ) return;
           var def = REQ.def;
@@ -5937,7 +6155,9 @@
             return i.ok === true;
           }).length;
           var prog =
-            list.length > 1 && probe && probe.room ? " \u00b7 " + doneN + "/" + list.length : "";
+            list.length > 1 && probe && probe.room && !probeClaimed
+              ? " \u00b7 " + doneN + "/" + list.length
+              : "";
           $("reqWho").textContent = REQ.buddy.name + (whoTxt[REQ.state] || " asks for") + prog;
           $("reqTitle").textContent =
             REQ.state === "next" ? "Moved in! Another buddy is coming…" : cap(def.phrase);
@@ -6012,6 +6232,7 @@
           view.focus({ preventScroll: true });
           lastTs = 0;
           layout();
+          fitHotbar();
           updateCamera(0, true);
           if (!REQ) startRequest(S.reqIndex);
           refreshHud();
@@ -6502,8 +6723,8 @@
             setBuild(false);
           });
           $("reqToggle").addEventListener("click", function (e) {
-            var c = $("request").classList.toggle("collapsed");
-            e.currentTarget.setAttribute("aria-expanded", c ? "false" : "true");
+            reqUser = !reqOpen;
+            setPanel(reqUser);
             if (e.detail > 0) e.currentTarget.blur();
           });
           Array.prototype.forEach.call(document.querySelectorAll(".tab[data-cat]"), function (t) {
@@ -6693,6 +6914,12 @@
           if (key === probeKey) return;
           probeKey = key;
           probe = regionAt(W, H, fg, bg, cx, cy, {});
+          probeClaimed = !!(
+            probe.room &&
+            probe.room.cells.some(function (c) {
+              return claimSet.has(c);
+            })
+          );
           refreshRequestPanel(false);
         }
         function tick(dt) {
@@ -6718,6 +6945,7 @@
           tickAmbient(dt);
           updateAim();
           tickProbe(dt);
+          tickPanel(dt);
           hudTimer += dt;
           if (hudTimer > 0.5) {
             hudTimer = 0;
@@ -7104,10 +7332,7 @@
               " housed so far. Start building to carry on.";
           }
           saveReady = true;
-          if (touchMode || window.innerWidth < 560) {
-            $("request").classList.add("collapsed");
-            $("reqToggle").setAttribute("aria-expanded", "false");
-          }
+          if (touchMode || window.innerWidth < 560) setPanel(false);
           installHook();
           requestAnimationFrame(loop);
         }

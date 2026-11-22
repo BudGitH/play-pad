@@ -32,7 +32,7 @@
 | AC-18 file://             | `AC-18`                                                                                                                | e2e                      |
 | AC-19 Test hook           | `AC-19`                                                                                                                | e2e                      |
 | AC-20 QA-panel hardening  | `SS-C01`, `SS-C02`, `SS-C03`, `SS-C04`, `SS-C05`, `SS-C06`, `SS-C11a`/`b`, `SS-Q04`, `SS-Q07`, `SS-QA-03`, `SS-QA-05`  | e2e                      |
-| AC-21 Panel + round-2     | `RT1-hair`, `RT1-props`, `RT1-guide`, `RT1-nudge`, `R2-01` .. `R2-06` (R2-01/04 use two tabs)                          | e2e                      |
+| AC-21 Panel + round-2     | `RT1-hair`, `RT1-props`, `RT2-finger`, `RT1-guide`, `RT1-nudge`, `R2-01` .. `R2-06` (R2-01/04 use two tabs)            | e2e                      |
 
 ## Test cases
 
@@ -93,7 +93,7 @@ The Start button is a plain `<button>` whose accessible name is exactly "Start m
 
 ## Definition of done
 
-- [x] All probe checks pass (70/70 — see the report for the latest run).
+- [x] All probe checks pass (71/71 — see the report for the latest run).
 - [x] Every acceptance criterion in `requirements.md` is covered.
 - [x] The tests encode the **chosen** design (owner's reference): tray, tool cursor, step indicator, request card, photo.
 - [ ] `qa-report.md` is clean (no unresolved CRITICAL/HIGH) — **Phase 4, run by the orchestrator.**

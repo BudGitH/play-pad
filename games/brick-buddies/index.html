@@ -181,6 +181,11 @@
           calc(100vw - 16px - env(safe-area-inset-left) - env(safe-area-inset-right))
         );
         box-sizing: border-box;
+        max-height: calc(
+          100vh - 150px
+        ); /* fitFloaters() sets the exact free height above the dock */
+        overflow-y: auto;
+        overscroll-behavior: contain;
         background: var(--bb-glass);
         border: 1px solid var(--bb-line);
         border-radius: 16px;
@@ -244,6 +249,25 @@
         text-align: center;
         font-weight: 800;
       }
+      #reqList li {
+        align-items: center;
+      }
+      #reqList li .ric {
+        flex: none;
+        width: 22px;
+        height: 22px;
+        image-rendering: pixelated;
+      }
+      #reqList li.info {
+        color: var(--md-sys-color-on-surface);
+        font-weight: 700;
+      }
+      #reqList li.info .tick {
+        color: var(--md-sys-color-tertiary);
+      }
+      #reqList li.info .ric {
+        display: none;
+      }
       #reqList li.ok {
         color: var(--md-sys-color-on-surface);
       }
@@ -299,7 +323,7 @@
       }
       .hotrow > .tbtn,
       .hotrow > .mode-btn {
-        flex: none; /* never squeezed narrower than the 44px touch target */
+        flex: none; /* never squeezed narrower than the 48px touch target */
       }
       #hotbar {
         display: flex;
@@ -320,9 +344,9 @@
       }
       .slot {
         position: relative;
-        flex: 0 0 44px;
-        width: 44px;
-        height: 44px;
+        flex: 0 0 48px;
+        width: 48px;
+        height: 48px;
         padding: 0;
         border-radius: 10px;
         border: 2px solid transparent;
@@ -445,10 +469,10 @@
         body.compact .tbtn,
         body.compact .tbtn.small,
         body.compact .mode-btn {
-          width: 44px;
-          min-width: 44px;
-          height: 44px;
-          min-height: 44px;
+          width: 48px;
+          min-width: 48px;
+          height: 48px;
+          min-height: 48px;
         }
       }
 
@@ -491,7 +515,9 @@
       #toast {
         position: absolute;
         left: 50%;
-        top: calc(120px + env(safe-area-inset-top));
+        bottom: calc(
+          96px + env(safe-area-inset-bottom)
+        ); /* placeToast() puts it just above the dock */
         transform: translateX(-50%);
         max-width: min(92vw, 520px);
         padding: 10px 16px;
@@ -547,6 +573,17 @@
         background: transparent;
         font-weight: 700;
         font-size: 14px;
+      }
+      @media (max-width: 440px) {
+        /* four categories + Done share one row on a phone */
+        .sheet-head,
+        .tabs {
+          gap: 4px;
+        }
+        .tab {
+          padding: 0 9px;
+          font-size: 13px;
+        }
       }
       .tab[aria-pressed="true"] {
         background: var(--md-sys-color-secondary-container);
@@ -716,6 +753,42 @@
         line-height: 1.45;
       }
 
+      /* ---------- Stale-tab banner ---------- */
+      .stale {
+        position: fixed;
+        top: calc(8px + env(safe-area-inset-top));
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 50;
+        width: min(560px, calc(100vw - 16px));
+        box-sizing: border-box;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 12px 10px 16px;
+        border-radius: 16px;
+        background: var(--md-sys-color-error-container);
+        color: var(--md-sys-color-on-error-container);
+        border: 1px solid var(--bb-line);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        font-size: 14px;
+        line-height: 1.4;
+      }
+      .stale p {
+        margin: 0;
+        flex: 1;
+      }
+      .stale .btn {
+        flex: none;
+        min-height: 48px;
+      }
+      @media (max-width: 420px) {
+        .stale {
+          flex-direction: column;
+          align-items: stretch;
+        }
+      }
+
       /* ---------- Overlays (menu, confirm) ---------- */
       .overlay {
         position: absolute;
@@ -779,9 +852,18 @@
         border: 1px solid var(--bb-line);
         color: var(--md-sys-color-on-surface);
       }
+      .keys-touch {
+        display: none;
+      }
+      body.touch .keys-kb {
+        display: none;
+      }
+      body.touch .keys-touch {
+        display: block;
+      }
       @media (max-height: 560px) {
         .keys {
-          display: none;
+          display: none !important;
         }
         .tag {
           margin: 4px 0 8px;
@@ -793,8 +875,12 @@
           padding: 12px 18px 14px;
         }
       }
+      .back-link-chip.armed {
+        background: var(--md-sys-color-error-container);
+        color: var(--md-sys-color-on-error-container);
+      }
       @media (max-width: 520px) {
-        .back-link-chip .txt {
+        .back-link-chip:not(.armed) .txt {
           display: none;
         }
         .chip {
@@ -970,13 +1056,27 @@
           </button>
         </div>
         <p class="note" id="saveNote" hidden></p>
-        <p class="keys">
+        <p class="keys keys-kb">
           <kbd>A</kbd>/<kbd>D</kbd> move &middot; <kbd>W</kbd>/<kbd>Space</kbd> jump &middot;
           <kbd>click</kbd> place &middot; <kbd>right-click</kbd> break &middot;
+          <kbd>I J K L</kbd> aim &middot; <kbd>F</kbd> place &middot; <kbd>X</kbd> break &middot;
           <kbd>1</kbd>&ndash;<kbd>0</kbd> hotbar &middot; <kbd>E</kbd> items
+        </p>
+        <p class="keys keys-touch">
+          Use the round pads to walk and jump &middot; tap a tile to place &middot; switch to
+          <b>Break</b> to remove &middot; <b>Items</b> opens the build menu
         </p>
       </div>
     </section>
+
+    <!-- ========== Stale-tab banner ========== -->
+    <div id="stale" class="stale" role="alert" hidden>
+      <p>
+        <b>This world was updated in another tab.</b> Reload to carry on from it; changes made here
+        are not saved.
+      </p>
+      <button id="staleReload" class="btn primary">Reload now</button>
+    </div>
 
     <!-- ========== Pause menu ========== -->
     <section id="menu" class="overlay" role="dialog" aria-label="Menu" aria-modal="true">
@@ -1079,7 +1179,7 @@
         var DAY_LENGTH = 720; // seconds per full day / night cycle
         // Feel and layout numbers (named so tuning is one edit):
         var HOTBAR_SLOTS = 10;
-        var SLOT_PITCH = 48; // a 44px hotbar slot plus its 4px gap
+        var SLOT_PITCH = 52; // a 48px hotbar slot plus its 4px gap
         var COYOTE_TIME = 0.1; // s after walking off a ledge in which a jump still works
         var JUMP_BUFFER = 0.12; // s a jump press is remembered before landing
         var ACCEL_GROUND = 60; // tiles/s^2 horizontal acceleration
@@ -1342,10 +1442,11 @@
         ITEMS.forEach(function (it) {
           ITEM_BY_KEY[it.key] = it;
         });
+        // null = an empty slot (slots 2 and 3 start empty so the first bar is not a wall of choices)
         var DEFAULT_HOTBAR = [
           "planks",
-          "stone",
-          "dirt",
+          null,
+          null,
           "wallPlanks",
           "ladder",
           "door",
@@ -1461,8 +1562,8 @@
         }
 
         var PAL = {
-          planks: { base: [150, 88, 50], hi: [184, 118, 68], lo: [92, 52, 29] },
-          planksBg: { base: [64, 38, 25], hi: [78, 47, 30], lo: [38, 22, 14] },
+          planks: { base: [140, 70, 42], hi: [172, 94, 58], lo: [86, 40, 25] },
+          planksBg: { base: [72, 30, 21], hi: [88, 40, 28], lo: [42, 17, 12] },
           brick: { brick: [178, 66, 46], mortar: [112, 76, 64] },
           brickBg: { brick: [92, 36, 30], mortar: [50, 34, 34] },
           cobble: { base: [142, 114, 96], edge: [80, 54, 44], v: 16 },
@@ -2689,7 +2790,9 @@
         /** Grass row per column: flat around the house, brick-step slope on the right, rolling beyond. */
         function surfaceH(x) {
           var lx = x - HOUSE_X;
-          if (lx < 0) return Math.round(lerp(SURF, naturalH(x), smooth(-lx / 24)));
+          // flat building plot (lx -16..-1) for the first hut, then the hills roll in gently
+          if (lx < 0)
+            return lx >= -16 ? SURF : Math.round(lerp(SURF, naturalH(x), smooth((-lx - 16) / 24)));
           if (lx <= 34) return SURF;
           if (lx <= 37) return SURF + 1;
           if (lx <= 39) return SURF + 2;
@@ -2935,10 +3038,10 @@
           // greenhouse (middle): windows and jars for the plant lover, a rack of pots, a barrel of soil
           ["window", 24, 8],
           ["jars", 27, 8],
-          ["pots", 26, 6],
+          ["pots", 29, 6],
           ["barrels", 30, 10],
           // kitchen (ground floor): pots over the furnaces, a clock, a rug where Barnaby stands
-          ["pots", 22, 12],
+          ["pots", 20, 12],
           ["clock", 27, 13],
           ["rug", 19, 15],
           // bedroom (left basement): the round emblem from the plan, a rug, a snack shelf
@@ -3971,9 +4074,11 @@
         SUPPORT_KIND[T.POTS] = "hang";
         SUPPORT_KIND[T.TORCH] = "mount";
         SUPPORT_KIND[T.LADDER] = "ladder";
-        /** A block furniture can stand on. A door is solid but is not a floor. */
+        // Furniture that other furniture may stand on (the starter's stacked cupboards and furnaces).
+        var STACKABLE = flags([T.CUPBOARD, T.LOCKER, T.FURNACE, T.CHEST, T.BENCH, T.BARRELS]);
+        /** Something furniture can stand on: a solid block (not a door) or a stackable piece. */
         function isFloor(x, y) {
-          return isSolid(x, y) && !DOORS[getFg(x, y)];
+          return (isSolid(x, y) && !DOORS[getFg(x, y)]) || STACKABLE[getFg(x, y)] === 1;
         }
         /** The one support rule, used both to allow a placement and to keep an object in place. */
         function supportOk(kind, x, y) {
@@ -3994,8 +4099,17 @@
           return true;
         }
         function supported(x, y) {
-          var kind = SUPPORT_KIND[getFg(x, y)];
-          return kind ? supportOk(kind, x, y) : true;
+          var t = getFg(x, y);
+          var kind = SUPPORT_KIND[t];
+          if (!kind || supportOk(kind, x, y)) return true;
+          // a hung two-tile object (the shop sign) is held by whichever half touches the wall
+          var parts = kind === "paint" ? partnersOf(t) : null;
+          return (
+            !!parts &&
+            parts.some(function (q) {
+              return supportOk(kind, x + q[0], y + q[1]);
+            })
+          );
         }
         function removeObject(x, y) {
           var t = getFg(x, y);
@@ -4039,14 +4153,30 @@
           var dy = ty + 0.5 - (P.y - 1.0);
           return Math.hypot(dx, dy) <= REACH;
         }
-        function overlapsBody(tx, ty) {
+        /** The body (player or buddy) standing on tile (tx, ty), or null. */
+        function bodyAt(tx, ty) {
           var list = bodies();
           for (var i = 0; i < list.length; i++) {
             var b = list[i];
             if (b.x + b.w / 2 > tx && b.x - b.w / 2 < tx + 1 && b.y > ty && b.y - b.h < ty + 1)
-              return true;
+              return b;
           }
-          return false;
+          return null;
+        }
+        /** "Pip is standing there" / "You are standing there": names who is in the way. */
+        function standingMessage(b) {
+          return b === P ? "You are standing there" : b.name + " is standing there";
+        }
+        /** What is occupying a tile, in plain words ("A door is in the way"). */
+        function blockerMessage(t) {
+          var what = DOORS[t]
+            ? "A door"
+            : SOLID[t]
+              ? "A block"
+              : t === T.LADDER
+                ? "A ladder"
+                : "A piece of furniture";
+          return what + " is in the way";
         }
         function isUnlocked(it) {
           return it.cost === 0 || S.unlocked[it.key] === true;
@@ -4069,7 +4199,7 @@
           }
           for (var j = 0; j < tiles.length; j++) {
             var cur = getFg(tx + tiles[j][0], ty + tiles[j][1]);
-            if (cur !== T.AIR && cur !== T.TUFT) return no("Something is in the way");
+            if (cur !== T.AIR && cur !== T.TUFT) return no(blockerMessage(cur));
           }
           return placeRule(it, tx, ty, tiles);
         }
@@ -4099,9 +4229,8 @@
           });
           if (solidItem) {
             for (var i = 0; i < tiles.length; i++) {
-              if (overlapsBody(tx + tiles[i][0], ty + tiles[i][1])) {
-                return { ok: false, reason: "Someone is standing there" };
-              }
+              var who = bodyAt(tx + tiles[i][0], ty + tiles[i][1]);
+              if (who) return { ok: false, reason: standingMessage(who) };
             }
           }
           var rule = it.rule;
@@ -4204,7 +4333,7 @@
             min: 6,
             needs: { bed: 1, light: 1 },
             reward: 40,
-            hint: "Tip: dig a nook into the hillside. The cave walls count as backing. Add a door, a torch and a bed.",
+            hint: "Tip: build a hut on the flat grass left of the house. Plank walls and a roof (6 wide, 3 high inside), a Plank wall behind, then a door, a torch and a bed.",
           },
           {
             type: "Kitchen",
@@ -4267,54 +4396,91 @@
           bench: "a crafting bench",
           chest: "a chest",
           plant: "plants",
-          light: "light (torch or lantern)",
-          glass: "glass panes in the walls",
+          light: "a torch or lantern",
+          glass: "glass in the walls",
+        };
+        // The pixel icon shown on each checklist row (a hotbar item key, or "size" for the area row).
+        var NEED_ICON = {
+          bed: "bed",
+          table: "table",
+          chair: "chair",
+          shelf: "shelf",
+          furnace: "furnace",
+          bench: "bench",
+          chest: "chest",
+          plant: "plant",
+          light: "torch",
+          glass: "glass",
         };
         function haveOf(room, k) {
           return k === "glass" ? room.glass : room.counts[k];
         }
+        /** The row that explains why a matching room does not count: somebody already lives in it. */
+        function occupiedNote(room) {
+          var owner = residentOf(room);
+          return {
+            text: owner
+              ? owner.name + " already lives here \u2014 build in a new spot"
+              : "This room is already someone's home \u2014 build a new one",
+            ok: null,
+            info: true,
+          };
+        }
+        /** The four structure rows (walls, back wall, door, size) for a probed room (null = unknown). */
+        function structureRows(def, room, gap) {
+          return [
+            {
+              text: gap ? "Close the gap in the walls" : "Walls, floor and roof all round",
+              ok: room ? true : gap ? false : null,
+              icon: "planks",
+            },
+            { text: "Fill the back wall", ok: room ? room.backed : null, icon: "wallPlanks" },
+            { text: "Add a door", ok: room ? room.entry > 0 : null, icon: "door" },
+            {
+              text:
+                room && room.tooBig
+                  ? "Too big: keep it under " + ROOM_MAX + " tiles"
+                  : "At least " + def.min + " tiles" + (room ? " (" + room.size + " now)" : ""),
+              ok: room ? room.size >= def.min && !room.tooBig : null,
+              icon: "size",
+            },
+          ];
+        }
         /** Live checklist for a request against a probed region (null room = nothing to judge yet). */
         function checklist(def, pr) {
           var room = pr && pr.room;
-          var items = [];
+          var note = null;
           if (room && isOccupied(room)) {
-            // An occupied room cannot satisfy a request: show the plain requirements instead.
+            // an occupied room cannot satisfy a request; say so when it WOULD have matched
+            note = roomFits(room, def) ? occupiedNote(room) : null;
             room = null;
             pr = null;
           }
-          var gap = pr && pr.open;
-          items.push({
-            text: gap
-              ? "Walls, floor, ceiling: there is a gap"
-              : "Walls, floor and ceiling all round",
-            ok: room ? true : gap ? false : null,
-          });
-          items.push({ text: "Back walls behind every tile", ok: room ? room.backed : null });
-          items.push({ text: "A door (or a ladder hatch)", ok: room ? room.entry > 0 : null });
-          items.push({
-            text: "At least " + def.min + " tiles" + (room ? " (" + room.size + " now)" : ""),
-            ok: room ? room.size >= def.min && !room.tooBig : null,
-          });
+          var items = structureRows(def, room, !!(pr && pr.open));
           Object.keys(def.needs).forEach(function (k) {
             var n = def.needs[k];
             var have = room ? haveOf(room, k) : 0;
-            var label = NEED_LABEL[k];
             items.push({
               text:
                 (n > 1 ? n + " x " : "") +
-                label +
+                NEED_LABEL[k] +
                 (room && n > 1 ? " (" + have + "/" + n + ")" : ""),
               ok: room ? have >= n : null,
+              icon: NEED_ICON[k],
             });
           });
-          if (room && room.tooBig) items[3].text = "Too big: keep it under " + ROOM_MAX + " tiles";
+          if (note) items.unshift(note);
           return items;
         }
-        function roomMatches(room, def) {
-          if (!room.valid || room.size < def.min || isOccupied(room)) return false;
+        /** Structure and contents are right for a request, whoever already lives there. */
+        function roomFits(room, def) {
+          if (!room.valid || room.size < def.min) return false;
           return Object.keys(def.needs).every(function (k) {
             return haveOf(room, k) >= def.needs[k];
           });
+        }
+        function roomMatches(room, def) {
+          return roomFits(room, def) && !isOccupied(room);
         }
         function buddyLookFor(i) {
           return BUDDY_NAMES[i % BUDDY_NAMES.length];
@@ -4341,7 +4507,7 @@
           V.push(b);
           S.reqIndex = index; // the chain position is part of the save
           REQ = { index: index, def: def, buddy: b, state: "arriving", room: null, timer: 0 };
-          reqTimed = 6;
+          reqTimed = index === 0 ? 10 : 6; // open once per new request, on touch screens too
           reqMoveT = 0;
           reqUser = null;
           refreshRequestPanel(true);
@@ -4930,6 +5096,7 @@
           document.body.classList.toggle("touch", touchMode);
           placeControls();
           fitHotbar();
+          fitFloaters();
           refreshUiRects();
         }
         /**
@@ -5273,8 +5440,8 @@
         }
         function drawHills(pal, par, seed, mixK, amp) {
           var base = (SURF + 1) * N - camT;
-          var col = rgbCss(mixColor(pal.hor, mixColor(pal.top, [20, 20, 24], 0.5), mixK + 0.1));
-          vctx.fillStyle = col;
+          var haze = mixColor(pal.hor, mixColor(pal.top, [20, 20, 24], 0.5), mixK + 0.1);
+          vctx.fillStyle = rgbCss(mixColor(haze, [112, 80, 72], 0.2)); // a hint of warm earth in the haze
           var step = N;
           var off = camL * par;
           var first = Math.floor(off / step);
@@ -5479,7 +5646,7 @@
         function drawLightMap(pal, tx0, ty0, tw, th) {
           if (lightCv.c.width !== tw || lightCv.c.height !== th) lightCv = makeCanvas(tw, th);
           var img = lightCv.g.createImageData(tw, th);
-          var amb = mixColor([34, 22, 18], [54, 38, 30], pal.d);
+          var amb = mixColor([28, 16, 12], [40, 25, 18], pal.d);
           var flick = reducedMotion
             ? 1
             : 0.965 + 0.035 * Math.sin(S.simTime * 11.3) * Math.sin(S.simTime * 7.1 + 1);
@@ -5518,11 +5685,44 @@
               ? 1
               : 0.85 + 0.15 * Math.sin(S.simTime * 13 + em.x * 3.1 + em.y * 1.7);
             var size = (em.id === T.LANTERN ? 4.6 : em.id === T.FURNACE ? 3.6 : 3.8) * N;
-            vctx.globalAlpha = (em.id === T.PORTAL_T || em.id === T.PORTAL_B ? 0.28 : 0.36) * flare;
+            vctx.globalAlpha = (em.id === T.PORTAL_T || em.id === T.PORTAL_B ? 0.28 : 0.3) * flare;
             var gx = (em.x + 0.5) * N - camL;
             var gy = (em.y + 0.5) * N - camT;
             vctx.drawImage(glowSprite(em.em.glow), gx - size / 2, gy - size / 2, size, size);
           });
+          vctx.restore();
+        }
+        /** How strongly the warm block light reaches the open tile at (x, y), 0..0.8 (rim light strength). */
+        function rimStrength(x, y) {
+          if (!inb(x, y) || SOLID[fg[y * W + x]]) return 0;
+          return clamp((lightRed[y * W + x] - 0.2) * 1.15, 0, 0.8);
+        }
+        /**
+         * Warm orange rim light: the underside of every ceiling and the top of every floor that a torch,
+         * lantern or furnace reaches gets a thin bright edge, like the reference's glowing floor lines.
+         */
+        function drawRimLight(tx0, ty0, tw, th) {
+          var edge = Math.max(2, Math.round(N * 0.1));
+          vctx.save();
+          vctx.globalCompositeOperation = "lighter";
+          for (var y = Math.max(0, ty0); y < Math.min(H, ty0 + th); y++) {
+            for (var x = Math.max(0, tx0); x < Math.min(W, tx0 + tw); x++) {
+              var t = fg[y * W + x];
+              if (!SOLID[t] || DOORS[t]) continue;
+              var under = rimStrength(x, y + 1);
+              var over = rimStrength(x, y - 1) * 0.55;
+              var px = x * N - camL;
+              var py = y * N - camT;
+              if (under > 0.02) {
+                vctx.fillStyle = "rgba(255,142,58," + (under * 0.55).toFixed(3) + ")";
+                vctx.fillRect(px, py + N - edge, N, edge);
+              }
+              if (over > 0.02) {
+                vctx.fillStyle = "rgba(255,168,84," + (over * 0.5).toFixed(3) + ")";
+                vctx.fillRect(px, py, N, edge);
+              }
+            }
+          }
           vctx.restore();
         }
         function drawLighting(pal) {
@@ -5531,6 +5731,7 @@
           var tw = Math.ceil(vwD / N) + 3;
           var th = Math.ceil(vhD / N) + 3;
           drawLightMap(pal, tx0, ty0, tw, th);
+          drawRimLight(tx0, ty0, tw, th);
           drawEmitterGlows(tx0, ty0, tw, th);
         }
 
@@ -5686,11 +5887,16 @@
           var nx = hit.l - 6 * dpr - sz.w / 2;
           return nx - sz.w / 2 < r.x0 * N - camL || box(nx) ? null : { x: nx, y: py };
         }
+        /** "Kitchen · Barnaby", "Bedroom · full" (claimed, nobody named) or just "Library". */
+        function roomLabelText(r) {
+          var res = residentOf(r);
+          var tail = res ? " \u00b7 " + res.name : isOccupied(r) ? " \u00b7 full" : "";
+          return (r.types.length ? r.types[0] : "Room") + tail;
+        }
         function drawRoomLabels(mine) {
           rooms.forEach(function (r) {
             if (!r.valid) return;
-            var res = residentOf(r);
-            var label = (r.types.length ? r.types[0] : "Room") + (res ? " · " + res.name : "");
+            var label = roomLabelText(r);
             var spot = labelSpot(r, pillSize(label));
             if (!spot) return;
             var isMine = r === mine;
@@ -6112,6 +6318,7 @@
           function parseHotbar(list) {
             if (!Array.isArray(list) || list.length !== HOTBAR_SLOTS) return DEFAULT_HOTBAR.slice();
             return list.map(function (k, i) {
+              if (k === null) return null; // an empty slot is a valid choice
               return isItemKey(k) ? k : DEFAULT_HOTBAR[i];
             });
           }
@@ -6285,8 +6492,17 @@
         function blockSaves() {
           if (saveBlocked) return;
           saveBlocked = true;
-          toast("Progress was updated in another tab. Reload this page to continue from it.");
-          announce("Progress was updated in another tab. Reload to continue.");
+          showStale();
+        }
+        var STALE_TEXT = "This world was updated in another tab. Reload to carry on from it.";
+        /** A banner that stays until the player reloads: the world here can no longer be saved. */
+        function showStale() {
+          $("stale").hidden = false;
+          $("startBtn").disabled = true; // a stale tab must not start (or restart) a world it cannot save
+          $("mNew").disabled = true;
+          announce("");
+          announce(STALE_TEXT); // re-announced each time the tab becomes visible again
+          $("staleReload").focus({ preventScroll: true });
         }
         function saveNow() {
           if (!saveReady) return;
@@ -6312,9 +6528,56 @@
           return coarse || Math.min(window.innerWidth, window.innerHeight) < 600;
         }
         var toastTimer = 0;
+        /** Top edge (css px) of the lowest-reaching bottom controls: the dock, or the open build sheet. */
+        function controlsTop() {
+          var top = window.innerHeight;
+          Array.prototype.forEach.call(
+            document.querySelectorAll("#hotbar, .hotrow .mode-btn, .tbtn, #build"),
+            function (e) {
+              var r = e.getBoundingClientRect();
+              if (r.width > 0 && r.height > 0) top = Math.min(top, r.top);
+            },
+          );
+          return top;
+        }
+        /**
+         * Keep the floating UI out of each other's way: the objective card never reaches below the free
+         * area above the dock (it scrolls inside), and a toast sits just above the dock or the build
+         * sheet, shrinking to the left of the card when they share a row.
+         */
+        function fitFloaters() {
+          var floor = controlsTop();
+          var card = $("request");
+          if (!$("hud").hidden) {
+            var cardTop = card.getBoundingClientRect().top;
+            card.style.maxHeight = Math.max(96, Math.floor(floor - cardTop - 8)) + "px";
+          }
+          placeToast(floor);
+        }
+        function placeToast(floor) {
+          var el = $("toast");
+          var vw = document.documentElement.clientWidth;
+          var left = 8;
+          var right = vw - 8;
+          el.style.bottom = Math.round(window.innerHeight - floor + 8) + "px";
+          el.style.left = "50%";
+          el.style.maxWidth = "";
+          var r = el.getBoundingClientRect();
+          var card = $("request").getBoundingClientRect();
+          var sharesRow =
+            !$("hud").hidden &&
+            card.width > 0 &&
+            r.top < card.bottom + 4 &&
+            r.bottom > card.top - 4;
+          if (sharesRow && r.right > card.left - 8 && card.left - 8 - left > 160)
+            right = card.left - 8;
+          el.style.maxWidth = Math.min(520, right - left) + "px";
+          el.style.left = (left + right) / 2 + "px";
+        }
         function toast(msg) {
           var el = $("toast");
           el.textContent = msg;
+          placeToast(controlsTop());
           el.classList.add("show");
           clearTimeout(toastTimer);
           toastTimer = setTimeout(function () {
@@ -6382,24 +6645,23 @@
           var slots = $("hotbar").children;
           for (var i = 0; i < slots.length; i++) {
             var key = S.hotbar[i];
-            var it = ITEM_BY_KEY[key];
+            var it = ITEM_BY_KEY[key] || null;
             var g = slots[i].querySelector("canvas").getContext("2d");
             g.clearRect(0, 0, 32, 32);
             g.imageSmoothingEnabled = false;
-            g.drawImage(iconFor(key), 0, 0);
+            if (it) g.drawImage(iconFor(key), 0, 0);
             var sel = i === S.sel && S.mode === "build";
             slots[i].setAttribute("aria-pressed", sel ? "true" : "false");
-            slots[i].setAttribute(
-              "aria-label",
-              ((i + 1) % HOTBAR_SLOTS) + ": " + it.name + (isUnlocked(it) ? "" : " (locked)"),
-            );
-            slots[i].title = it.name;
+            slots[i].classList.toggle("empty", !it);
+            var name = it ? it.name + (isUnlocked(it) ? "" : " (locked)") : "empty slot";
+            slots[i].setAttribute("aria-label", ((i + 1) % HOTBAR_SLOTS) + ": " + name);
+            slots[i].title = it ? it.name : "Empty slot";
           }
           scrollHotbar();
         }
         /**
          * Show only WHOLE hotbar slots: measure the room the row has left beside the other controls
-         * and size the strip to n slots (48px pitch). The rest scrolls, snapping a slot at a time.
+         * and size the strip to n slots (52px pitch). The rest scrolls, snapping a slot at a time.
          */
         function fitHotbar() {
           var hb = $("hotbar");
@@ -6501,21 +6763,49 @@
             box.appendChild(b);
           });
         }
-        function onItemPick(it) {
-          if (!isUnlocked(it)) {
-            if (S.coins < it.cost) {
-              failMsg("Need " + (it.cost - S.coins) + " more coins for the " + it.name);
-              return;
-            }
-            S.coins -= it.cost;
-            S.unlocked[it.key] = true;
-            saveDirty = true;
-            sfx.unlock();
-            refreshHud();
-            toast("Unlocked " + it.name + "!");
-            announce("Unlocked " + it.name + ".");
+        /** Spend the coins for a locked item; false (with a toast) when the player cannot afford it. */
+        function unlockItem(it) {
+          if (S.coins < it.cost) {
+            failMsg("Need " + (it.cost - S.coins) + " more coins for the " + it.name);
+            return false;
           }
-          S.hotbar[S.sel] = it.key;
+          S.coins -= it.cost;
+          S.unlocked[it.key] = true;
+          saveDirty = true;
+          sfx.unlock();
+          refreshHud();
+          toast("Unlocked " + it.name + "!");
+          announce("Unlocked " + it.name + ".");
+          return true;
+        }
+        /**
+         * Which hotbar slot an item goes in: where it already is; else the first empty slot when it
+         * was only just unlocked (so unlocking never overwrites what is selected); else the selected
+         * slot. -1 = just unlocked and the bar is full.
+         */
+        function slotFor(it, fresh) {
+          var have = S.hotbar.indexOf(it.key);
+          if (have >= 0) return have;
+          if (!fresh || !S.hotbar[S.sel]) return S.sel;
+          return S.hotbar.indexOf(null);
+        }
+        function onItemPick(it) {
+          var fresh = false;
+          if (!isUnlocked(it)) {
+            if (!unlockItem(it)) return;
+            fresh = true;
+          }
+          var slot = slotFor(it, fresh);
+          if (slot < 0) {
+            toast("Unlocked " + it.name + "! Select a slot, then pick it again to use it.");
+            announce(
+              "Unlocked " + it.name + ". The hotbar is full: select a slot, then pick it again.",
+            );
+            renderItems();
+            return;
+          }
+          S.hotbar[slot] = it.key;
+          S.sel = slot;
           setMode("build");
           refreshHotbar();
           renderItems();
@@ -6534,6 +6824,7 @@
           } else if (document.activeElement && el.contains(document.activeElement)) {
             view.focus({ preventScroll: true });
           }
+          fitFloaters();
           sfx.click();
         }
 
@@ -6552,6 +6843,7 @@
           $("request").classList.toggle("collapsed", !open);
           $("reqToggle").setAttribute("aria-expanded", open ? "true" : "false");
           refreshUiRects();
+          fitFloaters();
         }
         function tickPanel(dt) {
           if (reqTimed > 0) {
@@ -6567,7 +6859,7 @@
             probe.room &&
             !probeClaimed
           );
-          var want = reqUser !== null ? reqUser : !compact && (reqTimed > 0 || candidate);
+          var want = reqUser !== null ? reqUser : reqTimed > 0 || (!compact && candidate);
           if (want !== reqOpen) setPanel(want);
         }
         var REQUEST_WHO = {
@@ -6576,20 +6868,40 @@
           next: " has moved in",
           waiting: " asks for",
         };
+        /** The small icon at the start of a checklist row: the item's own pixel art, or a room-size glyph. */
+        function rowIcon(key) {
+          var c = document.createElement("canvas");
+          c.className = "ric";
+          c.width = 32;
+          c.height = 32;
+          c.setAttribute("aria-hidden", "true");
+          var g = c.getContext("2d");
+          g.imageSmoothingEnabled = false;
+          if (key === "size") {
+            paintRect(g, 4, 4, 24, 24, "rgba(255,224,160,0.9)");
+            paintRect(g, 7, 7, 18, 18, "rgba(60,36,24,0.95)");
+            paintRect(g, 12, 4, 8, 3, "rgba(60,36,24,0.95)");
+            paintRect(g, 12, 25, 8, 3, "rgba(60,36,24,0.95)");
+            paintRect(g, 4, 12, 3, 8, "rgba(60,36,24,0.95)");
+            paintRect(g, 25, 12, 3, 8, "rgba(60,36,24,0.95)");
+          } else if (key && ITEM_BY_KEY[key]) g.drawImage(iconFor(key), 0, 0);
+          return c;
+        }
         function renderChecklist(list) {
           var ul = $("reqList");
           ul.textContent = "";
           list.forEach(function (it) {
             var li = document.createElement("li");
-            li.className = it.ok === true ? "ok" : it.ok === false ? "bad" : "";
+            li.className = it.info ? "info" : it.ok === true ? "ok" : it.ok === false ? "bad" : "";
             var mark = document.createElement("span");
             mark.className = "tick";
             mark.setAttribute("aria-hidden", "true");
-            mark.textContent = it.ok === true ? "✓" : it.ok === false ? "✗" : "○";
+            mark.textContent = it.info ? "!" : it.ok === true ? "✓" : it.ok === false ? "✗" : "○";
             var text = document.createElement("span");
             text.textContent =
               (it.ok === true ? "Done: " : it.ok === false ? "Missing: " : "") + it.text;
             li.appendChild(mark);
+            li.appendChild(rowIcon(it.icon));
             li.appendChild(text);
             ul.appendChild(li);
           });
@@ -6761,7 +7073,10 @@
         function applyPlace(tx, ty) {
           if (interactAt(tx, ty)) return;
           var it = itemInHand();
-          if (!it) return;
+          if (!it) {
+            failMsg("This slot is empty. Open Items to put something in it.");
+            return;
+          }
           var r = tryPlace(it, tx, ty);
           if (!r.ok) {
             failMsg(r.reason);
@@ -7126,8 +7441,46 @@
             saveDirty = true;
           });
         }
+        /**
+         * On a touch screen the HUD's back chip sits next to the Menu button, so a stray tap must not
+         * throw the world away: the first tap arms it ("Leave?"), a second tap within 3 s leaves.
+         */
+        var backArmTimer = 0;
+        function armBackChip(chip, on) {
+          chip.classList.toggle("armed", on);
+          chip.querySelector(".txt").textContent = on ? "Leave?" : "PlayPad";
+          chip.setAttribute(
+            "aria-label",
+            on
+              ? "Leave Brick Buddies for PlayPad. Tap again to confirm"
+              : "PlayPad, back to the hub",
+          );
+          clearTimeout(backArmTimer);
+          if (on) {
+            backArmTimer = setTimeout(function () {
+              armBackChip(chip, false);
+            }, 3000);
+          }
+        }
+        function bindBackChip() {
+          var chip = document.querySelector(".hud-top .back-link-chip");
+          chip.addEventListener("click", function (e) {
+            if (!touchMode || chip.classList.contains("armed")) {
+              saveNow();
+              return;
+            }
+            e.preventDefault();
+            armBackChip(chip, true);
+            announce("Tap again to leave Brick Buddies.");
+            sfx.click();
+          });
+        }
         function bindTitleAndMenu() {
           onClick("startBtn", startGame);
+          onClick("staleReload", function () {
+            location.reload();
+          });
+          bindBackChip();
           onClick("titleSound", toggleSound);
           onClick("menuBtn", function () {
             setMenu(true);
@@ -7227,8 +7580,11 @@
           // which input is in use decides whether the canvas shows a focus ring (see body.kbd in the CSS)
           window.addEventListener(
             "keydown",
-            function () {
-              document.body.classList.add("kbd");
+            function (e) {
+              // the ring marks Tab navigation only: playing with WASD / arrows must not frame the screen
+              if (e.key === "Tab") document.body.classList.add("kbd");
+              else if (!/^(Shift|Control|Alt|Meta)$/.test(e.key))
+                document.body.classList.remove("kbd");
             },
             true,
           );
@@ -7265,6 +7621,13 @@
           bindWindowEvents();
         }
         var hiddenPaused = false;
+        function readRaw() {
+          try {
+            return localStorage.getItem(SAVE_KEY);
+          } catch (e) {
+            return null;
+          }
+        }
         function onVisibility() {
           if (document.hidden) {
             if (S.phase === "playing") {
@@ -7276,6 +7639,8 @@
             saveNow();
           } else {
             sfx.resume();
+            if (!saveBlocked && Save.storedRev(readRaw()) > saveRev) blockSaves();
+            else if (saveBlocked) showStale();
             if (hiddenPaused) {
               hiddenPaused = false;
               if (S.phase === "paused" && !menuOpen) setPhase("playing");
@@ -7630,6 +7995,19 @@
             },
             claimedCells: function () {
               return claimSet.size;
+            },
+            supported: function (x, y) {
+              return supported(x, y);
+            },
+            roomLabels: function () {
+              if (roomsDirty) detectNow();
+              return rooms
+                .filter(function (r) {
+                  return r.valid;
+                })
+                .map(function (r) {
+                  return { label: roomLabelText(r), x0: r.x0, y0: r.y0, x1: r.x1, y1: r.y1 };
+                });
             },
           };
         }

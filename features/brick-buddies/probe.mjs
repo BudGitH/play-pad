@@ -3,21 +3,28 @@
 // Run from the repo root:   node features/brick-buddies/probe.mjs
 //   - starts `node tools/serve.mjs 5602` itself when nothing is listening on that port
 //   - set PW_CHROMIUM_PATH to use a pre-installed Chromium
-//   - writes screenshots to features/brick-buddies/screens/
+//   - screenshots go to a temp folder (or SHOTS_DIR); only `SHOTS=1 node features/brick-buddies/probe.mjs`
+//     refreshes the committed features/brick-buddies/screens/ set
 //   - prints one PASS / FAIL line per acceptance criterion check and exits 1 on any FAIL
 //
 // It drives the real input path (keyboard, mouse clicks at tile coordinates, the menus) and uses
 // `window.__buddies.debug` only to build fixtures, read state and run the pure room-detection
 // function on hand-made grids. See features/brick-buddies/test-plan.md for the AC -> test map.
+/* eslint-disable max-lines-per-function -- a probe is a long linear script of checks; splitting it per line adds no clarity */
 import { chromium } from "playwright";
 import { spawn } from "node:child_process";
 import { mkdirSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, "..", "..");
-const SHOTS = join(HERE, "screens");
+// Committed screenshots are only rewritten on request (SHOTS=1); a normal run writes to a temp folder.
+const SHOTS =
+  process.env.SHOTS === "1"
+    ? join(HERE, "screens")
+    : process.env.SHOTS_DIR || join(tmpdir(), "brick-buddies-probe-shots");
 const PORT = 5602;
 const BASE = `http://localhost:${PORT}/games/brick-buddies/index.html`;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -834,6 +841,30 @@ try {
     },
   );
 
+  // ---- AC-18 (NEW-5) an occupied room that would match names who lives there ----
+  await check(
+    "AC-18",
+    "a matching but occupied room says who already lives there (request 2 = Kitchen)",
+    async () => {
+      assert(flowOk, "needs the AC-6 world");
+      const { page } = flow;
+      const where = await dbg(page, () => {
+        const d = window.__buddies.debug;
+        d.teleport(d.world.houseX + 24.5, d.world.houseY + 16); // the starter kitchen (Barnaby)
+        return window.__buddies.request;
+      });
+      assert(where.type === "Kitchen", "the second request is a kitchen " + JSON.stringify(where));
+      await sleep(900);
+      const cl = await dbg(page, () => window.__buddies.debug.checklist());
+      const note = cl.find((i) => i.info);
+      assert(
+        note && /^Barnaby already lives here/.test(note.text) && /new spot/.test(note.text),
+        "the card names the resident: " + JSON.stringify(cl.map((i) => i.text)),
+      );
+      return note.text;
+    },
+  );
+
   // ---- AC-7 persistence --------------------------------------------------------
   await check("AC-7", "save key, shape, size, reload restores, hostile saves ignored", async () => {
     assert(flowOk, "needs the AC-6 world");
@@ -1282,8 +1313,12 @@ try {
       [hx + 3],
     );
     await sleep(400); // the storage event reaches tab B
-    const toastB = await B.page.locator("#toast").textContent();
-    assert(/another tab/i.test(toastB), "tab B is told progress moved on: " + toastB);
+    const bannerB = await B.page.locator("#stale").textContent();
+    assert(
+      await B.page.locator("#stale").isVisible(),
+      "tab B is told progress moved on: " + bannerB,
+    );
+    assert(/another tab/i.test(bannerB), "the banner says why: " + bannerB);
     const wrote = await dbg(B.page, () => window.__buddies.debug.save());
     assert(wrote === -2, "tab B refuses to save over newer progress, save() returned " + wrote);
     const stored = JSON.parse(
@@ -1513,11 +1548,23 @@ try {
       await sleep(400);
       await page.keyboard.up("KeyA");
       assert((await dbg(page, () => window.__buddies.player)).x < x0 - 1, "A moves left");
+      const ringStyle = () =>
+        dbg(page, () => getComputedStyle(document.getElementById("view")).outlineStyle);
       assert(
-        (await dbg(page, () => getComputedStyle(document.getElementById("view")).outlineStyle)) !==
-          "none",
-        "the canvas shows a focus ring for keyboard players",
+        (await ringStyle()) === "none",
+        "playing with the keyboard (WASD) does not frame the canvas (NEW-4)",
       );
+      await page.keyboard.press("Tab"); // leave the canvas, then come back by keyboard
+      await page.keyboard.press("Shift+Tab");
+      assert(
+        (await dbg(page, () => document.activeElement.id)) === "view" &&
+          (await ringStyle()) !== "none",
+        "the canvas shows a focus ring after Tab navigation",
+      );
+      await page.keyboard.down("KeyA");
+      await sleep(80);
+      await page.keyboard.up("KeyA");
+      assert((await ringStyle()) === "none", "the ring goes away again once play starts");
       await page.keyboard.press("Space");
       await sleep(150);
       assert(
@@ -1638,8 +1685,7 @@ try {
         const small = vis
           .filter(
             (e) =>
-              Math.min(e.getBoundingClientRect().width, e.getBoundingClientRect().height) <
-              (e.classList.contains("slot") ? 43.5 : 47.5),
+              Math.min(e.getBoundingClientRect().width, e.getBoundingClientRect().height) < 47.5,
           )
           .map(
             (e) =>
@@ -1669,7 +1715,7 @@ try {
       assert(m.sw <= m.iw, `horizontal scroll ${m.sw} > ${m.iw}`);
       assert(
         m.small.length === 0,
-        "HUD controls under 48px (hotbar slots 44): " + m.small.join(", "),
+        "HUD controls under 48px (hotbar slots included): " + m.small.join(", "),
       );
       assert(
         m.touchVisible === v.touch,
@@ -1704,33 +1750,51 @@ try {
           }).length;
       });
       assert(clipped === 0, clipped + " hotbar slot(s) partially clipped");
-      // objective card: open at the start, header-only once settled (so it never hides the house)
-      const openAtStart = await page.evaluate(
-        () => !document.getElementById("request").classList.contains("collapsed"),
-      );
-      assert(
-        openAtStart === !v.touch,
-        "request card open at start: " + openAtStart + " (expected " + !v.touch + ")",
-      );
-      if (!v.touch) {
-        await sleep(6500);
+      // objective card: open for a new request (touch screens too), header-only once settled
+      const cardOpen = () =>
+        page.evaluate(() => !document.getElementById("request").classList.contains("collapsed"));
+      assert(await cardOpen(), "request card is open at the start");
+      if (v.touch) {
+        // the first move collapses it (the card never hides the house while you play)
+        const padDown = (sel) =>
+          page.dispatchEvent(sel, "pointerdown", {
+            pointerId: 9,
+            pointerType: "touch",
+            isPrimary: true,
+            button: 0,
+            buttons: 1,
+          });
+        const padUp = (sel) =>
+          page.dispatchEvent(sel, "pointerup", {
+            pointerId: 9,
+            pointerType: "touch",
+            isPrimary: true,
+            button: 0,
+            buttons: 0,
+          });
+        await padDown("#tRight");
+        await sleep(1700);
+        await padUp("#tRight");
+        await sleep(300);
+        assert(!(await cardOpen()), "request card collapses after the first move");
+        await page.evaluate(() => {
+          const d = window.__buddies.debug;
+          d.teleport(d.spawn.player.x, d.spawn.player.y);
+        });
+        await sleep(900);
+        await page.screenshot({ path: join(SHOTS, `play-${v.id}.jpg`) }); // the settled, header-only look
+      } else {
+        await sleep(10500);
         assert(
-          await page.evaluate(() =>
-            document.getElementById("request").classList.contains("collapsed"),
-          ),
-          "request card should collapse to its header after ~6s",
+          !(await cardOpen()),
+          "request card should collapse to its header after ~10s (request 1)",
         );
         await page.screenshot({ path: join(SHOTS, `play-${v.id}.jpg`) });
         await page.locator("#reqToggle").click();
-        assert(
-          await page.evaluate(
-            () => !document.getElementById("request").classList.contains("collapsed"),
-          ),
-          "tapping the header expands the card",
-        );
+        assert(await cardOpen(), "tapping the header expands the card");
       }
       await ctx.close();
-      return `no h-scroll, controls >=44px, HUD ~${(m.cover * 100).toFixed(0)}%, canvas ${m.canvas.join("x")} @${m.dpr}x`;
+      return `no h-scroll, controls >=48px, HUD ~${(m.cover * 100).toFixed(0)}%, canvas ${m.canvas.join("x")} @${m.dpr}x`;
     });
   }
   await check("AC-12", "rotation mid-play keeps the player in view", async () => {
@@ -1785,6 +1849,480 @@ try {
       const f1 = await dbg(page, () => window.__buddies.frame);
       await ctx.close();
       return `still scene builds 0 chunks / 0 light passes; one edit -> ${builds} chunk(s); canvas ${s2.canvas.join("x")}; ~${Math.round((f1 - f0) / 2)} fps headless @2x`;
+    },
+  );
+
+  // =====================================================================================
+  //  Phase-5 round: fidelity set-pieces, first-run UX, HUD layout, QA round 2
+  // =====================================================================================
+  // ---- AC-20 a lived-in starter house -----------------------------------------------------
+  await check(
+    "AC-20",
+    "every starter room has >= 5 furnishings, >= 8 decor kinds, and every object is supported",
+    async () => {
+      const { page, ctx } = await openPage(browser);
+      await startGame(page);
+      const r = await dbg(page, () => {
+        const d = window.__buddies.debug;
+        const name = {};
+        Object.entries(d.ids).forEach(([k, v]) => (name[v] = k));
+        const kindOf = (t) => (name[t] || "").replace(/_[LRTB]$/, "");
+        const FURN = new Set(
+          (
+            "BED TABLE CHAIR SHELF FURNACE BENCH CHEST PLANT PLANTER CUPBOARD LOCKER PAINT PAINT2 " +
+            "BOARD SIGN TOOLS EMBLEM WINDOW JARS RUG POTS BARRELS CLOCK"
+          ).split(" "),
+        );
+        const DECOR = new Set("TOOLS EMBLEM WINDOW JARS RUG POTS BARRELS CLOCK".split(" "));
+        const rooms = d.rooms().filter((q) => q.valid);
+        const perRoom = rooms.map((q) => {
+          const kinds = new Set();
+          for (let y = q.y0; y <= q.y1; y++)
+            for (let x = q.x0; x <= q.x1; x++) {
+              const k = kindOf(d.getTile(x, y).fg);
+              if (FURN.has(k)) kinds.add(k);
+            }
+          return { at: [q.x0 - d.world.houseX, q.y0 - d.world.houseY], n: kinds.size };
+        });
+        const decor = new Set();
+        const unsupported = [];
+        for (let y = 0; y < d.world.h; y++)
+          for (let x = 0; x < d.world.w; x++) {
+            const t = d.getTile(x, y).fg;
+            if (DECOR.has(kindOf(t))) decor.add(kindOf(t));
+            if (t && !d.supported(x, y)) unsupported.push([x, y, name[t]]);
+          }
+        return { perRoom, decor: [...decor], unsupported };
+      });
+      assert(r.perRoom.length >= 8, "8 starter rooms detected, got " + r.perRoom.length);
+      const thin = r.perRoom.filter((q) => q.n < 5);
+      assert(thin.length === 0, "rooms with fewer than 5 furnishings: " + JSON.stringify(thin));
+      assert(r.decor.length >= 8, "at least 8 decor kinds placed, got " + r.decor.join(","));
+      assert(
+        r.unsupported.length === 0,
+        "starter objects failing supported(): " + JSON.stringify(r.unsupported.slice(0, 6)),
+      );
+      await ctx.close();
+      return `${r.perRoom.length} rooms, fewest furnishings ${Math.min(...r.perRoom.map((q) => q.n))}, decor kinds ${r.decor.length}, 0 unsupported objects`;
+    },
+  );
+
+  // ---- AC-18 first-run path: the hut recipe works from a fresh world ----------------------------
+  await check(
+    "AC-18",
+    "hut recipe on the flat plot (real placement rules) houses the first buddy",
+    async () => {
+      const { page, ctx } = await openPage(browser);
+      await startGame(page);
+      await settle(page, 600);
+      const tip = await page.locator("#reqHint").textContent();
+      assert(/hut on the flat grass left of the house/.test(tip), "the tip names the hut: " + tip);
+      const hx = await dbg(page, () => window.__buddies.debug.world.houseX);
+      const rows = await dbg(
+        page,
+        (h) => {
+          const d = window.__buddies.debug;
+          const out = [];
+          for (let x = h - 16; x <= h - 1; x++) out.push(d.groundRow(x));
+          return out;
+        },
+        hx,
+      );
+      assert(new Set(rows).size === 1, "the plot left of the house is flat: " + rows.join(","));
+      const g = rows[0];
+      const xL = hx - 15;
+      const xR = hx - 8;
+      const coins0 = await dbg(page, () => window.__buddies.coins);
+      await page.waitForFunction(() => window.__buddies.request.state === "waiting", null, {
+        timeout: 30000,
+        polling: 100,
+      });
+      // the recipe, in the order the tip gives it: walls + roof, back wall, door, torch, bed
+      const plan = [];
+      for (let x = xL; x <= xR; x++) plan.push(["planks", x, g - 4]); // roof
+      for (let y = g - 3; y <= g - 1; y++) plan.push(["planks", xL, y]); // left wall
+      plan.push(["planks", xR, g - 3]); // right wall above the door
+      for (let y = g - 3; y <= g - 1; y++)
+        for (let x = xL + 1; x <= xR - 1; x++) plan.push(["wallPlanks", x, y]); // 6 x 3 back wall
+      plan.push(["door", xR, g - 1], ["torch", xL + 3, g - 2], ["bed", xL + 2, g - 1]);
+      const failed = await dbg(
+        page,
+        ([steps, px, py]) => {
+          const d = window.__buddies.debug;
+          const bad = [];
+          for (const [key, x, y] of steps) {
+            d.teleport(px, py); // stand inside the hut: everything is within reach
+            const r = d.tryPlace(key, x, y);
+            if (!r.ok) bad.push([key, x, y, r.reason]);
+          }
+          return bad;
+        },
+        [plan, xL + 3.5, g],
+      );
+      assert(failed.length === 0, "recipe steps refused: " + JSON.stringify(failed.slice(0, 4)));
+      await dbg(page, () => {
+        const d = window.__buddies.debug;
+        d.teleport(d.spawn.player.x, d.spawn.player.y);
+      });
+      await page.waitForFunction(() => window.__buddies.housed === 1, null, {
+        timeout: 45000,
+        polling: 100,
+      });
+      const coins1 = await dbg(page, () => window.__buddies.coins);
+      assert(coins1 === coins0 + 40, "the reward is paid: " + coins0 + " -> " + coins1);
+      await ctx.close();
+      return `${plan.length} placements through tryPlace, Pip housed, +40 coins`;
+    },
+  );
+
+  // ---- AC-18 occupied room note + room labels ------------------------------------------------
+  await check(
+    "AC-18",
+    "labels name the resident or say 'full'; an occupied matching room is explained",
+    async () => {
+      const { page, ctx } = await openPage(browser);
+      await startGame(page);
+      await settle(page, 500);
+      const labels = await dbg(page, () => window.__buddies.debug.roomLabels().map((l) => l.label));
+      assert(
+        labels.includes("Kitchen · Barnaby") && labels.includes("Workshop · Moss"),
+        "named residents: " + labels.join(" | "),
+      );
+      assert(
+        labels.some((l) => /· full$/.test(l)),
+        "a claimed room without a named resident reads '· full': " + labels.join(" | "),
+      );
+      // request 1 is a Bedroom: the starter basement bedroom matches but is already claimed
+      await dbg(page, () => {
+        const d = window.__buddies.debug;
+        d.teleport(d.world.houseX + 5.5, d.world.houseY + 22);
+      });
+      await sleep(800);
+      const cl = await dbg(page, () => window.__buddies.debug.checklist());
+      assert(
+        cl[0].info && /already someone's home/.test(cl[0].text),
+        "the card explains the occupied match: " + JSON.stringify(cl.map((i) => i.text)),
+      );
+      // the kitchen does not match a bedroom request: no note, just the plain rows
+      await dbg(page, () => {
+        const d = window.__buddies.debug;
+        d.teleport(d.world.houseX + 24.5, d.world.houseY + 16);
+      });
+      await sleep(800);
+      const cl2 = await dbg(page, () => window.__buddies.debug.checklist());
+      assert(!cl2.some((i) => i.info), "no note in a room that would not match anyway");
+      await ctx.close();
+      return `${labels.length} labels (${labels.slice(0, 3).join(", ")}...), occupied-match note shown`;
+    },
+  );
+
+  // ---- AC-17 reading load (Priya & kid) -------------------------------------------------------
+  await check(
+    "AC-17",
+    "icons + short rows, named blockers, device-aware hints, unlock keeps the slot, two-tap leave",
+    async () => {
+      const { page, ctx } = await openPage(browser);
+      const hint = await dbg(page, () => {
+        const shown = (s) => document.querySelector(s).getBoundingClientRect().width > 0;
+        return {
+          kb: shown("#title .keys-kb"),
+          touch: shown("#title .keys-touch"),
+          text: document.querySelector("#title .keys-kb").textContent.replace(/\s+/g, " "),
+        };
+      });
+      assert(
+        hint.kb && !hint.touch,
+        "desktop title shows the keyboard hint " + JSON.stringify(hint),
+      );
+      assert(
+        /I J K L/.test(hint.text) && /F place/.test(hint.text) && /X break/.test(hint.text),
+        "the keyboard hint lists the aim keys: " + hint.text,
+      );
+      await startGame(page);
+      await settle(page, 600);
+      const rows = await dbg(page, () =>
+        [...document.querySelectorAll("#reqList li")].map((li) => {
+          const c = li.querySelector("canvas.ric");
+          let ink = 0;
+          if (c) {
+            const px = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
+            for (let i = 3; i < px.length; i += 4) ink += px[i] > 0 ? 1 : 0;
+          }
+          return { text: li.lastElementChild.textContent, ink };
+        }),
+      );
+      assert(rows.length >= 6, "request rows: " + rows.length);
+      const bare = (t) => t.replace(/^(Done|Missing): /, "");
+      const long = rows.filter((q) => bare(q.text).length > 36);
+      assert(long.length === 0, "rows over 36 characters: " + JSON.stringify(long));
+      const blank = rows.filter((q) => q.ink < 40);
+      assert(blank.length === 0, "rows without an icon: " + JSON.stringify(blank));
+      // refusal reasons name the blocker
+      await page.waitForFunction(() => window.__buddies.request.state === "waiting", null, {
+        timeout: 30000,
+        polling: 100,
+      });
+      const why = await dbg(page, () => {
+        const d = window.__buddies.debug;
+        const hx = d.world.houseX;
+        const hy = d.world.houseY;
+        const out = {};
+        d.teleport(hx + 16.5, hy + 16);
+        out.door = d.canPlace("planks", hx + 14, hy + 15).reason;
+        out.furniture = d.canPlace("planks", hx + 17, hy + 15).reason;
+        out.block = d.canPlace("planks", hx + 14, hy + 12).reason;
+        const p = window.__buddies.player;
+        out.you = d.canPlace("planks", Math.floor(p.x), Math.floor(p.y - 0.5)).reason;
+        const b = d.visitor(); // Pip waits on open grass: an empty tile, so only he is in the way
+        d.teleport(b.x - 1.4, b.y);
+        out.buddy = d.canPlace("planks", Math.floor(b.x), Math.floor(b.y - 0.5)).reason;
+        return out;
+      });
+      assert(/door/i.test(why.door), "door: " + why.door);
+      assert(/furniture/i.test(why.furniture), "furniture: " + why.furniture);
+      assert(/block/i.test(why.block), "block: " + why.block);
+      assert(/^You are standing there/.test(why.you), "you: " + why.you);
+      assert(/^Pip is standing there/.test(why.buddy), "buddy: " + why.buddy);
+      // unlocking never overwrites the selected slot: it takes the first empty one
+      await dbg(page, () => window.__buddies.debug.giveCoins(500));
+      const hb0 = await dbg(page, () => window.__buddies.hotbar);
+      assert(
+        hb0[0] === "planks" && hb0[1] === null && hb0[2] === null,
+        "slots 2 and 3 start empty",
+      );
+      await page.keyboard.press("Digit1");
+      await page.getByRole("button", { name: "Items, open build menu" }).click();
+      await page.getByRole("button", { name: "Furniture" }).click();
+      await page.getByRole("button", { name: /^Furnace, locked/ }).click();
+      const hb1 = await dbg(page, () => window.__buddies.hotbar);
+      assert(
+        hb1[0] === "planks" && hb1[1] === "furnace" && hb1.length === 10,
+        "unlocked Furnace went to the first empty slot: " + JSON.stringify(hb1),
+      );
+      await page.keyboard.press("Digit3");
+      await page.getByRole("button", { name: "Structure" }).click();
+      await page.getByRole("button", { name: "Cobble", exact: true }).click();
+      const full = await dbg(page, () => window.__buddies.hotbar);
+      assert(
+        full.every((k) => k),
+        "the bar is now full: " + JSON.stringify(full),
+      );
+      const coinsBefore = await dbg(page, () => window.__buddies.coins);
+      await page.getByRole("button", { name: "Furniture" }).click();
+      await page.getByRole("button", { name: /^Bookshelf, locked/ }).click();
+      const after = await dbg(page, () => ({
+        hb: window.__buddies.hotbar,
+        sel: window.__buddies.selected,
+        coins: window.__buddies.coins,
+        toast: document.getElementById("toast").textContent,
+      }));
+      assert(
+        JSON.stringify(after.hb) === JSON.stringify(full) && after.sel === "stone",
+        "a full bar is left alone: " + JSON.stringify(after),
+      );
+      assert(after.coins === coinsBefore - 40, "the unlock was still paid");
+      assert(/Select a slot/.test(after.toast), "the player is told what to do: " + after.toast);
+      // desktop: one click on the back chip leaves
+      await page.route("**/index.html", (route) =>
+        route.request().url().includes("/games/")
+          ? route.continue()
+          : route.fulfill({ contentType: "text/html", body: "<title>hub</title>" }),
+      );
+      await page.keyboard.press("Escape");
+      await page.locator(".hud-top .back-link-chip").click();
+      await page.waitForURL((u) => u.pathname === "/index.html");
+      await ctx.close();
+      // touch: the title shows the touch hint; the back chip needs a second tap
+      const t = await openPage(browser, {
+        viewport: { width: 844, height: 390 },
+        touch: true,
+        dsf: 2,
+      });
+      const th = await dbg(t.page, () => ({
+        kb: document.querySelector("#title .keys-kb").getBoundingClientRect().width > 0,
+        touch: document.querySelector("#title .keys-touch").getBoundingClientRect().width > 0,
+      }));
+      // (the short landscape card hides both hint lines on purpose; check the DOM state on a tall phone)
+      await t.ctx.close();
+      const tall = await openPage(browser, {
+        viewport: { width: 390, height: 844 },
+        touch: true,
+        dsf: 2,
+      });
+      const thT = await dbg(tall.page, () => ({
+        kb: document.querySelector("#title .keys-kb").getBoundingClientRect().width > 0,
+        touch: document.querySelector("#title .keys-touch").getBoundingClientRect().width > 0,
+      }));
+      assert(
+        !thT.kb && thT.touch && !th.kb,
+        "touch devices see the touch hint, not the keyboard one " + JSON.stringify([th, thT]),
+      );
+      await tall.page.route("**/index.html", (route) =>
+        route.request().url().includes("/games/")
+          ? route.continue()
+          : route.fulfill({ contentType: "text/html", body: "<title>hub</title>" }),
+      );
+      await startGame(tall.page);
+      await settle(tall.page, 500);
+      const chip = tall.page.locator(".hud-top .back-link-chip");
+      const box = await chip.boundingBox();
+      await tall.page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+      await sleep(250);
+      const armed = await dbg(tall.page, () => ({
+        cls: document.querySelector(".hud-top .back-link-chip").className,
+        txt: document.querySelector(".hud-top .back-link-chip .txt").textContent,
+        path: location.pathname,
+        vis: document.querySelector(".hud-top .back-link-chip .txt").getBoundingClientRect().width,
+      }));
+      assert(
+        /armed/.test(armed.cls) &&
+          armed.txt === "Leave?" &&
+          armed.vis > 0 &&
+          /\/games\//.test(armed.path),
+        "first tap arms the chip and stays in the game: " + JSON.stringify(armed),
+      );
+      await sleep(3300);
+      assert(
+        !(await dbg(tall.page, () =>
+          document.querySelector(".hud-top .back-link-chip").classList.contains("armed"),
+        )),
+        "the armed state times out after ~3 s",
+      );
+      await tall.page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+      await sleep(200);
+      await tall.page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+      await tall.page.waitForURL((u) => u.pathname === "/index.html");
+      await tall.ctx.close();
+      return `${rows.length} icon rows <= 36 chars, blockers named, unlock keeps slot (${hb1.join(",")}), two-tap leave on touch`;
+    },
+  );
+
+  // ---- AC-19 floating UI never overlaps (P-3 / P-4) ---------------------------------------------
+  for (const v of [
+    { id: "390x844", viewport: { width: 390, height: 844 } },
+    { id: "844x390", viewport: { width: 844, height: 390 } },
+  ]) {
+    await check(
+      "AC-19",
+      `HUD pieces do not overlap at ${v.id} (card open, toast showing)`,
+      async () => {
+        const { page, ctx } = await openPage(browser, {
+          viewport: v.viewport,
+          touch: true,
+          dsf: 2,
+        });
+        await startGame(page);
+        await settle(page, 900);
+        await page.keyboard.press("Digit2"); // an empty slot: placing with it gives a real toast
+        await page.keyboard.press("KeyF");
+        await sleep(250);
+        const m = await dbg(page, () => {
+          const sel = [
+            [".hud-top .chip, .hud-top .chip-btn", "chip"],
+            ["#request", "card"],
+            ["#toast.show", "toast"],
+            ["#hotbar", "hotbar"],
+            [".mode-btn", "mode"],
+            [".tbtn", "pad"],
+          ];
+          const boxes = [];
+          sel.forEach(([q, kind]) =>
+            document.querySelectorAll(q).forEach((e) => {
+              const r = e.getBoundingClientRect();
+              if (r.width > 0 && r.height > 0)
+                boxes.push({ kind, id: e.id || e.getAttribute("aria-label") || e.className, r });
+            }),
+          );
+          const hits = [];
+          for (let i = 0; i < boxes.length; i++)
+            for (let j = i + 1; j < boxes.length; j++) {
+              const a = boxes[i].r;
+              const b = boxes[j].r;
+              const w = Math.min(a.right, b.right) - Math.max(a.left, b.left);
+              const h = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+              if (w > 1 && h > 1) hits.push(boxes[i].id + " x " + boxes[j].id);
+            }
+          const dock = Math.min(
+            ...boxes.filter((b) => ["hotbar", "mode", "pad"].includes(b.kind)).map((b) => b.r.top),
+          );
+          const card = boxes.find((b) => b.kind === "card");
+          const toast = boxes.find((b) => b.kind === "toast");
+          return {
+            hits,
+            dock,
+            cardBottom: card && card.r.bottom,
+            cardOpen: !document.getElementById("request").classList.contains("collapsed"),
+            toast: toast && { l: toast.r.left, r: toast.r.right, b: toast.r.bottom },
+            vw: innerWidth,
+            n: boxes.length,
+          };
+        });
+        assert(m.cardOpen, "the objective card is open at the start on touch screens too");
+        assert(m.toast, "a toast is showing for the check");
+        assert(m.hits.length === 0, "overlapping HUD pieces: " + m.hits.join("; "));
+        assert(
+          m.cardBottom <= m.dock + 0.5,
+          `the card reaches the dock: card bottom ${m.cardBottom} > dock ${m.dock}`,
+        );
+        assert(
+          m.toast.b <= m.dock + 0.5 && m.toast.l >= 0 && m.toast.r <= m.vw,
+          "the toast sits above the dock and inside the screen " + JSON.stringify(m.toast),
+        );
+        await page.screenshot({ path: join(SHOTS, `hud-${v.id}.jpg`) });
+        await ctx.close();
+        return `${m.n} boxes, 0 overlaps, card ends ${Math.round(m.cardBottom)} / dock ${Math.round(m.dock)}`;
+      },
+    );
+  }
+
+  // ---- AC-21 a stale tab shows a persistent banner (NEW-1) -------------------------------------
+  await check(
+    "AC-21",
+    "a stale tab shows a banner with Reload now and disables Start",
+    async () => {
+      const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+      const A = await openPage(browser, { context });
+      const B = await openPage(browser, { context });
+      await startGame(B.page);
+      await dbg(B.page, () => {
+        window.__buddies.debug.giveCoins(50);
+        window.__buddies.debug.save();
+      });
+      await sleep(500); // tab A is still on its title screen
+      const banner = A.page.locator("#stale");
+      assert(await banner.isVisible(), "the banner is up on the stale tab");
+      assert(/updated in another tab/i.test(await banner.textContent()), "it says why");
+      assert(
+        await A.page.getByRole("button", { name: "Reload now" }).isVisible(),
+        "it offers Reload now",
+      );
+      assert(
+        await A.page.getByRole("button", { name: "Start building", exact: true }).isDisabled(),
+        "a stale tab cannot start (and so cannot overwrite) the world",
+      );
+      await sleep(4200); // the old transient toast would be gone by now; the banner is not
+      assert(await banner.isVisible(), "the banner persists");
+      await A.page.evaluate(() => {
+        Object.defineProperty(document, "hidden", { configurable: true, get: () => true });
+        document.dispatchEvent(new Event("visibilitychange"));
+        document.getElementById("announcer").textContent = "";
+        Object.defineProperty(document, "hidden", { configurable: true, get: () => false });
+        document.dispatchEvent(new Event("visibilitychange"));
+      });
+      const said = await A.page.locator("#announcer").textContent();
+      assert(/another tab/i.test(said), "it is announced again when the tab is shown: " + said);
+      await Promise.all([
+        A.page.waitForNavigation(),
+        A.page.getByRole("button", { name: "Reload now" }).click(),
+      ]);
+      await A.page.waitForFunction(() => !!window.__buddies);
+      assert(!(await A.page.locator("#stale").isVisible()), "after the reload the banner is gone");
+      assert(
+        await A.page.getByRole("button", { name: "Start building", exact: true }).isEnabled(),
+        "and Start works again",
+      );
+      await context.close();
+      return "banner persists, announced again on visible, Start disabled, Reload now recovers";
     },
   );
 

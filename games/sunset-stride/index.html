@@ -76,20 +76,9 @@
       }
 
       /* Back to hub (48px tall hit area — same recipe as Colour Rush; QC-02) */
+      /* Shared .back-link lives in styles/base.css; only this game's spacing here. */
       .back-link {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        min-height: 48px;
-        color: var(--md-sys-color-on-surface-variant);
-        padding: 8px 14px 8px 4px;
         margin: 0 0 2px -4px;
-        border-radius: var(--md-sys-shape-corner-full);
-        font-size: var(--md-sys-typescale-label-large-size);
-        font-weight: var(--md-sys-typescale-label-large-weight);
-      }
-      .back-link:hover {
-        color: var(--md-sys-color-on-surface);
       }
 
       /* ---------- SETUP (chrome reused from Claw Catch) ---------- */

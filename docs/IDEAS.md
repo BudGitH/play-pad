@@ -9,6 +9,11 @@
 
 ## ⏭️ Next (ready, not started)
 
+- **PLAY-010 — lint ratchet** (ledger `function-length`, 2nd): CI fails when `max-lines-per-function` / `max-depth` warnings rise above the committed baseline; then split the remaining long functions game by game.
+- **PLAY-011 — finish shared components** (ledger `duplicated-component-css`, 2nd): `.back-link` is now in base.css; move `.switch` and `#countdown` next.
+- **PLAY-012 — probes + smoke round two** (ledger `checkable-but-unenforced` 3rd, `primary-cta-below-fold` 2nd): a `probes` CI job (nightly + manual) for the Stride / Salon / Buddies probes; smoke asserts every primary CTA is in view without scrolling at 390×844 and 360×640, and that focus survives a pick.
+- **PLAY-013 — cross-game hardening scan** (ledger `multi-tab-save-overwrite`, `trust-boundary-tag-missing`, `colour-only-cue`, `held-key-stuck-on-blur`): apply the save `rev` guard + `TRUST_BOUNDARY` tags to Claw Catch, Super Decoder and Sunset Stride; add "shape as well as colour" to the design-review template.
+
 - **Close the STOP_SHIP ledger rows.** `tap-target-size` reached its 4th recurrence in PLAY-006 and the systemic fix (one `.switch` / `.back-link` in `styles/base.css`, then a shared `scripts/party.js` for the party `PALETTE` / `SHAPES` / avatars) is **not done**: the instances were fixed per copy. Do it (QC-04), or record an explicit risk acceptance. Same pass: `.chip-filter` hit area is 46px not 48 (`::after inset: -5px 0`, QC-10).
 - **Smoke test, round two** (QC-09 / QC-08 / QC-01): run every game's open check at 360×740, 768×1024 and 844×390 (today games run at 390×844 + 1366×800 only); reach results → Play again and a keyboard-only path; assert "focus `#quitBtn` in-round, press Space → setup screen" (the global-keydown recurrence); assert `__decoder.scoreGuess` on the AC-7 table and `__claw.catchOdds` bounds.
 - **Tooling:** flip `no-unused-vars` to `error` (0 warnings now; update the `eslint.config.mjs` comment and `ENFORCEMENT.md`). Split or justify the remaining long functions (28 `max-lines-per-function` warnings; worst: Claw `layout` 115, `paintBack` 87, Neon `makeMaglevAtlas` 84). Add the Tier-1 header block to `tests/*.mjs` and a real handle to `scripts/theme.js` (QC-14).
@@ -16,6 +21,9 @@
 - **Test hooks wording** (QC-13): they ship to production (`__decoder.secret`, `__stride.grantCoins`, `__claw.SaveManager`); reword "harmless in production" to "local-only cheat surface, intentionally shipped", optionally gate behind `?test=1`.
 
 ## 🌱 Later (needs shaping first)
+
+- **Sparkle Salon — persona feedback (PLAY-008, non-blocking):** art polish toward the reference (dress glitter texture, multi-hue irises, finer lashes, fuller round chin, slimmer wand + gem-heart tube); pre-reader help (icon-only hints, pointing nudge); keyboard "apply step" shortcut + 25/50/75 % progress announcements; music loop variation + bass audible on phone speakers, a real giggle; more tactile tap steps (drag stickers into place); replay hooks (second princess / hairstyle, gallery, daily client); hub card art (princess portrait) and the "Kids" tag shown on cards; **an ear check of the mix on a real phone**.
+- **Brick Buddies — persona feedback (PLAY-009, non-blocking):** closer fidelity if wanted (stronger bloom/rim light, flatter darker earth masses, soft cloud banding, calmer cobble); release a claim when a resident's room is demolished (NEW-5 full fix); a return portal; fill-rectangle / paint-from-here for keyboard and touch; undo; one-handed mirrored layout; buddy preferences and a visible purpose for stars; photo mode; per-bus volume + a "quiet" preset without thunder (small kids); first-run coach / pre-reader helper arrow; hub screenshot thumbnail; **real-device perf + audio check**.
 
 - **Search** beyond the Solo / Play together chips, once the catalog passes ~12 games. **Remember last settings** per game (best scores already persist).
 - **`?quick=1`** so the hub's Play now / Surprise me can skip a game's own setup (the hero is one tap to the game page today; party games preselect 2 players).

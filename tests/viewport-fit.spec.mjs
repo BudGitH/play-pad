@@ -20,6 +20,8 @@ const SETUP_CONTROLS = [
   { path: "games/claw-catch/", button: "Start" },
   { path: "games/super-decoder/", button: "Start" },
   { path: "games/sunset-stride/", button: "Start running" },
+  { path: "games/sparkle-salon/", button: "Start makeover" },
+  { path: "games/brick-buddies/", button: "Start building" },
 ];
 
 /** Make visualViewport.height report the window height minus `hidden` (before any page script). */
@@ -65,6 +67,39 @@ test("super-decoder: Submit and Clear stay inside the visible area during a roun
     const btn = page.getByRole("button", { name, exact: true });
     expect(await bottomOf(btn), name).toBeLessThanOrEqual(PHONE.height - HIDDEN_PX);
   }
+});
+
+test("sparkle-salon: the step bar and tool tray stay inside the visible area during a makeover", async ({
+  page,
+}) => {
+  await fakeShorterVisibleArea(page, HIDDEN_PX);
+  await page.goto("/games/sparkle-salon/");
+  await page.getByRole("button", { name: "Start makeover", exact: true }).tap();
+  await expect.poll(() => page.evaluate(() => window.__salon?.phase)).toBe("playing");
+  const lowest = await page.evaluate(() => {
+    const els = [...document.querySelectorAll("#tools button, #play button")].filter(
+      (el) => el.offsetParent && el.getBoundingClientRect().height > 0,
+    );
+    return Math.max(...els.map((el) => el.getBoundingClientRect().bottom));
+  });
+  expect(lowest).toBeLessThanOrEqual(PHONE.height - HIDDEN_PX);
+});
+
+test("brick-buddies: the hotbar and touch pads stay inside the visible area while building", async ({
+  page,
+}) => {
+  await fakeShorterVisibleArea(page, HIDDEN_PX);
+  await page.goto("/games/brick-buddies/");
+  await page.getByRole("button", { name: "Start building", exact: true }).tap();
+  await expect.poll(() => page.evaluate(() => window.__buddies?.phase)).toBe("playing");
+  const lowest = await page.evaluate(() => {
+    const els = [...document.querySelectorAll("button")].filter((el) => {
+      const r = el.getBoundingClientRect();
+      return el.offsetParent && r.height > 0 && getComputedStyle(el).visibility !== "hidden";
+    });
+    return Math.max(...els.map((el) => el.getBoundingClientRect().bottom));
+  });
+  expect(lowest).toBeLessThanOrEqual(PHONE.height - HIDDEN_PX);
 });
 
 test("the shell follows the visible area when it changes (toolbar / chin moves)", async ({

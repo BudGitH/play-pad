@@ -39,7 +39,9 @@
 
 - **Tier-1 file headers & Tier-2 function doc blocks relaxed at Prototype tier (PLAY-001).** Shared files carry descriptive top-of-file comment blocks, and the games use clear section banners + "why" comments on the non-obvious bits instead of the full structured file headers / per-function doc blocks in `CODE_QUALITY.md` §3. Rationale: tightly-scoped, single-file static prototypes with self-documenting names. Re-confirmed at the Standard-tier upgrade (2026-11-21): still relaxed for existing games; **new** shared JS files get full Tier-1 headers. _(Raised by the Phase-4 COMPLIANCE + QUALITY lenses, severity LOW.)_
 - **Vendored binary assets allowed for Sunset Stride (ex-Neon Rush; PLAY-005 v2, reworked in PLAY-007).** The zero-asset / synth-only stance holds for the DOM/canvas games, but Sunset Stride vendors CC0 GLB models, photo textures and audio under `games/sunset-stride/assets/` (owner decision 2026-07-12: "proper textures + open-source 3D models… real music"). Rules: same-origin only (no CDN, CSP intact); every asset licence-cleared and listed in `assets/CREDITS.md`; the code must **degrade to the primitive/synth fallbacks** when an asset can't load (so `file://` and partial deploys stay playable). Three.js is pinned r147 (last classic-script `GLTFLoader`).
+- **Sparkle Salon pins a light pastel palette via local `--sp-*` tokens (PLAY-008)** instead of the MD3 colour roles and skips `theme.js`; see DECISIONS 2026-11-22. Other new games should keep using the MD3 roles.
+- **Deep AC probes per game (PLAY-008/009):** `features/<slug>/probe.mjs` (not CI yet, PLAY-012). Run with `PW_CHROMIUM_PATH=<chromium>`; screenshots only with `SHOTS=1`.
 
 ---
 
-_Last reviewed: 2026-11-21_
+_Last reviewed: 2026-11-22_

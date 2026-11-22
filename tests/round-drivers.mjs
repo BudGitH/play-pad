@@ -91,4 +91,26 @@ export const ROUND_DRIVERS = {
     },
     heartbeat: (page) => page.evaluate(() => window.__stride.state.score),
   },
+
+  "sparkle-salon": {
+    start: "Start makeover",
+    signal: '__salon.phase === "playing", frame counter advancing',
+    async waitForRound(page) {
+      await expect
+        .poll(() => page.evaluate(() => window.__salon?.phase), { timeout: ROUND_TIMEOUT_MS })
+        .toBe("playing");
+    },
+    heartbeat: (page) => page.evaluate(() => window.__salon.frame),
+  },
+
+  "brick-buddies": {
+    start: "Start building",
+    signal: '__buddies.phase === "playing", frame counter advancing',
+    async waitForRound(page) {
+      await expect
+        .poll(() => page.evaluate(() => window.__buddies?.phase), { timeout: ROUND_TIMEOUT_MS })
+        .toBe("playing");
+    },
+    heartbeat: (page) => page.evaluate(() => window.__buddies.frame),
+  },
 };

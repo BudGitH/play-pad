@@ -25,6 +25,7 @@ const SHOTS =
   process.env.SHOTS === "1"
     ? join(HERE, "screens")
     : process.env.SHOTS_DIR || join(tmpdir(), "brick-buddies-probe-shots");
+const HELP_KEY = "playpad.brickBuddies.help.v1"; // "has seen the how-to" (separate from the save)
 const PORT = 5602;
 const BASE = `http://localhost:${PORT}/games/brick-buddies/index.html`;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -87,6 +88,7 @@ async function openPage(browser, opts = {}) {
     dsf = 1,
     reducedMotion = "no-preference",
     context,
+    freshHelp = false, // true = a first-time visitor: the how-to opens on Start (AC-22)
   } = opts;
   const ctx =
     context ||
@@ -97,6 +99,16 @@ async function openPage(browser, opts = {}) {
       isMobile: touch,
       reducedMotion,
     }));
+  // Every check except AC-22 plays as a returning visitor: the first-run how-to would otherwise sit
+  // over the game and swallow the clicks and keys the checks send.
+  if (!freshHelp)
+    await ctx.addInitScript((k) => {
+      try {
+        if (!localStorage.getItem(k)) localStorage.setItem(k, "1");
+      } catch {
+        /* storage blocked: the check handles it itself */
+      }
+    }, HELP_KEY);
   const page = await ctx.newPage();
   const problems = [];
   page.on("pageerror", (e) => problems.push("pageerror: " + e.message));
@@ -130,6 +142,20 @@ async function tileClick(page, x, y, button = "left") {
 const getTile = (page, x, y) =>
   page.evaluate(([tx, ty]) => window.__buddies.debug.getTile(tx, ty), [x, y]);
 const IDS = {};
+
+/**
+ * Knock one roof plank out of the pre-built hut so the world plays like an older save (no first-run
+ * hut): the coach falls back to its plain line, the simple first run ends (Items, coins and stars show)
+ * and the request card keeps its old open-then-collapse behaviour. The pre-onboarding checks (AC-4,
+ * AC-12, AC-17, AC-19) test exactly that state; the real first run is covered by AC-22.
+ */
+async function wreckHut(page) {
+  await page.evaluate(() => {
+    const d = window.__buddies.debug;
+    const h = d.hut();
+    d.place(h.xL + 3, h.g - 4, 0);
+  });
+}
 
 /** Make [x0..x1] a flat strip of ground and return the surface row. */
 async function flatten(page, x0, x1) {
@@ -410,6 +436,7 @@ try {
     "place/break by click, reach, body overlap, floor rule, multi-tile, ghost",
     async () => {
       const { page } = await openPage(browser);
+      await wreckHut(page);
       await startGame(page);
       await settle(page);
       const p = await dbg(page, () => window.__buddies.player);
@@ -1653,6 +1680,7 @@ try {
   for (const v of views) {
     await check("AC-12", `layout at ${v.viewport.width}x${v.viewport.height}`, async () => {
       const { page, ctx } = await openPage(browser, v);
+      await wreckHut(page);
       await settle(page, 700);
       await page.screenshot({ path: join(SHOTS, `title-${v.id}.jpg`) });
       const backH = await dbg(page, () =>
@@ -1930,7 +1958,8 @@ try {
       await page.keyboard.up("KeyA");
       await sleep(400);
       p = await dbg(page, () => window.__buddies.player);
-      const g = await dbg(page, (x) => window.__buddies.debug.groundRow(x), Math.floor(p.x));
+      // measured on the plot beside the pre-built hut (the hut's own roof would answer for its columns)
+      const g = await dbg(page, (x) => window.__buddies.debug.groundRow(x), hx - 16);
       assert(
         p.x < hx - 6 && p.x > hx - 16 && p.ground && Math.abs(p.y - g) < 0.05,
         "stood on the flat plot after walking: " + JSON.stringify({ x: p.x - hx, y: p.y, g }),
@@ -1940,43 +1969,105 @@ try {
     },
   );
 
-  // ---- AC-18 first-run path: the hut recipe works from a fresh world ----------------------------
+  // ---- AC-18 / AC-22.4 first-run path: the pre-built hut needs three placements --------------------
   await check(
-    "AC-18",
-    "hut recipe on the flat plot (real placement rules) houses the first buddy",
+    "AC-22",
+    "AC-22.4 the pre-built hut: a bed, a torch and a door (real placement rules) house the first buddy",
     async () => {
       const { page, ctx } = await openPage(browser);
       await startGame(page);
       await settle(page, 600);
       const tip = await page.locator("#reqHint").textContent();
       assert(
-        /hut/.test(tip) &&
-          /flat grass/.test(tip) &&
-          /left door/.test(tip) &&
-          /porch door/.test(tip),
-        "the tip names the hut and the way out to the flat grass: " + tip,
+        /hut/.test(tip) && /left of the house/.test(tip) && /bed, a torch and a door/.test(tip),
+        "the tip names the hut and its three jobs: " + tip,
       );
-      const hx = await dbg(page, () => window.__buddies.debug.world.houseX);
-      const rows = await dbg(
+      const hut = await dbg(page, () => window.__buddies.debug.hut());
+      assert(hut.intact, "the hut shell is standing in a fresh world");
+      const shell = await dbg(
         page,
         (h) => {
           const d = window.__buddies.debug;
-          const out = [];
-          for (let x = h - 16; x <= h - 1; x++) out.push(d.groundRow(x));
-          return out;
+          const pl = d.ids.PLANKS;
+          const roof = [];
+          for (let x = h.xL; x <= h.xR; x++) roof.push(d.getTile(x, h.g - 4).fg === pl);
+          const back = [];
+          for (let y = h.g - 3; y <= h.g - 1; y++)
+            for (let x = h.xL + 1; x <= h.xR - 1; x++)
+              back.push(d.getTile(x, y).bg === d.bgIds.PLANKS);
+          return {
+            roof: roof.every(Boolean),
+            back: back.every(Boolean) && back.length === 18,
+            left: [1, 2, 3].every((n) => d.getTile(h.xL, h.g - n).fg === pl),
+            lintel: d.getTile(h.xR, h.g - 3).fg === pl,
+            // open air (a grass tuft may stand in the gap; the door replaces it)
+            doorway: [h.g - 1, h.g - 2].every((y) =>
+              [0, d.ids.TUFT].includes(d.getTile(h.xR, y).fg),
+            ),
+          };
         },
-        hx,
+        hut,
       );
-      assert(new Set(rows).size === 1, "the plot left of the house is flat: " + rows.join(","));
-      const g = rows[0];
-      const xL = hx - 15;
-      const xR = hx - 8;
+      assert(
+        shell.roof && shell.back && shell.left && shell.lintel && shell.doorway,
+        "hut shell: " + JSON.stringify(shell),
+      );
       const coins0 = await dbg(page, () => window.__buddies.coins);
       await page.waitForFunction(() => window.__buddies.request.state === "waiting", null, {
         timeout: 30000,
         polling: 100,
       });
-      // the recipe, in the order the tip gives it: walls + roof, back wall, door, torch, bed
+      const failed = await dbg(
+        page,
+        (h) => {
+          const d = window.__buddies.debug;
+          d.teleport(h.xL + 3.5, h.g); // inside the hut: everything is within reach
+          const bad = [];
+          for (const [key, x, y] of [
+            ["bed", h.xL + 2, h.g - 1],
+            ["torch", h.xL + 5, h.g - 2],
+            ["door", h.xR, h.g - 1],
+          ]) {
+            const r = d.tryPlace(key, x, y);
+            if (!r.ok) bad.push([key, x, y, r.reason]);
+          }
+          return bad;
+        },
+        hut,
+      );
+      assert(failed.length === 0, "the three jobs were refused: " + JSON.stringify(failed));
+      await dbg(page, () => {
+        const d = window.__buddies.debug;
+        d.teleport(d.spawn.player.x, d.spawn.player.y);
+      });
+      await page.waitForFunction(() => window.__buddies.housed === 1, null, {
+        timeout: 45000,
+        polling: 100,
+      });
+      const coins1 = await dbg(page, () => window.__buddies.coins);
+      assert(coins1 === coins0 + 40, "the reward is paid: " + coins0 + " -> " + coins1);
+      await ctx.close();
+      return "3 placements through tryPlace, Pip housed, +40 coins (hut shell: roof, walls, 6x3 back wall, open doorway)";
+    },
+  );
+
+  // ---- AC-18 the full hut recipe still works anywhere (older saves have no pre-built hut) ---------
+  await check(
+    "AC-18",
+    "the full recipe (walls, roof, back wall, door, torch, bed) still houses a buddy on bare ground",
+    async () => {
+      const { page, ctx } = await openPage(browser);
+      await startGame(page);
+      await settle(page, 600);
+      const hx = await dbg(page, () => window.__buddies.debug.world.houseX);
+      const g = await flatten(page, hx - 34, hx - 24); // bare ground west of the pre-built hut
+      const xL = hx - 33;
+      const xR = hx - 26;
+      const coins0 = await dbg(page, () => window.__buddies.coins);
+      await page.waitForFunction(() => window.__buddies.request.state === "waiting", null, {
+        timeout: 30000,
+        polling: 100,
+      });
       const plan = [];
       for (let x = xL; x <= xR; x++) plan.push(["planks", x, g - 4]); // roof
       for (let y = g - 3; y <= g - 1; y++) plan.push(["planks", xL, y]); // left wall
@@ -2077,6 +2168,7 @@ try {
         /I J K L/.test(hint.text) && /F place/.test(hint.text) && /X break/.test(hint.text),
         "the keyboard hint lists the aim keys: " + hint.text,
       );
+      await wreckHut(page);
       await startGame(page);
       await settle(page, 600);
       const rows = await dbg(page, () =>
@@ -2335,6 +2427,7 @@ try {
           touch: true,
           dsf: 2,
         });
+        await wreckHut(page);
         await startGame(page);
         await settle(page, 900);
         await page.keyboard.press("Digit9"); // an empty slot: placing with it gives a real toast
@@ -2385,6 +2478,395 @@ try {
       },
     );
   }
+
+  // ---- AC-22 onboarding: the how-to, the ? button, the coach, the simple first run -------------
+  const hudVisible = (page, sel) =>
+    page.evaluate((q) => {
+      const e = document.querySelector(q);
+      return !!e && getComputedStyle(e).display !== "none" && e.getBoundingClientRect().width > 0;
+    }, sel);
+  await check(
+    "AC-22",
+    "AC-22.1/2 first-run how-to: opens on Start, has the floor, closes three ways, is remembered",
+    async () => {
+      const { page, ctx } = await openPage(browser, { freshHelp: true });
+      await page.getByRole("button", { name: /How to play/ }).click(); // from the title too
+      assert(await page.evaluate(() => window.__buddies.debug.helpOpen()), "title button opens it");
+      await page.getByRole("button", { name: "Close how to play" }).click();
+      assert(!(await page.evaluate(() => window.__buddies.debug.helpOpen())), "X closes it");
+      // that counted as seen: start a second, truly fresh page for the Start path
+      const fresh = await openPage(browser, { freshHelp: true });
+      const fp = fresh.page;
+      await startGame(fp);
+      const open = await dbg(fp, () => ({
+        isOpen: window.__buddies.debug.helpOpen(),
+        role: document.getElementById("how").getAttribute("role"),
+        label: document.getElementById("how").getAttribute("aria-label"),
+        modal: document.getElementById("how").getAttribute("aria-modal"),
+        focus: document.activeElement && document.activeElement.id,
+        phase: window.__buddies.phase,
+        steps: [...document.querySelectorAll("#how .how-step")].map((li) => ({
+          text: li.querySelector("p").innerText.replace(/\s+/g, " ").trim(),
+          pics: li.querySelectorAll(".how-pic canvas, .how-pic .how-sym").length,
+        })),
+        topAtCentre: (() => {
+          const e = document.elementFromPoint(innerWidth / 2, innerHeight / 2);
+          return !!(e && e.closest("#how"));
+        })(),
+      }));
+      assert(
+        open.isOpen && open.role === "dialog" && open.label === "How to play",
+        "dialog " + JSON.stringify(open),
+      );
+      assert(
+        open.modal === "true" && open.focus === "howGo",
+        "modal, Let's go focused: " + open.focus,
+      );
+      assert(
+        open.phase === "playing",
+        "phase stays playing (smoke + hub wait for it): " + open.phase,
+      );
+      assert(open.steps.length >= 1 && open.steps.length <= 4, open.steps.length + " steps");
+      assert(
+        open.steps.every((st) => st.pics >= 2 && st.text.length <= 40),
+        "each step is pictures + at most 40 characters: " + JSON.stringify(open.steps),
+      );
+      assert(open.topAtCentre, "the card covers the game (taps cannot reach the canvas)");
+      // keys do not reach the game
+      const before = await dbg(fp, () => ({
+        x: window.__buddies.player.x,
+        sel: window.__buddies.selected,
+      }));
+      await fp.keyboard.down("KeyD");
+      await fp.keyboard.press("Digit2");
+      await sleep(400);
+      await fp.keyboard.up("KeyD");
+      const after = await dbg(fp, () => ({
+        x: window.__buddies.player.x,
+        sel: window.__buddies.selected,
+      }));
+      assert(
+        before.x === after.x && before.sel === after.sel,
+        "keys moved or edited the game behind the how-to " + JSON.stringify([before, after]),
+      );
+      // Esc closes it (and does not open the pause menu)
+      await fp.keyboard.press("Escape");
+      const afterEsc = await dbg(fp, () => ({
+        open: window.__buddies.debug.helpOpen(),
+        phase: window.__buddies.phase,
+      }));
+      assert(
+        !afterEsc.open && afterEsc.phase === "playing",
+        "Esc closes only the how-to " + JSON.stringify(afterEsc),
+      );
+      assert(
+        (await fp.evaluate((k) => localStorage.getItem(k), HELP_KEY)) === "1",
+        "dismissing stores the seen flag in its own key",
+      );
+      const saveKey = await dbg(fp, () => window.__buddies.debug.saveKey);
+      assert(saveKey === "playpad.brickBuddies.v1", "the save key is unchanged: " + saveKey);
+      // Let's go closes it too (re-open with ?)
+      await fp.getByRole("button", { name: "How to play", exact: true }).click();
+      assert(await dbg(fp, () => window.__buddies.debug.helpOpen()), "? re-opens it");
+      await fp.getByRole("button", { name: "Let’s go!" }).click();
+      assert(!(await dbg(fp, () => window.__buddies.debug.helpOpen())), "Let's go closes it");
+      // remembered across a reload and across New world
+      await fp.reload();
+      await fp.waitForFunction(() => !!window.__buddies);
+      await startGame(fp);
+      assert(
+        !(await dbg(fp, () => window.__buddies.debug.helpOpen())),
+        "not shown again after a reload",
+      );
+      await fp.locator("#menuBtn").click();
+      await fp.getByRole("button", { name: /New world/ }).click();
+      await fp.getByRole("button", { name: "Yes, start fresh" }).click();
+      await sleep(300);
+      assert(
+        !(await dbg(fp, () => window.__buddies.debug.helpOpen())),
+        "New world does not reset it",
+      );
+      await fresh.ctx.close();
+      await ctx.close();
+      return "title + X, Start opens it (4 steps, pictures, <= 40 chars), Esc / Let's go / X close, flag in its own key, survives reload + New world";
+    },
+  );
+
+  await check(
+    "AC-22",
+    "AC-22.2 blocked storage: the how-to still shows once and raises no error",
+    async () => {
+      const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+      await context.addInitScript(() => {
+        Storage.prototype.getItem = () => {
+          throw new Error("blocked");
+        };
+        Storage.prototype.setItem = () => {
+          throw new Error("blocked");
+        };
+      });
+      const { page, ctx, problems } = await openPage(browser, { context, freshHelp: true });
+      await startGame(page);
+      assert(await dbg(page, () => window.__buddies.debug.helpOpen()), "it opens with no storage");
+      await page.getByRole("button", { name: "Let’s go!" }).click();
+      assert(!(await dbg(page, () => window.__buddies.debug.helpOpen())), "and closes");
+      assert(problems.length === 0, "errors with storage blocked: " + problems.join(" | "));
+      await ctx.close();
+      return "opens, closes, no console / page errors with localStorage throwing";
+    },
+  );
+
+  for (const v of [
+    { id: "390x844", viewport: { width: 390, height: 844 }, touch: true },
+    { id: "844x390", viewport: { width: 844, height: 390 }, touch: true },
+    { id: "568x320", viewport: { width: 568, height: 320 }, touch: true },
+    { id: "1280x800", viewport: { width: 1280, height: 800 }, touch: false },
+  ]) {
+    await check(
+      "AC-22",
+      `AC-22.3/9 at ${v.id}: ? is 48px+ and on screen; the first-run HUD (coach line, strip, card open or shut) never overlaps`,
+      async () => {
+        const { page, ctx } = await openPage(browser, {
+          viewport: v.viewport,
+          touch: v.touch,
+          dsf: 2,
+        });
+        await startGame(page);
+        await settle(page, 900);
+        const q = await dbg(page, () => {
+          const r = document.getElementById("helpBtn").getBoundingClientRect();
+          return { w: r.width, h: r.height, right: r.right, left: r.left, vw: innerWidth };
+        });
+        assert(
+          q.w >= 48 && q.h >= 48 && q.left >= 0 && q.right <= q.vw,
+          "? button box " + JSON.stringify(q),
+        );
+        const coach = await dbg(page, () => {
+          const c = document.getElementById("coach").getBoundingClientRect();
+          const k = document.getElementById("request").getBoundingClientRect();
+          return {
+            shown: c.width > 0,
+            inside: c.top >= k.top - 1 && c.bottom <= k.bottom + 1,
+            collapsed: document.getElementById("request").classList.contains("collapsed"),
+            ticks: document.querySelectorAll("#coachStrip .cs").length,
+          };
+        });
+        assert(
+          coach.shown && coach.inside && coach.ticks === 3,
+          "coach line visible " + JSON.stringify(coach),
+        );
+        assert(coach.collapsed, "the card starts as a header + the coach (no checklist wall)");
+        const shut = await page.evaluate(`(${HUD_BOXES})()`);
+        assert(shut.hits.length === 0, "overlaps with the card shut: " + shut.hits.join("; "));
+        assert(
+          shut.cardBottom <= shut.dock + 0.5,
+          `card ${shut.cardBottom} reaches the dock ${shut.dock}`,
+        );
+        await page.screenshot({ path: join(SHOTS, `onboarding-coach-${v.id}.jpg`) });
+        await page.locator("#reqToggle").click(); // the worst case: the whole checklist + tip open under the coach
+        await sleep(300);
+        const wide = await page.evaluate(`(${HUD_BOXES})()`);
+        assert(wide.cardOpen, "the toggle opens the checklist");
+        assert(wide.hits.length === 0, "overlaps with the card open: " + wide.hits.join("; "));
+        assert(
+          wide.cardBottom <= wide.dock + 0.5,
+          `open card ${wide.cardBottom} reaches the dock ${wide.dock}`,
+        );
+        await page.screenshot({ path: join(SHOTS, `onboarding-card-open-${v.id}.jpg`) });
+        // the how-to itself fits the screen (nothing cut off, Let's go reachable)
+        await page.locator("#helpBtn").click();
+        const how = await dbg(page, () => {
+          const c = document.querySelector("#how .card").getBoundingClientRect();
+          const b = document.getElementById("howGo").getBoundingClientRect();
+          return {
+            top: c.top,
+            bottom: c.bottom,
+            h: innerHeight,
+            goBottom: b.bottom,
+            goH: b.height,
+            sw: document.documentElement.scrollWidth,
+            iw: innerWidth,
+          };
+        });
+        assert(
+          how.top >= 0 &&
+            how.bottom <= how.h &&
+            how.goBottom <= how.h &&
+            how.goH >= 48 &&
+            how.sw <= how.iw,
+          "the how-to card fits the screen " + JSON.stringify(how),
+        );
+        await page.screenshot({ path: join(SHOTS, `onboarding-help-${v.id}.jpg`) });
+        await ctx.close();
+        return `? ${Math.round(q.w)}x${Math.round(q.h)}, coach inside the card, ${shut.n} boxes 0 overlaps (card shut + open), how-to fits`;
+      },
+    );
+  }
+
+  await check(
+    "AC-22",
+    "AC-22.5-8 the coach walks a child through the first room with real input, then the HUD opens up",
+    async () => {
+      const { page, ctx } = await openPage(browser);
+      await startGame(page);
+      await settle(page, 600);
+      const coach = () => dbg(page, () => window.__buddies.debug.coach());
+      const said = [];
+      const expectCoach = async (kind, text, label, waitMs = 4000) => {
+        let c = null;
+        for (let i = 0; i < waitMs / 100; i++) {
+          c = await coach();
+          if (c && c.kind === kind && (!text || c.text === text)) break;
+          await sleep(100);
+        }
+        assert(
+          c && c.kind === kind && (!text || c.text === text),
+          `${label}: wanted ${kind} "${text}", got ${JSON.stringify(c)}`,
+        );
+        assert(c.text.length <= 28, `coach text is short: "${c.text}"`);
+        said.push(c.text);
+        return c;
+      };
+      // simple first run: only what the first request needs
+      for (const [sel, name] of [
+        ["#buildBtn", "Items"],
+        ["#tLook", "Look"],
+        [".hud-top .adv", "coin / star chip"],
+      ])
+        assert(!(await hudVisible(page, sel)), name + " is hidden during the first request");
+      assert(
+        (await hudVisible(page, "#modeBtn")) && (await hudVisible(page, "#housedN")),
+        "Build / Break and the housed count stay",
+      );
+
+      // 1. walk to the hut (a label on the edge, the hut's tiles known to the coach)
+      const walk = await expectCoach("walk", "Walk to the hut (A D)", "start");
+      assert(
+        walk.hut && walk.tiles && walk.tiles.length >= 1,
+        "the walk step knows the hut " + JSON.stringify(walk),
+      );
+      const hut = await dbg(page, () => window.__buddies.debug.hut());
+      await dbg(page, (h) => window.__buddies.debug.teleport(h.xL + 4.5, h.g), hut);
+      await settle(page, 900);
+
+      // 2. Break mode is noticed and the Build button rung
+      await page.keyboard.press("KeyB");
+      const mode = await expectCoach("mode", "Switch to Build", "break mode");
+      assert(/mode-btn|modeBtn/.test(mode.pulse), "the mode button is ringed: " + mode.pulse);
+      await page.keyboard.press("KeyB");
+
+      // 3. bed, torch, door: pick (slot ringed), then tap the glow (second tile of the footprint)
+      const jobs = [
+        ["bed", "Pick the bed (5)", 4, [hut.xL + 2, hut.g - 1], "BED_L", "Click the glowing spot"],
+        [
+          "torch",
+          "Pick the torch (4)",
+          3,
+          [hut.xL + 5, hut.g - 2],
+          "TORCH",
+          "Click the glowing spot",
+        ],
+        ["door", "Pick the door (3)", 2, [hut.xR, hut.g - 1], "DOOR_B", "Click the glowing spot"],
+      ];
+      for (const [key, pickText, slot, anchor, tileName, tapText] of jobs) {
+        const pick = await expectCoach("pick", pickText, key + " pick");
+        assert(/coach-pulse/.test(pick.pulse), key + " slot is ringed: " + pick.pulse);
+        const ringed = await dbg(
+          page,
+          (i) => document.querySelectorAll("#hotbar .slot")[i].classList.contains("coach-pulse"),
+          slot,
+        );
+        assert(ringed, `slot ${slot + 1} carries the pulse ring for the ${key}`);
+        if (key === "door") {
+          // standing in the doorway: step aside (arrow), not a refusal
+          await dbg(page, (h) => window.__buddies.debug.teleport(h.xR + 0.5, h.g), hut);
+        }
+        await page.locator("#hotbar .slot").nth(slot).click();
+        if (key === "door") {
+          const step = await expectCoach("step", "Step aside", "door, standing in the way");
+          assert(step.tiles.length === 2, "the doorway glows on both tiles");
+          await dbg(page, (h) => window.__buddies.debug.teleport(h.xL + 4.5, h.g), hut);
+        }
+        const tap = await expectCoach("tap", tapText, key + " tap");
+        assert(tap.tiles.length >= 1, "the glow has tiles");
+        await settle(page, 900);
+        // tap the LAST tile of the footprint: a bed's right half / a door's lower half still places it
+        const t = tap.tiles[tap.tiles.length - 1];
+        await tileClick(page, t[0], t[1]);
+        await sleep(200);
+        const placed = await dbg(
+          page,
+          ([x, y, name]) =>
+            window.__buddies.debug.getTile(x, y).fg === window.__buddies.debug.ids[name],
+          [anchor[0], anchor[1], tileName],
+        );
+        assert(placed, `the ${key} landed on its planned spot ${anchor}`);
+      }
+      // 4. the buddy walks in, then a new home
+      await expectCoach("moving", null, "move-in");
+      await dbg(page, () => {
+        const d = window.__buddies.debug;
+        d.teleport(d.spawn.player.x, d.spawn.player.y);
+      });
+      await expectCoach("next", "A new home!", "reward", 25000); // Pip walks over from the porch first
+      assert(
+        (await dbg(page, () => window.__buddies.housed)) === 1,
+        "Pip is housed after bed + torch + door",
+      );
+      // 5. the HUD opens up once the first buddy is home
+      await sleep(900);
+      for (const [sel, name] of [
+        ["#buildBtn", "Items"],
+        [".hud-top .adv", "coin / star chip"],
+      ])
+        assert(await hudVisible(page, sel), name + " shows after the first move-in");
+      // 6. the next request gets the plain coach (no hut): it names the first missing thing
+      let plain = null;
+      for (let i = 0; i < 80 && !(plain && plain.kind !== "next" && plain.kind !== "moving"); i++) {
+        await sleep(150);
+        plain = await coach();
+      }
+      assert(
+        plain && !plain.hut && plain.text.length <= 28,
+        "plain coach for request 2: " + JSON.stringify(plain),
+      );
+      await ctx.close();
+      return `said: ${said.join(" | ")}; then ${JSON.stringify(plain && plain.text)}`;
+    },
+  );
+
+  await check(
+    "AC-22",
+    "AC-22.6 reduced motion: the pulse ring is steady (no animation)",
+    async () => {
+      const run = async (reducedMotion) => {
+        const { page, ctx } = await openPage(browser, { reducedMotion });
+        await startGame(page);
+        await dbg(page, () => {
+          const d = window.__buddies.debug;
+          const h = d.hut();
+          d.teleport(h.xL + 4.5, h.g);
+        });
+        await sleep(500);
+        const r = await dbg(page, () => {
+          const el = document.querySelector("#hotbar .slot.coach-pulse");
+          if (!el) return null;
+          const cs = getComputedStyle(el);
+          return { anim: cs.animationName, shadow: cs.boxShadow };
+        });
+        await ctx.close();
+        return r;
+      };
+      const normal = await run("no-preference");
+      const reduced = await run("reduce");
+      assert(normal && normal.anim === "bb-pulse", "pulses normally: " + JSON.stringify(normal));
+      assert(
+        reduced && reduced.anim === "none" && reduced.shadow !== "none",
+        "reduced motion: no animation but a steady ring: " + JSON.stringify(reduced),
+      );
+      return "bb-pulse normally; none + a steady ring with prefers-reduced-motion";
+    },
+  );
 
   // ---- AC-21 a stale tab shows a persistent banner (NEW-1) -------------------------------------
   await check(

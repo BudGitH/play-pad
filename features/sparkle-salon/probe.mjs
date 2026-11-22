@@ -2,22 +2,29 @@
 //
 // Drives the real page like a player (mouse strokes, taps, keyboard, reloads) and prints one
 // PASS/FAIL line per acceptance criterion in features/sparkle-salon/requirements.md.
-// Exit code 1 if anything fails. Screenshots land in features/sparkle-salon/screens/.
+// Exit code 1 if anything fails. Screenshots go to a temp folder (printed at the end) so a run never dirties
+// the repo; set SHOTS=1 to write them to features/sparkle-salon/screens/ instead.
 //
 //   node features/sparkle-salon/probe.mjs          # starts tools/serve.mjs on :5601 itself if needed
+//   SHOTS=1 node features/sparkle-salon/probe.mjs  # also (re)write features/sparkle-salon/screens/
 //   BASE_URL=http://localhost:5599 node features/sparkle-salon/probe.mjs
 //   PW_CHROMIUM_PATH=/path/to/chrome node features/sparkle-salon/probe.mjs   # optional
 //
 // Nothing here uses a fixed sleep to decide an outcome: state is polled through window.__salon.
+//
+/* eslint-disable max-lines-per-function -- a probe is a long linear script of checks; splitting it per line adds no clarity */
 import { chromium } from "@playwright/test";
 import { spawn } from "node:child_process";
 import { mkdirSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, "../..");
-const SHOTS = resolve(HERE, "screens");
+const SHOTS = process.env.SHOTS
+  ? resolve(HERE, "screens")
+  : resolve(tmpdir(), "sparkle-salon-probe-shots");
 const PORT = Number(process.env.PORT || 5601);
 const BASE = process.env.BASE_URL || `http://localhost:${PORT}`;
 const URL = `${BASE}/games/sparkle-salon/`;
@@ -144,6 +151,515 @@ async function goNext(page) {
 }
 /** The tray button the client asked for (it carries the heart badge). */
 const wantedTool = (page) => page.locator("#tools button.tool:has(.want)");
+
+// ================================================================== QA-panel regression checks (SS-*)
+/** Reach a step quickly with the debug helpers (complete + next until `id`). */
+async function playTo(page, id) {
+  for (let i = 0; i < 8 && (await S(page, () => window.__salon.stepId)) !== id; i++) {
+    await S(page, () => window.__salon.debug.completeStep());
+    await S(page, () => window.__salon.debug.nextStep());
+  }
+}
+const focusInfo = (page) =>
+  S(page, () => {
+    const a = document.activeElement;
+    return {
+      tag: a.tagName,
+      inTools: !!a.closest("#tools"),
+      inTabs: !!a.closest("#subtabs"),
+      opt: a.dataset.opt || null,
+      slot: a.dataset.slot || null,
+    };
+  });
+const withCoins = (coins) =>
+  `localStorage.setItem("${SAVE_KEY}", ${JSON.stringify(JSON.stringify({ v: 1, rev: 1, coins, unlocked: [], sound: true, looks: [], bestOverall: 0 }))})`;
+
+/** SS-C01: a keyboard user's focus must survive every tray rebuild (pick, subtab, unlock). */
+async function checkFocusKept(browser) {
+  const k = await open(browser, { init: withCoins(300) });
+  await begin(k.page);
+  await playTo(k.page, "shadow");
+  await k.page.locator("#tools button.tool").nth(1).focus();
+  await k.page.keyboard.press("Enter");
+  const pick = await focusInfo(k.page);
+  const said = await k.page
+    .waitForFunction(() => /selected/.test(document.getElementById("sr").textContent), null, {
+      timeout: 3000,
+    })
+    .then(
+      () => true,
+      () => false,
+    );
+  await k.page.getByRole("button", { name: /Eye shadow: Mint, locked/ }).focus();
+  await k.page.keyboard.press("Enter");
+  await k.page.keyboard.press("Enter"); // the Unlock button has focus inside the sheet
+  await k.page.waitForFunction(() => !document.querySelector("#unlockModal.open"));
+  const unlock = await focusInfo(k.page);
+  await playTo(k.page, "acc");
+  await k.page.getByRole("button", { name: "Earrings", exact: true }).focus();
+  await k.page.keyboard.press("Enter");
+  const tab = await focusInfo(k.page);
+  check(
+    "SS-C01",
+    "keyboard focus stays on the same option / tab after a pick, an unlock and an accessory tab (and the pick is announced)",
+    pick.inTools &&
+      pick.opt &&
+      unlock.inTools &&
+      unlock.opt === "mint" &&
+      tab.inTabs &&
+      tab.slot === "earring" &&
+      said,
+    JSON.stringify({ pick, unlock, tab, said }),
+  );
+  await k.ctx.close();
+}
+
+/** SS-C02 + SS-C11: the face is a tab stop only while playing; one live region; done/skipped dots carry a glyph. */
+async function checkStageAndDots(browser) {
+  const k = await open(browser);
+  const stage = () =>
+    S(k.page, () => {
+      const e = document.getElementById("stage");
+      return {
+        tab: e.getAttribute("tabindex"),
+        role: e.getAttribute("role"),
+        hidden: e.getAttribute("aria-hidden"),
+      };
+    });
+  const title = await stage();
+  await begin(k.page);
+  const playing = await stage();
+  await S(k.page, () => window.__salon.debug.completeStep());
+  await goNext(k.page); // step 0 done, now on step 1
+  await goNext(k.page); // step 1 skipped, now on step 2
+  const glyphs = await S(k.page, () => {
+    const dots = [...document.querySelectorAll("#dots li")];
+    const after = (el) => getComputedStyle(el, "::after").content;
+    return { done: after(dots[0]), skipped: after(dots[1]) };
+  });
+  const live = await S(
+    k.page,
+    () => document.querySelectorAll('[role="status"], [aria-live]').length,
+  );
+  await S(k.page, () => window.__salon.debug.skipToResults());
+  await k.page.waitForFunction(() => window.__salon.phase === "results", null, { timeout: 10000 });
+  const results = await stage();
+  check(
+    "SS-C02",
+    "#stage is a tab stop (role=application) only while playing; on title / results it is tabindex=-1, aria-hidden, no role",
+    title.tab === "-1" &&
+      !title.role &&
+      title.hidden === "true" &&
+      playing.tab === "0" &&
+      playing.role === "application" &&
+      results.tab === "-1" &&
+      !results.role,
+    JSON.stringify({ title, playing, results }),
+  );
+  check(
+    "SS-C11a",
+    "done / skipped step dots carry a shape cue (check / dash), not colour alone",
+    glyphs.done === '"✓"' && glyphs.skipped === '"–"',
+    JSON.stringify(glyphs),
+  );
+  check(
+    "SS-C11b",
+    "exactly one live region announces (the coin pills are not live)",
+    live === 1,
+    `${live} live regions`,
+  );
+  await k.ctx.close();
+}
+
+/** SS-C03: computed contrast (worst gradient stop) of the flagged text pairs is >= 4.5:1. */
+const CONTRAST_JS = () => {
+  const parse = (str) =>
+    [...str.matchAll(/rgba?\(([^)]+)\)/g)]
+      .map((m) => m[1].split(",").map((x) => parseFloat(x)))
+      .map(([r, g, b, a = 1]) => ({ r, g, b, a }));
+  const lin = (c) => {
+    c /= 255;
+    return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  };
+  const lum = ({ r, g, b }) => 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+  const ratio = (a, b) => (Math.max(lum(a), lum(b)) + 0.05) / (Math.min(lum(a), lum(b)) + 0.05);
+  const wall = { r: 247, g: 163, b: 200 }; // the darkest wallpaper a translucent surface can sit on
+  const blend = (c) => ({
+    r: c.r * c.a + wall.r * (1 - c.a),
+    g: c.g * c.a + wall.g * (1 - c.a),
+    b: c.b * c.a + wall.b * (1 - c.a),
+  });
+  const bgOf = (el) => {
+    for (let n = el; n; n = n.parentElement) {
+      const cs = getComputedStyle(n);
+      const stops = parse(cs.backgroundImage).concat(
+        parse(cs.backgroundColor).filter((c) => c.a > 0),
+      );
+      if (stops.length) return stops.map(blend);
+    }
+    return [{ r: 255, g: 255, b: 255 }];
+  };
+  const out = {};
+  for (const [name, sel] of Object.entries(window.__contrastTargets)) {
+    const el = document.querySelector(sel);
+    if (!el) {
+      out[name] = null;
+      continue;
+    }
+    const cs = getComputedStyle(el);
+    const text = parse(cs.color)[0];
+    // outlined headline text (-webkit-text-stroke) is read against its stroke colour, which is what surrounds the glyph
+    const backs =
+      parseFloat(cs.webkitTextStrokeWidth) > 0 ? parse(cs.webkitTextStrokeColor) : bgOf(el);
+    out[name] = Math.min(...backs.map((bg) => ratio(text, bg)));
+  }
+  return out;
+};
+async function contrastOf(page, targets) {
+  await page.evaluate((t) => {
+    window.__contrastTargets = t;
+  }, targets);
+  return page.evaluate(CONTRAST_JS);
+}
+async function checkContrast(browser) {
+  const k = await open(browser);
+  const all = await contrastOf(k.page, { "Start button": "#startBtn", tagline: ".tagline" });
+  await begin(k.page);
+  await S(k.page, () => window.__salon.debug.completeStep());
+  Object.assign(
+    all,
+    await contrastOf(k.page, {
+      "Next (ready)": "#nextBtn[data-ready='true']",
+      "step name": "#stepName",
+      bubble: "#bubble",
+    }),
+  );
+  await playTo(k.page, "acc");
+  Object.assign(
+    all,
+    await contrastOf(k.page, { "pressed subtab": ".subtab[aria-pressed='true']" }),
+  );
+  await S(k.page, () => window.__salon.debug.skipToResults());
+  await k.page.waitForFunction(() => window.__salon.phase === "results", null, { timeout: 10000 });
+  Object.assign(
+    all,
+    await contrastOf(k.page, {
+      "photo caption": ".photo .cap",
+      "new best": ".res-best.new",
+      "results title": ".res-title",
+      "look chip": ".res-card .look b",
+      "coin pill": ".coin-pill",
+      "earn line": ".earn",
+      "play again": "#againBtn",
+    }),
+  );
+  await k.page.evaluate(() => document.getElementById("againBtn").click());
+  await k.page.waitForFunction(() => document.querySelector("#reqModal.open"));
+  Object.assign(
+    all,
+    await contrastOf(k.page, { "sheet title": "#reqTitle", "look pill": "#reqLook" }),
+  );
+  const low = Object.entries(all)
+    .filter(([, v]) => v !== null && v < 4.5)
+    .map(([n, v]) => `${n} ${v.toFixed(2)}`);
+  const missing = Object.entries(all)
+    .filter(([, v]) => v === null)
+    .map(([n]) => n);
+  check(
+    "SS-C03",
+    "text contrast >= 4.5:1 (worst gradient stop) for buttons, tagline, caption, best, titles, sheet",
+    low.length === 0 && missing.length === 0,
+    low.concat(missing.map((m) => "missing " + m)).join(", ") ||
+      Object.entries(all)
+        .map(([n, v]) => `${n} ${v.toFixed(1)}`)
+        .join(", "),
+  );
+  // the matched tick sits on a white disc
+  await k.ctx.close();
+}
+
+const SMALL = (page) =>
+  S(page, () =>
+    [...document.querySelectorAll("#app button, #app a[href]")]
+      .filter(
+        (e) =>
+          e.offsetParent !== null &&
+          !e.closest("[hidden]") &&
+          !e.closest(".modal:not(.open)") &&
+          getComputedStyle(e).visibility !== "hidden",
+      )
+      .map((e) => ({
+        id: e.id || e.className.split(" ")[0] || e.textContent.trim(),
+        r: e.getBoundingClientRect(),
+      }))
+      .filter((x) => x.r.width > 0 && (x.r.width < 47.9 || x.r.height < 47.9))
+      .map((x) => `${x.id}:${Math.round(x.r.width)}x${Math.round(x.r.height)}`),
+  );
+/** SS-C04: every control is >= 48px at portrait and landscape (title, request sheet, each play state, results). */
+async function checkTargets(browser) {
+  const bad = [];
+  for (const [w, h] of [
+    [390, 844],
+    [844, 390],
+  ]) {
+    const k = await open(browser, { viewport: { width: w, height: h } });
+    bad.push(...(await SMALL(k.page)).map((x) => `${w}x${h} title ${x}`));
+    await startBtn(k.page).click();
+    await k.page.waitForFunction(() => document.querySelector("#reqModal.open"));
+    await settled(k.page, "#reqModal .sheet");
+    bad.push(...(await SMALL(k.page)).map((x) => `${w}x${h} sheet ${x}`));
+    await k.page.getByRole("button", { name: "Let's glam!" }).click();
+    await k.page.waitForFunction(() => !document.querySelector("#reqModal.open"));
+    bad.push(...(await SMALL(k.page)).map((x) => `${w}x${h} cleanse ${x}`));
+    await playTo(k.page, "acc");
+    bad.push(...(await SMALL(k.page)).map((x) => `${w}x${h} accessories ${x}`));
+    await S(k.page, () => window.__salon.debug.skipToResults());
+    await k.page.waitForFunction(() => window.__salon.phase === "results", null, {
+      timeout: 10000,
+    });
+    bad.push(...(await SMALL(k.page)).map((x) => `${w}x${h} results ${x}`));
+    await k.ctx.close();
+  }
+  check(
+    "SS-C04",
+    "every visible button / link is >= 48x48px at 390x844 and 844x390 (title, sheet, cleanse, accessories, results)",
+    bad.length === 0,
+    [...new Set(bad)].join(", "),
+  );
+}
+
+/** Wait for a sheet's pop-in animation to end (its bounding box is scaled while it plays). */
+const settled = (page, sel) =>
+  page.evaluate(
+    (q) =>
+      Promise.all(
+        document
+          .querySelector(q)
+          .getAnimations()
+          .map((a) => a.finished),
+      ),
+    sel,
+  );
+const inside = (b, w, h) =>
+  b && b.x >= -0.5 && b.y >= -0.5 && b.x + b.width <= w + 0.5 && b.y + b.height <= h + 0.5;
+/** SS-C05: the request / leave / unlock sheets and their primary buttons fit short landscape screens. */
+async function checkSheetsFit(browser) {
+  const bad = [];
+  for (const [w, h] of [
+    [844, 390],
+    [667, 375],
+    [640, 360],
+    [568, 320],
+  ]) {
+    const k = await open(browser, { viewport: { width: w, height: h } });
+    const startOk = inside(await startBtn(k.page).boundingBox(), w, h);
+    await startBtn(k.page).click();
+    await k.page.waitForFunction(() => document.querySelector("#reqModal.open"));
+    await settled(k.page, "#reqModal .sheet");
+    const req = [
+      await k.page.locator("#reqModal .sheet").boundingBox(),
+      await k.page.locator("#reqGo").boundingBox(),
+    ];
+    await k.page.getByRole("button", { name: "Let's glam!" }).click();
+    await k.page.keyboard.press("Escape");
+    await k.page.waitForFunction(() => document.querySelector("#leaveModal.open"));
+    await settled(k.page, "#leaveModal .sheet");
+    const leave = [
+      await k.page.locator("#leaveModal .sheet").boundingBox(),
+      await k.page.locator("#leaveNo").boundingBox(),
+    ];
+    await k.page.keyboard.press("Escape");
+    await playTo(k.page, "shadow");
+    await k.page.getByRole("button", { name: /Eye shadow: Mint, locked/ }).click();
+    await k.page.waitForFunction(() => document.querySelector("#unlockModal.open"));
+    await settled(k.page, "#unlockModal .sheet");
+    const unlock = [
+      await k.page.locator("#unlockModal .sheet").boundingBox(),
+      await k.page.locator("#unlockNo").boundingBox(),
+    ];
+    if (!startOk) bad.push(`${w}x${h} Start`);
+    [
+      ["request", req],
+      ["leave", leave],
+      ["unlock", unlock],
+    ].forEach(([name, boxes]) =>
+      boxes.forEach((b, i) => {
+        if (!inside(b, w, h)) bad.push(`${w}x${h} ${name} ${i ? "button" : "sheet"}`);
+      }),
+    );
+    await k.ctx.close();
+  }
+  check(
+    "SS-C05",
+    "Start, and the request / leave / unlock sheets with their primary buttons, fit 844x390, 667x375, 640x360 and 568x320",
+    bad.length === 0,
+    bad.join(", "),
+  );
+}
+
+/** SS-C06: Play again / PlayPad are on screen without any scrolling on phones. */
+async function checkResultsCta(browser) {
+  const bad = [];
+  for (const [w, h] of [
+    [390, 844],
+    [360, 640],
+    [844, 390],
+  ]) {
+    const k = await open(browser, { viewport: { width: w, height: h } });
+    await begin(k.page);
+    await S(k.page, () => window.__salon.debug.skipToResults());
+    await k.page.waitForFunction(() => window.__salon.phase === "results", null, {
+      timeout: 10000,
+    });
+    const again = await k.page.locator("#againBtn").boundingBox();
+    const hub = await k.page.locator('#results a[href="../../index.html"]').boundingBox();
+    if (!inside(again, w, h) || !inside(hub, w, h)) bad.push(`${w}x${h}`);
+    await k.ctx.close();
+  }
+  check(
+    "SS-C06",
+    "results: Play again and PlayPad are fully on screen with no scrolling at 390x844, 360x640 and 844x390",
+    bad.length === 0,
+    bad.join(", "),
+  );
+}
+
+/** SS-Q04 / SS-QA-02: a keyboard "Space held" latch can never get stuck (blur, hidden tab). */
+async function checkKbdLatch(browser) {
+  const k = await open(browser);
+  await begin(k.page);
+  await playTo(k.page, "shadow");
+  await k.page.locator("#stage").focus();
+  await k.page.keyboard.down("Space");
+  const held = (await S(k.page, () => window.__salon.kbd)).held;
+  await k.page.evaluate(() => document.getElementById("stage").blur()); // focus leaves while Space is down: no keyup arrives
+  const afterBlur = (await S(k.page, () => window.__salon.kbd)).held;
+  await k.page.keyboard.up("Space");
+  await k.page.locator("#stage").focus();
+  await k.page.keyboard.down("Space");
+  await k.page.evaluate(() => {
+    Object.defineProperty(document, "hidden", { value: true, configurable: true });
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+  const afterHidden = (await S(k.page, () => window.__salon.kbd)).held;
+  await k.page.keyboard.up("Space");
+  const before = await progress(k.page);
+  await k.page.locator("#stage").focus();
+  for (let i = 0; i < 6; i++) await k.page.keyboard.press("ArrowRight");
+  check(
+    "SS-Q04",
+    "keyboard Space-held latch resets on blur and on a hidden tab (arrows then do not paint)",
+    held === true &&
+      afterBlur === false &&
+      afterHidden === false &&
+      (await progress(k.page)) === before,
+    JSON.stringify({ held, afterBlur, afterHidden }),
+  );
+  await k.ctx.close();
+}
+
+/** SS-QA-03 + SS-QA-06: Accessories un-complete when nothing is worn (coin latched); debug helpers inert off-phase. */
+async function checkAccessoriesAndGuards(browser) {
+  const k = await open(browser);
+  await begin(k.page);
+  await playTo(k.page, "acc");
+  const coins0 = await S(k.page, () => window.__salon.coins);
+  const tiara = k.page.getByRole("button", { name: /Tiara: Pearl tiara/ });
+  await tiara.click();
+  const done1 = await S(k.page, () => window.__salon.done[6]);
+  const coins1 = await S(k.page, () => window.__salon.coins);
+  await tiara.click(); // take it off again
+  const done2 = await S(k.page, () => window.__salon.done[6]);
+  await tiara.click(); // and back on
+  const coins3 = await S(k.page, () => window.__salon.coins);
+  check(
+    "SS-QA-03",
+    "Accessories un-complete when nothing is worn, and the step coin is paid only once",
+    done1 === true && coins1 === coins0 + 10 && done2 === false && coins3 === coins1,
+    JSON.stringify({ done1, coins1, done2, coins3 }),
+  );
+  await S(k.page, () => window.__salon.debug.skipToResults());
+  await k.page.waitForFunction(() => window.__salon.phase === "results", null, { timeout: 10000 });
+  const before = await S(k.page, () => ({
+    coins: window.__salon.coins,
+    phase: window.__salon.phase,
+    saved: window.__salon.saved.looks.length,
+  }));
+  await S(k.page, () => {
+    window.__salon.debug.skipToResults();
+    window.__salon.debug.completeStep();
+    window.__salon.debug.nextStep();
+    window.__salon.debug.glam();
+  });
+  const after = await S(k.page, () => ({
+    coins: window.__salon.coins,
+    phase: window.__salon.phase,
+    saved: window.__salon.saved.looks.length,
+  }));
+  check(
+    "SS-Q07",
+    "debug helpers do nothing outside a live makeover (no re-run from the results screen)",
+    JSON.stringify(before) === JSON.stringify(after),
+    JSON.stringify({ before, after }),
+  );
+  await k.ctx.close();
+}
+
+/** SS-QA-05: two tabs share one save through a revision counter; coins / unlocks follow the newest write. */
+async function checkMultiTab(browser) {
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const a = await ctx.newPage();
+  const b = await ctx.newPage();
+  await a.goto(URL);
+  await b.goto(URL);
+  await a.waitForFunction(() => window.__salon);
+  await b.waitForFunction(() => window.__salon);
+  await b.evaluate(() => window.__salon.debug.addCoins(40));
+  const seenByA = await a
+    .waitForFunction(() => window.__salon.coins === 40, null, { timeout: 4000 })
+    .then(
+      () => true,
+      () => false,
+    );
+  await a.evaluate(() => window.__salon.debug.addCoins(15));
+  const seenByB = await b
+    .waitForFunction(() => window.__salon.coins === 55, null, { timeout: 4000 })
+    .then(
+      () => true,
+      () => false,
+    );
+  const revs = [
+    await a.evaluate(() => window.__salon.saved.rev),
+    await b.evaluate(() => window.__salon.saved.rev),
+  ];
+  // a stale tab must not overwrite a newer save: tab A writes while its copy is behind
+  await b.evaluate(() =>
+    localStorage.setItem(
+      "playpad.sparkleSalon.v1",
+      JSON.stringify({
+        v: 1,
+        rev: 99,
+        coins: 7,
+        unlocked: [],
+        sound: true,
+        looks: [],
+        bestOverall: 0,
+      }),
+    ),
+  );
+  await a.evaluate(() => window.__salon.debug.addCoins(1)); // A still believes rev ~2: it must adopt rev 99 first, then add
+  const merged = await a.evaluate(() => ({
+    coins: window.__salon.coins,
+    rev: window.__salon.saved.rev,
+  }));
+  check(
+    "SS-QA-05",
+    "two tabs: a write in one shows up in the other, and a stale tab adopts the newer revision instead of overwriting it",
+    seenByA && seenByB && revs[0] === revs[1] && merged.coins === 8 && merged.rev === 100,
+    JSON.stringify({ seenByA, seenByB, revs, merged }),
+  );
+  await ctx.close();
+}
 
 async function main() {
   const server = await ensureServer();
@@ -550,13 +1066,13 @@ async function main() {
       .filter((u) => u.startsWith(BASE))
       .every(
         (u) =>
-          /\/(games\/sparkle-salon\/(index\.html)?|scripts\/theme\.js|styles\/(tokens|base)\.css|icons\/favicon\.svg)$/.test(
+          /\/(games\/sparkle-salon\/(index\.html)?|styles\/(tokens|base)\.css|icons\/favicon\.svg)$/.test(
             u.split("?")[0],
           ) || u === BASE + "/",
       );
     check(
       "AC-17",
-      "no console errors / failed requests, and nothing fetched beyond the page + shared css/theme + favicon",
+      "no console errors / failed requests, and nothing fetched beyond the page + shared css + favicon (no theme.js: the salon is pinned light)",
       errors.length === 0 && foreign.length === 0 && allowed,
       errors.concat(foreign).join(" | ") || `${requests.length} requests`,
     );
@@ -627,10 +1143,10 @@ async function main() {
         [...document.querySelectorAll("#play button, #play a[href]")]
           .filter((e) => e.offsetParent !== null && !e.closest("[hidden]"))
           .map((e) => ({ id: e.id || e.className, r: e.getBoundingClientRect() }))
-          .filter((x) => x.r.width > 0 && (x.r.width < 44 || x.r.height < 44))
+          .filter((x) => x.r.width > 0 && (x.r.width < 47.9 || x.r.height < 47.9))
           .map((x) => `${x.id}:${Math.round(x.r.width)}x${Math.round(x.r.height)}`),
       );
-      check("AC-15b", "touch targets are at least 44x44px", small.length === 0, small.join(", "));
+      check("AC-15b", "touch targets are at least 48x48px", small.length === 0, small.join(", "));
       // keyboard: focus a tray tool with Tab, press Enter -> it becomes selected
       await k.page.locator("#tools button.tool").nth(1).focus();
       await k.page.keyboard.press("Enter");
@@ -746,7 +1262,6 @@ async function main() {
       await v.page.waitForFunction(() => window.__salon.phase === "results", null, {
         timeout: 10000,
       });
-      await v.page.locator("#againBtn").scrollIntoViewIfNeeded();
       const againBox = await v.page.locator("#againBtn").boundingBox();
       const againInside = againBox && againBox.y + againBox.height <= hgt + 1 && againBox.y >= 0;
       if (label === "1280x800" || label === "844x390") await shot(v.page, label + "-results");
@@ -770,6 +1285,17 @@ async function main() {
       await v.ctx.close();
     }
 
+    // ------------------------------------------------------------------ QA-panel regression checks
+    await checkFocusKept(browser);
+    await checkStageAndDots(browser);
+    await checkContrast(browser);
+    await checkTargets(browser);
+    await checkSheetsFit(browser);
+    await checkResultsCta(browser);
+    await checkKbdLatch(browser);
+    await checkAccessoriesAndGuards(browser);
+    await checkMultiTab(browser);
+
     // ------------------------------------------------------------------ AC-18 file:// works
     {
       const f = await open(browser, {
@@ -790,7 +1316,8 @@ async function main() {
     if (server) server.kill();
   }
   const failed = results.filter((r) => !r.ok);
-  console.log(`\n${results.length - failed.length}/${results.length} checks passed`);
+  console.log(`\nscreenshots: ${SHOTS}`);
+  console.log(`${results.length - failed.length}/${results.length} checks passed`);
   process.exit(failed.length ? 1 : 0);
 }
 

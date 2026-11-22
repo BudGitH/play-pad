@@ -31,6 +31,7 @@
 | AC-17 Clean page          | `AC-17`                                                                                                                | e2e                      |
 | AC-18 file://             | `AC-18`                                                                                                                | e2e                      |
 | AC-19 Test hook           | `AC-19`                                                                                                                | e2e                      |
+| AC-20 QA-panel hardening  | `SS-C01`, `SS-C02`, `SS-C03`, `SS-C04`, `SS-C05`, `SS-C06`, `SS-C11a`/`b`, `SS-Q04`, `SS-Q07`, `SS-QA-03`, `SS-QA-05`  | e2e                      |
 
 ## Test cases
 
@@ -68,11 +69,11 @@
 ```
 # from the repo root (deps installed: npm ci). The probe starts tools/serve.mjs itself on :5601 if nothing answers.
 PW_CHROMIUM_PATH=/path/to/chrome node features/sparkle-salon/probe.mjs     # PW_CHROMIUM_PATH optional
-npx eslint games/sparkle-salon/index.html
+npx eslint games/sparkle-salon/index.html features/sparkle-salon/probe.mjs
 npx prettier --check games/sparkle-salon features/sparkle-salon
 ```
 
-Screenshots (390×844 and 1280×800, plus a landscape phone) are written to `features/sparkle-salon/screens/`.
+Screenshots (390×844 and 1280×800, plus a landscape phone) are written to a temp folder (`$TMPDIR/sparkle-salon-probe-shots`, printed at the end) so a run never dirties the repo. Run with `SHOTS=1` to (re)write the committed set in `features/sparkle-salon/screens/`.
 
 ## Smoke contract (for the orchestrator's `tests/round-drivers.mjs`)
 
@@ -91,7 +92,7 @@ The Start button is a plain `<button>` whose accessible name is exactly "Start m
 
 ## Definition of done
 
-- [x] All probe checks pass (45+/45+ — see the report for the latest run).
+- [x] All probe checks pass (59/59 — see the report for the latest run).
 - [x] Every acceptance criterion in `requirements.md` is covered.
 - [x] The tests encode the **chosen** design (owner's reference): tray, tool cursor, step indicator, request card, photo.
 - [ ] `qa-report.md` is clean (no unresolved CRITICAL/HIGH) — **Phase 4, run by the orchestrator.**

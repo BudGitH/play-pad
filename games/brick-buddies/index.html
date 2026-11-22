@@ -885,8 +885,7 @@
         border: 1px solid var(--bb-line);
         color: var(--md-sys-color-on-surface);
       }
-      .keys-touch,
-      .k-short {
+      .keys-touch {
         display: none;
       }
       body.touch .keys-kb {
@@ -908,12 +907,7 @@
           overflow: hidden;
           text-overflow: ellipsis;
         }
-        body.touch .k-long {
-          display: none;
-        }
-        body.touch .k-short {
-          display: inline;
-        } /* on a short screen the one touch line sits just above Start, where it is read before it scrolls away */
+        /* on a short screen the one touch line sits just above Start, where it is read before it scrolls away */
         .card {
           display: flex;
           flex-direction: column;
@@ -1045,9 +1039,34 @@
         background: var(--bb-glass);
         border: 1px solid var(--bb-line);
       }
-      .how-sym.ok {
-        color: #8ee08e;
+      /* a ticked box: the same look as the coach's picture ticks in the request card */
+      .how-box {
+        position: relative;
+        width: 44px;
+        height: 44px;
+        border-radius: 9px;
+        background: rgba(142, 224, 142, 0.22);
+        border: 2px solid #8ee08e;
+      }
+      .how-box::after {
+        content: "\2713";
+        position: absolute;
+        right: -5px;
+        bottom: -7px;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        font-size: 12px;
         font-weight: 900;
+        background: #8ee08e;
+        color: #10300f;
+      }
+      .how-box canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
       }
       .how-step p {
         margin: 0;
@@ -1109,6 +1128,22 @@
         .how-sym.pad {
           width: 32px;
           height: 32px;
+        }
+        .how-box {
+          width: 30px;
+          height: 30px;
+          margin: 0 3px 4px;
+        }
+        .how-box canvas {
+          width: 100%;
+          height: 100%;
+        }
+        .how-box::after {
+          width: 14px;
+          height: 14px;
+          font-size: 10px;
+          right: -4px;
+          bottom: -5px;
         }
         .how-step p {
           font-size: 13px;
@@ -1379,20 +1414,10 @@
         </div>
         <p class="note" id="saveNote" hidden></p>
         <p class="keys keys-kb">
-          <kbd>A</kbd>/<kbd>D</kbd> move &middot; <kbd>W</kbd>/<kbd>Space</kbd> jump &middot;
-          <kbd>click</kbd> place &middot; <kbd>right-click</kbd> break &middot;
-          <kbd>I J K L</kbd> aim &middot; <kbd>F</kbd> place &middot; <kbd>X</kbd> break &middot;
-          <kbd>1</kbd>&ndash;<kbd>0</kbd> hotbar &middot; <kbd>E</kbd> items
+          <kbd>A</kbd> <kbd>D</kbd> walk &middot; <kbd>F</kbd> or click to place &middot;
+          <b>?</b> help
         </p>
-        <p class="keys keys-touch">
-          <span class="k-long"
-            >Use the round pads to walk and jump &middot; tap a tile to place &middot; switch to
-            <b>Break</b> to remove &middot; <b>Items</b> opens the build menu</span
-          ><span class="k-short"
-            >Pads walk &middot; tap to place &middot; <b>Break</b> removes &middot; <b>Items</b> for
-            more</span
-          >
-        </p>
+        <p class="keys keys-touch">Pads walk &middot; tap to place &middot; <b>?</b> help</p>
       </div>
     </section>
 
@@ -1444,15 +1469,17 @@
             <p>
               <b class="num" aria-hidden="true">3</b
               ><span class="for-touch">Pick a block. Tap to place it.</span
-              ><span class="for-keys">Pick a block. Click to place it.</span>
+              ><span class="for-keys">Pick a block. Click or press F.</span>
             </p>
           </li>
           <li class="how-step">
             <div class="how-pic" aria-hidden="true">
-              <span class="how-sym ok">&#10003;</span>
-              <canvas data-icon="torch" width="32" height="32"></canvas>
+              <span class="how-box"><canvas data-icon="bed" width="32" height="32"></canvas></span>
+              <span class="how-box"
+                ><canvas data-icon="torch" width="32" height="32"></canvas
+              ></span>
+              <span class="how-box"><canvas data-icon="door" width="32" height="32"></canvas></span>
               <span class="how-sym">&#10140;</span>
-              <canvas data-face="pip" width="16" height="16"></canvas>
               <span class="how-sym">&#127968;</span>
             </div>
             <p><b class="num" aria-hidden="true">4</b>Tick every box. Pip moves in!</p>
@@ -4589,23 +4616,27 @@
         }
         /** Can this item go with its anchor tile at (tx, ty)? Returns {ok, reason}. */
         function canPlace(it, tx, ty, ignoreReach) {
-          var no = function (r) {
-            return { ok: false, reason: r };
+          // `code` is what code branches on (far | bounds | bedrock | there | blocked | standing |
+          // support | locked); `reason` is the words shown to the player.
+          var no = function (r, code) {
+            return { ok: false, reason: r, code: code };
           };
-          if (!ignoreReach && !playerReach(tx, ty)) return no("Too far away");
+          if (!ignoreReach && !playerReach(tx, ty)) return no("Too far away", "far");
           var tiles = it.tiles;
           for (var i = 0; i < tiles.length; i++) {
             var x = tx + tiles[i][0];
             var y = ty + tiles[i][1];
-            if (!inb(x, y)) return no("Outside the world");
-            if (y >= H - 2) return no("That is bedrock");
+            if (!inb(x, y)) return no("Outside the world", "bounds");
+            if (y >= H - 2) return no("That is bedrock", "bedrock");
           }
           if (it.layer === "bg") {
-            return getBg(tx, ty) === tiles[0][2] ? no("Already there") : { ok: true, reason: "" };
+            return getBg(tx, ty) === tiles[0][2]
+              ? no("Already there", "there")
+              : { ok: true, reason: "" };
           }
           for (var j = 0; j < tiles.length; j++) {
             var cur = getFg(tx + tiles[j][0], ty + tiles[j][1]);
-            if (cur !== T.AIR && cur !== T.TUFT) return no(blockerMessage(cur));
+            if (cur !== T.AIR && cur !== T.TUFT) return no(blockerMessage(cur), "blocked");
           }
           return placeRule(it, tx, ty, tiles);
         }
@@ -4636,7 +4667,7 @@
           if (solidItem) {
             for (var i = 0; i < tiles.length; i++) {
               var who = bodyAt(tx + tiles[i][0], ty + tiles[i][1]);
-              if (who) return { ok: false, reason: standingMessage(who) };
+              if (who) return { ok: false, reason: standingMessage(who), code: "standing" };
             }
           }
           var rule = it.rule;
@@ -4644,7 +4675,7 @@
           var points = supportPoints(rule, tx, ty, tiles);
           for (var k = 0; k < points.length; k++) {
             if (!supportOk(rule, points[k][0], points[k][1])) {
-              return { ok: false, reason: RULE_MESSAGE[rule] };
+              return { ok: false, reason: RULE_MESSAGE[rule], code: "support" };
             }
           }
           return { ok: true, reason: "" };
@@ -4657,7 +4688,8 @@
           });
         }
         function tryPlace(it, tx, ty) {
-          if (!isUnlocked(it)) return { ok: false, reason: "Locked: unlock it in the Items menu" };
+          if (!isUnlocked(it))
+            return { ok: false, reason: "Locked: unlock it in the Items menu", code: "locked" };
           var r = canPlace(it, tx, ty);
           if (!r.ok) return r;
           forcePlace(it, tx, ty);
@@ -7494,7 +7526,7 @@
                 ? [h.xL + 5, h.g - 2]
                 : [h.xR, h.g - 1];
           var r = canPlace(it, planned[0], planned[1], true);
-          if (r.ok || key === "door" || /standing/.test(r.reason)) return planned;
+          if (r.ok || key === "door" || r.code === "standing") return planned; // else look for a free spot
           for (var y = h.g - 1; y >= h.g - 3; y--)
             for (var x = h.xL + 1; x <= h.xR - 1; x++)
               if (canPlace(it, x, y, true).ok) return [x, y];
@@ -7549,46 +7581,68 @@
           var at = S.hotbar.indexOf(it.key);
           return !touchMode && at >= 0 ? name + " (" + ((at + 1) % HOTBAR_SLOTS) + ")" : name;
         }
-        /** Touch taps the glow, a mouse clicks it, a keyboard player aims (I J K L) and presses F. */
+        /** Touch taps the glow; a mouse clicks it; until a mouse has moved, F places on it (no aiming). */
+        var mouseUsed = false;
         function tapWords() {
           if (touchMode) return "Tap the glowing spot";
-          return aim.mode === "kb" ? "Press F on the glow" : "Click the glowing spot";
+          return mouseUsed ? "Click the glowing spot" : "Press F on the glow";
+        }
+        var PLAIN_NAME = {};
+        PLAIN_NAME[T.PLANKS] = "plank";
+        PLAIN_NAME[T.BED_L] = "bed";
+        PLAIN_NAME[T.BED_R] = "bed";
+        PLAIN_NAME[T.TORCH] = "torch";
+        PLAIN_NAME[T.CHAIR] = "chair";
+        PLAIN_NAME[T.STONE] = "stone";
+        PLAIN_NAME[T.DIRT] = "dirt";
+        /** The footprint tiles that something already occupies (a plank the child put there, say). */
+        function blockersOf(tiles) {
+          return tiles.filter(function (t) {
+            var id = getFg(t[0], t[1]);
+            return id !== T.AIR && id !== T.TUFT;
+          });
         }
         /** Which single thing to say for the hut job `it` at `spot`, given what placing it would say. */
         function hutStep(it, spot, res) {
           var tiles = footprint(it, spot);
           var world = { tiles: tiles, label: "Hut" };
-          var cx = spot[0] + 0.5;
+          if (res.code === "far") return walkStep(spot[0] + 0.5 < P.x, tiles);
+          if (res.code === "blocked") return clearStep(tiles);
           var c;
-          if (res.reason === "Too far away") {
-            var left = cx < P.x;
-            c = coachStep(
-              "walk",
-              touchMode ? "Walk to the hut" : "Walk to the hut (A D)",
-              { glyph: left ? "\u25c0" : "\u25b6" },
-              { world: { tiles: tiles, label: "Hut", arrowOnly: true } },
-            );
-            c.pulse = touchMode ? { id: left ? "tLeft" : "tRight" } : null;
-          } else if (S.mode === "break") {
+          if (S.mode === "break") {
             c = coachStep("mode", "Switch to Build", { glyph: "\uD83D\uDD28" }, { world: world });
             c.pulse = { id: "modeBtn" };
           } else if (S.hotbar[S.sel] !== it.key) {
             c = coachStep("pick", pickWords(it), { item: it.key }, { world: world });
             c.pulse = slotPulse(it.key) || { id: "buildBtn" };
-          } else if (/standing/.test(res.reason)) {
-            var east = it.key === "door" || P.x <= cx + 0.5; // out toward the house
-            c = coachStep(
-              "step",
-              "Step aside",
-              { glyph: east ? "\u25b6" : "\u25c0" },
-              { world: world },
-            );
+          } else if (res.code === "standing") {
+            var east = it.key === "door" || P.x <= spot[0] + 1;
+            var glyph = east ? "\u25b6" : "\u25c0";
+            c = coachStep("step", "Step aside", { glyph: glyph }, { world: world });
             c.pulse = touchMode ? { id: east ? "tRight" : "tLeft" } : null;
           } else {
-            var word = tapWords();
-            c = coachStep("tap", word, { item: it.key }, { world: world });
+            c = coachStep("tap", tapWords(), { item: it.key }, { world: world });
           }
           return c;
+        }
+        function walkStep(left, tiles) {
+          var text = touchMode ? "Walk to the hut" : "Walk to the hut (A D)";
+          var world = { tiles: tiles, label: "Hut", arrowOnly: true };
+          var c = coachStep("walk", text, { glyph: left ? "\u25c0" : "\u25b6" }, { world: world });
+          c.pulse = touchMode ? { id: left ? "tLeft" : "tRight" } : null;
+          return c;
+        }
+        /** Something is in the way of the glowing spot: say so, ring Break, then point at the block. */
+        function clearStep(tiles) {
+          var inWay = blockersOf(tiles);
+          var world = { tiles: inWay.length ? inWay : tiles, label: "Hut" };
+          if (S.mode !== "break") {
+            var c = coachStep("clear", "Switch to Break", { glyph: "\u26CF" }, { world: world });
+            c.pulse = { id: "modeBtn" };
+            return c;
+          }
+          var name = PLAIN_NAME[getFg(inWay[0][0], inWay[0][1])] || "block";
+          return coachStep("break", "Break the " + name, { glyph: "\u26CF" }, { world: world });
         }
         /** Later requests: name the first missing thing, and ring its hotbar slot or the Items button. */
         function planGenericCoach() {
@@ -7641,6 +7695,8 @@
             var hut = planHutCoach();
             if (hut) return hut;
           }
+          if (REQ.state === "arriving")
+            return coachStep("wait", REQ.buddy.name + " is coming!", { glyph: "👀" });
           if (REQ.state !== "waiting") return null;
           // nothing left to add: the buddy is about to notice (the room is checked every 0.25 s)
           return (
@@ -7918,6 +7974,10 @@
         }
         function doAimAction(kind) {
           var t = aim.mode === "kb" ? aimTileKb() : [aim.tx, aim.ty];
+          // a keyboard player never has to aim at the coach's glowing spot: F places on it
+          var it = itemInHand();
+          if (kind === "place" && it && COACH && COACH.job && COACH.job.key === it.key)
+            t = COACH.job.spot;
           if (kind === "break") applyBreak(t[0], t[1], true);
           else applyPlace(t[0], t[1]);
         }
@@ -7933,9 +7993,24 @@
           });
           return hit ? j.spot : null;
         }
+        /** The coach's glowing spot was tapped with a different item in hand: nudge, do not place. */
+        function coachWrongItem(tx, ty, it) {
+          var j = COACH && COACH.job;
+          if (!j || COACH.kind !== "pick" || !it || it.key === j.key) return null;
+          var on = footprint(ITEM_BY_KEY[j.key], j.spot).some(function (t) {
+            return t[0] === tx && t[1] === ty;
+          });
+          return on ? ITEM_BY_KEY[j.key] : null;
+        }
         function applyPlace(tx, ty) {
           if (interactAt(tx, ty)) return;
           var it = itemInHand();
+          var wanted = coachWrongItem(tx, ty, it);
+          if (wanted) {
+            failMsg("Pick the " + wanted.name.toLowerCase() + " first");
+            coachTimer = 0;
+            return;
+          }
           var spot = coachAnchor(tx, ty, it);
           if (spot) {
             tx = spot[0];
@@ -8003,6 +8078,7 @@
             aim.has = true;
           },
           KeyF: aimWith("place"),
+          Enter: aimWith("place"),
           KeyX: aimWith("break"),
           BracketLeft: function () {
             selectSlot(S.sel - 1);
@@ -8191,6 +8267,7 @@
           var rec = ptrs.get(e.pointerId);
           var tile = tileFromEvent(e);
           if (e.pointerType === "mouse") {
+            mouseUsed = true;
             aim.tx = tile[0];
             aim.ty = tile[1];
             aim.mode = "mouse";

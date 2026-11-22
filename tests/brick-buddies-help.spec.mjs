@@ -169,3 +169,82 @@ test.describe("brick-buddies coach (phone)", () => {
     ).toBe(true);
   });
 });
+
+/** Start as a returning visitor and stand inside the hut. */
+async function insideHut(page) {
+  await page.addInitScript((k) => localStorage.setItem(k, "1"), HELP_KEY);
+  await start(page);
+  return page.evaluate(() => {
+    const d = window.__buddies.debug;
+    const h = d.hut();
+    d.teleport(h.xL + 4.5, h.g);
+    return h;
+  });
+}
+
+/** F / Enter place on the glow; no mouse needed. */
+function registerKeyboardPlacing() {
+  test("with no mouse, a digit then F places the bed on the glow without aiming", async ({
+    page,
+  }) => {
+    const h = await insideHut(page);
+    await expect(page.locator("#coachText")).toHaveText("Pick the bed (5)");
+    await page.keyboard.press("Digit5");
+    await expect(page.locator("#coachText")).toHaveText("Press F on the glow");
+    await page.keyboard.press("KeyJ"); // the aim cursor is elsewhere; F still goes to the glow
+    await page.keyboard.press("KeyF");
+    await expect(page.locator("#coachText")).toHaveText("Pick the torch (4)");
+    expect(
+      await page.evaluate(
+        ([x, y]) => {
+          const d = window.__buddies.debug;
+          return d.getTile(x, y).fg === d.ids.BED_L;
+        },
+        [h.xL + 2, h.g - 1],
+      ),
+    ).toBe(true);
+  });
+}
+
+/** A blocked spot and a wrong item: the coach redirects instead of dead-ending. */
+function registerBlockedSpot() {
+  test("a hut filled with planks: the coach says to break the plank; the wrong item only nudges", async ({
+    page,
+  }) => {
+    const h = await insideHut(page);
+    await page.evaluate((hut) => {
+      const d = window.__buddies.debug;
+      d.fill(hut.xL + 1, hut.g - 3, hut.xR - 1, hut.g - 1, d.ids.PLANKS);
+      d.teleport(hut.xL + 4.5, hut.g - 4);
+    }, h);
+    await expect(page.locator("#coachText")).toHaveText("Switch to Break");
+    await expect(page.locator("#modeBtn")).toHaveClass(/coach-pulse/);
+    await page.keyboard.press("KeyB");
+    await expect(page.locator("#coachText")).toHaveText("Break the plank");
+
+    // back to Build with the planks in hand, the bed's spot cleared: tapping it nudges, places nothing
+    await page.keyboard.press("KeyB");
+    await page.evaluate((hut) => {
+      const d = window.__buddies.debug;
+      d.fill(hut.xL + 1, hut.g - 3, hut.xR - 1, hut.g - 1, 0);
+    }, h);
+    await page.keyboard.press("Digit1");
+    await expect(page.locator("#coachText")).toHaveText("Pick the bed (5)");
+    await page.waitForTimeout(900);
+    const at = await page.evaluate(
+      ([x, y]) => window.__buddies.debug.tileToScreen(x, y),
+      [h.xL + 2, h.g - 1],
+    );
+    await page.mouse.click(at.x, at.y);
+    await expect(page.locator("#toast")).toContainText("Pick the bed first");
+    expect(
+      await page.evaluate(([x, y]) => window.__buddies.debug.getTile(x, y).fg, [h.xL + 2, h.g - 1]),
+    ).toBe(0);
+  });
+}
+
+test.describe("brick-buddies coach (desktop keyboard)", () => {
+  test.use({ viewport: { width: 1280, height: 800 } });
+  registerKeyboardPlacing();
+  registerBlockedSpot();
+});

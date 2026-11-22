@@ -1,10 +1,10 @@
 # QA Report (Post-Run Findings): Brick Buddies onboarding
 
-> **Phase 4 output.** Honest scope note: this run had **no sub-agent tool**, so the four lenses were applied by a single reviewer (the implementer) against the criteria, with the real tools run for ACCURACY / QUALITY. That is weaker than the independent panel the workflow asks for; **a fresh-eyes panel pass before merge is recommended** (see "Not independently reviewed").
+> **Phase 4 output.** Round 1 had **no sub-agent tool**: the four lenses were applied by the implementer alone. An **independent QA pass then reviewed commit `7c97902` and found 6 issues (round 2 below, all fixed)**. That pass is the fresh-eyes review round 1 lacked; it caught a real keyboard dead end that round 1 missed.
 
 **Feature:** Brick Buddies onboarding (first-run how-to, `?` chip, coach, three-tap first goal, simple first run)
 **Ticket:** PLAY-009 (follow-up)
-**Run at:** 2026-11-22 (one round: tools -> fixes -> re-run)
+**Run at:** 2026-11-22 (round 1: tools -> fixes -> re-run; round 2: independent QA findings -> fixes -> re-run)
 **Overall result:** ☑ PASS ☐ FAIL
 
 ---
@@ -50,9 +50,20 @@
 - **COMPLIANCE** - No PII, no new dependency, no network (probe AC-14), docs updated per CLAUDE.md (ARCHITECTURE, DECISIONS, LEARNINGS, IDEAS, ledger); `_redirects` needs no change (no new top-level file; `features/*` and `tests/*` are already redirected).
 - **RISK** - No `innerHTML`; all dynamic text via `textContent` / DOM nodes; the only new storage is one constant-key flag read and written inside try/catch (spec + probe run with `localStorage` throwing: no errors); the versioned save is untouched (key and format asserted).
 
+## Round 2: independent QA on `7c97902` (all fixed)
+
+- **R2-1 · HIGH · accuracy / a11y (keyboard-only stuck).** The coach said "Press F on the glow", but F places on the aim tile one ahead of the player, so with the aim left and the glow up-right nothing happened; and until the first F the aim mode was "mouse", so a keyboard player saw "Click the glowing spot". **Fixed:** with the coached item in hand, F (and now Enter) places on the coach's spot (`doAimAction`), no aiming needed; the wording is keyboard-first until a mouse has actually moved over the world (`mouseUsed`): "Press F on the glow", then "Click the glowing spot". The how-to says "Pick a block. Click or press F." on non-touch. Tests: probe "keyboard only" (digit + F with the aim cursor elsewhere, digit + Enter for the door) and spec "with no mouse, a digit then F places the bed".
+- **R2-2 · MED · accuracy (dead end).** If the child filled the hut with planks the coach pointed at occupied tiles. **Fixed:** the coach detects a blocked spot (`code === "blocked"`): "Switch to Break" with the Break button ringed, then "Break the plank" with the blocking tile glowing, then moves on (a bed is two tiles: it walks through each plank). Tapping the glow with the wrong item in hand now says "Pick the bed first" and places nothing (`coachWrongItem`). Tests: probe "a blocked spot ..." and spec "a hut filled with planks ...".
+- **R2-3 · MED · quality.** The coach matched `canPlace` reason strings with regexes / equality. **Fixed:** `canPlace` / `placeRule` / `tryPlace` results now carry a `code` (`far | bounds | bedrock | there | blocked | standing | support | locked`) next to the unchanged `reason` words; the coach branches on `code` only.
+- **R2-4 · LOW · ux.** The title still carried two long key lists. **Fixed:** one very short line each ("A D walk · F or click to place · ? help" / "Pads walk · tap to place · ? help"); the long lists stay in the pause menu. Probe AC-17 now asserts the short wording.
+- **R2-5 · LOW · ux.** Older saves had no coach line during the ~5 s the buddy walks in. **Fixed:** "<Name> is coming!" while arriving (probe "an older save ...").
+- **R2-6 · LOW · ux.** How-to step 4 was symbols. **Fixed:** three ticked picture boxes (bed, torch, door) then Pip's home, matching the coach's ticks; checked at 390x844 and 568x320 (`screens/after-2-*`).
+
+Round-2 results: see the table above (re-run after the fixes).
+
 ## Not independently reviewed
 
-- No second reviewer saw the diff. Recommended before merge: one fresh pass on (1) the keyboard-only path end to end, (2) the how-to on a real small Android handset, (3) the hut position on very wide screens (the walk is ~33 tiles from the spawn).
+- Round 2 was the independent pass on the diff (above). Still recommended: the how-to on a real small Android handset, and a real child (AC-22.10).
 
 ## Regression checks (one per fix)
 

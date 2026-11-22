@@ -2165,8 +2165,11 @@ try {
         "desktop title shows the keyboard hint " + JSON.stringify(hint),
       );
       assert(
-        /I J K L/.test(hint.text) && /F place/.test(hint.text) && /X break/.test(hint.text),
-        "the keyboard hint lists the aim keys: " + hint.text,
+        /A D walk/.test(hint.text) &&
+          /F or click to place/.test(hint.text) &&
+          hint.text.trim().length <= 48,
+        "the keyboard hint is one very short line (the how-to and the coach teach the rest): " +
+          hint.text,
       );
       await wreckHut(page);
       await startGame(page);
@@ -2757,7 +2760,7 @@ try {
 
       // 3. bed, torch, door: pick (slot ringed), then tap the glow (second tile of the footprint)
       const jobs = [
-        ["bed", "Pick the bed (5)", 4, [hut.xL + 2, hut.g - 1], "BED_L", "Click the glowing spot"],
+        ["bed", "Pick the bed (5)", 4, [hut.xL + 2, hut.g - 1], "BED_L", "Press F on the glow"],
         [
           "torch",
           "Pick the torch (4)",
@@ -2832,6 +2835,121 @@ try {
       );
       await ctx.close();
       return `said: ${said.join(" | ")}; then ${JSON.stringify(plain && plain.text)}`;
+    },
+  );
+
+  await check(
+    "AC-22",
+    "AC-22.5 keyboard only: no mouse, no aiming - Pick (digit) then F / Enter places on the glowing spot",
+    async () => {
+      const { page, ctx } = await openPage(browser);
+      await startGame(page);
+      const hut = await dbg(page, () => window.__buddies.debug.hut());
+      await dbg(page, (h) => window.__buddies.debug.teleport(h.xL + 4.5, h.g), hut);
+      await sleep(600);
+      const coach = () => dbg(page, () => window.__buddies.debug.coach());
+      const tile = (x, y) => getTile(page, x, y).then((t) => t.fg);
+      await page.keyboard.press("Digit5");
+      await sleep(400);
+      const c = await coach();
+      assert(
+        c.kind === "tap" && c.text === "Press F on the glow",
+        "no mouse used: " + JSON.stringify(c),
+      );
+      // the aim cursor is deliberately somewhere else (left of the player): F must still place on the glow
+      await page.keyboard.press("KeyJ");
+      await page.keyboard.press("KeyJ");
+      await page.keyboard.press("KeyF");
+      await sleep(300);
+      assert((await tile(hut.xL + 2, hut.g - 1)) === IDS.BED_L, "F placed the bed on the glow");
+      await page.keyboard.press("Digit4");
+      await sleep(400);
+      await page.keyboard.press("KeyF");
+      await sleep(300);
+      assert((await tile(hut.xL + 5, hut.g - 2)) === IDS.TORCH, "F placed the torch on the glow");
+      await page.keyboard.press("Digit3");
+      await sleep(400);
+      await page.keyboard.press("Enter");
+      await sleep(300);
+      assert((await tile(hut.xR, hut.g - 1)) === IDS.DOOR_B, "Enter placed the door on the glow");
+      await ctx.close();
+      return "digit + F (aim elsewhere) placed bed and torch, digit + Enter placed the door";
+    },
+  );
+
+  await check(
+    "AC-22",
+    "AC-22.5 a blocked spot: the coach says Break the plank (Break ringed); the wrong item nudges instead of placing",
+    async () => {
+      const { page, ctx } = await openPage(browser);
+      await startGame(page);
+      const hut = await dbg(page, () => window.__buddies.debug.hut());
+      await dbg(
+        page,
+        (h) => {
+          const d = window.__buddies.debug;
+          d.fill(h.xL + 1, h.g - 3, h.xR - 1, h.g - 1, d.ids.PLANKS); // the kid filled the hut with planks
+          d.teleport(h.xL + 4.5, h.g - 4); // standing on the roof, within reach of everything
+        },
+        hut,
+      );
+      await sleep(900);
+      const coach = () => dbg(page, () => window.__buddies.debug.coach());
+      let c = await coach();
+      assert(
+        c.kind === "clear" && /Break/.test(c.text) && c.pulse === "modeBtn",
+        "blocked: " + JSON.stringify(c),
+      );
+      await page.keyboard.press("KeyB");
+      await sleep(400);
+      c = await coach();
+      assert(
+        c.kind === "break" && c.text === "Break the plank",
+        "in Break mode: " + JSON.stringify(c),
+      );
+      assert(c.tiles.length >= 1, "the plank to break glows");
+      // a bed is two tiles wide: break each plank the glow still covers
+      for (let i = 0; i < 4 && c.kind === "break"; i++) {
+        await tileClick(page, c.tiles[0][0], c.tiles[0][1]);
+        await sleep(300);
+        c = await coach();
+      }
+      assert(c.kind !== "break", "after breaking, the coach moves on: " + JSON.stringify(c));
+      await page.keyboard.press("KeyB"); // back to Build
+      await dbg(page, (h) => window.__buddies.debug.teleport(h.xL + 4.5, h.g - 4), hut);
+      await sleep(500);
+      // wrong item: planks in hand, tap the glow -> a nudge, and no plank lands on the spot
+      await page.keyboard.press("Digit1");
+      await sleep(400);
+      c = await coach();
+      assert(c.kind === "pick", "planks in hand while the bed is next: " + JSON.stringify(c));
+      const t = c.tiles[0];
+      const before = (await getTile(page, t[0], t[1])).fg;
+      await tileClick(page, t[0], t[1]);
+      await sleep(300);
+      const toast = await page.locator("#toast").textContent();
+      assert(/Pick the bed first/.test(toast), "nudged: " + toast);
+      assert((await getTile(page, t[0], t[1])).fg === before, "nothing was placed on the glow");
+      await ctx.close();
+      return "Switch to Break -> Break the plank -> moves on; the wrong item says 'Pick the bed first'";
+    },
+  );
+
+  await check(
+    "AC-22",
+    "AC-22.5 an older save (no hut) shows a coach line while the buddy arrives",
+    async () => {
+      const { page, ctx } = await openPage(browser);
+      await wreckHut(page);
+      await startGame(page);
+      await sleep(500);
+      const c = await dbg(page, () => window.__buddies.debug.coach());
+      assert(
+        c && c.kind === "wait" && /is coming!$/.test(c.text),
+        "arriving: " + JSON.stringify(c),
+      );
+      await ctx.close();
+      return c.text;
     },
   );
 

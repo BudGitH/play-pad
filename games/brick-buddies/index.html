@@ -3636,7 +3636,7 @@
             b.y += (dy / dist) * sp;
             if (Math.abs(dx) > 0.02) b.face = dx > 0 ? 1 : -1;
           }
-          openDoorsAround(b);
+          if (b.state === "walk") openDoorsAround(b); // a wanderer never goes through a door, so it never opens one
           if (b.pathI >= b.path.length) {
             b.path = null;
             b.state = "idle";

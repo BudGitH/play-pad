@@ -406,8 +406,8 @@ try {
       await startGame(page);
       await settle(page);
       const p = await dbg(page, () => window.__buddies.player);
-      const px = Math.floor(p.x);
-      const py = Math.floor(p.y);
+      let px = Math.floor(p.x);
+      let py = Math.floor(p.y);
       // place + break a block above the player
       await tileClick(page, px, py - 3);
       assert((await getTile(page, px, py - 3)).fg === IDS.PLANKS, "click should place planks");
@@ -434,7 +434,17 @@ try {
       );
       await tileClick(page, px - 1, py - 3);
       assert((await getTile(page, px - 1, py - 3)).fg === 0, "a bed in mid-air must be refused");
-      // bed on the kitchen floor: two tiles, breaking one half removes both
+      // The rest runs on open ground far left of the house, where no buddy ever walks (the visitor
+      // starts east of here). In the kitchen the resident Barnaby wanders, and a solid door is rightly
+      // refused when he stands in its tile - which made this step flaky.
+      const hx = await dbg(page, () => window.__buddies.debug.world.houseX);
+      const top = await flatten(page, hx - 30, hx - 20);
+      await dbg(page, ([x, t]) => window.__buddies.debug.teleport(x, t), [hx - 25 + 0.5, top]);
+      await settle(page);
+      const q = await dbg(page, () => window.__buddies.player);
+      px = Math.floor(q.x);
+      py = Math.floor(q.y);
+      // bed on the ground: two tiles, breaking one half removes both
       const bx = px - 5;
       await tileClick(page, bx, py - 1);
       const l = await getTile(page, bx, py - 1);

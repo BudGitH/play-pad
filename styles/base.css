@@ -390,3 +390,25 @@ button {
     scroll-behavior: auto !important;
   }
 }
+
+/* ── Back link ("← PlayPad") ─────────────────────────────────────────────────
+   Shared by every game (PLAY-008/009 centralisation, findings-ledger
+   `tap-target-size` + `duplicated-component-css`): per-game copies drifted
+   below the 48px tap target, so the size lives here once. Games may override
+   spacing (margin / padding) and colour for their own chrome, never the
+   min-height. */
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--pp-hit-min);
+  color: var(--md-sys-color-on-surface-variant);
+  padding: 8px 14px 8px 4px;
+  margin: 0 0 0 -4px;
+  border-radius: var(--md-sys-shape-corner-full);
+  font-size: var(--md-sys-typescale-label-large-size);
+  font-weight: var(--md-sys-typescale-label-large-weight);
+}
+.back-link:hover {
+  color: var(--md-sys-color-on-surface);
+}

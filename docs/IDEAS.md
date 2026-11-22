@@ -22,6 +22,9 @@
 
 ## 🌱 Later (needs shaping first)
 
+- **Sparkle Salon — persona feedback (PLAY-008, non-blocking):** art polish toward the reference (dress glitter texture, multi-hue irises, finer lashes, fuller round chin, slimmer wand + gem-heart tube); pre-reader help (icon-only hints, pointing nudge); keyboard "apply step" shortcut + 25/50/75 % progress announcements; music loop variation + bass audible on phone speakers, a real giggle; more tactile tap steps (drag stickers into place); replay hooks (second princess / hairstyle, gallery, daily client); hub card art (princess portrait) and the "Kids" tag shown on cards; **an ear check of the mix on a real phone**.
+- **Brick Buddies — persona feedback (PLAY-009, non-blocking):** closer fidelity if wanted (stronger bloom/rim light, flatter darker earth masses, soft cloud banding, calmer cobble); release a claim when a resident's room is demolished (NEW-5 full fix); a return portal; fill-rectangle / paint-from-here for keyboard and touch; undo; one-handed mirrored layout; buddy preferences and a visible purpose for stars; photo mode; per-bus volume + a "quiet" preset without thunder (small kids); first-run coach / pre-reader helper arrow; hub screenshot thumbnail; **real-device perf + audio check**.
+
 - **Search** beyond the Solo / Play together chips, once the catalog passes ~12 games. **Remember last settings** per game (best scores already persist).
 - **`?quick=1`** so the hub's Play now / Surprise me can skip a game's own setup (the hero is one tap to the game page today; party games preselect 2 players).
 - **An even-gentler "Tiny" Colour Rush speed** below Chill (design left it for persona feedback).

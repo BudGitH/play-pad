@@ -434,10 +434,10 @@ try {
         "placing inside the player must be refused",
       );
       // furniture needs a floor
-      await page.keyboard.press("Digit7"); // bed
+      await page.keyboard.press("Digit5"); // bed
       assert(
         (await dbg(page, () => window.__buddies.selected)) === "bed",
-        "hotbar key 7 selects the bed",
+        "hotbar key 5 selects the bed",
       );
       await tileClick(page, px - 1, py - 3);
       assert((await getTile(page, px - 1, py - 3)).fg === 0, "a bed in mid-air must be refused");
@@ -467,7 +467,7 @@ try {
         "breaking one half removes both",
       );
       // door is two tiles tall
-      await page.keyboard.press("Digit6");
+      await page.keyboard.press("Digit3"); // door
       await tileClick(page, bx, py - 1);
       assert(
         (await getTile(page, bx, py - 1)).fg === IDS.DOOR_B &&
@@ -477,7 +477,7 @@ try {
       await tileClick(page, bx, py - 2, "right");
       assert((await getTile(page, bx, py - 1)).fg === 0, "breaking the top removes the bottom too");
       // ghost validity equals canPlace
-      await page.keyboard.press("Digit7");
+      await page.keyboard.press("Digit5");
       const gp = await dbg(page, ([x, y]) => window.__buddies.debug.tileToScreen(x, y), [
         px - 4,
         py - 1,
@@ -1589,8 +1589,8 @@ try {
       await page.keyboard.press("KeyX");
       assert((await getTile(page, aim.tx, aim.ty)).fg === 0, "X breaks at the aim cursor");
       // hotbar keys, build menu, pause menu
-      await page.keyboard.press("Digit9");
-      assert((await dbg(page, () => window.__buddies.selected)) === "chair", "9 selects the chair");
+      await page.keyboard.press("Digit8");
+      assert((await dbg(page, () => window.__buddies.selected)) === "chair", "8 selects the chair");
       await page.keyboard.press("KeyE");
       assert(await page.locator("#build").isVisible(), "E opens the build menu");
       await page.keyboard.press("Escape");
@@ -1639,7 +1639,7 @@ try {
       const n2 = await dbg(nm.page, () => window.__buddies.debug.rainSample());
       assert(JSON.stringify(n1) !== JSON.stringify(n2), "rain animates normally");
       await nm.ctx.close();
-      return "names, Tab+Enter start, focus ring, A/Space, aim F/X, 9/E/Esc, Space-on-button, reduced-motion rain static";
+      return "names, Tab+Enter start, focus ring, A/Space, aim F/X, 8/E/Esc, Space-on-button, reduced-motion rain static";
     },
   );
 
@@ -1647,6 +1647,7 @@ try {
   const views = [
     { id: "phone-portrait", viewport: { width: 390, height: 844 }, touch: true, dsf: 2 },
     { id: "phone-landscape", viewport: { width: 844, height: 390 }, touch: true, dsf: 2 },
+    { id: "phone-568x320", viewport: { width: 568, height: 320 }, touch: true, dsf: 2 },
     { id: "desktop", viewport: { width: 1280, height: 800 }, touch: false, dsf: 1 },
   ];
   for (const v of views) {
@@ -1907,6 +1908,38 @@ try {
     },
   );
 
+  // ---- AC-18 (R3-5) the flat plot is reachable on foot from the spawn, no teleport -------------
+  await check(
+    "AC-18",
+    "walking from the spawn (real keys) through the kitchen and porch doors reaches the flat plot",
+    async () => {
+      const { page, ctx } = await openPage(browser);
+      await startGame(page);
+      await settle(page, 600);
+      const hx = await dbg(page, () => window.__buddies.debug.world.houseX);
+      const start = await dbg(page, () => window.__buddies.player);
+      assert(start.x > hx + 14 && start.x < hx + 34, "the player starts inside the tower kitchen");
+      await page.keyboard.down("KeyA");
+      const t0 = Date.now();
+      let p = start;
+      while (Date.now() - t0 < 15000) {
+        p = await dbg(page, () => window.__buddies.player);
+        if (p.x < hx - 8) break;
+        await sleep(150);
+      }
+      await page.keyboard.up("KeyA");
+      await sleep(400);
+      p = await dbg(page, () => window.__buddies.player);
+      const g = await dbg(page, (x) => window.__buddies.debug.groundRow(x), Math.floor(p.x));
+      assert(
+        p.x < hx - 6 && p.x > hx - 16 && p.ground && Math.abs(p.y - g) < 0.05,
+        "stood on the flat plot after walking: " + JSON.stringify({ x: p.x - hx, y: p.y, g }),
+      );
+      await ctx.close();
+      return `walked ${(start.x - p.x).toFixed(1)} tiles left in ${((Date.now() - t0) / 1000).toFixed(1)} s and stands on the plot`;
+    },
+  );
+
   // ---- AC-18 first-run path: the hut recipe works from a fresh world ----------------------------
   await check(
     "AC-18",
@@ -1916,7 +1949,13 @@ try {
       await startGame(page);
       await settle(page, 600);
       const tip = await page.locator("#reqHint").textContent();
-      assert(/hut on the flat grass left of the house/.test(tip), "the tip names the hut: " + tip);
+      assert(
+        /hut/.test(tip) &&
+          /flat grass/.test(tip) &&
+          /left door/.test(tip) &&
+          /porch door/.test(tip),
+        "the tip names the hut and the way out to the flat grass: " + tip,
+      );
       const hx = await dbg(page, () => window.__buddies.debug.world.houseX);
       const rows = await dbg(
         page,
@@ -2087,8 +2126,20 @@ try {
       await dbg(page, () => window.__buddies.debug.giveCoins(500));
       const hb0 = await dbg(page, () => window.__buddies.hotbar);
       assert(
-        hb0[0] === "planks" && hb0[1] === null && hb0[2] === null,
-        "slots 2 and 3 start empty",
+        JSON.stringify(hb0) ===
+          JSON.stringify([
+            "planks",
+            "wallPlanks",
+            "door",
+            "torch",
+            "bed",
+            "ladder",
+            "table",
+            "chair",
+            null,
+            null,
+          ]),
+        "the bar starts in recipe order with the last two slots empty: " + JSON.stringify(hb0),
       );
       await page.keyboard.press("Digit1");
       await page.getByRole("button", { name: "Items, open build menu" }).click();
@@ -2096,10 +2147,10 @@ try {
       await page.getByRole("button", { name: /^Furnace, locked/ }).click();
       const hb1 = await dbg(page, () => window.__buddies.hotbar);
       assert(
-        hb1[0] === "planks" && hb1[1] === "furnace" && hb1.length === 10,
+        hb1[0] === "planks" && hb1[8] === "furnace" && hb1[3] === "torch" && hb1.length === 10,
         "unlocked Furnace went to the first empty slot: " + JSON.stringify(hb1),
       );
-      await page.keyboard.press("Digit3");
+      await page.keyboard.press("Digit0"); // the last (empty) slot
       await page.getByRole("button", { name: "Structure" }).click();
       await page.getByRole("button", { name: "Cobble", exact: true }).click();
       const full = await dbg(page, () => window.__buddies.hotbar);
@@ -2138,11 +2189,34 @@ try {
         touch: true,
         dsf: 2,
       });
-      const th = await dbg(t.page, () => ({
-        kb: document.querySelector("#title .keys-kb").getBoundingClientRect().width > 0,
-        touch: document.querySelector("#title .keys-touch").getBoundingClientRect().width > 0,
-      }));
-      // (the short landscape card hides both hint lines on purpose; check the DOM state on a tall phone)
+      // R3-4: a short landscape phone keeps ONE visible line of touch help, above the fold
+      for (const [w, h] of [
+        [844, 390],
+        [568, 320],
+      ]) {
+        await t.page.setViewportSize({ width: w, height: h });
+        await sleep(300);
+        const line = await dbg(t.page, () => {
+          const k = document.querySelector("#title .keys-touch").getBoundingClientRect();
+          const kb = document.querySelector("#title .keys-kb").getBoundingClientRect();
+          const start = document.getElementById("startBtn").getBoundingClientRect();
+          return {
+            top: k.top,
+            bottom: k.bottom,
+            h: k.height,
+            w: k.width,
+            kb: kb.width,
+            vh: innerHeight,
+            startBottom: start.bottom,
+          };
+        });
+        assert(
+          line.w > 0 && line.kb === 0 && line.h <= 24 && line.top >= 0 && line.bottom <= line.vh,
+          `one visible touch hint line at ${w}x${h}: ` + JSON.stringify(line),
+        );
+        assert(line.startBottom <= line.vh, `Start stays visible at ${w}x${h}`);
+      }
+      const th = { kb: false };
       await t.ctx.close();
       const tall = await openPage(browser, {
         viewport: { width: 390, height: 844 },
@@ -2197,14 +2271,64 @@ try {
     },
   );
 
-  // ---- AC-19 floating UI never overlaps (P-3 / P-4) ---------------------------------------------
+  // ---- AC-19 floating UI never overlaps (P-3 / P-4 / R3-2 / R3-3 / R3-6) -------------------------
+  const HUD_BOXES = `() => {
+    const sel = [
+      [".hud-top .chip, .hud-top .chip-btn", "chip"],
+      ["#request", "card"],
+      ["#toast.show", "toast"],
+      ["#hotbar", "hotbar"],
+      [".mode-btn", "mode"],
+      [".tbtn", "pad"],
+      ["#build", "sheet"],
+    ];
+    const boxes = [];
+    sel.forEach(([q, kind]) =>
+      document.querySelectorAll(q).forEach((e) => {
+        const r = e.getBoundingClientRect();
+        if (r.width > 0 && r.height > 0 && getComputedStyle(e).visibility !== "hidden")
+          boxes.push({ kind, id: e.id || e.getAttribute("aria-label") || e.className, r });
+      }),
+    );
+    // the open build sheet covers the dock by design; everything else must stay apart
+    const covered = (a, b) =>
+      (a.kind === "sheet" && ["hotbar", "mode", "pad"].includes(b.kind)) ||
+      (b.kind === "sheet" && ["hotbar", "mode", "pad"].includes(a.kind));
+    const hits = [];
+    for (let i = 0; i < boxes.length; i++)
+      for (let j = i + 1; j < boxes.length; j++) {
+        const a = boxes[i].r;
+        const b = boxes[j].r;
+        const w = Math.min(a.right, b.right) - Math.max(a.left, b.left);
+        const h = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+        if (w > 1 && h > 1 && !covered(boxes[i], boxes[j])) hits.push(boxes[i].id + " x " + boxes[j].id);
+      }
+    const dock = Math.min(
+      ...boxes.filter((b) => ["hotbar", "mode", "pad"].includes(b.kind)).map((b) => b.r.top),
+    );
+    const card = document.getElementById("request");
+    const cardBox = boxes.find((b) => b.kind === "card");
+    const toast = boxes.find((b) => b.kind === "toast");
+    return {
+      hits,
+      dock,
+      cardBottom: cardBox && cardBox.r.bottom,
+      cardOpen: !card.classList.contains("collapsed"),
+      cardMore: card.classList.contains("more"),
+      overflow: card.scrollHeight - card.clientHeight > 4,
+      toast: toast && { l: toast.r.left, r: toast.r.right, b: toast.r.bottom },
+      vw: innerWidth,
+      n: boxes.length,
+    };
+  }`;
   for (const v of [
     { id: "390x844", viewport: { width: 390, height: 844 } },
     { id: "844x390", viewport: { width: 844, height: 390 } },
+    { id: "568x320", viewport: { width: 568, height: 320 } },
   ]) {
     await check(
       "AC-19",
-      `HUD pieces do not overlap at ${v.id} (card open, toast showing)`,
+      `HUD pieces do not overlap at ${v.id} (card open, then build sheet open)`,
       async () => {
         const { page, ctx } = await openPage(browser, {
           viewport: v.viewport,
@@ -2213,50 +2337,10 @@ try {
         });
         await startGame(page);
         await settle(page, 900);
-        await page.keyboard.press("Digit2"); // an empty slot: placing with it gives a real toast
+        await page.keyboard.press("Digit9"); // an empty slot: placing with it gives a real toast
         await page.keyboard.press("KeyF");
         await sleep(250);
-        const m = await dbg(page, () => {
-          const sel = [
-            [".hud-top .chip, .hud-top .chip-btn", "chip"],
-            ["#request", "card"],
-            ["#toast.show", "toast"],
-            ["#hotbar", "hotbar"],
-            [".mode-btn", "mode"],
-            [".tbtn", "pad"],
-          ];
-          const boxes = [];
-          sel.forEach(([q, kind]) =>
-            document.querySelectorAll(q).forEach((e) => {
-              const r = e.getBoundingClientRect();
-              if (r.width > 0 && r.height > 0)
-                boxes.push({ kind, id: e.id || e.getAttribute("aria-label") || e.className, r });
-            }),
-          );
-          const hits = [];
-          for (let i = 0; i < boxes.length; i++)
-            for (let j = i + 1; j < boxes.length; j++) {
-              const a = boxes[i].r;
-              const b = boxes[j].r;
-              const w = Math.min(a.right, b.right) - Math.max(a.left, b.left);
-              const h = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
-              if (w > 1 && h > 1) hits.push(boxes[i].id + " x " + boxes[j].id);
-            }
-          const dock = Math.min(
-            ...boxes.filter((b) => ["hotbar", "mode", "pad"].includes(b.kind)).map((b) => b.r.top),
-          );
-          const card = boxes.find((b) => b.kind === "card");
-          const toast = boxes.find((b) => b.kind === "toast");
-          return {
-            hits,
-            dock,
-            cardBottom: card && card.r.bottom,
-            cardOpen: !document.getElementById("request").classList.contains("collapsed"),
-            toast: toast && { l: toast.r.left, r: toast.r.right, b: toast.r.bottom },
-            vw: innerWidth,
-            n: boxes.length,
-          };
-        });
+        const m = await page.evaluate(`(${HUD_BOXES})()`);
         assert(m.cardOpen, "the objective card is open at the start on touch screens too");
         assert(m.toast, "a toast is showing for the check");
         assert(m.hits.length === 0, "overlapping HUD pieces: " + m.hits.join("; "));
@@ -2269,8 +2353,35 @@ try {
           "the toast sits above the dock and inside the screen " + JSON.stringify(m.toast),
         );
         await page.screenshot({ path: join(SHOTS, `hud-${v.id}.jpg`) });
+        // R3-6: a card that scrolls shows a cue until it is scrolled to the end
+        assert(
+          m.cardMore === m.overflow,
+          `the scroll cue matches the overflow (cue ${m.cardMore}, overflow ${m.overflow})`,
+        );
+        if (m.overflow) {
+          await page.evaluate(() => {
+            const c = document.getElementById("request");
+            c.scrollTop = c.scrollHeight;
+          });
+          await sleep(150);
+          assert(
+            !(await page.evaluate(() =>
+              document.getElementById("request").classList.contains("more"),
+            )),
+            "the cue goes away at the end of the card",
+          );
+        }
+        // R3-3: with the build sheet open the card steps aside and nothing overlaps
+        await page.getByRole("button", { name: /Items, open build menu/ }).click();
+        await sleep(500);
+        await page.keyboard.press("KeyF"); // a fresh toast while the sheet is open
+        await sleep(250);
+        const sh = await page.evaluate(`(${HUD_BOXES})()`);
+        assert(!sh.cardOpen, "the card is collapsed while the build sheet is open");
+        assert(sh.hits.length === 0, "overlaps with the build sheet open: " + sh.hits.join("; "));
+        assert(sh.toast && sh.toast.l >= 0 && sh.toast.r <= sh.vw, "the toast stays on screen");
         await ctx.close();
-        return `${m.n} boxes, 0 overlaps, card ends ${Math.round(m.cardBottom)} / dock ${Math.round(m.dock)}`;
+        return `${m.n} boxes, 0 overlaps (also with the sheet open), card ends ${Math.round(m.cardBottom)} / dock ${Math.round(m.dock)}, cue ${m.cardMore}`;
       },
     );
   }
@@ -2291,6 +2402,26 @@ try {
       await sleep(500); // tab A is still on its title screen
       const banner = A.page.locator("#stale");
       assert(await banner.isVisible(), "the banner is up on the stale tab");
+      // N-7: a compact banner (about 70px), never a tall red slab, on desktop and on a landscape phone
+      const tall = async (pg) => (await pg.locator("#stale").boundingBox()).height;
+      const hDesktop = await tall(A.page);
+      assert(hDesktop <= 120, "the banner is at most 120px tall at 1280x800, got " + hDesktop);
+      const L = await browser.newContext({
+        viewport: { width: 844, height: 390 },
+        hasTouch: true,
+        isMobile: true,
+      });
+      const LA = await openPage(browser, { context: L });
+      const LB = await openPage(browser, { context: L });
+      await startGame(LB.page);
+      await dbg(LB.page, () => {
+        window.__buddies.debug.giveCoins(5);
+        window.__buddies.debug.save();
+      });
+      await sleep(500);
+      const hLand = await tall(LA.page);
+      assert(hLand <= 120, "the banner is at most 120px tall at 844x390, got " + hLand);
+      await L.close();
       assert(/updated in another tab/i.test(await banner.textContent()), "it says why");
       assert(
         await A.page.getByRole("button", { name: "Reload now" }).isVisible(),

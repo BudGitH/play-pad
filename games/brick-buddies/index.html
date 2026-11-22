@@ -289,6 +289,30 @@
         color: var(--md-sys-color-on-surface-variant);
         line-height: 1.35;
       }
+      /* a fade + chevron at the bottom of the card while there is more to scroll to */
+      #request::after {
+        content: "\25BE";
+        display: none;
+        position: sticky;
+        bottom: 0;
+        height: 30px;
+        margin: -30px -10px 0;
+        padding-top: 12px;
+        box-sizing: border-box;
+        text-align: center;
+        font-size: 16px;
+        line-height: 1;
+        color: var(--md-sys-color-tertiary);
+        background: linear-gradient(to bottom, rgba(24, 17, 14, 0), rgba(24, 17, 14, 0.94) 70%);
+        border-radius: 0 0 16px 16px;
+        pointer-events: none;
+      }
+      #request.more::after {
+        display: block;
+      }
+      #request.under-sheet {
+        visibility: hidden;
+      }
       #request.collapsed #reqList,
       #request.collapsed .req-foot,
       #request.collapsed .req-hint {
@@ -511,6 +535,25 @@
         }
       }
 
+      @media (orientation: landscape) and (max-height: 520px) and (max-width: 720px) {
+        /* a short, narrow phone (568x320): icon-only mode buttons and 48px pads leave the hotbar its room */
+        body.touch .mode-btn .lbl {
+          display: none;
+        }
+        body.touch .mode-btn {
+          min-width: 48px;
+          padding: 0;
+          font-size: 20px;
+        }
+        body.touch .tbtn {
+          width: 48px;
+          height: 48px;
+        }
+        body.touch .tc {
+          gap: 6px;
+        }
+      }
+
       /* ---------- Toast ---------- */
       #toast {
         position: absolute;
@@ -553,6 +596,11 @@
         padding: 10px;
         z-index: 10;
         backdrop-filter: blur(8px);
+      }
+      @media (max-height: 420px) {
+        #build {
+          max-height: 52vh; /* a short landscape phone keeps room above the sheet for the toast */
+        }
       }
       .sheet-head {
         display: flex;
@@ -778,8 +826,10 @@
         margin: 0;
         flex: 1;
       }
-      .stale .btn {
+      .stale .btn,
+      .stale .btn.primary {
         flex: none;
+        width: auto;
         min-height: 48px;
       }
       @media (max-width: 420px) {
@@ -852,7 +902,8 @@
         border: 1px solid var(--bb-line);
         color: var(--md-sys-color-on-surface);
       }
-      .keys-touch {
+      .keys-touch,
+      .k-short {
         display: none;
       }
       body.touch .keys-kb {
@@ -862,8 +913,56 @@
         display: block;
       }
       @media (max-height: 560px) {
-        .keys {
+        .keys-kb,
+        .keys:not(.keys-touch) {
           display: none !important;
+        }
+        /* a short phone in landscape keeps ONE line of touch help */
+        body.touch .keys-touch {
+          display: block;
+          margin: 8px 0 0;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        body.touch .k-long {
+          display: none;
+        }
+        body.touch .k-short {
+          display: inline;
+        } /* on a short screen the one touch line sits just above Start, where it is read before it scrolls away */
+        .card {
+          display: flex;
+          flex-direction: column;
+        }
+        .card > .back-link {
+          order: 0;
+          align-self: flex-start;
+        }
+        .card > .brand {
+          order: 1;
+        }
+        .card > .tag {
+          order: 2;
+        }
+        .card > .steps {
+          order: 3;
+        }
+        .card > .keys-touch {
+          order: 4;
+        }
+        .card > #startBtn {
+          order: 5;
+          margin-top: 10px;
+        }
+        .card > .row {
+          order: 6;
+        }
+        .card > .note {
+          order: 7;
+        }
+        .card > .keys-kb {
+          order: 8;
         }
         .tag {
           margin: 4px 0 8px;
@@ -878,6 +977,11 @@
       .back-link-chip.armed {
         background: var(--md-sys-color-error-container);
         color: var(--md-sys-color-on-error-container);
+      }
+      @media (max-height: 400px) {
+        .tag {
+          display: none; /* a 320px-tall phone has room for the name, one hint line and the buttons */
+        }
       }
       @media (max-width: 520px) {
         .back-link-chip:not(.armed) .txt {
@@ -1063,8 +1167,13 @@
           <kbd>1</kbd>&ndash;<kbd>0</kbd> hotbar &middot; <kbd>E</kbd> items
         </p>
         <p class="keys keys-touch">
-          Use the round pads to walk and jump &middot; tap a tile to place &middot; switch to
-          <b>Break</b> to remove &middot; <b>Items</b> opens the build menu
+          <span class="k-long"
+            >Use the round pads to walk and jump &middot; tap a tile to place &middot; switch to
+            <b>Break</b> to remove &middot; <b>Items</b> opens the build menu</span
+          ><span class="k-short"
+            >Pads walk &middot; tap to place &middot; <b>Break</b> removes &middot; <b>Items</b> for
+            more</span
+          >
         </p>
       </div>
     </section>
@@ -1442,18 +1551,19 @@
         ITEMS.forEach(function (it) {
           ITEM_BY_KEY[it.key] = it;
         });
-        // null = an empty slot (slots 2 and 3 start empty so the first bar is not a wall of choices)
+        // In the order the first recipe uses them (walls, back wall, door, torch, bed), so a phone's first
+        // six visible slots hold everything a hut needs. null = an empty slot; the last two start empty.
         var DEFAULT_HOTBAR = [
           "planks",
-          null,
-          null,
           "wallPlanks",
-          "ladder",
           "door",
+          "torch",
           "bed",
+          "ladder",
           "table",
           "chair",
-          "torch",
+          null,
+          null,
         ];
         // ---------------------------------------------------------------------------
         //  small utilities
@@ -2950,7 +3060,8 @@
           putFg(1, 14, T.TUFT);
           putFg(6, 14, T.TUFT);
           // porch: pillar + brick lintel hanging off the tower, with a lantern
-          fillFg(11, 13, 11, 15, T.PLANKS);
+          putFg(11, 13, T.PLANKS); // the post above a second door: the way out to the flat plot
+          putItem("door", 11, 15);
           fillFg(11, 12, 13, 12, T.BRICK);
           putItem("lantern", 12, 13);
           // brick steps down the right-hand slope and a balcony ledge
@@ -4333,7 +4444,7 @@
             min: 6,
             needs: { bed: 1, light: 1 },
             reward: 40,
-            hint: "Tip: build a hut on the flat grass left of the house. Plank walls and a roof (6 wide, 3 high inside), a Plank wall behind, then a door, a torch and a bed.",
+            hint: "Tip: walk out the kitchen's left door and the porch door to the flat grass, and build a hut there. Plank walls and a roof (6 wide, 3 high inside), a Plank wall behind, then a door, a torch and a bed.",
           },
           {
             type: "Kitchen",
@@ -6551,8 +6662,24 @@
           if (!$("hud").hidden) {
             var cardTop = card.getBoundingClientRect().top;
             card.style.maxHeight = Math.max(96, Math.floor(floor - cardTop - 8)) + "px";
+            // while the build sheet is open the card steps aside (collapsed; hidden if it still touches the sheet)
+            var sheet = !$("build").hidden;
+            card.classList.toggle(
+              "under-sheet",
+              sheet && card.getBoundingClientRect().bottom > floor - 4,
+            );
+            updateCardCue();
           }
           placeToast(floor);
+        }
+        /** Show the fade + chevron while the objective card has more content below the fold. */
+        function updateCardCue() {
+          var card = $("request");
+          var more =
+            !card.classList.contains("collapsed") &&
+            card.scrollHeight - card.clientHeight > 4 &&
+            card.scrollTop + card.clientHeight < card.scrollHeight - 4;
+          card.classList.toggle("more", more);
         }
         function placeToast(floor) {
           var el = $("toast");
@@ -6563,25 +6690,40 @@
           el.style.left = "50%";
           el.style.maxWidth = "";
           var r = el.getBoundingClientRect();
-          var card = $("request").getBoundingClientRect();
+          var cardEl = $("request");
+          var card = cardEl.getBoundingClientRect();
           var sharesRow =
             !$("hud").hidden &&
             card.width > 0 &&
+            !cardEl.classList.contains("under-sheet") &&
             r.top < card.bottom + 4 &&
             r.bottom > card.top - 4;
           if (sharesRow && r.right > card.left - 8 && card.left - 8 - left > 160)
             right = card.left - 8;
           el.style.maxWidth = Math.min(520, right - left) + "px";
           el.style.left = (left + right) / 2 + "px";
+          // a card as wide as the screen (a 320 px phone) leaves no room beside the toast: it shrinks above it
+          if (el.classList.contains("show") && card.width > 0) {
+            var t = el.getBoundingClientRect();
+            var c = cardEl.getBoundingClientRect();
+            if (
+              t.left < c.right &&
+              t.right > c.left &&
+              t.top < c.bottom + 2 &&
+              t.bottom > c.top - 2
+            )
+              cardEl.style.maxHeight = Math.max(96, Math.floor(t.top - c.top - 6)) + "px";
+          }
         }
         function toast(msg) {
           var el = $("toast");
           el.textContent = msg;
-          placeToast(controlsTop());
           el.classList.add("show");
+          fitFloaters();
           clearTimeout(toastTimer);
           toastTimer = setTimeout(function () {
             el.classList.remove("show");
+            fitFloaters(); // the card gets its height back
           }, 2800);
         }
         function announce(msg) {
@@ -6676,7 +6818,7 @@
             }
           });
           var avail = row.clientWidth - other - 6 * count;
-          var n = clamp(Math.floor((avail - 4) / SLOT_PITCH), 3, HOTBAR_SLOTS);
+          var n = clamp(Math.floor((avail - 4) / SLOT_PITCH), 2, HOTBAR_SLOTS);
           hb.style.width = n * SLOT_PITCH + 4 + "px";
           hb.dataset.visible = String(n);
           scrollHotbar();
@@ -6860,6 +7002,7 @@
             !probeClaimed
           );
           var want = reqUser !== null ? reqUser : reqTimed > 0 || (!compact && candidate);
+          if (!$("build").hidden) want = false; // the build sheet has the floor; the card steps aside
           if (want !== reqOpen) setPanel(want);
         }
         var REQUEST_WHO = {
@@ -6941,6 +7084,7 @@
           var face = $("reqFace").getContext("2d");
           face.clearRect(0, 0, 16, 16);
           face.drawImage(sprite(REQ.buddy.look), 0, 0, 16, 16, 0, 0, 16, 16);
+          updateCardCue();
         }
         function cap(s) {
           return s.charAt(0).toUpperCase() + s.slice(1);
@@ -7545,6 +7689,7 @@
           });
         }
         function bindPanelAndLook() {
+          $("request").addEventListener("scroll", updateCardCue, { passive: true });
           onClick("reqToggle", function (e) {
             reqUser = !reqOpen;
             setPanel(reqUser);

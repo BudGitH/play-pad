@@ -4,8 +4,8 @@
 
 **Feature:** Sparkle Salon — a kids' princess make-up game
 **Ticket:** PLAY-008
-**Run at:** 2026-11-22 (round 1)
-**Overall product gate:** ☐ PASS ☒ BLOCKED ☐ BLOCKED — ESCALATED — _one narrow, cheap fidelity pass (RT-1); every persona already clears baseline and value_
+**Run at:** 2026-11-22 (round 1) · 2026-11-22 (round 2, RT-1 re-validation)
+**Overall product gate:** ☒ **PASS** (round 2) ☐ BLOCKED ☐ BLOCKED — ESCALATED — _round 1 was BLOCKED on one narrow fidelity pass (RT-1); all four RT-1 items re-measured MET in round 2, PM = PASS, every persona clears baseline and value_
 
 ---
 
@@ -38,9 +38,10 @@
 
 ## 5A — Senior PM review (business requirements)
 
-| Round | Verdict          | Blocking issues                                                | Notes                                                                                                                                                     |
-| ----- | ---------------- | -------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1     | `NEEDS_REVISION` | 1 HIGH (hair palette) + 2 MEDIUM folded into the same art pass | Business outcome, fun mechanics and sound are met. The owner's "design fidelity — I do not accept less" is met for the UI, short of it for the character. |
+| Round | Verdict          | Blocking issues                                                        | Notes                                                                                                                                                     |
+| ----- | ---------------- | ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1     | `NEEDS_REVISION` | 1 HIGH (hair palette) + 2 MEDIUM folded into the same art pass         | Business outcome, fun mechanics and sound are met. The owner's "design fidelity — I do not accept less" is met for the UI, short of it for the character. |
+| 2     | **`PASS`**       | none (hair, jaw/neck and props all re-measured MET; see Round 2 below) | Character fidelity now matches the reference palette and prop set; remaining differences are cosmetic and parked in the non-blocking list.                |
 
 **The owner's three asks — verdict on each:**
 
@@ -155,9 +156,81 @@ What happens when a child rubs, from frame strips (`p10-blush-filmstrip`, `p8-gi
   2. Face: round the chin path; soften the neck shadow (lower opacity, pinker). Acceptance: UX sign-off against `fidelity-side-by-side` at title zoom and at the 1.75× lipstick zoom.
   3. Props: shorten or re-pivot the wand so the heart tube is on screen at 390 px; make the resting position of every tool land inside the viewport (mascara and lipstick steps); round the brush head. Acceptance: tool visible at rest in all five tool steps at 390×844 and 360×640.
   4. Re-run `features/sparkle-salon/probe.mjs` (AC-15/16/20 are the ones layout changes can touch) and `npm run smoke`.
-- **Implemented:** _not yet — back to Phase 3._ Estimated effort: small (colour stops and a few paths).
+- **Implemented:** yes — commit `6894121` (lemon hair, rounder chin + pinker neck shadow, round puff brush, wand tube and every resting tool on screen, plus a first-touch tip guide, a 4 s idle nudge and staggered completion chimes added by the builder beyond the plan). Re-validated in round 2 below.
 - **Re-validation:** PM + UX re-check the side-by-side (title, blush at 1.2×, lipstick at 1.75×) and Priya re-checks the props; Maya and Sam need no re-run unless layout changes.
-- **Status:** OPEN (round 1 of 3)
+- **Status:** **CLOSED — all four plan items MET in round 2 of 3** (evidence in "Round 2" below).
+
+---
+
+## Round 2 — RT-1 re-validation (PM + UX Designer + Priya & kid)
+
+**Run at:** 2026-11-22 · **Build:** `6894121` · **Mode:** ☒ live (own server `node tools/serve.mjs 5652`, headless Chromium, `hasTouch`/`isMobile`, **real touch via CDP**; Playwright probe + smoke re-run) · **Sound not heard** (the staggered chimes are code-reviewed only). Screenshots and scripts are in the session scratchpad (`…/scratchpad/pv-ss2/`, `pvdrv2/`), not in the repo; the owner's reference was only compared, never copied into the repo. The `games/brick-buddies/index.html` change in the working tree is another task's work and was not touched.
+
+### RT-1 plan items, each independently verified
+
+| #   | RT-1 item and acceptance                                                                                                                                                       | Result  | Evidence                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **Hair** palette lifted to lemon: same pixel class (hue 28–62°, sat ≥ .45, value ≥ .5) on the 390×844 title screenshot gives mean brightness ≥ 0.96, ≤ 4% darkened, hue 42–45° | **MET** | My own 390×844 title shot, same `hairmeasure.py`: **1× n=66,724 hue 42.83°, brightness 0.983, 0.17% darkened; 2× n=267,307 hue 42.89°, 0.983, 0.15%.** Reference by the same script: 43.75°, 0.966, 2.07%. Round 1 game: 39.4°, 0.930, 10.7%. Side by side (`side-by-side-title`, `side-by-side-glam`, `face-crop-title`): the hair reads lemon like the reference. The game is now slightly _flatter_ than the reference (0.15% vs 2.07% dark pixels): cosmetic, parked below.                                                                                                                                                                                                                                                   |
+| 2   | **Face**: rounder chin, softer/pinker neck shadow; UX sign-off vs the side-by-side at title zoom and at the 1.75× lipstick zoom                                                | **MET** | Title zoom (`face-crop-title`): the chin is a rounded U where round 1 had a V-point. At 1.75× (`props-s5-lips-390x844`): rounded chin and a soft pink neck shadow, no brown-pink band. UX sign-off: **8 / 10** (was 6.5). Residual: the lower jaw still tapers a little faster than the reference's fuller, rounder chin.                                                                                                                                                                                                                                                                                                                                                                                                         |
+| 3   | **Props**: heart tube on screen, round fluffy brush puff, every tool visible at rest inside the viewport above Redo/Skip in all tool steps at 390×844 and 360×640              | **MET** | DOM bounding boxes **and** a pixel diff (tool shown vs hidden), all 6 tool steps (sponge, brush ×2, wand, lipstick, sticker) at **390×844 and 360×640**, plus 375×667, 320×568, 844×390 and 820×1180: every tool is inside the viewport and the stage, above the Redo/Skip row (`props-sheet-390x844`, `props-sheet-360x640`). The wand's **red heart tube is fully visible** at rest; lipstick is now visible at rest (round 1: none); the brush head is a round scalloped puff (`props-vs-ref`). One nit, not a miss: at 360×640 and 375×667 the blush brush's DOM box (it includes the drop-shadow region) overshoots the Redo row's top by 3 px, but the rendered pixels end at y = 437 against the row at 453 (16 px clear). |
+| 4   | **Regression run**: `probe.mjs` (AC-15/16/20 especially) and `npm run smoke`                                                                                                   | **MET** | `probe.mjs` against my server: **70/70 PASS**, including `RT1-hair` (n=66,221, 42.8°, 0.983, 0.16%), `RT1-props`, `RT1-guide`, `RT1-nudge`, AC-15a–g, AC-16 at 390×844 / 844×390 / 820×1180 / 1280×800 / 360×640, SS-C01–C11 and R2-01–06. `npm run smoke`: **24/24 PASS** (Sparkle Salon reaches its in-round state at 390×844 and 1366×800).                                                                                                                                                                                                                                                                                                                                                                                    |
+
+### Builder additions beyond the plan (checked because Priya's round-1 friction was the lifted tool)
+
+- **First-touch tip guide** — works as built: on the first touch of each paint step (cleanse, shadow, mascara, blush, lips) a 46 px dotted line from the fingertip to the tool tip, a pulse ring at the tip and the bubble "Paint with the tip!" appear for ≈ 1.8 s, follow the finger, are not repeated on that step, and are shown only for touch (`g-cleanse-touch-150ms`, `g-shadow-touch-200ms`, `f-lips-first-touch`). With reduced motion the line and ring stay, as a static ring.
+- **Idle nudge** — works as built: after ≈ 4 s of no action a 64 px ring pulses on the part still to do (cleanse: the largest smudge; shadow: the left lid, with more left to do) and the hint is said again; any touch hides it; with reduced motion it never shows (`g-cleanse-nudge`, `g-shadow-nudge`).
+- **Staggered chimes** (code-reviewed): chime, coin and giggle now start 120 ms apart and the coin is retuned to G6→C7, chord tones of the chime, which answers round-1 sound risk 1. Not heard.
+
+### Priya & kid on a phone — does finger-on-target painting work now? (real CDP touch, 390×844)
+
+Same measurement as round 1 (`p17`): a finger placed ON the target, four scrub rows, then the same strokes with the finger 46 px lower so the visible tip is on target.
+
+| Step       | Round 1: finger on target | **Round 2: finger on target** | Round 2: aiming the visible tip |
+| ---------- | ------------------------- | ----------------------------- | ------------------------------- |
+| Eye shadow | 77%                       | **76%**                       | 100%                            |
+| Mascara    | 55%                       | **56%**                       | 72% (4 rows; 75% in round 1)    |
+| Blush      | 24%                       | **20%**                       | 100%                            |
+| Lipstick   | 0%                        | **0%**                        | 100%                            |
+
+**Honest reading:** the tip guidance does **not** make a finger placed on the target paint it — the 46 px lift is unchanged (`TOUCH_LIFT`), so the numbers are the same as round 1 within noise, and the lips are still 0% for a child who never looks up. What changed is that a child is now _told_, in the picture (dotted line + pulse) and in words, the first time it matters. A "learner" run — finger on the target first, then adapting after the guide — completed **all eight steps**, matched **4/4**, earned **3 stars and 225 coins**, with the guide shown on all five paint steps and **0 console errors** (≈ 61 s scripted; `f-*` shots). That is the same outcome as round 1, with the friction now explained on screen. Round 1 rated the lift non-blocking; it is still non-blocking, and the guide is a real mitigation rather than a fix. The idle nudge rings the _region_, so a child who then puts a finger on the ring still lands the tip ≈ 46 px above it until the first-touch guide teaches otherwise (see the non-blocking list).
+
+**No regressions found in the flow:** title → request card → 8 steps → reveal → results all render; results at 390×844, 360×640 and 320×568 show Play again and PlayPad on screen with no horizontal scroll (`res-sheet`, `f-results`); locked colours, unlock, persistence, reduced motion, keyboard and sound gating are covered by the 70/70 probe.
+
+### Verdicts
+
+**Senior PM — `PASS`.** All four RT-1 items are met by measurement, not opinion. The business outcome, the fun mechanics and the sound design were already met in round 1, and the one thing the owner said they would not compromise on — fidelity of the character — now clears the reference-palette and prop checks.
+
+- _Evidence anchor:_ "the visuals are clear, colourful and friendly (they match the owner's reference)" — `requirements.md`, Value bar. The hair is now measured at 42.8° / 0.983 against the reference's 43.75° / 0.966.
+- _One-line summary:_ the princess is now the right shade of blonde with a softer chin, and the make-up tools you hold are fully on screen with the red heart tube showing, so the game is at the owner's bar for fidelity on what matters most; what remains is polish.
+
+**Fidelity scorecard (UX Designer, side by side at 390×844) — before → after:**
+
+| Element                                             | Round 1 | **Round 2** | Note                                                                                                                                                          |
+| --------------------------------------------------- | ------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Hair                                                | 6       | **8.5**     | Colour matches; the side locks are wavier than the reference's smooth swoops and the shading is flatter.                                                      |
+| Face shape / neck                                   | 6.5     | **8**       | Rounded chin, soft pink neck shadow; the jaw still tapers a little more than the reference.                                                                   |
+| Props (brush, wand, lipstick, sponge)               | 7       | **8**       | All on screen at rest, red heart tube visible, round puff; the wand head is chunkier than the reference's slim tip and its tube is taller than the squat cup. |
+| Tray, HUD, composition, eyes, lips, blush, backdrop | 7–9     | unchanged   | Not in RT-1. Eye iris gradient, lash finesse, dress glitter, red exit button and the bulb pillar remain the known, parked departures.                         |
+
+**Persona panel — round 2 scores:**
+
+| Persona                                | Baseline | Value   | Satisfaction          | Critical? | Basis                                                                                                                                                                                                                                                                                    |
+| -------------------------------------- | -------- | ------- | --------------------- | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Priya & kid** — Sofa Co-op (touch)   | **met**  | **met** | **4 / 5** (was 4 / 5) | n         | Re-driven live. The visuals now look like the picture she would be shown; the tip is taught on first touch and 100% coverage is reached once the tip is aimed. Held at 4: the finger-on-target miss is unchanged and the first-touch guide shows only once per step.                     |
+| **Maya** — Commuter Casual (phone)     | **met**  | **met** | **3 / 5** (unchanged) | n         | **Not re-driven by hand** (RT-1 said no re-run unless layout changed). Carried forward and supported by the probe: AC-16 reach on all five viewports, SS-C04 48 px targets, SS-C06 results buttons on screen. Tools now rest in the viewport on every step, which helps one-handed play. |
+| **Sam** — Keyboard / AT user (desktop) | **met**  | **met** | **3 / 5** (unchanged) | n         | **Not re-driven by hand.** Carried forward and supported by the probe: AC-15c/d/e (tray Enter, arrows + Space, Esc), SS-C01/C02/C11, AC-20 focus and live-region checks; the new guide is touch-only and the nudge is decoration (`aria-hidden`), so the keyboard path is not affected.  |
+
+### Overall gate (round 2)
+
+1. **PM = `PASS`** ✔ 2. **Every target persona: baseline = met AND value = met** ✔ 3. **Zero open baseline/value-blocking criticals** ✔ → **PASS**. Round table used **1 of 3** rounds (RT-1, closed). No escalation; nothing to log in `findings-ledger.md` as STOP-SHIP.
+
+### Remaining items — all non-blocking (→ `docs/IDEAS.md`)
+
+- **Finger-on-target still misses** (76 / 56 / 20 / 0%). Options, cheapest first: keep the "Paint with the tip!" guide until the first successful stroke on the step rather than 1.8 s; point the idle nudge at where the _finger_ should go (ring centre + the lift) or add a small fingertip glyph under it; use a smaller lift (≈ 28–32 px) on the lips step where the target is only ≈ 35 × 81 px. If real children still miss, this is the first thing to revisit.
+- **Hair/face polish:** a little more strand shading (reference 2% dark pixels vs 0.15%), smoother side locks, a fuller round chin.
+- **Prop polish:** a slimmer wand head and a squat red tube with a gold rim and gem heart, as in the reference.
+- Carried from round 1, unchanged: iris pink-blue-violet gradient, finer lashes, dress glitter, red exit button, bulb pillar, hub card art and "Kids" tag, keyboard shortcut and progress announcements, loop variation and mid-range bass for the music, more tactile tap steps, a second princess or a photo gallery, bokeh in desktop gutters.
+- **Sound:** confirm the 120 ms stagger and the retuned coin by ear on a phone speaker (never heard here).
 
 ---
 
@@ -166,6 +239,8 @@ What happens when a child rubs, from frame strips (`p10-blush-filmstrip`, `p8-gi
 Sparkle Salon meets the business goal: a child can finish a full makeover on a phone with finger strokes and taps, a keyboard-only player can finish it too, coins and unlocks persist, the hub shows the best score, and the rub-and-reward loop and the (code-reviewed) sound design are strong. All three target personas clear the baseline and value bars (Priya & kid 4/5, Maya 3/5, Sam 3/5 satisfaction), so nothing blocks them.
 
 What blocks the gate is the owner's own bar: the screen layout, tray and HUD are a faithful match for the reference, but the princess herself is a shade too orange and heavily shaded, her chin is more pointed and the mascara wand's heart tube is off-screen. These are cheap art fixes (RT-1); once done and re-checked side by side, this should go to PASS. Everything else found is logged for the backlog, not for this gate.
+
+**Round 2 update:** the RT-1 art pass landed and was re-checked independently. The hair now measures 42.8° / 0.983 / 0.17% darkened against the reference's 43.75° / 0.966 / 2.07%, the chin is rounded, the neck shadow is soft pink, and every tool rests fully on screen with the wand's red heart tube visible at 390×844 and 360×640 (and four other sizes). The probe passes 70/70 and the smoke test 24/24. The new tip guide and idle nudge work as built, but they teach rather than fix: a finger placed on the target still paints 0% of the lips, so a child has to learn to aim the visible tip, which a learner run did, finishing with 4/4 matches, 3 stars and 225 coins. The PM verdict is **PASS** and the overall product gate is **PASS**; the remaining items are polish for `docs/IDEAS.md`.
 
 ---
 

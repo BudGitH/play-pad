@@ -7,9 +7,10 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "check": "npm run lint && npm run format:check",
+    "check": "npm run lint && npm run ratchet && npm run format:check",
     "secrets": "node tools/secret-scan.mjs",
-    "smoke": "playwright test"
+    "smoke": "playwright test",
+    "ratchet": "node tools/lint-ratchet.mjs"
   },
   "devDependencies": {
     "@eslint/js": "9.39.5",

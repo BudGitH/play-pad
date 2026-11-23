@@ -1,0 +1,13 @@
+{
+  "games/claw-catch/index.html": {
+    "max-lines-per-function": 8
+  },
+  "games/sunset-stride/index.html": {
+    "max-lines-per-function": 27,
+    "max-depth": 3
+  },
+  "tests/probes/stride-probe.mjs": {
+    "max-lines-per-function": 2,
+    "max-depth": 1
+  }
+}

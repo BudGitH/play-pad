@@ -325,8 +325,97 @@
       #request.collapsed .req-hint {
         display: none;
       }
+      .req-goal {
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--md-sys-color-tertiary);
+      }
+      /* Collapsed = a small chip ("Goal 1/5 >"); the coach line stays beside it as its own pill. */
+      #request.collapsed {
+        width: fit-content;
+        max-width: min(300px, calc(100vw - 16px));
+        padding: 0;
+        background: none;
+        border: 0;
+        backdrop-filter: none;
+        overflow: visible;
+        pointer-events: none;
+      }
+      #request.collapsed .req-head {
+        pointer-events: auto;
+        margin-left: auto;
+        width: fit-content;
+        gap: 6px;
+        min-height: 44px;
+        padding: 0 0 0 8px;
+        box-sizing: border-box;
+        border-radius: 999px;
+        background: var(--bb-glass);
+        border: 1px solid var(--bb-line);
+        backdrop-filter: blur(6px);
+      }
+      #request.collapsed .req-who,
+      #request.collapsed .req-title {
+        display: none;
+      }
+      #request.collapsed .req-goal {
+        font-size: 14px;
+        letter-spacing: 0;
+        text-transform: none;
+        color: var(--md-sys-color-on-surface);
+        white-space: nowrap;
+      }
+      #request.collapsed #reqFace {
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+      }
+      #request.collapsed #reqToggle {
+        min-width: 44px;
+        min-height: 44px;
+        width: 44px;
+        height: 44px;
+        font-size: 15px;
+        padding: 0;
+      }
+      #request.collapsed .coach,
+      #request.collapsed .coach-strip {
+        pointer-events: auto;
+      }
+      .req-head {
+        cursor: pointer;
+      }
+      #reqToggle span {
+        display: inline-block;
+      }
+      #reqToggle[aria-expanded="false"] span {
+        transform: rotate(-90deg);
+      }
+      @media (orientation: landscape) and (max-height: 520px) {
+        #request.collapsed .coach {
+          min-height: 40px;
+          font-size: 15px;
+          padding: 4px 8px;
+        }
+        #request.collapsed .coach-ico {
+          width: 28px;
+          height: 28px;
+          font-size: 20px;
+        }
+        #request.collapsed .coach-ico canvas {
+          width: 28px;
+          height: 28px;
+        }
+        #request.collapsed .coach-strip {
+          display: none;
+        }
+      }
 
-      /* ---------- Dock: hotbar + touch controls ---------- */
+      /* ---------- Dock: joystick (touch) + block tray ---------- */
+      /* Bottom-left: the thumb stick. Bottom-right: a small tray (held block, Build/Break, tray toggle);
+         the 10 hotbar slots and Items live in the tray and fold away on a phone. */
       #dock {
         position: absolute;
         left: 0;
@@ -335,26 +424,58 @@
         padding: 0 calc(8px + env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom))
           calc(8px + env(safe-area-inset-left));
         display: flex;
-        flex-direction: column;
-        align-items: center;
+        align-items: flex-end;
+        justify-content: center;
         gap: 8px;
         pointer-events: none;
       }
-      .hotrow {
-        pointer-events: none; /* the row is full width; only its controls take taps */
+      body.touch #dock {
+        justify-content: space-between;
+      }
+      .dock-right {
+        flex: 1 1 auto;
+        min-width: 0;
         display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        pointer-events: none;
+      }
+      body.touch .dock-right {
+        align-items: flex-end;
+      }
+      body:not(.touch) #tLook {
+        display: none;
+      }
+      #tray {
+        width: 100%;
+        min-width: 0;
+        display: flex;
+        flex-direction: row;
         align-items: center;
         justify-content: center;
         gap: 6px;
-        width: 100%;
-        min-width: 0;
+        pointer-events: none;
       }
-      .hotrow > * {
+      body.touch #tray {
+        flex-direction: column;
+        align-items: flex-end;
+      }
+      .tray-pick,
+      .tray-bar {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        min-width: 0;
+        max-width: 100%;
+        pointer-events: none;
+      }
+      .tray-pick > *,
+      .tray-bar > * {
         pointer-events: auto;
       }
-      .hotrow > .tbtn,
-      .hotrow > .mode-btn {
-        flex: none; /* never squeezed narrower than the 48px touch target */
+      #tray[data-open="false"] .tray-pick {
+        display: none;
       }
       #hotbar {
         display: flex;
@@ -367,7 +488,7 @@
         scrollbar-width: none;
         background: var(--bb-glass);
         border: 1px solid var(--bb-line);
-        border-radius: 16px;
+        border-radius: 14px;
         min-width: 0;
       }
       #hotbar::-webkit-scrollbar {
@@ -375,27 +496,27 @@
       }
       .slot {
         position: relative;
-        flex: 0 0 48px;
-        width: 48px;
-        height: 48px;
+        flex: 0 0 40px;
+        width: 40px;
+        height: 40px;
         padding: 0;
-        border-radius: 10px;
+        border-radius: 9px;
         border: 2px solid transparent;
         background: rgba(255, 220, 170, 0.08);
         scroll-snap-align: start;
       }
       .slot canvas {
         display: block;
-        width: 32px;
-        height: 32px;
+        width: 28px;
+        height: 28px;
         margin: 0 auto;
         image-rendering: pixelated;
       }
       .slot .key {
         position: absolute;
-        top: 0;
+        top: -1px;
         left: 3px;
-        font-size: 10px;
+        font-size: 9px;
         font-weight: 800;
         color: var(--md-sys-color-on-surface-variant);
       }
@@ -404,9 +525,10 @@
         background: rgba(255, 207, 138, 0.2);
       }
       .mode-btn {
+        position: relative;
         flex: none;
-        min-width: 48px;
-        min-height: 48px;
+        min-width: 44px;
+        min-height: 44px;
         padding: 0 10px;
         border-radius: 14px;
         gap: 4px;
@@ -415,32 +537,108 @@
         background: var(--md-sys-color-error-container);
         color: var(--md-sys-color-on-error-container);
       }
-      .touch-row {
-        display: none;
-        width: 100%;
-        justify-content: space-between;
-        align-items: flex-end;
-        pointer-events: none;
+      .held-btn {
+        position: relative;
+        min-width: 56px;
+        min-height: 44px;
+        padding: 0 8px;
+        border-radius: 14px;
+        gap: 2px;
       }
-      body.touch .touch-row {
-        display: flex;
+      .held-btn canvas {
+        width: 28px;
+        height: 28px;
+        image-rendering: pixelated;
       }
-      .tc {
+      .held-btn .caret {
+        font-size: 12px;
+        line-height: 1;
+      }
+      .held-btn[aria-expanded="false"] .caret {
+        transform: rotate(180deg);
+      }
+      /* the colour dot on the held block / selected slot, and its small picker */
+      .swatch-dot {
+        pointer-events: auto;
+        position: absolute;
+        z-index: 7;
+        width: 18px;
+        height: 18px;
+        padding: 0;
+        border-radius: 50%;
+        border: 2px solid #fff;
+        box-shadow: 0 0 0 1px rgba(20, 10, 6, 0.7);
+        background: conic-gradient(#e5484d, #f2d03b, #4fb35f, #4a8fe8, #9a63d8, #e5484d);
+      }
+      /* Compact visuals, 48px hit areas: a transparent box at least 48 x 48 centred on the control,
+         so the picture stays small (a 40px slot, a 44px chip, an 18px dot) and a finger still lands. */
+      .slot::after,
+      .mode-btn::after,
+      .held-btn::after,
+      .tbtn.small::after,
+      .swatch-dot::after,
+      #reqToggle::after,
+      #request.collapsed .req-head::after {
+        content: "";
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: max(100%, 48px);
+        height: max(100%, 48px);
+        transform: translate(-50%, -50%);
+      }
+      #reqToggle,
+      #request.collapsed .req-head,
+      .tbtn.small {
+        position: relative;
+      }
+      /* the chip's outer rim sits BEHIND its children, so the arrow button inside stays the click target */
+      #request.collapsed .req-head::after {
+        z-index: -1;
+      }
+      .swatches {
+        pointer-events: auto;
+        position: absolute;
+        z-index: 8;
         display: flex;
-        gap: 12px;
-        align-items: flex-end;
-        pointer-events: none;
+        flex-wrap: wrap;
+        gap: 6px;
+        padding: 8px;
+        max-width: min(272px, calc(100vw - 16px));
+        border-radius: 16px;
+        background: var(--bb-glass-strong);
+        border: 1px solid var(--bb-line);
+        backdrop-filter: blur(8px);
+      }
+      .swatch {
+        width: 44px;
+        height: 44px;
+        padding: 0;
+        border-radius: 50%;
+        border: 2px solid rgba(255, 255, 255, 0.5);
+        background: var(--sw, #888);
+      }
+      .swatch[aria-pressed="true"] {
+        border-color: #fff;
+        box-shadow: 0 0 0 3px var(--md-sys-color-tertiary);
+      }
+      .swatch.none {
+        background: #3a2c26;
+        color: #fff;
+        font-size: 18px;
+        font-weight: 800;
+        line-height: 1;
       }
       .tbtn {
         pointer-events: auto;
         touch-action: none;
-        width: 62px;
-        height: 62px;
+        width: 52px;
+        height: 52px;
         border-radius: 50%;
         border: 1px solid var(--bb-line);
         background: var(--bb-glass);
         color: var(--md-sys-color-on-surface);
-        font-size: 24px;
+        font-size: 22px;
         font-weight: 800;
         display: grid;
         place-items: center;
@@ -448,11 +646,10 @@
         backdrop-filter: blur(6px);
       }
       .tbtn.small {
-        width: 50px;
-        height: 50px;
+        width: 46px;
+        height: 46px;
         font-size: 20px;
       }
-      .tbtn.on,
       .tbtn:active {
         background: var(--md-sys-color-primary-container);
       }
@@ -461,103 +658,98 @@
         color: var(--md-sys-color-on-tertiary-container);
       }
 
-      /* Narrow portrait phone ("compact"): the hotbar gets its own full-width row above the pad row;
-         Build / Items become icon buttons between the pads; Look sits beside the hotbar. */
-      body.compact #dock {
-        gap: 6px;
-      }
-      body.compact .mode-btn {
-        min-width: 48px;
-        min-height: 48px;
-        padding: 0;
-        font-size: 20px;
-      }
-      body.compact .mode-btn .lbl {
+      /* The joystick: a fixed ring with a knob that follows the thumb (touch only). */
+      .joy {
         display: none;
+        position: relative;
+        flex: none;
+        width: 108px;
+        height: 108px;
+        border-radius: 50%;
+        background: var(--bb-glass);
+        border: 1px solid var(--bb-line);
+        backdrop-filter: blur(6px);
+        pointer-events: auto;
+        touch-action: none;
       }
-      body.compact .tc {
-        gap: 8px;
+      body.touch .joy {
+        display: block;
       }
-      body.compact .tbtn {
-        width: 56px;
-        height: 56px;
+      .joy-ring {
+        position: absolute;
+        inset: 14px;
+        border-radius: 50%;
+        border: 2px dashed rgba(255, 214, 160, 0.28);
       }
-      body.compact .tbtn.small {
+      .joy-knob {
+        position: absolute;
+        left: 50%;
+        top: 50%;
         width: 48px;
         height: 48px;
+        margin: -24px 0 0 -24px;
+        border-radius: 50%;
+        background: radial-gradient(circle at 35% 30%, #ffe3b8, #c98a4d 70%);
+        border: 1px solid rgba(255, 244, 222, 0.7);
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+        will-change: transform;
       }
-      @media (max-width: 360px) {
-        body.compact .tbtn {
-          width: 50px;
-          height: 50px;
-        }
+      .joy.on {
+        background: rgba(40, 26, 20, 0.88);
       }
-      @media (max-width: 340px) {
-        /* 320px phones: everything on the pad row has to fit in 304px */
-        body.compact .tc {
-          gap: 4px;
-        }
-        body.compact .tbtn,
-        body.compact .tbtn.small,
-        body.compact .mode-btn {
-          width: 48px;
-          min-width: 48px;
-          height: 48px;
-          min-height: 48px;
-        }
+      .joy.coach-pulse {
+        background: var(--md-sys-color-tertiary-container) !important;
       }
 
-      /* Phone in landscape: one bottom row (left pad | hotbar | right pad). */
+      /* Short landscape phone: everything gets a little smaller so the scene keeps the screen. */
       @media (orientation: landscape) and (max-height: 520px) {
-        body.touch #dock {
-          display: grid;
-          grid-template-columns: auto minmax(0, 1fr) auto;
-          align-items: end;
-          column-gap: 8px;
+        .joy {
+          width: 96px;
+          height: 96px;
         }
-        body.touch .touch-row {
-          display: contents;
+        .joy-ring {
+          inset: 12px;
         }
-        body.touch .tcl {
-          grid-column: 1;
-          grid-row: 1;
+        .joy-knob {
+          width: 44px;
+          height: 44px;
+          margin: -22px 0 0 -22px;
         }
-        body.touch .hotrow {
-          grid-column: 2;
-          grid-row: 1;
-        }
-        body.touch .tcr {
-          grid-column: 3;
-          grid-row: 1;
-        }
-        body.touch .tcc {
-          display: none;
-        }
-        #request {
-          width: min(280px, 44vw);
-        }
-        .tbtn {
-          width: 54px;
-          height: 54px;
-        }
-      }
-
-      @media (orientation: landscape) and (max-height: 520px) and (max-width: 720px) {
-        /* a short, narrow phone (568x320): icon-only mode buttons and 48px pads leave the hotbar its room */
         body.touch .mode-btn .lbl {
           display: none;
         }
         body.touch .mode-btn {
-          min-width: 48px;
+          min-width: 44px;
           padding: 0;
           font-size: 20px;
         }
-        body.touch .tbtn {
-          width: 48px;
-          height: 48px;
+        #request {
+          width: min(280px, 44vw);
         }
-        body.touch .tc {
-          gap: 6px;
+      }
+
+      /* Narrow portrait phone ("compact"): the pick row (Items + hotbar) floats across the full width
+         just above the stick row, so the slots are not squeezed into the space beside the stick. */
+      body.compact .tray-pick {
+        position: absolute;
+        left: calc(8px + env(safe-area-inset-left));
+        right: calc(8px + env(safe-area-inset-right));
+        bottom: 100%;
+        margin-bottom: 6px;
+        justify-content: center;
+        max-width: none;
+      }
+      body.compact .mode-btn .lbl {
+        display: none;
+      }
+      body.compact .mode-btn {
+        padding: 0;
+        font-size: 20px;
+      }
+      @media (max-width: 340px) {
+        .joy {
+          width: 92px;
+          height: 92px;
         }
       }
 
@@ -953,6 +1145,12 @@
         .tag {
           display: none; /* a 320px-tall phone has room for the name, one hint line and the buttons */
         }
+        .brand {
+          font-size: 30px; /* the mode choice added a row: the name shrinks so the buttons still fit */
+        }
+        .card {
+          padding: 8px 16px 10px;
+        }
       }
       @media (max-width: 520px) {
         .back-link-chip:not(.armed) .txt {
@@ -973,6 +1171,70 @@
       body.simple #buildBtn,
       body.simple #tLook {
         display: none;
+      }
+      /* Open play: no goals card, no coin / star counters (everything is unlocked). */
+      body.open-play .stats,
+      body.open-play #request {
+        display: none;
+      }
+
+      /* ---------- Play mode choice (title + menu) ---------- */
+      .modes {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin: 10px 0 12px;
+      }
+      .mode-opt {
+        min-height: 56px;
+        padding: 8px 10px;
+        border-radius: 14px;
+        border: 2px solid var(--bb-line);
+        background: rgba(255, 220, 170, 0.06);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 2px;
+        text-align: center;
+      }
+      .mode-opt b {
+        font-size: 16px;
+      }
+      .mode-opt span {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--md-sys-color-on-surface-variant);
+      }
+      .mode-opt[aria-checked="true"] {
+        border-color: var(--md-sys-color-tertiary);
+        background: var(--md-sys-color-tertiary-container);
+        color: var(--md-sys-color-on-tertiary-container);
+      }
+      .mode-opt[aria-checked="true"] span {
+        color: var(--md-sys-color-on-tertiary-container);
+      }
+      .modes.in-menu {
+        margin: 2px 0;
+      }
+      @media (max-height: 560px) {
+        .modes {
+          margin: 4px 0 6px;
+          gap: 6px;
+        }
+        .mode-opt {
+          min-height: 44px;
+          padding: 2px 8px;
+        }
+        .mode-opt b {
+          font-size: 15px;
+        }
+        .mode-opt span {
+          display: none;
+        }
+        .card > .modes {
+          order: 3;
+        }
       }
 
       /* ---------- Help button + how-to overlay ---------- */
@@ -1300,10 +1562,11 @@
         <div class="req-head">
           <canvas id="reqFace" width="16" height="16" aria-hidden="true"></canvas>
           <div class="req-text">
+            <div class="req-goal" id="reqGoal"></div>
             <div class="req-who" id="reqWho"></div>
             <div class="req-title" id="reqTitle"></div>
           </div>
-          <button id="reqToggle" aria-label="Show or hide request details" aria-expanded="true">
+          <button id="reqToggle" aria-label="Show or hide the goal details" aria-expanded="true">
             <span aria-hidden="true">&#9662;</span>
           </button>
         </div>
@@ -1318,55 +1581,78 @@
       </aside>
 
       <div id="dock">
-        <div class="hotrow">
-          <button
-            id="modeBtn"
-            class="chip-btn mode-btn"
-            data-mode="build"
-            aria-label="Build mode. Press to switch to Break mode"
-          >
-            <span aria-hidden="true" id="modeIco">&#128296;</span>
-            <span id="modeTxt" class="lbl">Build</span>
-          </button>
-          <button
-            id="buildBtn"
-            class="chip-btn mode-btn"
-            aria-label="Items, open build menu"
-            aria-haspopup="dialog"
-          >
-            <span aria-hidden="true">&#129521;</span><span class="lbl">Items</span>
-          </button>
-          <div id="hotbar" role="group" aria-label="Hotbar"></div>
+        <div
+          id="joy"
+          class="joy"
+          role="group"
+          aria-label="Move. Drag the stick: sideways to walk, up to jump or climb, down to climb down"
+        >
+          <span class="joy-ring" aria-hidden="true"></span>
+          <span class="joy-knob" id="joyKnob" aria-hidden="true"></span>
         </div>
-        <div class="touch-row">
-          <div class="tc tcl">
-            <button class="tbtn" id="tLeft" aria-label="Move left">
-              <span aria-hidden="true">&#9664;</span>
-            </button>
-            <button class="tbtn" id="tRight" aria-label="Move right">
-              <span aria-hidden="true">&#9654;</span>
-            </button>
-          </div>
-          <div class="tc tcc">
-            <button
-              class="tbtn small"
-              id="tLook"
-              aria-pressed="false"
-              aria-label="Look around: drag the screen to pan"
-            >
-              <span aria-hidden="true">&#9995;</span>
-            </button>
-          </div>
-          <div class="tc tcr">
-            <button class="tbtn small" id="tDown" aria-label="Climb down">
-              <span aria-hidden="true">&#9660;</span>
-            </button>
-            <button class="tbtn" id="tJump" aria-label="Jump or climb up">
-              <span aria-hidden="true">&#9650;</span>
-            </button>
+        <div class="dock-right">
+          <div id="tray" data-open="true">
+            <div class="tray-pick" id="trayPick">
+              <button
+                id="buildBtn"
+                class="chip-btn mode-btn"
+                aria-label="Items, open build menu"
+                aria-haspopup="dialog"
+              >
+                <span aria-hidden="true">&#129521;</span><span class="lbl">Items</span>
+              </button>
+              <div id="hotbar" role="group" aria-label="Hotbar"></div>
+            </div>
+            <div class="tray-bar">
+              <button
+                class="tbtn small"
+                id="tLook"
+                aria-pressed="false"
+                aria-label="Look around: drag the screen to pan"
+              >
+                <span aria-hidden="true">&#9995;</span>
+              </button>
+              <button
+                class="tbtn small"
+                id="recenterBtn"
+                aria-label="Recenter on the builder and reset zoom"
+                hidden
+              >
+                <span aria-hidden="true">&#9678;</span>
+              </button>
+              <button
+                id="modeBtn"
+                class="chip-btn mode-btn"
+                data-mode="build"
+                aria-label="Build mode. Press to switch to Break mode"
+              >
+                <span aria-hidden="true" id="modeIco">&#128296;</span>
+                <span id="modeTxt" class="lbl">Build</span>
+              </button>
+              <button
+                id="trayBtn"
+                class="chip-btn held-btn"
+                aria-controls="trayPick"
+                aria-expanded="true"
+                aria-label="Blocks tray"
+              >
+                <canvas id="heldIco" width="32" height="32" aria-hidden="true"></canvas>
+                <span class="caret" aria-hidden="true">&#9662;</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
+      <button
+        id="swatchDot"
+        class="swatch-dot"
+        aria-haspopup="true"
+        aria-expanded="false"
+        aria-controls="swatches"
+        aria-label="Colour of the held block: original. Change colour"
+        hidden
+      ></button>
+      <div id="swatches" class="swatches" role="group" aria-label="Block colour" hidden></div>
     </div>
 
     <!-- ========== Build menu ========== -->
@@ -1403,6 +1689,14 @@
         </a>
         <h1 class="brand">Brick Buddies</h1>
         <p class="tag">Build cosy rooms for your new buddies.</p>
+        <div class="modes" role="radiogroup" aria-label="How do you want to play?">
+          <button class="mode-opt" role="radio" aria-checked="true" data-play="goals">
+            <b>Goals</b><span>Help buddies, earn coins</span>
+          </button>
+          <button class="mode-opt" role="radio" aria-checked="false" data-play="open">
+            <b>Open play</b><span>Build anything you like</span>
+          </button>
+        </div>
         <button id="startBtn" class="btn primary">Start building</button>
         <div class="row">
           <button id="titleHelp" class="btn quiet" aria-haspopup="dialog">
@@ -1417,7 +1711,9 @@
           <kbd>A</kbd> <kbd>D</kbd> walk &middot; <kbd>F</kbd> or click to place &middot;
           <b>?</b> help
         </p>
-        <p class="keys keys-touch">Pads walk &middot; tap to place &middot; <b>?</b> help</p>
+        <p class="keys keys-touch">
+          Stick walks &middot; tap twice to place &middot; pinch to zoom &middot; <b>?</b> help
+        </p>
       </div>
     </section>
 
@@ -1451,12 +1747,12 @@
           <li class="how-step">
             <div class="how-pic" aria-hidden="true">
               <span class="how-sym pad">&#9664;</span>
+              <span class="how-sym pad">&#9679;</span>
               <span class="how-sym pad">&#9654;</span>
-              <span class="how-sym pad">&#9650;</span>
             </div>
             <p>
               <b class="num" aria-hidden="true">2</b
-              ><span class="for-touch">Use the round pads to walk.</span
+              ><span class="for-touch">Drag the stick to walk and jump.</span
               ><span class="for-keys">Walk with A and D.</span>
             </p>
           </li>
@@ -1468,7 +1764,7 @@
             </div>
             <p>
               <b class="num" aria-hidden="true">3</b
-              ><span class="for-touch">Pick a block. Tap to place it.</span
+              ><span class="for-touch">Pick a block. Tap twice to place.</span
               ><span class="for-keys">Pick a block. Click or press F.</span>
             </p>
           </li>
@@ -1495,6 +1791,14 @@
         <h2>Paused</h2>
         <div class="menu-list">
           <button id="mResume" class="btn primary">Resume</button>
+          <div class="modes in-menu" role="radiogroup" aria-label="Play mode">
+            <button class="mode-opt" role="radio" aria-checked="true" data-play="goals">
+              <b>Goals</b><span>Help buddies, earn coins</span>
+            </button>
+            <button class="mode-opt" role="radio" aria-checked="false" data-play="open">
+              <b>Open play</b><span>Build anything you like</span>
+            </button>
+          </div>
           <button id="mSound" class="btn quiet" aria-pressed="true">
             <span>Sound effects</span><span class="state">on</span>
           </button>
@@ -1525,8 +1829,8 @@
           <kbd>A D</kbd> move &middot; <kbd>W Space</kbd> jump/climb &middot; <kbd>S</kbd> down
           &middot; <kbd>I J K L</kbd> aim &middot; <kbd>F</kbd> place &middot; <kbd>X</kbd> break
           &middot; <kbd>B</kbd> build/break &middot; <kbd>E</kbd> items &middot;
-          <kbd>1</kbd>&ndash;<kbd>0</kbd> hotbar &middot; <kbd>+</kbd>/<kbd>-</kbd> zoom &middot;
-          <kbd>M</kbd> mute &middot; <kbd>Esc</kbd> menu
+          <kbd>1</kbd>&ndash;<kbd>0</kbd> hotbar &middot; <kbd>+</kbd>/<kbd>-</kbd> or wheel zoom
+          &middot; <kbd>M</kbd> mute &middot; <kbd>Esc</kbd> menu
         </p>
       </div>
     </section>
@@ -1590,7 +1894,7 @@
         var DAY_LENGTH = 720; // seconds per full day / night cycle
         // Feel and layout numbers (named so tuning is one edit):
         var HOTBAR_SLOTS = 10;
-        var SLOT_PITCH = 52; // a 48px hotbar slot plus its 4px gap
+        var SLOT_PITCH = 44; // a 40px hotbar slot plus its 4px gap
         var COYOTE_TIME = 0.1; // s after walking off a ledge in which a jump still works
         var JUMP_BUFFER = 0.12; // s a jump press is remembered before landing
         var ACCEL_GROUND = 60; // tiles/s^2 horizontal acceleration
@@ -2827,6 +3131,88 @@
           buildPairTextures();
           buildWallTextures();
         }
+        // ---- colour tints (item 11): a small kid-friendly palette; index 0 = the original look ----
+        var TINTS = [
+          null,
+          [229, 72, 77],
+          [245, 144, 47],
+          [242, 208, 59],
+          [79, 179, 95],
+          [47, 183, 176],
+          [74, 143, 232],
+          [154, 99, 216],
+          [240, 138, 184],
+        ];
+        var TINT_NAMES = [
+          "Original",
+          "Red",
+          "Orange",
+          "Yellow",
+          "Green",
+          "Teal",
+          "Blue",
+          "Purple",
+          "Pink",
+        ];
+        // Items that can be coloured (not lights, plants, wall art or the ladder / portal / dirt).
+        var TINTABLE = {};
+        [
+          "planks",
+          "brick",
+          "stone",
+          "sandstone",
+          "glass",
+          "wallPlanks",
+          "wallBrick",
+          "wallStone",
+          "wallSand",
+          "wallDirt",
+          "bed",
+          "table",
+          "chair",
+          "door",
+          "chest",
+          "shelf",
+          "bench",
+          "cupboard",
+          "locker",
+          "rug",
+          "barrels",
+        ].forEach(function (k) {
+          TINTABLE[k] = true;
+        });
+        var tintCache = new Map(); // texture canvas -> [tinted canvas per tint index]
+        /** A copy of a texture recoloured to TINTS[tint], keeping its light / dark detail (cached). */
+        function tinted(tex, tint) {
+          if (!tint || !tex) return tex;
+          var row = tintCache.get(tex);
+          if (!row) {
+            row = [];
+            tintCache.set(tex, row);
+          }
+          if (!row[tint]) row[tint] = makeTinted(tex, TINTS[tint]);
+          return row[tint];
+        }
+        function makeTinted(tex, c) {
+          var o = makeCanvas(tex.width, tex.height);
+          o.g.drawImage(tex, 0, 0);
+          var img = o.g.getImageData(0, 0, tex.width, tex.height);
+          var d = img.data;
+          for (var i = 0; i < d.length; i += 4) {
+            if (!d[i + 3]) continue;
+            var lum = (0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]) / 255;
+            var k = 0.32 + lum * 1.0; // brick mortar stays darker, highlights stay lighter
+            d[i] = Math.min(255, c[0] * k * 0.88 + d[i] * 0.12);
+            d[i + 1] = Math.min(255, c[1] * k * 0.88 + d[i + 1] * 0.12);
+            d[i + 2] = Math.min(255, c[2] * k * 0.88 + d[i + 2] * 0.12);
+          }
+          o.g.putImageData(img, 0, 0);
+          return o.c;
+        }
+        /** The tint a placed copy of this item gets: the player's pick for it (0 when it cannot be coloured). */
+        function tintFor(it) {
+          return it && TINTABLE[it.key] ? S.tints[it.key] | 0 : 0;
+        }
         function fgTex(id, x, y) {
           var v = TEX_FG[id];
           if (!v) return null;
@@ -3125,6 +3511,10 @@
         // ===========================================================================
         var fg = new Uint8Array(W * H); // foreground: solid blocks, furniture, ladders
         var bg = new Uint8Array(W * H); // background walls (a separate layer behind everything)
+        // Colour tint per tile (0 = the original look, 1..8 = TINTS[i]); purely cosmetic, so every
+        // rule (rooms, goals, support) keeps reading the plain tile ids above.
+        var tintFg = new Uint8Array(W * H);
+        var tintBg = new Uint8Array(W * H);
         var chunkDirty = new Uint8Array(CHUNKS_X * CHUNKS_Y);
         var worldRev = 0; // bumps on every tile change
         var lightDirty = true;
@@ -3142,6 +3532,9 @@
         }
         function getBg(x, y) {
           return inb(x, y) ? bg[y * W + x] : 0;
+        }
+        function getTintBg(x, y) {
+          return inb(x, y) ? tintBg[y * W + x] : 0;
         }
         function isSolid(x, y) {
           return SOLID[getFg(x, y)] === 1;
@@ -3165,9 +3558,14 @@
           roomsDirty = true;
           saveDirty = true;
         }
-        function setFg(x, y, id) {
-          if (!inb(x, y) || fg[y * W + x] === id) return;
-          fg[y * W + x] = id;
+        /** Set a foreground tile (and its tint: 0 / omitted = original; any change to a tile resets it). */
+        function setFg(x, y, id, tint) {
+          if (!inb(x, y)) return;
+          var i = y * W + x;
+          var tn = tint | 0;
+          if (fg[i] === id && tintFg[i] === tn) return;
+          fg[i] = id;
+          tintFg[i] = id === T.AIR ? 0 : tn;
           markDirty(x, y);
           touchWorld();
         }
@@ -3178,9 +3576,13 @@
           markDirty(x, y);
           worldRev++;
         }
-        function setBg(x, y, id) {
-          if (!inb(x, y) || bg[y * W + x] === id) return;
-          bg[y * W + x] = id;
+        function setBg(x, y, id, tint) {
+          if (!inb(x, y)) return;
+          var i = y * W + x;
+          var tn = tint | 0;
+          if (bg[i] === id && tintBg[i] === tn) return;
+          bg[i] = id;
+          tintBg[i] = id === BGW.NONE ? 0 : tn;
           markDirty(x, y);
           touchWorld();
         }
@@ -3215,6 +3617,8 @@
         function genTerrain() {
           fg.fill(0);
           bg.fill(0);
+          tintFg.fill(0);
+          tintBg.fill(0);
           for (var x = 0; x < W; x++) {
             var h = surfaceH(x);
             var stoneAt = h + 7 + Math.round(2 * Math.sin(x * 0.3) + hash2(x, 3) * 3);
@@ -3919,7 +4323,10 @@
           labels: true,
           sound: true,
           music: true,
-          zoomIdx: -1,
+          zoomIdx: -1, // legacy stepped zoom (old saves); -1 = not used
+          zoomPx: 0, // continuous zoom in css px per tile (pinch / wheel); 0 = automatic
+          playMode: "goals", // goals | open ("Open play": everything unlocked, no goals)
+          tints: {}, // item key -> chosen tint index (what the next placed copy gets)
           simTime: 0,
         };
         var P = {
@@ -4287,6 +4694,11 @@
             climbing: false,
             emote: 0,
             role: "resident",
+            anchor: x, // where it lives / waits: a stroll never goes further than `range` from here
+            range: 8,
+            act: "", // a little idle show: look | wave | hop (cosmetic, short)
+            actT: 0,
+            life: { turns: 0, idles: 0, strolls: 0, maxDev: 0 }, // counters for the probe
           };
         }
         function standBlocks(x, y) {
@@ -4369,6 +4781,11 @@
           b.state = "idle";
           fxBurst(b.x, b.y - 1, [255, 255, 255], 10);
         }
+        /** A buddy may stroll and idle when it is at home, and a visitor while it waits for its room. */
+        function canLive(b) {
+          if (b.role === "visitor") return !!REQ && REQ.buddy === b && REQ.state === "waiting";
+          return true;
+        }
         function tickBuddy(b, dt) {
           b.anim += dt;
           b.emote = Math.max(0, b.emote - dt);
@@ -4377,38 +4794,120 @@
             return;
           }
           b.climbing = false;
+          tickAct(b, dt);
+          if (b.state === "wander" && b.path) {
+            stepAlongPath(b, dt);
+            b.life.maxDev = Math.max(b.life.maxDev, Math.abs(b.x - b.anchor));
+            return;
+          }
+          if (b.state === "wander") b.state = "idle";
           b.wait -= dt;
-          if (b.role === "resident" && b.wait <= 0) wander(b);
-          if (b.state === "wander" && b.path) stepAlongPath(b, dt);
-          else if (b.state === "wander") b.state = "idle";
+          if (b.wait <= 0 && canLive(b)) liveStep(b);
         }
+        /** The short idle show runs down; "look" turns the buddy round half way through. */
+        function tickAct(b, dt) {
+          if (b.actT <= 0) return;
+          var before = b.actT;
+          b.actT -= dt;
+          if (b.act === "look" && before > 0.55 && b.actT <= 0.55) {
+            b.face = -b.face;
+            b.life.turns++;
+          }
+          if (b.actT <= 0) b.act = "";
+        }
+        /**
+         * What a buddy does next, picked at random: stroll a few tiles, turn round, look about, wave, hop
+         * or just stand. Everything stays flat, door-free and ladder-free and within `range` of home.
+         */
+        function liveStep(b) {
+          settleBuddy(b); // a floor broken under an idle buddy: it drops to the ground first
+          var r = Math.random();
+          b.wait = 1.2 + Math.random() * 3.2;
+          if (r < 0.46) {
+            if (!wander(b)) standStill(b);
+          } else if (r < 0.62) {
+            b.face = -b.face; // turn round and have a think
+            b.life.turns++;
+            b.wait = 1.2 + Math.random() * 2;
+          } else if (r < 0.95 && reducedMotion)
+            standStill(b); // no idle show (look / hop / wave) with reduced motion
+          else if (r < 0.78) startAct(b, "look", 1.1);
+          else if (r < 0.88) startAct(b, "hop", 0.45);
+          else if (r < 0.95) startAct(b, "wave", 1.2);
+          else standStill(b);
+        }
+        /** A buddy whose floor was broken falls to the ground below (no gravity otherwise); false = nowhere to land. */
+        function settleBuddy(b) {
+          var c = feetCell(b);
+          if (nodeOK(c[0], c[1])) return true;
+          var land = dropTarget(c[0], c[1]);
+          if (!land) return false;
+          b.x = land[0] + 0.5;
+          b.y = land[1] + 1;
+          return true;
+        }
+        /** The next tile of a stroll is checked every step: a block built in the way, or a floor broken, ends it. */
+        function strollStillOK(wp) {
+          return (
+            nodeOK(wp[0], wp[1]) && !DOORS[getFg(wp[0], wp[1])] && !DOORS[getFg(wp[0], wp[1] - 1)]
+          );
+        }
+        function abortStroll(b) {
+          b.path = null;
+          b.state = "idle";
+          b.climbing = false;
+          settleBuddy(b);
+          b.wait = 0.8 + Math.random() * 1.2;
+        }
+        function standStill(b) {
+          b.wait = 2.5 + Math.random() * 3.5;
+          b.life.idles++;
+        }
+        function startAct(b, act, secs) {
+          b.act = act;
+          b.actT = secs;
+          b.wait = secs + 0.8 + Math.random() * 2;
+          b.life.idles++;
+        }
+        /** Can a buddy stand at (x, y) on a stroll: supported, not a door or ladder, not on the coach's spot, not under the player? */
+        function strollOK(b, x, y) {
+          if (!nodeOK(x, y) || getFg(x, y) === T.LADDER) return false;
+          if (DOORS[getFg(x, y)] || DOORS[getFg(x, y - 1)]) return false;
+          if (Math.abs(x + 0.5 - b.anchor) > b.range) return false;
+          if (Math.abs(x + 0.5 - P.x) < 1.4 && Math.abs(y + 1 - P.y) < 2) return false; // never in the builder's way
+          var job = COACH && COACH.job;
+          if (job) {
+            var spot = footprint(ITEM_BY_KEY[job.key], job.spot);
+            if (
+              spot.some(function (t) {
+                return Math.abs(t[0] - x) < 1 && t[1] >= y - 1 && t[1] <= y;
+              })
+            )
+              return false;
+          }
+          return true;
+        }
+        /** Walk 1-6 tiles one way along the floor; false when there is nowhere to go. */
         function wander(b) {
-          b.wait = 2 + Math.random() * 5;
           var c = feetCell(b);
           var dir = Math.random() < 0.5 ? -1 : 1;
+          if (!strollOK(b, c[0] + dir, c[1])) dir = -dir; // blocked one way: try the other
           var len = 1 + ((Math.random() * 6) | 0);
           var x = c[0];
-          var last = c[0];
           for (var i = 0; i < len; i++) {
-            var nx = x + dir;
-            if (
-              !nodeOK(nx, c[1]) ||
-              getFg(nx, c[1]) === T.LADDER ||
-              DOORS[getFg(nx, c[1])] ||
-              DOORS[getFg(nx, c[1] - 1)]
-            )
-              break;
-            x = nx;
-            last = x;
+            if (!strollOK(b, x + dir, c[1])) break;
+            x += dir;
           }
-          if (last !== c[0]) {
-            b.path = [
-              [c[0], c[1]],
-              [last, c[1]],
-            ];
-            b.pathI = 1;
-            b.state = "wander";
-          }
+          if (x === c[0]) return false;
+          b.path = [
+            [c[0], c[1]],
+            [x, c[1]],
+          ];
+          b.pathI = 1;
+          b.state = "wander";
+          b.act = "";
+          b.life.strolls++;
+          return true;
         }
         /** Buddies open the doors they pass through (doors never block them). */
         function openDoorsAround(b) {
@@ -4429,11 +4928,15 @@
             b.climbing = false;
             return;
           }
+          if (b.state === "wander" && !strollStillOK(wp)) {
+            abortStroll(b);
+            return;
+          }
           var tx = wp[0] + 0.5;
           var ty = wp[1] + 1;
           var dx = tx - b.x;
           var dy = ty - b.y;
-          var sp = BUDDY_WALK_SPEED * dt;
+          var sp = BUDDY_WALK_SPEED * dt * (b.state === "wander" ? 0.7 : 1); // a stroll is slower than an errand
           b.climbing =
             Math.abs(dx) < 0.3 &&
             dy !== 0 &&
@@ -4611,8 +5114,9 @@
                 : "A piece of furniture";
           return what + " is in the way";
         }
+        /** In Open play everything is unlocked (no coins to spend); in Goals the coin unlocks apply. */
         function isUnlocked(it) {
-          return it.cost === 0 || S.unlocked[it.key] === true;
+          return S.playMode === "open" || it.cost === 0 || S.unlocked[it.key] === true;
         }
         /** Can this item go with its anchor tile at (tx, ty)? Returns {ok, reason}. */
         function canPlace(it, tx, ty, ignoreReach) {
@@ -4621,7 +5125,7 @@
           var no = function (r, code) {
             return { ok: false, reason: r, code: code };
           };
-          if (!ignoreReach && !playerReach(tx, ty)) return no("Too far away", "far");
+          if (!ignoreReach && !playerReach(tx, ty)) return no("Too far: walk closer", "far");
           var tiles = it.tiles;
           for (var i = 0; i < tiles.length; i++) {
             var x = tx + tiles[i][0];
@@ -4630,9 +5134,8 @@
             if (y >= H - 2) return no("That is bedrock", "bedrock");
           }
           if (it.layer === "bg") {
-            return getBg(tx, ty) === tiles[0][2]
-              ? no("Already there", "there")
-              : { ok: true, reason: "" };
+            var sameWall = getBg(tx, ty) === tiles[0][2] && getTintBg(tx, ty) === tintFor(it);
+            return sameWall ? no("Already there", "there") : { ok: true, reason: "" };
           }
           for (var j = 0; j < tiles.length; j++) {
             var cur = getFg(tx + tiles[j][0], ty + tiles[j][1]);
@@ -4642,10 +5145,10 @@
         }
         var RULE_MESSAGE = {
           ladder: "A ladder needs a wall or another ladder beside it",
-          floor: "Needs a solid floor under it",
-          hang: "Hangs from a block above it",
-          mount: "Needs a back wall or a block beside it",
-          paint: "Hang it on a back wall",
+          floor: "Put it on a solid floor: place it on top of a block",
+          hang: "It hangs from a block: place it right under one",
+          mount: "Put it on a back wall or right beside a block",
+          paint: "Hang it on a back wall: place a Plank wall behind it first",
         };
         /** The footprint tiles that must be supported: the lowest tile of each column, or all of them. */
         function supportPoints(rule, tx, ty, tiles) {
@@ -4682,9 +5185,10 @@
         }
         /** Place without any rule check (starter, probes, loading). */
         function forcePlace(it, tx, ty) {
+          var tint = tintFor(it);
           it.tiles.forEach(function (t) {
-            if (it.layer === "bg") setBg(tx + t[0], ty + t[1], t[2]);
-            else setFg(tx + t[0], ty + t[1], t[2]);
+            if (it.layer === "bg") setBg(tx + t[0], ty + t[1], t[2], tint);
+            else setFg(tx + t[0], ty + t[1], t[2], tint);
           });
         }
         function tryPlace(it, tx, ty) {
@@ -4696,12 +5200,12 @@
           var mat = MATERIAL[it.tiles[0][2]] || "wood";
           if (it.layer === "bg") mat = "wood";
           sfx.place(mat, 1);
-          fxDebris(tx + 0.5, ty + 0.5, mat);
+          fxPlace(it, tx, ty);
           return r;
         }
         function tryBreak(tx, ty, allowBg) {
           if (!inb(tx, ty)) return { ok: false, reason: "Outside the world" };
-          if (!playerReach(tx, ty)) return { ok: false, reason: "Too far away" };
+          if (!playerReach(tx, ty)) return { ok: false, reason: "Too far: walk closer" };
           var t = getFg(tx, ty);
           if (t === T.DEEP || ty >= H - 2) return { ok: false, reason: "That is bedrock" };
           if (t !== T.AIR) {
@@ -4710,15 +5214,24 @@
               lootChest(tx, ty);
               return { ok: true, reason: "", looted: true };
             }
+            var hue = tintFg[ty * W + tx];
             removeObject(tx, ty);
-            fxDebris(tx + 0.5, ty + 0.5, mat);
+            fxBreak({
+              x: tx,
+              y: ty,
+              tex: TEX_FG[t] ? fgTex(t, tx, ty) : null,
+              tint: hue,
+              mat: mat,
+            });
             sfx.crunch(mat);
             settle(tx, ty);
             return { ok: true, reason: "" };
           }
           if (allowBg && getBg(tx, ty) !== 0) {
+            var wallTex = bgTex(getBg(tx, ty), tx, ty);
+            var wallHue = tintBg[ty * W + tx];
             setBg(tx, ty, 0);
-            fxDebris(tx + 0.5, ty + 0.5, "wood");
+            fxBreak({ x: tx, y: ty, tex: wallTex, tint: wallHue, mat: "wood" });
             sfx.crunch("wood");
             return { ok: true, reason: "" };
           }
@@ -4771,9 +5284,9 @@
             min: 6,
             needs: { bed: 1, light: 1 },
             reward: 40,
-            hint: "Pip's hut is on the grass, left of the house. It only needs a bed, a torch and a door.",
+            hint: "Pip's hut is on the grass, left of the house. Place a Bed, hang a Torch and put in a Door.",
             hintFree:
-              "Build a room: Plank walls and a roof (6 wide, 3 high inside), a Plank wall behind, then a door, a torch and a bed.",
+              "Build a box from Plank blocks (6 wide, 3 high inside), cover its back with Plank walls, then place a Door, a Torch and a Bed.",
           },
           {
             type: "Kitchen",
@@ -4781,7 +5294,7 @@
             min: 8,
             needs: { furnace: 1, table: 1, light: 1 },
             reward: 60,
-            hint: "Unlock the Furnace in the Items menu (Furniture tab). A table is free.",
+            hint: "Open Items, then the Furniture tab, and unlock the Furnace (50 coins). Tables are free. Put both in a closed room with a Torch.",
           },
           {
             type: "Library",
@@ -4789,7 +5302,7 @@
             min: 10,
             needs: { shelf: 2, chair: 1, light: 1 },
             reward: 80,
-            hint: "Bookshelves cost coins; chairs are free. A bigger room feels grander.",
+            hint: "Bookshelves cost 40 coins each (Items, Furniture tab). Chairs are free. Put them in a bigger closed room with a Torch.",
           },
           {
             type: "Workshop",
@@ -4797,7 +5310,7 @@
             min: 12,
             needs: { bench: 1, chest: 1, light: 1 },
             reward: 100,
-            hint: "Crafting bench plus a chest, with a light overhead.",
+            hint: "Place a Crafting bench and a Chest (Items, Furniture tab) inside a closed room, and hang a Torch.",
           },
           {
             type: "Greenhouse",
@@ -4805,7 +5318,7 @@
             min: 12,
             needs: { plant: 3, glass: 2, light: 1 },
             reward: 120,
-            hint: "Plants love glass: put two glass blocks in the walls and three plants inside.",
+            hint: "Put 2 Glass blocks in the walls and place 3 Potted plants inside. Hang a Torch too.",
           },
         ];
         function requestDef(i) {
@@ -4824,20 +5337,34 @@
             min: Math.min(60, 12 + 4 * n),
             needs: needs,
             reward: 120 + 25 * n,
-            hint: "A bigger room this time, with more light.",
+            hint: "A bigger room this time, with more Torches. Fill it with the same things as before.",
           };
         }
-        var NEED_LABEL = {
-          bed: "a bed",
-          table: "a table",
-          chair: "a chair",
-          shelf: "bookshelves",
-          furnace: "a furnace",
-          bench: "a crafting bench",
-          chest: "a chest",
-          plant: "plants",
-          light: "a torch or lantern",
-          glass: "glass in the walls",
+        // What to do for each thing a room needs, as one plain sentence: [one, many] (with "%n" = count).
+        var NEED_TEXT = {
+          bed: ["Place a Bed on the floor", "Place %n Beds on the floor"],
+          table: ["Place a Table on the floor", "Place %n Tables on the floor"],
+          chair: ["Place a Chair on the floor", "Place %n Chairs on the floor"],
+          shelf: ["Place a Bookshelf on the floor", "Place %n Bookshelves on the floor"],
+          furnace: ["Place a Furnace on the floor", "Place %n Furnaces on the floor"],
+          bench: ["Place a Crafting bench on the floor", "Place %n Crafting benches on the floor"],
+          chest: ["Place a Chest on the floor", "Place %n Chests on the floor"],
+          plant: ["Place a Potted plant on the floor", "Place %n Potted plants on the floor"],
+          light: ["Hang a Torch or Lantern inside", "Hang %n Torches or Lanterns inside"],
+          glass: ["Put a Glass block in the walls", "Put %n Glass blocks in the walls"],
+        };
+        // The same, short enough for the coach line (28 characters at most).
+        var NEED_COACH = {
+          bed: "Place a bed",
+          table: "Place a table",
+          chair: "Place a chair",
+          shelf: "Place a bookshelf",
+          furnace: "Place a furnace",
+          bench: "Place a crafting bench",
+          chest: "Place a chest",
+          plant: "Place a plant",
+          light: "Hang a torch inside",
+          glass: "Put glass in the walls",
         };
         // The pixel icon shown on each checklist row (a hotbar item key, or "size" for the area row).
         var NEED_ICON = {
@@ -4870,17 +5397,30 @@
         function structureRows(def, room, gap) {
           return [
             {
-              text: gap ? "Close the gap in the walls" : "Walls, floor and roof all round",
+              text: gap
+                ? "Fill the red spots in your walls with Plank blocks"
+                : "Build walls, a floor and a roof from Plank blocks",
               ok: room ? true : gap ? false : null,
               icon: "planks",
             },
-            { text: "Fill the back wall", ok: room ? room.backed : null, icon: "wallPlanks" },
-            { text: "Add a door", ok: room ? room.entry > 0 : null, icon: "door" },
+            {
+              text: "Cover the back of the room with Plank walls",
+              ok: room ? room.backed : null,
+              icon: "wallPlanks",
+            },
+            {
+              text: "Place a Door in one of the walls",
+              ok: room ? room.entry > 0 : null,
+              icon: "door",
+            },
             {
               text:
                 room && room.tooBig
-                  ? "Too big: keep it under " + ROOM_MAX + " tiles"
-                  : "At least " + def.min + " tiles" + (room ? " (" + room.size + " now)" : ""),
+                  ? "Make the room smaller: under " + ROOM_MAX + " squares"
+                  : "Make the room at least " +
+                    def.min +
+                    " squares big" +
+                    (room ? " (" + room.size + " now)" : ""),
               ok: room ? room.size >= def.min && !room.tooBig : null,
               icon: "size",
             },
@@ -4902,8 +5442,7 @@
             var have = room ? haveOf(room, k) : 0;
             items.push({
               text:
-                (n > 1 ? n + " x " : "") +
-                NEED_LABEL[k] +
+                NEED_TEXT[k][n > 1 ? 1 : 0].replace("%n", String(n)) +
                 (room && n > 1 ? " (" + have + "/" + n + ")" : ""),
               ok: room ? have >= n : null,
               icon: NEED_ICON[k],
@@ -4948,9 +5487,8 @@
           S.reqIndex = index; // the chain position is part of the save
           REQ = { index: index, def: def, buddy: b, state: "arriving", room: null, timer: 0 };
           coachTimer = 0;
-          reqTimed = index === 0 ? 10 : 6; // open once per new request, on touch screens too
+          reqTimed = index === 0 ? 10 : 6; // open once per new request on a big screen
           reqMoveT = 0;
-          reqUser = null;
           refreshRequestPanel(true);
           announce("A traveller arrives: " + b.name + " wants " + def.phrase + ".");
         }
@@ -4961,6 +5499,9 @@
             REQ.state = "waiting";
             b.emote = 1e9;
             b.role = "visitor";
+            b.anchor = b.x; // it waits about here, strolling a little
+            b.range = 8;
+            b.wait = 1.5 + Math.random() * 2;
             toast(b.name + ' says: "I need ' + REQ.def.phrase + '!"');
             sfx.chime(0.5);
           }
@@ -5063,6 +5604,8 @@
           claimRoom(still);
           b.home = spot[1] * W + spot[0];
           b.role = "resident";
+          b.anchor = spot[0] + 0.5;
+          b.range = 10;
           b.wait = 1.5;
           rewardMoveIn(b, still);
           REQ.state = "next";
@@ -5078,6 +5621,8 @@
             var b = makeBuddy(s.look, s.name, s.x, s.y);
             if (s.home) b.home = s.home[1] * W + s.home[0];
             else b.role = "idle";
+            b.anchor = s.home ? s.home[0] + 0.5 : s.x;
+            b.range = s.home ? 10 : 6;
             V.push(b);
           });
         }
@@ -5100,7 +5645,20 @@
           var rainBus = null;
           var reverb = null;
           var noiseBuf = null;
+          var rainBuf = null;
           var rainNodes = null;
+          // Rain: one soft bed of dark noise (a wash and a low patter), gentle and without hiss. The
+          // numbers are named here so the probe can assert them (debug.rainTuning()).
+          var RAIN_TUNE = {
+            bus: 0.45, // was 0.6
+            sum: 0.3, // was 0.7 (times the layers below, at full rain)
+            layers: [0.5, 0.4], // was [hiss 0.35..0.65 high-passed at 1800 Hz, 0.55]
+            wobbleMax: 1.14,
+            lpOut: 2000, // was 9000
+            lpIn: 340, // was 620
+            hiss: false,
+          };
+          var RAIN_OLD_PEAK = 0.6 * 0.7 * 1.14 * (0.65 + 0.55); // the old graph at full rain
           var musicTimer = null;
           var musicNext = 0;
           var musicBar = 0;
@@ -5109,6 +5667,21 @@
 
           function usable() {
             return ctx && S.sound && !document.hidden && active < 48;
+          }
+          /** A darker "pink" noise for the rain: far less top end than white noise, so no hiss. */
+          function makeRainBuffer() {
+            rainBuf = ctx.createBuffer(1, ctx.sampleRate * 4, ctx.sampleRate);
+            var rd = rainBuf.getChannelData(0);
+            var p0 = 0;
+            var p1 = 0;
+            var p2 = 0;
+            for (var j = 0; j < rd.length; j++) {
+              var w = Math.random() * 2 - 1;
+              p0 = 0.99765 * p0 + w * 0.099046;
+              p1 = 0.963 * p1 + w * 0.2965164;
+              p2 = 0.57 * p2 + w * 1.0526913;
+              rd[j] = (p0 + p1 + p2 + w * 0.1848) * 0.26;
+            }
           }
           function make() {
             try {
@@ -5127,12 +5700,13 @@
             musicBus = ctx.createGain();
             musicBus.gain.value = S.music ? 0.5 : 0;
             rainBus = ctx.createGain();
-            rainBus.gain.value = 0.6;
+            rainBus.gain.value = RAIN_TUNE.bus;
             rainBus.connect(master);
             // noise + a generated reverb impulse (exponentially decaying stereo noise)
             noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 4, ctx.sampleRate);
             var d = noiseBuf.getChannelData(0);
             for (var i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+            makeRainBuffer();
             var len = Math.floor(ctx.sampleRate * 2.4);
             var imp = ctx.createBuffer(2, len, ctx.sampleRate);
             for (var c = 0; c < 2; c++) {
@@ -5352,7 +5926,7 @@
             if (rainNodes || !ctx) return;
             var mk = function (type, f, q, gain) {
               var src = ctx.createBufferSource();
-              src.buffer = noiseBuf;
+              src.buffer = rainBuf;
               src.loop = true;
               src.loopStart = Math.random();
               var fl = ctx.createBiquadFilter();
@@ -5366,18 +5940,18 @@
               src.start(0, Math.random() * 3);
               return g;
             };
-            var hiss = mk("highpass", 1800, 0.5, 0.5);
-            var body = mk("bandpass", 650, 0.5, 0.55);
+            var wash = mk("lowpass", 1100, 0.4, RAIN_TUNE.layers[0]);
+            var patter = mk("bandpass", 420, 0.45, RAIN_TUNE.layers[1]);
             var sum = ctx.createGain();
             sum.gain.value = 0;
             var lp = ctx.createBiquadFilter();
             lp.type = "lowpass";
-            lp.frequency.value = 9000;
-            hiss.connect(sum);
-            body.connect(sum);
+            lp.frequency.value = RAIN_TUNE.lpOut;
+            wash.connect(sum);
+            patter.connect(sum);
             sum.connect(lp);
             lp.connect(rainBus);
-            rainNodes = { sum: sum, lp: lp, hiss: hiss, wobble: 1, next: 0 };
+            rainNodes = { sum: sum, lp: lp, wash: wash, wobble: 1, next: 0 };
           }
           api.rain = function (intensity, indoors) {
             if (!rainNodes || !ctx) return;
@@ -5385,11 +5959,31 @@
             if (now > rainNodes.next) {
               rainNodes.next = now + 1.2 + Math.random() * 1.4;
               rainNodes.wobble = 0.86 + Math.random() * 0.28; // slow random drift so it never loops audibly
-              rainNodes.hiss.gain.setTargetAtTime(0.35 + Math.random() * 0.3, now, 0.8);
+              rainNodes.wash.gain.setTargetAtTime(
+                RAIN_TUNE.layers[0] * (0.7 + Math.random() * 0.3),
+                now,
+                1.2,
+              );
             }
-            var vol = intensity * (indoors ? 0.38 : 1) * 0.7 * rainNodes.wobble;
-            rainNodes.sum.gain.setTargetAtTime(S.sound ? vol : 0, now, 0.5);
-            rainNodes.lp.frequency.setTargetAtTime(indoors ? 620 : 9000, now, 0.35);
+            var vol = intensity * (indoors ? 0.4 : 1) * RAIN_TUNE.sum * rainNodes.wobble;
+            rainNodes.sum.gain.setTargetAtTime(S.sound ? vol : 0, now, 0.6);
+            rainNodes.lp.frequency.setTargetAtTime(
+              indoors ? RAIN_TUNE.lpIn : RAIN_TUNE.lpOut,
+              now,
+              0.45,
+            );
+          };
+          /** The rain's loudest setting next to the old one (for the probe): peak gain, filters, hiss. */
+          api.rainTuning = function () {
+            var layerSum = RAIN_TUNE.layers[0] + RAIN_TUNE.layers[1];
+            return {
+              peak: RAIN_TUNE.bus * RAIN_TUNE.sum * RAIN_TUNE.wobbleMax * layerSum,
+              oldPeak: RAIN_OLD_PEAK,
+              lpOut: RAIN_TUNE.lpOut,
+              lpIn: RAIN_TUNE.lpIn,
+              hiss: RAIN_TUNE.hiss,
+              running: !!rainNodes,
+            };
           };
 
           // ---- generative music: slow pentatonic plucks over a soft pad ----
@@ -5516,6 +6110,8 @@
         var chunkBuilds = 0;
         var rainDrops = [];
         var parts = [];
+        var PARTICLE_CAP = 700; // most live particles; emitters back off well before it, tickParts trims to it
+        var fxTotals = { pops: 0 }; // for the probe: pops ever started
         var floats = [];
         var vignette = null;
         var lightCv = makeCanvas(2, 2);
@@ -5532,7 +6128,7 @@
             view.width = vwD;
             view.height = vhD;
           }
-          N = Math.max(8, Math.round(ZOOM_CSS[zoomNow()] * dpr));
+          applyZoom();
           vignette = null;
           document.body.classList.toggle("touch", touchMode);
           placeControls();
@@ -5541,21 +6137,77 @@
           refreshUiRects();
         }
         /**
-         * Zoom level in use. S.zoomIdx -1 means "automatic": 32 css px tiles on a desktop, but on a
-         * phone about 17-18 tiles across the short side so the house reads as a house, not 2 rooms.
+         * Zoom in css px per tile. S.zoomPx (pinch / wheel / + -) wins, then the legacy stepped index
+         * from an old save, else automatic: 32 px tiles on a desktop, but on a phone about 17-18 tiles
+         * across the short side so the house reads as a house, not 2 rooms.
          */
-        function zoomNow() {
-          if (S.zoomIdx >= 0) return S.zoomIdx;
+        var ZOOM_MAX = 96; // closest: ~6x the pixel art
+        var ZOOM_MIN_ABS = 4;
+        function autoZoomCss() {
           var short = Math.min(vwD, vhD) / dpr;
-          if (short >= 600) return DEFAULT_ZOOM;
-          for (var i = 0; i < ZOOM_CSS.length; i++) if (ZOOM_CSS[i] >= short / 18) return i;
-          return DEFAULT_ZOOM;
+          if (short >= 600) return ZOOM_CSS[DEFAULT_ZOOM];
+          for (var i = 0; i < ZOOM_CSS.length; i++)
+            if (ZOOM_CSS[i] >= short / 18) return ZOOM_CSS[i];
+          return ZOOM_CSS[DEFAULT_ZOOM];
         }
+        /** Furthest out: the whole world fits on screen (never below a floor, never above automatic). */
+        function zoomMinCss() {
+          var fit = Math.min(vwD / dpr / W, vhD / dpr / H);
+          return clamp(fit, ZOOM_MIN_ABS, autoZoomCss());
+        }
+        function zoomCss() {
+          if (S.zoomPx > 0) return clamp(S.zoomPx, zoomMinCss(), ZOOM_MAX);
+          if (S.zoomIdx >= 0) return ZOOM_CSS[S.zoomIdx];
+          return autoZoomCss();
+        }
+        /** Device pixels per tile: a whole number, so the cached chunks tile without seams. */
+        function applyZoom() {
+          N = Math.max(4, Math.round(zoomCss() * dpr));
+        }
+        function setZoomCss(css) {
+          S.zoomPx = clamp(css, zoomMinCss(), ZOOM_MAX);
+          S.zoomIdx = -1;
+          applyZoom();
+          saveDirty = true;
+        }
+        /** + / - keys and the menu buttons: one step is x1.25, the builder stays where it is on screen. */
         function setZoom(delta) {
-          var z = clamp(zoomNow() + delta, 0, ZOOM_CSS.length - 1);
-          if (z === zoomNow()) return;
-          S.zoomIdx = z;
-          layout();
+          var before = zoomCss();
+          setZoomCss(before * Math.pow(1.25, delta));
+        }
+        /** Camera base the follow-cam aims at; `pan` is the offset from it. */
+        function camBaseX() {
+          return P.x + P.face * 0.6;
+        }
+        function camBaseY() {
+          // the builder sits a little low in the frame
+          return P.y - 1.3 - (vhD / N) * 0.09 + (inp.d && P.ground ? 2.5 : 0);
+        }
+        /** Put world point (wx, wy) under screen point (fx, fy) (device px) by moving the camera and `pan`. */
+        function holdWorldPoint(wx, wy, fx, fy) {
+          cam.x = wx - (fx - vwD / 2) / N;
+          cam.y = wy - (fy - vhD / 2) / N;
+          pan.x = clamp(cam.x - camBaseX(), -W, W);
+          pan.y = clamp(cam.y - camBaseY(), -H, H);
+        }
+        /** Zoom to `css` keeping the world point under (fx, fy) where it is (pinch centre, wheel cursor). */
+        function zoomAt(css, fx, fy) {
+          var wx = (fx + camL) / N;
+          var wy = (fy + camT) / N;
+          setZoomCss(css);
+          holdWorldPoint(wx, wy, fx, fy);
+        }
+        /** True when the view is not the default framing (zoomed or panned): shows the recenter button. */
+        function viewIsOff() {
+          return S.zoomPx > 0 || S.zoomIdx >= 0 || Math.hypot(pan.x, pan.y) > 0.6;
+        }
+        function recenterView() {
+          pan.x = pan.y = 0;
+          S.zoomPx = 0;
+          S.zoomIdx = -1;
+          lookMode = false;
+          $("tLook").setAttribute("aria-pressed", "false");
+          applyZoom();
           saveDirty = true;
         }
 
@@ -5572,6 +6224,7 @@
         }
         /** The one place a particle is made: x, y, life and colour c are required, the rest default. */
         function spawnParticle(o) {
+          if (parts.length >= PARTICLE_CAP) return; // a hard cap: effects never pile up
           parts.push({
             x: o.x,
             y: o.y,
@@ -5602,6 +6255,143 @@
               s: randBetween(0.08, 0.16),
               t: 0,
             });
+          }
+        }
+        // Colours of a block, sampled from its own texture (so debris looks like the block that broke).
+        var paletteCache = new Map();
+        function texPalette(tex, tint) {
+          var key = tint ? tinted(tex, tint) : tex;
+          var hit = paletteCache.get(key);
+          if (hit) return hit;
+          var out = [];
+          try {
+            var d = key.getContext("2d").getImageData(0, 0, 16, 16).data;
+            for (var i = 0; i < 40 && out.length < 8; i++) {
+              var at = ((i * 37 + 11) % 256) * 4;
+              if (d[at + 3] > 200) out.push([d[at], d[at + 1], d[at + 2]]);
+            }
+          } catch (e) {
+            /* unreadable texture: the material colour below is used */
+          }
+          paletteCache.set(key, out);
+          return out;
+        }
+        /** Chunks of the broken block fly out and fall; few and still with reduced motion. */
+        function fxBreak(o) {
+          var pal = o.tex ? texPalette(o.tex, o.tint) : [];
+          if (!pal.length) pal = [MAT_COL[o.mat] || MAT_COL.wood];
+          var n = reducedMotion ? 4 : 10;
+          if (parts.length > PARTICLE_CAP - 140) n = 3;
+          for (var i = 0; i < n; i++) {
+            spawnParticle({
+              x: o.x + randBetween(0.25, 0.75),
+              y: o.y + randBetween(0.25, 0.75),
+              vx: reducedMotion ? 0 : randBetween(-3.5, 3.5),
+              vy: reducedMotion ? 0 : randBetween(-6, -1.5),
+              g: reducedMotion ? 0 : 18,
+              life: reducedMotion ? 0.3 : randBetween(0.45, 0.8),
+              max: 0.8,
+              c: pal[i % pal.length],
+              s: randBetween(0.1, 0.2),
+              t: 0,
+            });
+          }
+        }
+        // ---- placing: the block pops in (a short squash-and-settle), with a puff and a few sparkles ----
+        var pops = []; // {x, y, tex, t}: at most POP_CAP at once
+        var POP_CAP = 24;
+        var POP_TIME = 0.24;
+        function fxPuff(x, y, n) {
+          for (var i = 0; i < n; i++) {
+            spawnParticle({
+              x: x + randBetween(-0.35, 0.35),
+              y: y - 0.05,
+              vx: randBetween(-1.6, 1.6),
+              vy: randBetween(-1.4, -0.3),
+              g: 1.5,
+              life: randBetween(0.28, 0.5),
+              max: 0.5,
+              c: [236, 228, 214],
+              s: randBetween(0.12, 0.2),
+              t: 0,
+            });
+          }
+        }
+        function fxSparkle(x, y, n) {
+          for (var i = 0; i < n; i++) {
+            spawnParticle({
+              x: x + randBetween(-0.45, 0.45),
+              y: y + randBetween(-0.4, 0.3),
+              vx: randBetween(-1.2, 1.2),
+              vy: randBetween(-3, -0.8),
+              g: 5,
+              life: randBetween(0.35, 0.65),
+              max: 0.65,
+              c: i % 2 ? [255, 244, 176] : [255, 255, 255],
+              s: randBetween(0.08, 0.12),
+              t: 2,
+            });
+          }
+        }
+        function fxPlace(it, tx, ty) {
+          var tint = tintFor(it);
+          var cx = tx + 0.5;
+          if (reducedMotion) {
+            // no motion: a short still flash instead of the pop, puff and sparkles
+            for (var k = 0; k < 3; k++)
+              spawnParticle({
+                x: cx + (k - 1) * 0.3,
+                y: ty + 0.5,
+                life: 0.25,
+                c: [255, 244, 176],
+                s: 0.1,
+                t: 2,
+              });
+            return;
+          }
+          if (parts.length > PARTICLE_CAP - 180) return;
+          it.tiles.forEach(function (t) {
+            if (pops.length >= POP_CAP) return;
+            var tex =
+              it.layer === "bg"
+                ? TEX_BG[t[2]] && bgTex(t[2], tx + t[0], ty + t[1])
+                : fgTex(t[2], tx + t[0], ty + t[1]);
+            if (tex) {
+              pops.push({ x: tx + t[0], y: ty + t[1], tex: tinted(tex, tint), t: 0 });
+              fxTotals.pops++;
+            }
+          });
+          fxPuff(cx, ty + 1, 5);
+          fxSparkle(cx, ty + 0.5, 5);
+        }
+        function tickPops(dt) {
+          for (var i = pops.length - 1; i >= 0; i--) {
+            pops[i].t += dt / POP_TIME;
+            if (pops[i].t >= 1) pops.splice(i, 1);
+          }
+        }
+        /** Scaled copies drawn over the settled tile: wider and a little taller, easing back to 1. */
+        function drawPops() {
+          if (!pops.length) return;
+          vctx.imageSmoothingEnabled = false;
+          for (var i = 0; i < pops.length; i++) {
+            var p = pops[i];
+            var e = (1 - p.t) * (1 - p.t);
+            var sx = 1 + 0.26 * e;
+            var sy = 1 + 0.12 * e * (0.5 + 0.5 * Math.sin(p.t * 14));
+            var w = N * sx;
+            var h = N * sy;
+            vctx.drawImage(
+              p.tex,
+              0,
+              0,
+              16,
+              16,
+              (p.x + 0.5) * N - camL - w / 2,
+              (p.y + 1) * N - camT - h,
+              w,
+              h,
+            );
           }
         }
         function fxDust(x, y, n) {
@@ -5712,7 +6502,180 @@
             floats[j].y -= dt * 0.9;
             if (floats[j].life <= 0) floats.splice(j, 1);
           }
-          if (parts.length > 700) parts.splice(0, parts.length - 700);
+          if (parts.length > PARTICLE_CAP) parts.splice(0, parts.length - PARTICLE_CAP);
+        }
+
+        // ---- ambient life: birds by day, fireflies at dusk, a frog now and then (tiny, capped, none with reduced motion) ----
+        var critters = [];
+        var CRITTER_CAP = 12;
+        var critterTimer = 2;
+        function viewTiles() {
+          return { x0: camL / N, x1: (camL + vwD) / N, y0: camT / N, y1: (camT + vhD) / N };
+        }
+        function airAt(x, y) {
+          return inb(x, y) && fg[y * W + x] === T.AIR;
+        }
+        function spawnBird(v) {
+          var dir = Math.random() < 0.5 ? 1 : -1;
+          var y = SURF - randBetween(7, 15);
+          if (!airAt(Math.floor(v.x0), Math.floor(y))) return;
+          critters.push({
+            kind: "bird",
+            x: dir > 0 ? v.x0 - 3 : v.x1 + 3,
+            y: y,
+            vx: dir * randBetween(2.2, 3.6),
+            ph: Math.random() * 6,
+            base: y,
+          });
+        }
+        function spawnFirefly(v) {
+          var x = randBetween(Math.max(1, v.x0), Math.min(W - 2, v.x1));
+          var y = SURF - randBetween(1, 5);
+          if (!airAt(Math.floor(x), Math.floor(y)) || isSolid(Math.floor(x), Math.floor(y + 1)))
+            return;
+          critters.push({
+            kind: "firefly",
+            x: x,
+            y: y,
+            vx: 0,
+            vy: 0,
+            ph: Math.random() * 6,
+            life: randBetween(14, 30),
+          });
+        }
+        function spawnFrog(v) {
+          var x = Math.floor(randBetween(Math.max(1, v.x0), Math.min(W - 2, v.x1)));
+          var gy = groundFeetY(x);
+          if (gy < 1 || gy > SURF + 6 || fg[gy * W + x] !== T.GRASS) return;
+          critters.push({
+            kind: "frog",
+            x: x + 0.5,
+            y: gy,
+            vx: 0,
+            hop: 0,
+            wait: randBetween(1, 3),
+            face: 1,
+            life: randBetween(25, 45),
+          });
+        }
+        function spawnCritter() {
+          var v = viewTiles();
+          if (v.y0 > SURF + 4 || v.y1 < SURF - 16) return; // only near the surface
+          var day = daylight();
+          var dry = weather.k < 0.6;
+          var count = function (k) {
+            return critters.filter(function (c) {
+              return c.kind === k;
+            }).length;
+          };
+          if (day > 0.55 && dry && count("bird") < 4) spawnBird(v);
+          else if (day < 0.45 && weather.k < 0.95 && count("firefly") < 8) spawnFirefly(v);
+          else if (count("frog") < 2) spawnFrog(v);
+        }
+        function tickCritter(c, dt, v) {
+          c.ph += dt;
+          if (c.kind === "bird") {
+            c.x += c.vx * dt;
+            c.y = c.base + Math.sin(c.ph * 2) * 0.6;
+          } else if (c.kind === "firefly") {
+            c.life -= dt;
+            c.vx += (Math.random() - 0.5) * 3 * dt;
+            c.vy += (Math.random() - 0.5) * 3 * dt;
+            c.vx = clamp(c.vx, -0.8, 0.8);
+            c.vy = clamp(c.vy, -0.6, 0.6);
+            var nx = c.x + c.vx * dt;
+            var ny = c.y + c.vy * dt;
+            if (airAt(Math.floor(nx), Math.floor(ny))) {
+              c.x = nx;
+              c.y = ny;
+            } else {
+              c.vx = -c.vx;
+              c.vy = -c.vy;
+            }
+          } else tickFrog(c, dt);
+          c.gone =
+            c.life < 0 ||
+            c.x < v.x0 - 24 ||
+            c.x > v.x1 + 24 ||
+            (c.kind !== "bird" && (c.x < v.x0 - 6 || c.x > v.x1 + 6));
+        }
+        /** A frog sits, then hops along the ground (turns back at a wall or a big step). */
+        function tickFrog(c, dt) {
+          c.life -= dt;
+          if (c.hop > 0) {
+            c.hop -= dt;
+            c.x += c.face * 3.2 * dt;
+            c.air = Math.sin(clamp(1 - c.hop / 0.32, 0, 1) * Math.PI) * 0.7;
+            return;
+          }
+          c.air = 0;
+          c.wait -= dt;
+          if (c.wait > 0) return;
+          c.wait = randBetween(1.2, 4);
+          var nx = Math.floor(c.x + c.face * 1.1);
+          var gy = groundFeetY(nx);
+          if (Math.abs(gy - c.y) > 1 || !inb(nx, gy)) c.face = -c.face;
+          else {
+            c.hop = 0.32;
+            c.y = gy;
+          }
+        }
+        function tickCritters(dt) {
+          if (reducedMotion) {
+            critters.length = 0;
+            return;
+          }
+          critterTimer -= dt;
+          if (critterTimer <= 0) {
+            critterTimer = randBetween(1.5, 4);
+            if (critters.length < CRITTER_CAP) spawnCritter();
+          }
+          var v = viewTiles();
+          for (var i = critters.length - 1; i >= 0; i--) {
+            tickCritter(critters[i], dt, v);
+            if (critters[i].gone) critters.splice(i, 1);
+          }
+        }
+        /** Birds and frogs under the light map; fireflies (glow) on top of it. */
+        function drawCritters(glow) {
+          for (var i = 0; i < critters.length; i++) {
+            var c = critters[i];
+            if ((c.kind === "firefly") !== glow) continue;
+            var x = c.x * N - camL;
+            var y = c.y * N - camT;
+            if (x < -N || x > vwD + N || y < -N || y > vhD + N) continue;
+            if (c.kind === "bird") drawBird(c, x, y);
+            else if (c.kind === "frog") drawFrog(c, x, y);
+            else drawFirefly(c, x, y);
+          }
+        }
+        function drawBird(c, x, y) {
+          var u = Math.max(2, N / 8);
+          var up = Math.floor(c.ph * 8) % 2 === 0;
+          vctx.fillStyle = "#2b2530";
+          vctx.fillRect(x - u, y, u * 2, u);
+          vctx.fillRect(x - u * 3, y + (up ? -u : u), u * 2, u);
+          vctx.fillRect(x + u, y + (up ? -u : u), u * 2, u);
+        }
+        function drawFrog(c, x, y) {
+          var u = Math.max(2, N / 8);
+          var yy = y - (c.air || 0) * N;
+          vctx.fillStyle = "#5f9e4a";
+          vctx.fillRect(x - u * 1.5, yy - u * 2, u * 3, u * 2);
+          vctx.fillStyle = "#e8f4d0";
+          vctx.fillRect(x + (c.face > 0 ? u * 0.4 : -u * 1.2), yy - u * 2.4, u * 0.8, u * 0.8);
+        }
+        function drawFirefly(c, x, y) {
+          var a = 0.35 + 0.65 * Math.max(0, Math.sin(c.ph * 2.6)) * Math.min(1, c.life / 2);
+          var size = N * 0.9;
+          vctx.save();
+          vctx.globalCompositeOperation = "lighter";
+          vctx.globalAlpha = a * 0.7;
+          vctx.drawImage(glowSprite([210, 255, 120]), x - size / 2, y - size / 2, size, size);
+          vctx.globalAlpha = a;
+          vctx.fillStyle = "#f4ffb0";
+          vctx.fillRect(x - 1, y - 1, Math.max(2, N / 14), Math.max(2, N / 14));
+          vctx.restore();
         }
 
         // ---- rain ----
@@ -5902,11 +6865,11 @@
           var b = bg[i];
           var f = fg[i];
           if (b) {
-            g.drawImage(bgTex(b, x, y), dx, dy);
+            g.drawImage(tinted(bgTex(b, x, y), tintBg[i]), dx, dy);
             if (!SOLID[f]) bgShadow(g, x, y, dx, dy);
           }
           var tex = f ? fgTex(f, x, y) : null;
-          if (tex) g.drawImage(tex, dx, dy);
+          if (tex) g.drawImage(tinted(tex, tintFg[i]), dx, dy);
         }
         function paintChunk(o, cx, cy) {
           o.g.clearRect(0, 0, CHUNK * TS, CHUNK * TS);
@@ -5985,6 +6948,8 @@
           }
           if (b.climbing) return step ? FRAME.CLIMB_A : FRAME.CLIMB_B;
           if (b.state === "walk" || b.state === "wander") return step ? FRAME.WALK_A : FRAME.WALK_B;
+          if (b.act === "wave" && Math.floor(b.anim * 4) % 2 === 0) return FRAME.WAVE;
+          if (b.act === "hop") return FRAME.JUMP;
           if (b.emote > 0 && Math.floor(b.anim * 2.2) % 2 === 0) return FRAME.WAVE;
           return FRAME.IDLE;
         }
@@ -5995,6 +6960,8 @@
           var h = 2 * N;
           var x = b.x * N - camL - w / 2;
           var y = b.y * N - camT - h;
+          if (b.act === "hop" && b.actT > 0)
+            y -= Math.sin(Math.min(1, (0.45 - b.actT) / 0.45) * Math.PI) * 0.3 * N;
           if (x > vwD || x + w < 0 || y > vhD || y + h < 0) return;
           vctx.save();
           if (b.face < 0) {
@@ -6017,7 +6984,7 @@
           for (var i = 0; i < parts.length; i++) {
             var p = parts[i];
             var isConf = p.t === 1;
-            if (isConf !== after) continue;
+            if (p.t >= 1 !== after) continue; // confetti and sparkles are drawn after the light map
             var a = clamp(p.life / (p.max * 0.5), 0, 1);
             vctx.fillStyle =
               "rgba(" +
@@ -6030,7 +6997,12 @@
               a.toFixed(2) +
               ")";
             var s = Math.max(2, p.s * N);
-            if (isConf)
+            if (p.t === 2) {
+              var sx = p.x * N - camL;
+              var sy = p.y * N - camT;
+              vctx.fillRect(sx - s, sy - s / 3, s * 2, (s * 2) / 3);
+              vctx.fillRect(sx - s / 3, sy - s, (s * 2) / 3, s * 2);
+            } else if (isConf)
               vctx.fillRect(
                 p.x * N - camL,
                 p.y * N - camT,
@@ -6197,7 +7169,7 @@
           uiRects.length = 0;
           if ($("hud").hidden) return;
           var sel =
-            ".hud-top .chip, .hud-top .chip-btn, #request, #hotbar, .hotrow .mode-btn, .tbtn";
+            ".hud-top .chip, .hud-top .chip-btn, #request .req-head, #request .coach, #request:not(.collapsed), #hotbar, .tray-bar > *, .tray-pick > *, #joy, #swatchDot";
           Array.prototype.forEach.call(document.querySelectorAll(sel), function (e) {
             var r = e.getBoundingClientRect();
             if (r.width > 0) {
@@ -6206,7 +7178,7 @@
                 t: r.top * dpr,
                 r: r.right * dpr,
                 b: r.bottom * dpr,
-                card: e.id === "request",
+                card: e.id === "request" || !!e.closest("#request"),
               });
             }
           });
@@ -6349,7 +7321,7 @@
         function drawRooms() {
           var mine = roomOfPlayer();
           drawRoomOutlines(mine);
-          if (S.labels && ZOOM_CSS[zoomNow()] >= 24) drawRoomLabels(mine);
+          if (S.labels && zoomCss() >= 24) drawRoomLabels(mine);
         }
         function itemInHand() {
           var key = S.hotbar[S.sel];
@@ -6363,6 +7335,7 @@
           valid: false,
           reason: "",
           has: false,
+          pending: false, // touch: the preview is waiting for a second tap
           ox: 1,
           oy: 0,
           until: 0,
@@ -6396,6 +7369,7 @@
           vctx.moveTo(x + N * 0.75, y + N * 0.25);
           vctx.lineTo(x + N * 0.25, y + N * 0.75);
           vctx.stroke();
+          if (aim.pending) drawConfirmBadge([[0, 0]], x, y, okb);
         }
         function drawPlaceGhost(x, y) {
           var it = itemInHand();
@@ -6411,8 +7385,9 @@
             var gx = x + t[0] * N;
             var gy = y + t[1] * N;
             vctx.globalAlpha = 0.62;
-            if (it.layer === "bg") vctx.drawImage(TEX_BG[t[2]][0], gx, gy, N, N);
-            else vctx.drawImage(TEX_FG[t[2]][0], gx, gy, N, N);
+            if (it.layer === "bg")
+              vctx.drawImage(tinted(TEX_BG[t[2]][0], tintFor(it)), gx, gy, N, N);
+            else vctx.drawImage(tinted(TEX_FG[t[2]][0], tintFor(it)), gx, gy, N, N);
             vctx.globalAlpha = 1;
             vctx.fillStyle = ok ? "rgba(90,230,130,0.28)" : "rgba(255,80,70,0.36)";
             vctx.fillRect(gx, gy, N, N);
@@ -6421,6 +7396,40 @@
             vctx.strokeRect(gx + dpr, gy + dpr, N - 2 * dpr, N - 2 * dpr);
             if (!ok) drawCross(gx, gy);
           });
+          if (aim.pending) drawConfirmBadge(it.tiles, x, y, ok);
+        }
+        /** Touch preview: a tick (or cross) badge on the preview's top-right corner = "tap here again". */
+        function drawConfirmBadge(tiles, x, y, ok) {
+          var right = -1e9;
+          var top = 1e9;
+          tiles.forEach(function (t) {
+            right = Math.max(right, x + (t[0] + 1) * N);
+            top = Math.min(top, y + t[1] * N);
+          });
+          var r = Math.max(10 * dpr, N * 0.3);
+          var pulse = reducedMotion ? 1 : 1 + 0.08 * Math.sin(performance.now() / 160);
+          vctx.beginPath();
+          vctx.arc(right, top, r * pulse, 0, 6.283);
+          vctx.fillStyle = ok ? "#4ccf74" : "#e5584d";
+          vctx.fill();
+          vctx.lineWidth = 2 * dpr;
+          vctx.strokeStyle = "#fff";
+          vctx.stroke();
+          vctx.strokeStyle = "#fff";
+          vctx.lineWidth = 2.6 * dpr;
+          vctx.lineCap = "round";
+          vctx.beginPath();
+          if (ok) {
+            vctx.moveTo(right - r * 0.45, top + r * 0.02);
+            vctx.lineTo(right - r * 0.1, top + r * 0.38);
+            vctx.lineTo(right + r * 0.5, top - r * 0.32);
+          } else {
+            vctx.moveTo(right - r * 0.35, top - r * 0.35);
+            vctx.lineTo(right + r * 0.35, top + r * 0.35);
+            vctx.moveTo(right + r * 0.35, top - r * 0.35);
+            vctx.lineTo(right - r * 0.35, top + r * 0.35);
+          }
+          vctx.stroke();
         }
         function drawGhost() {
           if (!aim.has || S.phase !== "playing") return;
@@ -6521,8 +7530,20 @@
             tx = HOUSE_X + 24 - (vwD > vhD * 1.3 ? (vwD / N) * 0.17 : 0);
             ty = HOUSE_Y + 15;
           } else {
-            tx = P.x + P.face * 0.6 + pan.x;
-            ty = P.y - 1.3 - (vhD / N) * 0.09 + (inp.d && P.ground ? 2.5 : 0) + pan.y; // the builder sits a little low in the frame
+            var vwB = vwD / N;
+            var vhB = vhD / N;
+            // the target stays inside the world; `pan` never winds up past an edge (but is left alone
+            // when the whole world fits, so zooming back in returns to the builder)
+            tx = camBaseX() + pan.x;
+            ty = camBaseY() + pan.y;
+            if (vwB < W) {
+              tx = clamp(tx, vwB / 2, W - vwB / 2);
+              pan.x = tx - camBaseX();
+            }
+            if (vhB < H) {
+              ty = clamp(ty, vhB / 2, H - vhB / 2);
+              pan.y = ty - camBaseY();
+            }
           }
           var k = snap ? 1 : 1 - Math.exp(-7 * dt);
           cam.x += (tx - cam.x) * k;
@@ -6550,12 +7571,16 @@
           vctx.globalCompositeOperation = "source-over";
           drawSky(pal);
           drawWorld();
+          drawPops();
           drawParticles(false);
+          drawCritters(false);
           drawEntities();
           drawRain();
           drawLighting(pal);
+          drawCritters(true);
           drawParticles(true);
           drawRooms();
+          drawGoalCells();
           drawGhost();
           drawCoach();
           drawBubbles();
@@ -6674,11 +7699,16 @@
               music: S.music,
               labels: S.labels,
               zoom: S.zoomIdx,
+              zoomPx: +S.zoomPx.toFixed(2),
+              mode: S.playMode,
               world: {
                 w: W,
                 h: H,
                 fg: rle(fg),
                 bg: rle(bg),
+                tf: rle(tintFg),
+                tb: rle(tintBg),
+                tints: JSON.parse(JSON.stringify(S.tints)),
                 coins: S.coins,
                 housed: S.housed,
                 happiness: S.happiness,
@@ -6730,6 +7760,8 @@
                 music: d.music !== false,
                 labels: d.labels !== false,
                 zoom: int(d.zoom, -1, ZOOM_CSS.length - 1, -1),
+                zoomPx: num(d.zoomPx, 0, ZOOM_MAX, 0), // missing in older saves: automatic zoom
+                mode: d.mode === "open" ? "open" : "goals", // missing / hostile: Goals
                 rev: int(d.rev, 0, 1e9, 0),
                 world: null,
               };
@@ -6765,6 +7797,19 @@
               return isItemKey(k) ? k : DEFAULT_HOTBAR[i];
             });
           }
+          /** { itemKey: tintIndex }: only known tintable items and valid indices survive. */
+          function parseTints(obj) {
+            var out = {};
+            if (!obj || typeof obj !== "object" || Array.isArray(obj)) return out;
+            Object.keys(obj)
+              .slice(0, 60)
+              .forEach(function (k) {
+                var n = obj[k];
+                if (isItemKey(k) && TINTABLE[k] && Number.isInteger(n) && n > 0 && n < TINTS.length)
+                  out[k] = n;
+              });
+            return out;
+          }
           function parseLooted(list) {
             if (!Array.isArray(list)) return [];
             return list.slice(0, 200).filter(function (k) {
@@ -6798,6 +7843,10 @@
             return {
               fg: f,
               bg: b,
+              // tints are optional (older saves have none = original) and never fail a load
+              tf: unrle(w.tf, W * H, TINTS.length - 1) || new Uint8Array(W * H),
+              tb: unrle(w.tb, W * H, TINTS.length - 1) || new Uint8Array(W * H),
+              tints: parseTints(w.tints),
               coins: int(w.coins, 0, MAX_COINS, START_COINS),
               housed: int(w.housed, 0, 9999, 0),
               happiness: int(w.happiness, 0, 99999, 0),
@@ -6843,6 +7892,11 @@
           }
           for (var j = 0; j < fg.length; j++)
             if (j >= (H - 2) * W && fg[j] === T.AIR) fg[j] = T.DEEP;
+          // a tint only means something on a tile that is there
+          for (var k = 0; k < fg.length; k++) {
+            if (!fg[k]) tintFg[k] = 0;
+            if (!bg[k]) tintBg[k] = 0;
+          }
         }
 
         function resetState() {
@@ -6851,6 +7905,7 @@
           S.happiness = 0;
           S.reqIndex = 0;
           S.unlocked = {};
+          S.tints = {};
           S.hotbar = DEFAULT_HOTBAR.slice();
           S.sel = 0;
           S.mode = "build";
@@ -6886,6 +7941,7 @@
           S.looted = keySet(w.looted);
           S.hotbar = w.hotbar;
           S.sel = w.sel;
+          S.tints = w.tints;
           S.time = w.time;
           S.rain = w.rain;
           S.cycle = w.cycle;
@@ -6898,6 +7954,8 @@
             var b = makeBuddy(bd.look, bd.name, bd.x, bd.y);
             b.home = bd.home;
             b.role = bd.role;
+            b.anchor = bd.home >= 0 ? (bd.home % W) + 0.5 : bd.x;
+            b.range = bd.home >= 0 ? 10 : 8;
             V.push(b);
           });
           if (!V.length) populateStarterBuddies();
@@ -6916,9 +7974,13 @@
           S.music = sv.music;
           S.labels = sv.labels;
           S.zoomIdx = sv.zoom;
+          S.zoomPx = sv.zoomPx;
+          S.playMode = sv.mode;
           if (!sv.world) return false;
           fg.set(sv.world.fg);
           bg.set(sv.world.bg);
+          tintFg.set(sv.world.tf);
+          tintBg.set(sv.world.tb);
           sanitizeWorld();
           applyWorldState(sv.world);
           P.x = sv.world.px;
@@ -6971,35 +8033,37 @@
           return coarse || Math.min(window.innerWidth, window.innerHeight) < 600;
         }
         var toastTimer = 0;
-        /** Top edge (css px) of the lowest-reaching bottom controls: the dock, or the open build sheet. */
-        function controlsTop() {
+        /**
+         * Top edge (css px) of the lowest-reaching bottom controls: the tray / stick, or the open build
+         * sheet. `rightOnly` ignores the stick on the left (the goal card sits on the right).
+         */
+        function controlsTop(rightOnly) {
           // body is the shell sized to the visible height (scripts/viewport.js), not the window
           var top = document.body.clientHeight;
-          Array.prototype.forEach.call(
-            document.querySelectorAll("#hotbar, .hotrow .mode-btn, .tbtn, #build"),
-            function (e) {
-              var r = e.getBoundingClientRect();
-              if (r.width > 0 && r.height > 0) top = Math.min(top, r.top);
-            },
-          );
+          var sel = "#hotbar, .tray-bar > *, .tray-pick > *, #build" + (rightOnly ? "" : ", #joy");
+          Array.prototype.forEach.call(document.querySelectorAll(sel), function (e) {
+            var r = e.getBoundingClientRect();
+            if (r.width > 0 && r.height > 0) top = Math.min(top, r.top);
+          });
           return top;
         }
         /**
-         * Keep the floating UI out of each other's way: the objective card never reaches below the free
-         * area above the dock (it scrolls inside), and a toast sits just above the dock or the build
-         * sheet, shrinking to the left of the card when they share a row.
+         * Keep the floating UI out of each other's way: the goal card never reaches below the free
+         * area above the tray (it scrolls inside), and a toast sits just above the controls or the
+         * build sheet, shrinking to the left of the card when they share a row.
          */
         function fitFloaters() {
-          var floor = controlsTop();
+          var floor = controlsTop(false);
           var card = $("request");
           if (!$("hud").hidden) {
             var cardTop = card.getBoundingClientRect().top;
-            card.style.maxHeight = Math.max(96, Math.floor(floor - cardTop - 8)) + "px";
+            var cardFloor = controlsTop(true);
+            card.style.maxHeight = Math.max(96, Math.floor(cardFloor - cardTop - 8)) + "px";
             // while the build sheet is open the card steps aside (collapsed; hidden if it still touches the sheet)
             var sheet = !$("build").hidden;
             card.classList.toggle(
               "under-sheet",
-              sheet && card.getBoundingClientRect().bottom > floor - 4,
+              sheet && card.getBoundingClientRect().bottom > cardFloor - 4,
             );
             updateCardCue();
           }
@@ -7079,9 +8143,14 @@
 
         // ---- hotbar ----
         var iconCache = {};
-        function iconFor(key) {
-          if (!iconCache[key]) iconCache[key] = makeIcon(ITEM_BY_KEY[key]);
-          return iconCache[key];
+        /** A 32x32 item picture; with a tint it is the same picture recoloured (cached). */
+        function iconFor(key, tint) {
+          var k = tint ? key + "#" + tint : key;
+          if (!iconCache[k])
+            iconCache[k] = tint
+              ? makeTinted(iconFor(key), TINTS[tint])
+              : makeIcon(ITEM_BY_KEY[key]);
+          return iconCache[k];
         }
         function buildHotbar() {
           var hb = $("hotbar");
@@ -7103,6 +8172,7 @@
             b.addEventListener("click", onSlotClick);
             hb.appendChild(b);
           }
+          hb.addEventListener("scroll", placeSwatchDot, { passive: true });
           refreshHotbar();
         }
         function onSlotClick(e) {
@@ -7113,6 +8183,7 @@
         function selectSlot(i) {
           S.sel = (i + HOTBAR_SLOTS) % HOTBAR_SLOTS;
           coachTimer = 0; // the coach reacts to the very next frame
+          dropPreview();
           if (S.mode === "break") setMode("build");
           refreshHotbar();
           sfx.click();
@@ -7126,7 +8197,7 @@
             var g = slots[i].querySelector("canvas").getContext("2d");
             g.clearRect(0, 0, 32, 32);
             g.imageSmoothingEnabled = false;
-            if (it) g.drawImage(iconFor(key), 0, 0);
+            if (it) g.drawImage(iconFor(key, tintFor(it)), 0, 0);
             var sel = i === S.sel && S.mode === "build";
             slots[i].setAttribute("aria-pressed", sel ? "true" : "false");
             slots[i].classList.toggle("empty", !it);
@@ -7135,61 +8206,304 @@
             slots[i].title = it ? it.name : "Empty slot";
           }
           scrollHotbar();
+          refreshHeld();
+          placeSwatchDot();
+        }
+        /** The held block on the tray toggle: what you are building with, even when the tray is folded. */
+        function refreshHeld() {
+          var it = itemInHand();
+          var g = $("heldIco").getContext("2d");
+          g.clearRect(0, 0, 32, 32);
+          g.imageSmoothingEnabled = false;
+          if (it) g.drawImage(iconFor(it.key, tintFor(it)), 0, 0);
+          $("trayBtn").setAttribute(
+            "aria-label",
+            (it ? "Holding " + it.name : "Holding nothing") +
+              ". " +
+              (trayOpenNow ? "Close" : "Open") +
+              " the block tray",
+          );
         }
         /**
-         * Show only WHOLE hotbar slots: measure the room the row has left beside the other controls
-         * and size the strip to n slots (52px pitch). The rest scrolls, snapping a slot at a time.
+         * Show only WHOLE hotbar slots: measure the room the tray has left beside the other controls
+         * and size the strip to n slots (44px pitch). The rest scrolls, snapping a slot at a time.
          */
         function fitHotbar() {
           var hb = $("hotbar");
-          var row = hb.parentNode;
-          if ($("hud").hidden || !row.clientWidth) return;
-          var other = 0;
-          var count = 0;
-          Array.prototype.forEach.call(row.children, function (c) {
-            if (c !== hb && c.offsetWidth) {
-              other += c.offsetWidth;
-              count++;
-            }
-          });
-          var avail = row.clientWidth - other - 6 * count;
-          var n = clamp(Math.floor((avail - 4) / SLOT_PITCH), 2, HOTBAR_SLOTS);
+          var tray = $("tray");
+          if ($("hud").hidden || !tray.clientWidth) return;
+          var row = !document.body.classList.contains("touch"); // desktop: one row with the bar
+          var compact = document.body.classList.contains("compact"); // the pick row spans the screen
+          var itemsW = $("buildBtn").offsetWidth || (compact ? 44 : 88);
+          var taken = itemsW + 6 + (row ? $("trayBtn").parentNode.offsetWidth + 12 : 0);
+          var room = compact ? $("dock").clientWidth - 16 : tray.clientWidth;
+          var n = clamp(Math.floor((room - taken - 4) / SLOT_PITCH), 2, HOTBAR_SLOTS);
           hb.style.width = n * SLOT_PITCH + 4 + "px";
           hb.dataset.visible = String(n);
           scrollHotbar();
+          placeSwatchDot();
         }
+        var coachSlot = -1; // the slot the coach is ringing: scrolled into view, not just the selected one
         function scrollHotbar() {
           var hb = $("hotbar");
           var n = +hb.dataset.visible || 10;
-          hb.scrollLeft = clamp(S.sel - Math.floor(n / 2), 0, HOTBAR_SLOTS - n) * SLOT_PITCH;
+          var focus = coachSlot >= 0 ? coachSlot : S.sel;
+          hb.scrollLeft = clamp(focus - Math.floor(n / 2), 0, HOTBAR_SLOTS - n) * SLOT_PITCH;
         }
-        /** Narrow portrait phone: move Build / Items between the pads and Look beside the hotbar. */
+        /** Narrow portrait phone ("compact"): icon-only buttons so the tray fits beside the stick. */
         function placeControls() {
           var narrow =
             touchMode && window.innerWidth <= 560 && window.innerHeight > window.innerWidth;
           document.body.classList.toggle("compact", narrow);
-          var row = document.querySelector(".hotrow");
-          var mid = document.querySelector(".tcc");
-          var mode = $("modeBtn");
-          var build = $("buildBtn");
-          var look = $("tLook");
-          var hb = $("hotbar");
-          if (narrow) {
-            if (mode.parentNode !== mid) {
-              mid.appendChild(mode);
-              mid.appendChild(build);
+        }
+        // ---- remembered interface choices (a key of its own: the world save is untouched) ----
+        var UI_KEY = "playpad.brickBuddies.ui.v1";
+        var reqUser = null; // goal card: null = automatic, true / false = the player's own choice
+        var trayPref = null; // block tray: null = automatic (open on a desktop, folded on a phone)
+        function readUi() {
+          try {
+            var d = JSON.parse(localStorage.getItem(UI_KEY));
+            if (d && typeof d === "object") {
+              reqUser = d.goal === 1 ? true : d.goal === 0 ? false : null;
+              trayPref = d.tray === 1 ? true : d.tray === 0 ? false : null;
             }
-            if (look.parentNode !== row) row.appendChild(look);
-          } else {
-            if (mode.parentNode !== row) {
-              row.insertBefore(mode, hb);
-              row.insertBefore(build, hb);
-            }
-            if (look.parentNode !== mid) mid.appendChild(look);
+          } catch (e) {
+            /* no storage, or junk in it: automatic */
           }
         }
+        function writeUi() {
+          try {
+            localStorage.setItem(
+              UI_KEY,
+              JSON.stringify({
+                goal: reqUser === null ? null : reqUser ? 1 : 0,
+                tray: trayPref === null ? null : trayPref ? 1 : 0,
+              }),
+            );
+          } catch (e) {
+            /* private mode: the choice just lasts this visit */
+          }
+        }
+
+        // ---- the block tray: held block + Build / Break always; hotbar and Items fold away ----
+        var trayOpenNow = true;
+        function phoneSized() {
+          return touchMode && Math.min(window.innerWidth, window.innerHeight) < 600;
+        }
+        /** The coach needs a slot or Items to be on screen to ring it. */
+        function coachNeedsTray() {
+          var p = COACH && COACH.pulse;
+          return !!p && (p.slot !== undefined || p.id === "buildBtn" || !!p.tab || !!p.item);
+        }
+        function trayWanted() {
+          if (trayPref === false) return false;
+          if (coachNeedsTray()) return true;
+          return trayPref !== null ? trayPref : !phoneSized();
+        }
+        function setTray(open, byUser) {
+          if (byUser) {
+            trayPref = open;
+            writeUi();
+          }
+          closeSwatches();
+          if (open === trayOpenNow && !byUser) return;
+          trayOpenNow = open;
+          $("tray").dataset.open = open ? "true" : "false";
+          $("trayBtn").setAttribute("aria-expanded", open ? "true" : "false");
+          fitHotbar();
+          refreshHeld();
+          fitFloaters();
+          refreshUiRects();
+          placeSwatchDot();
+        }
+        var trayTimer = 0;
+        function tickTray(dt) {
+          trayTimer -= dt;
+          if (trayTimer > 0) return;
+          trayTimer = 0.2;
+          var want = trayWanted();
+          if (want !== trayOpenNow) setTray(want, false);
+          var off = viewIsOff() && S.phase === "playing";
+          if ($("recenterBtn").hidden === off) {
+            $("recenterBtn").hidden = !off;
+            fitHotbar();
+            refreshUiRects();
+          }
+        }
+
+        // ---- colour of the held block (item 11): a dot opens a small swatch picker ----
+        var swatchesBuilt = false;
+        function tintCss(i) {
+          var c = TINTS[i];
+          return "rgb(" + c[0] + "," + c[1] + "," + c[2] + ")";
+        }
+        /** The held item when it can be coloured and we are placing (not breaking). */
+        function heldTintable() {
+          var it = itemInHand();
+          return it && S.mode === "build" && TINTABLE[it.key] ? it : null;
+        }
+        function buildSwatches() {
+          if (swatchesBuilt) return;
+          swatchesBuilt = true;
+          var box = $("swatches");
+          TINTS.forEach(function (c, i) {
+            var b = document.createElement("button");
+            b.className = "swatch" + (i === 0 ? " none" : "");
+            b.dataset.t = String(i);
+            b.setAttribute("aria-label", i === 0 ? "Original colour" : TINT_NAMES[i]);
+            b.setAttribute("aria-pressed", "false");
+            if (i === 0) b.textContent = "↺";
+            else b.style.setProperty("--sw", tintCss(i));
+            b.addEventListener("click", function () {
+              pickTint(i);
+            });
+            box.appendChild(b);
+          });
+        }
+        function swatchesOpen() {
+          return !$("swatches").hidden;
+        }
+        function closeSwatches() {
+          if (!swatchesBuilt || $("swatches").hidden) return;
+          $("swatches").hidden = true;
+          $("swatchDot").setAttribute("aria-expanded", "false");
+        }
+        function openSwatches() {
+          var it = heldTintable();
+          if (!it) return;
+          buildSwatches();
+          var pop = $("swatches");
+          var cur = tintFor(it);
+          Array.prototype.forEach.call(pop.children, function (b) {
+            b.setAttribute("aria-pressed", +b.dataset.t === cur ? "true" : "false");
+          });
+          pop.hidden = false;
+          $("swatchDot").setAttribute("aria-expanded", "true");
+          // above the tray (or the held-block button), kept on screen
+          var anchor = (trayOpenNow ? $("hotbar") : $("trayBtn")).getBoundingClientRect();
+          var dot = $("swatchDot").getBoundingClientRect();
+          var vw = document.body.clientWidth;
+          var left = clamp(
+            dot.left + dot.width / 2 - pop.offsetWidth / 2,
+            8,
+            vw - pop.offsetWidth - 8,
+          );
+          pop.style.left = Math.round(left) + "px";
+          pop.style.bottom = Math.round(document.body.clientHeight - anchor.top + 8) + "px";
+          var on = pop.querySelector('[aria-pressed="true"]');
+          if (on) on.focus({ preventScroll: true });
+        }
+        function pickTint(i) {
+          var it = heldTintable();
+          if (!it) return;
+          if (i > 0) S.tints[it.key] = i;
+          else delete S.tints[it.key];
+          saveDirty = true;
+          sfx.click();
+          closeSwatches();
+          refreshHotbar();
+          announce(
+            i ? it.name + " colour: " + TINT_NAMES[i] + "." : it.name + ": original colour.",
+          );
+          $("swatchDot").focus({ preventScroll: true });
+        }
+        /** The dot sits on the selected slot (tray open) or on the held-block button (tray folded). */
+        function placeSwatchDot() {
+          var dot = $("swatchDot");
+          var it = heldTintable();
+          if ($("hud").hidden || !it) {
+            dot.hidden = true;
+            closeSwatches();
+            return;
+          }
+          var cur = tintFor(it);
+          dot.hidden = false;
+          dot.style.background = cur ? tintCss(cur) : "";
+          dot.setAttribute(
+            "aria-label",
+            "Colour of the " + it.name + ": " + TINT_NAMES[cur].toLowerCase() + ". Change colour",
+          );
+          var r = $("trayBtn").getBoundingClientRect();
+          var onSlot = false;
+          if (trayOpenNow) {
+            var slot = $("hotbar").children[S.sel];
+            var hb = $("hotbar").getBoundingClientRect();
+            var sr = slot ? slot.getBoundingClientRect() : null;
+            if (sr && sr.width > 0 && sr.left >= hb.left - 1 && sr.right <= hb.right + 1) {
+              r = sr;
+              onSlot = true;
+            }
+          }
+          dot.style.left = Math.round(onSlot ? r.right - 20 : r.right - 12) + "px";
+          dot.style.top = Math.round(onSlot ? r.bottom - 20 : r.top - 6) + "px";
+        }
+
+        // ---- the joystick (touch): sideways walks, up jumps / climbs, down climbs down ----
+        var joyPtr = null;
+        function resetJoyVisual() {
+          joyPtr = null;
+          $("joy").classList.remove("on");
+          $("joyKnob").style.transform = "";
+        }
+        /** Dead zone, then held directions from the knob offset (dx, dy) inside radius R. */
+        function joyApply(dx, dy, R) {
+          var m = Math.hypot(dx, dy);
+          if (m > R) {
+            dx *= R / m;
+            dy *= R / m;
+          }
+          $("joyKnob").style.transform =
+            "translate(" + dx.toFixed(1) + "px," + dy.toFixed(1) + "px)";
+          var wasUp = tp.u;
+          tp.l = dx < -R * 0.3 ? 1 : 0;
+          tp.r = dx > R * 0.3 ? 1 : 0;
+          tp.u = dy < -R * 0.42 ? 1 : 0;
+          tp.d = dy > R * 0.42 ? 1 : 0;
+          if (tp.u && !wasUp) P.jumpBuf = JUMP_BUFFER; // pushing up is a jump press (holding it climbs)
+          mergeInput();
+        }
+        function joyMove(e) {
+          var el = $("joy");
+          var r = el.getBoundingClientRect();
+          var R = r.width / 2 - $("joyKnob").offsetWidth / 2;
+          joyApply(e.clientX - (r.left + r.width / 2), e.clientY - (r.top + r.height / 2), R);
+        }
+        function releaseJoy() {
+          resetJoyVisual();
+          tp.l = tp.r = tp.u = tp.d = 0;
+          mergeInput();
+        }
+        function bindJoystick() {
+          var el = $("joy");
+          el.addEventListener("pointerdown", function (e) {
+            if (joyPtr !== null) return;
+            e.preventDefault();
+            sfx.init();
+            joyPtr = e.pointerId;
+            el.classList.add("on");
+            try {
+              el.setPointerCapture(e.pointerId);
+            } catch (err) {
+              /* capture is best effort */
+            }
+            joyMove(e);
+          });
+          el.addEventListener("pointermove", function (e) {
+            if (e.pointerId === joyPtr) joyMove(e);
+          });
+          el.addEventListener("contextmenu", function (e) {
+            e.preventDefault(); // a long press on the stick must not open a menu
+          });
+          ["pointerup", "pointercancel", "lostpointercapture"].forEach(function (type) {
+            el.addEventListener(type, function (e) {
+              if (e.pointerId === joyPtr) releaseJoy();
+            });
+          });
+        }
+
         function setMode(m) {
           S.mode = m;
+          dropPreview();
           coachTimer = 0;
           var b = $("modeBtn");
           b.dataset.mode = m;
@@ -7312,7 +8626,6 @@
         // for a moment), then just its header so it never hides the house; it re-opens while the
         // player stands in a candidate room of their own, or whenever tapped.
         var reqOpen = true;
-        var reqUser = null; // null = automatic, true / false = the player's own choice
         var reqTimed = 0;
         var reqMoveT = 0;
         var probeClaimed = false;
@@ -7329,7 +8642,8 @@
             if (inp.l || inp.r) reqMoveT += dt;
             if (reqMoveT > 1.2) reqTimed = 0;
           }
-          var compact = touchMode || window.innerWidth < 560;
+          var shortLandscape = window.innerWidth > window.innerHeight && window.innerHeight <= 520;
+          var compact = touchMode || window.innerWidth < 560 || shortLandscape;
           var candidate = !!(
             REQ &&
             REQ.state === "waiting" &&
@@ -7338,8 +8652,10 @@
             !probeClaimed
           );
           var coaching = !!(COACH && COACH.hut); // the coach line replaces the open checklist
+          // a phone keeps the goal folded to its chip until the player opens it; a big screen opens it for
+          // a new request and while the builder stands in a candidate room
           var want =
-            reqUser !== null ? reqUser : !coaching && (reqTimed > 0 || (!compact && candidate));
+            reqUser !== null ? reqUser : !compact && !coaching && (reqTimed > 0 || candidate);
           if (!$("build").hidden) want = false; // the build sheet has the floor; the card steps aside
           if (want !== reqOpen) setPanel(want);
         }
@@ -7379,8 +8695,14 @@
             mark.setAttribute("aria-hidden", "true");
             mark.textContent = it.info ? "!" : it.ok === true ? "✓" : it.ok === false ? "✗" : "○";
             var text = document.createElement("span");
-            text.textContent =
-              (it.ok === true ? "Done: " : it.ok === false ? "Missing: " : "") + it.text;
+            if (it.ok !== null && !it.info) {
+              // the tick / cross says it for the eye; screen readers get the words
+              var sr = document.createElement("span");
+              sr.className = "visually-hidden";
+              sr.textContent = it.ok ? "Done: " : "Still to do: ";
+              text.appendChild(sr);
+            }
+            text.appendChild(document.createTextNode(it.text));
             li.appendChild(mark);
             li.appendChild(rowIcon(it.icon));
             li.appendChild(text);
@@ -7395,6 +8717,13 @@
           var counting = list.length > 1 && probe && probe.room && !probeClaimed;
           var prog = counting ? " \u00b7 " + doneN + "/" + list.length : "";
           return REQ.buddy.name + (REQUEST_WHO[REQ.state] || " asks for") + prog;
+        }
+        /** "Goal 2/5" for the five starter goals, then just "Goal 6", "Goal 7"... */
+        function goalLabel() {
+          if (!REQ) return "";
+          return (
+            "Goal " + (REQ.index + 1) + (REQ.index < BASE_REQ.length ? "/" + BASE_REQ.length : "")
+          );
         }
         function refreshRequestPanel(force) {
           if (!REQ) return;
@@ -7411,6 +8740,7 @@
               .join("|");
           if (!force && sig === reqSig) return;
           reqSig = sig;
+          $("reqGoal").textContent = goalLabel();
           $("reqWho").textContent = requestWho(list);
           $("reqTitle").textContent =
             REQ.state === "next" ? "Moved in! Another buddy is coming…" : cap(def.phrase);
@@ -7619,7 +8949,7 @@
             var east = it.key === "door" || P.x <= spot[0] + 1;
             var glyph = east ? "\u25b6" : "\u25c0";
             c = coachStep("step", "Step aside", { glyph: glyph }, { world: world });
-            c.pulse = touchMode ? { id: east ? "tRight" : "tLeft" } : null;
+            c.pulse = touchMode ? { id: "joy" } : null;
           } else {
             c = coachStep("tap", tapWords(), { item: it.key }, { world: world });
           }
@@ -7629,7 +8959,7 @@
           var text = touchMode ? "Walk to the hut" : "Walk to the hut (A D)";
           var world = { tiles: tiles, label: "Hut", arrowOnly: true };
           var c = coachStep("walk", text, { glyph: left ? "\u25c0" : "\u25b6" }, { world: world });
-          c.pulse = touchMode ? { id: left ? "tLeft" : "tRight" } : null;
+          c.pulse = touchMode ? { id: "joy" } : null;
           return c;
         }
         /** Something is in the way of the glowing spot: say so, ring Break, then point at the block. */
@@ -7679,12 +9009,13 @@
         }
         /** The plain-language imperative for one unmet checklist row. */
         function coachWords(row, pr) {
-          if (row.icon === "planks") return pr.open ? "Close the gap" : "Build walls and a roof";
-          if (row.icon === "wallPlanks") return "Fill the back wall";
-          if (row.icon === "door") return "Add a door";
+          if (row.icon === "planks")
+            return pr.open ? "Fill the red spots" : "Build walls and a roof";
+          if (row.icon === "wallPlanks") return "Cover the back wall";
+          if (row.icon === "door") return "Place a door in a wall";
           if (row.icon === "size")
-            return /^Too big/.test(row.text) ? "Make it smaller" : "Make it bigger";
-          return "Add " + row.text.replace(/ \(.*\)$/, "");
+            return /^Make the room smaller/.test(row.text) ? "Make it smaller" : "Make it bigger";
+          return NEED_COACH[row.icon] || "Add what is missing";
         }
         function planCoach() {
           if (!REQ || S.phase !== "playing") return null;
@@ -7719,7 +9050,8 @@
         function setPulse(spec) {
           var el = null;
           if (spec) {
-            if (spec.slot !== undefined) el = $("hotbar").children[spec.slot];
+            if (spec.slot !== undefined)
+              el = trayOpenNow ? $("hotbar").children[spec.slot] : $("trayBtn");
             else if (spec.id) el = $(spec.id);
             else if (spec.tab) el = document.querySelector('.tab[data-cat="' + spec.tab + '"]');
             else if (spec.item) {
@@ -7732,6 +9064,9 @@
               )[0];
             }
           }
+          var slotWas = coachSlot;
+          coachSlot = spec && spec.slot !== undefined && trayOpenNow ? spec.slot : -1;
+          if (coachSlot !== slotWas) scrollHotbar();
           if (el === coachPulseEl) return;
           if (coachPulseEl) coachPulseEl.classList.remove("coach-pulse");
           coachPulseEl = el || null;
@@ -7801,6 +9136,117 @@
           }
           vctx.restore();
         }
+        // ---- goal cells: the spots the current goal wants filled glow in the world ----
+        // red = an open spot in the walls (a gap), gold = a back-wall square that is still bare
+        var goalCells = { kind: "", cells: [] };
+        var BUILT = flags([
+          T.PLANKS,
+          T.BRICK,
+          T.SAND,
+          T.GLASS,
+          T.DOOR_T,
+          T.DOOR_B,
+          T.DOORO_T,
+          T.DOORO_B,
+        ]);
+        function wallAt(x, y) {
+          return isBoundaryAt(W, H, fg, x, y);
+        }
+        /** x of the nearest wall tile along row y from x, stepping dx (-1 / +1); null when none within 26. */
+        function nearestWall(x, y, dx) {
+          for (var i = 1; i <= 26; i++) if (wallAt(x + dx * i, y)) return x + dx * i;
+          return null;
+        }
+        /** The most common first wall tile above the floor across columns x0..x1 (the roof row), or null. */
+        function roofRow(x0, x1, floorY) {
+          var votes = {};
+          var best = null;
+          for (var x = x0; x <= x1; x++) {
+            for (var y = floorY - 1; y >= floorY - 12; y--) {
+              if (!wallAt(x, y)) continue;
+              votes[y] = (votes[y] || 0) + 1;
+              if (best === null || votes[y] > votes[best]) best = y;
+              break;
+            }
+          }
+          return best;
+        }
+        /**
+         * Rectangular-room heuristic for the "walls" goal: the walls round the builder are the nearest
+         * ones left and right on the rows above the floor; the open spots in that frame (side walls
+         * and roof) are the leaks. Returns [] when the frame does not look like something built.
+         */
+        function findLeakCells(cx, cy) {
+          var fy = null;
+          for (var y = cy; y <= cy + 8 && fy === null; y++) if (wallAt(cx, y)) fy = y;
+          if (fy === null) return [];
+          var xL = null;
+          var xR = null;
+          for (var r = 1; r <= 3; r++) {
+            var l = nearestWall(cx, fy - r, -1);
+            var rr = nearestWall(cx, fy - r, 1);
+            if (l !== null && (xL === null || l > xL)) xL = l;
+            if (rr !== null && (xR === null || rr < xR)) xR = rr;
+          }
+          if (xL === null || xR === null || xR - xL < 3 || xR - xL > 40) return [];
+          var top = roofRow(xL + 1, xR - 1, fy);
+          if (top === null) top = fy - 4; // no roof at all yet: assume a three-high room
+          if (fy - 1 - top < 2 || fy - 1 - top > 14) return [];
+          var cells = [];
+          var built = 0;
+          var total = 0;
+          var look = function (x, y) {
+            total++;
+            if (BUILT[fg[y * W + x]] && inb(x, y)) built++;
+            else if (!wallAt(x, y)) cells.push([x, y]);
+          };
+          for (var yy = top + 1; yy <= fy - 1; yy++) {
+            look(xL, yy);
+            look(xR, yy);
+          }
+          for (var x = xL; x <= xR; x++) look(x, top);
+          return built / total >= 0.6 && cells.length <= 30 ? cells : [];
+        }
+        /** Recompute the glowing cells for the first unmet goal row (cheap; runs when the probe changes). */
+        function updateGoalCells() {
+          goalCells = { kind: "", cells: [] };
+          if (!REQ || S.phase !== "playing" || REQ.state !== "waiting") return;
+          var pr = probe && !probeClaimed ? probe : null;
+          if (!pr) return;
+          var row = checklist(REQ.def, pr).filter(function (q) {
+            return q.ok !== true && !q.info;
+          })[0];
+          if (!row) return;
+          var cx = Math.floor(P.x);
+          var cy = Math.floor(P.y - 0.5);
+          if (row.icon === "planks" && pr.open) {
+            goalCells = { kind: "gap", cells: findLeakCells(cx, cy) };
+          } else if (row.icon === "wallPlanks" && pr.room) {
+            var bare = [];
+            pr.room.cells.forEach(function (i) {
+              if (!bg[i] && bare.length < 150) bare.push([i % W, (i / W) | 0]);
+            });
+            goalCells = { kind: "back", cells: bare };
+          }
+        }
+        function drawGoalCells() {
+          if (!goalCells.cells.length || S.phase !== "playing" || helpOpen) return;
+          var red = goalCells.kind === "gap";
+          var t = performance.now() / 1000;
+          vctx.save();
+          vctx.globalAlpha = reducedMotion ? 0.85 : 0.6 + 0.28 * Math.sin(t * 4);
+          vctx.lineWidth = 2 * dpr;
+          vctx.fillStyle = red ? "rgba(255,64,54,0.42)" : "rgba(255,211,107,0.22)";
+          vctx.strokeStyle = red ? "rgba(255,120,108,0.98)" : "rgba(255,211,107,0.7)";
+          goalCells.cells.forEach(function (c) {
+            var gx = c[0] * N - camL;
+            var gy = c[1] * N - camT;
+            if (gx > vwD || gy > vhD || gx + N < 0 || gy + N < 0) return;
+            vctx.fillRect(gx, gy, N, N);
+            vctx.strokeRect(gx + dpr, gy + dpr, N - 2 * dpr, N - 2 * dpr);
+          });
+          vctx.restore();
+        }
         /** A pulsing gold fill + outline on each tile of the spot to use. */
         function drawGlowTiles(tiles, glow) {
           vctx.globalAlpha = glow;
@@ -7843,7 +9289,8 @@
           var kit = HUT_JOBS.every(function (k) {
             return S.hotbar.indexOf(k) >= 0;
           });
-          var simple = S.reqIndex === 0 && S.housed === 0 && kit && hutIntact();
+          var simple =
+            S.playMode === "goals" && S.reqIndex === 0 && S.housed === 0 && kit && hutIntact();
           if (document.body.classList.contains("simple") === simple) return;
           document.body.classList.toggle("simple", simple);
           fitHotbar();
@@ -7866,6 +9313,9 @@
           $("menuBtn").setAttribute("aria-expanded", open ? "true" : "false");
           if (open) {
             setPhase("paused");
+            dropPreview();
+            clearHeld(); // a held stick or key must not keep walking behind the menu
+            closeSwatches();
             refreshMenu();
             $("mResume").focus();
             saveNow();
@@ -7887,9 +9337,93 @@
           setToggle("mRain", S.rain);
           setToggle("mCycle", S.cycle);
           setToggle("mLabels", S.labels);
+          syncModeButtons();
           setToggle("mTouch", touchMode);
           $("titleSound").setAttribute("aria-pressed", S.sound ? "true" : "false");
           $("titleSoundState").textContent = S.sound ? "on" : "off";
+        }
+        // ---- play mode: Goals (buddies ask for rooms) or Open play (a sandbox: everything unlocked) ----
+        function syncModeButtons() {
+          Array.prototype.forEach.call(document.querySelectorAll(".mode-opt"), function (b) {
+            var on = b.dataset.play === S.playMode;
+            b.setAttribute("aria-checked", on ? "true" : "false");
+            b.tabIndex = on ? 0 : -1; // roving tabindex: Tab enters the group once, arrows move inside it
+          });
+        }
+        function applyModeUi() {
+          document.body.classList.toggle("open-play", S.playMode === "open");
+          syncModeButtons();
+          updateSimple();
+          refreshHotbar();
+          if (!$("build").hidden) renderItems();
+          refreshUiRects();
+          fitFloaters();
+        }
+        /** Open play: the waiting buddy goes home (one who is already moving in finishes first). */
+        function endGoals() {
+          if (!REQ) return;
+          if (REQ.state === "moving") finishMoveIn();
+          if (REQ.state !== "next" && REQ.buddy.role === "visitor") {
+            var at = V.indexOf(REQ.buddy);
+            if (at >= 0) V.splice(at, 1);
+          }
+          REQ = null;
+          reqSig = "";
+          refreshCoach();
+        }
+        function beginGoals() {
+          if (!REQ) startRequest(S.reqIndex);
+          refreshRequestPanel(true);
+          refreshCoach();
+        }
+        function setPlayMode(m) {
+          m = m === "open" ? "open" : "goals";
+          if (S.playMode === m) {
+            syncModeButtons();
+            return;
+          }
+          S.playMode = m;
+          saveDirty = true;
+          dropPreview();
+          if (S.phase !== "title") {
+            if (m === "open") endGoals();
+            else beginGoals();
+          }
+          applyModeUi();
+          sfx.click();
+          if (S.phase !== "title") {
+            var msg =
+              m === "open" ? "Open play: build anything you like!" : "Goals: a buddy needs a room.";
+            toast(msg);
+            announce(msg);
+          }
+        }
+        var RADIO_STEP = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 };
+        /** Arrow keys (and Home / End) move through a radiogroup, choosing as they go. */
+        function radioKey(e, group) {
+          var radios = Array.prototype.slice.call(group.querySelectorAll(".mode-opt"));
+          var at = radios.indexOf(e.currentTarget);
+          var next = -1;
+          if (RADIO_STEP[e.key]) next = (at + RADIO_STEP[e.key] + radios.length) % radios.length;
+          else if (e.key === "Home") next = 0;
+          else if (e.key === "End") next = radios.length - 1;
+          if (next < 0) return;
+          e.preventDefault();
+          e.stopPropagation(); // the game's own keys must not also act
+          setPlayMode(radios[next].dataset.play);
+          radios[next].focus({ preventScroll: true });
+        }
+        function bindModeChoice() {
+          Array.prototype.forEach.call(document.querySelectorAll(".modes"), function (group) {
+            Array.prototype.forEach.call(group.querySelectorAll(".mode-opt"), function (b) {
+              b.addEventListener("click", function () {
+                setPlayMode(b.dataset.play);
+              });
+              b.addEventListener("keydown", function (e) {
+                radioKey(e, group);
+              });
+            });
+          });
         }
         function startGame() {
           if (S.phase !== "title") return;
@@ -7902,10 +9436,12 @@
           layout();
           fitHotbar();
           updateCamera(0, true);
-          if (!REQ) startRequest(S.reqIndex);
+          if (!REQ && S.playMode === "goals") startRequest(S.reqIndex);
           refreshHud();
           refreshRequestPanel(true);
           setMode("build");
+          applyModeUi();
+          setTray(trayWanted(), false);
           refreshCoach();
           announce("Brick Buddies started. You are in the starter house.");
           if (!helpSeen) openHelp(); // first run: the picture how-to, over the live scene
@@ -7915,7 +9451,7 @@
           newWorld();
           populateStarterBuddies();
           claimStarterRooms();
-          startRequest(0);
+          if (S.playMode === "goals") startRequest(0);
           saveDirty = true;
           saveNow();
           refreshHud();
@@ -8002,14 +9538,15 @@
           });
           return on ? ITEM_BY_KEY[j.key] : null;
         }
+        /** Place the held item at (tx, ty); true when something was placed (or a chest / door answered). */
         function applyPlace(tx, ty) {
-          if (interactAt(tx, ty)) return;
+          if (interactAt(tx, ty)) return true;
           var it = itemInHand();
           var wanted = coachWrongItem(tx, ty, it);
           if (wanted) {
             failMsg("Pick the " + wanted.name.toLowerCase() + " first");
             coachTimer = 0;
-            return;
+            return false;
           }
           var spot = coachAnchor(tx, ty, it);
           if (spot) {
@@ -8017,22 +9554,24 @@
             ty = spot[1];
           }
           if (!it) {
-            failMsg("This slot is empty. Open Items to put something in it.");
-            return;
+            failMsg("This slot is empty. Open the tray to pick a block.");
+            return false;
           }
           var r = tryPlace(it, tx, ty);
           if (!r.ok) {
             failMsg(r.reason);
             aim.until = performance.now() + 700;
-          } else {
-            coachTimer = 0;
-            if (COACH) COACH.job = null; // a drag over the rest of the glow must not re-place it
-            announce("Placed " + it.name + ".");
+            return false;
           }
+          coachTimer = 0;
+          if (COACH) COACH.job = null; // a drag over the rest of the glow must not re-place it
+          announce("Placed " + it.name + ".");
+          return true;
         }
         function applyBreak(tx, ty, allowBg) {
           var r = tryBreak(tx, ty, allowBg);
           if (!r.ok) failMsg(r.reason);
+          return r.ok;
         }
         // Movement keys hold a direction while down; the table maps a key code to kb.l / r / u / d.
         var HELD_KEYS = {
@@ -8138,7 +9677,10 @@
             return true;
           }
           if (e.code === "Escape") {
-            if ($("confirm").classList.contains("open")) openConfirm(false);
+            if (swatchesOpen()) {
+              closeSwatches();
+              $("swatchDot").focus({ preventScroll: true });
+            } else if ($("confirm").classList.contains("open")) openConfirm(false);
             else if (!$("build").hidden) setBuild(false);
             else if (S.phase !== "title") setMenu(!menuOpen);
             e.preventDefault();
@@ -8168,6 +9710,7 @@
         function clearHeld() {
           kb.l = kb.r = kb.u = kb.d = 0;
           tp.l = tp.r = tp.u = tp.d = 0;
+          resetJoyVisual();
           mergeInput();
         }
         function toggleSound() {
@@ -8185,13 +9728,22 @@
 
         // ---- pointer (mouse / touch / pen) on the canvas ----
         var ptrs = new Map();
-        var stroke = null;
-        var pinch = null;
-        function tileFromEvent(e) {
+        var stroke = null; // mouse paint stroke
+        var pinch = null; // two-finger gesture: {d, z0, wx, wy}
+        var lastMultiEnd = 0; // when the last two-finger gesture ended (taps right after it are ignored)
+        var GHOST_IDLE_MS = 8000; // a forgotten preview goes away
+        var TAP_MAX_MS = 600;
+        var TAP_SLOP = 10; // css px a finger may wander and still be a tap
+        function canvasPoint(clientX, clientY) {
           var r = view.getBoundingClientRect();
-          var px = (e.clientX - r.left) * (vwD / r.width);
-          var py = (e.clientY - r.top) * (vhD / r.height);
-          return [Math.floor((px + camL) / N), Math.floor((py + camT) / N)];
+          return {
+            x: (clientX - r.left) * (vwD / r.width),
+            y: (clientY - r.top) * (vhD / r.height),
+          };
+        }
+        function tileFromEvent(e) {
+          var p = canvasPoint(e.clientX, e.clientY);
+          return [Math.floor((p.x + camL) / N), Math.floor((p.y + camT) / N)];
         }
         /** Forget any held pointer (menu opened, tab hidden): a held button must not keep editing. */
         function endStroke() {
@@ -8221,6 +9773,7 @@
             t: performance.now(),
             type: e.pointerType,
             moved: false,
+            multi: false, // took part in a two-finger gesture: it can never be a tap
             tile: tileFromEvent(e),
           };
         }
@@ -8232,18 +9785,114 @@
           } else if (e.button === 2) startStroke("break", rec.tile);
           else if (e.button === 0) startStroke(S.mode === "break" ? "break" : "place", rec.tile);
         }
+
+        // ---- touch: a tap previews (a ghost), a second tap on the ghost places ----
+        /** Put the preview on a tile; it clears itself after GHOST_IDLE_MS. */
+        function setGhost(tx, ty) {
+          aim.tx = tx;
+          aim.ty = ty;
+          aim.has = true;
+          aim.mode = "mouse";
+          aim.pending = true;
+          aim.until = performance.now() + GHOST_IDLE_MS;
+        }
+        function clearGhost() {
+          aim.has = aim.mode === "kb";
+          aim.pending = false;
+          aim.until = 0;
+        }
+        /** The held item, the Build / Break switch, a menu or the play mode changed: a waiting preview goes away. */
+        function dropPreview() {
+          if (aim.pending) clearGhost();
+        }
+        /** The tiles the preview covers: the held item's footprint, or one tile in Break mode. */
+        function ghostTiles() {
+          var it = itemInHand();
+          if (S.mode === "break" || !it) return [[aim.tx, aim.ty]];
+          return footprint(it, [aim.tx, aim.ty]);
+        }
+        function ghostCovers(tx, ty) {
+          if (!aim.pending || !aim.has) return false;
+          return ghostTiles().some(function (t) {
+            return t[0] === tx && t[1] === ty;
+          });
+        }
+        /** The tap landed on the preview: do it, and put the preview away when it worked. */
+        function confirmGhost() {
+          var tx = aim.tx;
+          var ty = aim.ty;
+          var ok;
+          if (S.mode === "break") ok = applyBreak(tx, ty, true);
+          else ok = applyPlace(tx, ty);
+          if (ok) clearGhost();
+          else aim.until = performance.now() + GHOST_IDLE_MS;
+        }
+        var ghostHinted = false;
+        /** First tap on a tile: show what would happen, and why not when it cannot. */
+        function previewAt(tx, ty) {
+          setGhost(tx, ty);
+          sfx.click();
+          var it = itemInHand();
+          if (S.mode === "break") {
+            if (getFg(tx, ty) === T.AIR && getBg(tx, ty) === 0) toast("Nothing to break there");
+            else if (!ghostHinted) toast("Tap it again to break it");
+          } else if (!it) {
+            toast("This slot is empty. Open the tray to pick a block.");
+          } else {
+            var res = canPlace(it, tx, ty);
+            var locked = !isUnlocked(it);
+            if (locked) toast("Locked: unlock it in the Items menu");
+            else if (!res.ok) toast(res.reason);
+            else if (!ghostHinted) toast("Tap the preview again to place it");
+          }
+          ghostHinted = true;
+        }
+        /** Chests and doors still answer a single tap (they are not building). */
+        function tapInteract(tx, ty) {
+          var t = getFg(tx, ty);
+          if (S.mode === "break" || !(t === T.CHEST || DOORS[t])) return false;
+          return interactAt(tx, ty);
+        }
+        /**
+         * One finger tapped tile (tx, ty). The guided first-run glow places at once (it already is the
+         * preview); otherwise the first tap previews and a tap on the preview does it.
+         */
+        function tapTile(tile) {
+          var tx = tile[0];
+          var ty = tile[1];
+          if (S.mode === "build" && coachAnchor(tx, ty, itemInHand())) {
+            applyPlace(tx, ty);
+            clearGhost();
+          } else if (ghostCovers(tx, ty)) confirmGhost();
+          else if (!tapInteract(tx, ty)) previewAt(tx, ty);
+        }
+
+        // ---- two fingers: pinch zooms about the fingers, dragging pans (both at once) ----
         function beginPinch() {
           var a = Array.from(ptrs.values());
+          ptrs.forEach(function (rec) {
+            rec.multi = true;
+          });
+          var c0 = canvasPoint((a[0].x + a[1].x) / 2, (a[0].y + a[1].y) / 2);
           pinch = {
-            d: Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y),
-            mx: (a[0].x + a[1].x) / 2,
-            my: (a[0].y + a[1].y) / 2,
+            d: Math.max(24, Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y)),
+            z0: zoomCss(),
+            wx: (c0.x + camL) / N, // the world point between the fingers stays between them
+            wy: (c0.y + camT) / N,
           };
+        }
+        function twoFinger() {
+          var a = Array.from(ptrs.values());
+          var d = Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y);
+          var c = canvasPoint((a[0].x + a[1].x) / 2, (a[0].y + a[1].y) / 2);
+          setZoomCss(pinch.z0 * (d / pinch.d));
+          holdWorldPoint(pinch.wx, pinch.wy, c.x, c.y);
         }
         function onPointerDown(e) {
           sfx.init();
           if (S.phase !== "playing") return;
           view.focus({ preventScroll: true });
+          closeSwatches();
           if (e.pointerType === "touch" && touchOverride === null && !touchMode) {
             touchMode = true;
             layout();
@@ -8257,10 +9906,12 @@
           ptrs.set(e.pointerId, rec);
           aim.mode = "mouse";
           if (e.pointerType === "mouse") {
+            aim.pending = false;
             mouseDown(e, rec);
-          } else if (ptrs.size === 2) {
+          } else if (ptrs.size >= 2) {
             stroke = null;
-            beginPinch();
+            rec.multi = true;
+            if (!pinch) beginPinch();
           }
         }
         function onPointerMove(e) {
@@ -8272,6 +9923,7 @@
             aim.ty = tile[1];
             aim.mode = "mouse";
             aim.has = true;
+            aim.pending = false;
             aim.until = 0;
           }
           if (!rec) return;
@@ -8279,109 +9931,61 @@
           var dy = e.clientY - rec.y;
           rec.x = e.clientX;
           rec.y = e.clientY;
-          if (Math.hypot(e.clientX - rec.sx, e.clientY - rec.sy) > 10) rec.moved = true;
+          if (Math.hypot(e.clientX - rec.sx, e.clientY - rec.sy) > TAP_SLOP) rec.moved = true;
           if (ptrs.size >= 2 && pinch) {
             twoFinger();
             return;
           }
+          if (rec.multi) return; // the last finger of a pinch neither pans nor aims
           if (rec.pan || lookMode) {
             var cssN = N / dpr;
-            pan.x = clamp(pan.x - dx / cssN, -22, 22);
-            pan.y = clamp(pan.y - dy / cssN, -16, 16);
+            pan.x = clamp(pan.x - dx / cssN, -W, W);
+            pan.y = clamp(pan.y - dy / cssN, -H, H);
             return;
           }
-          if (rec.type === "touch" && rec.moved && !stroke)
-            startStroke(S.mode === "break" ? "break" : "place", rec.tile);
-          if (stroke) strokeAt(tile[0], tile[1]);
-        }
-        function twoFinger() {
-          var a = Array.from(ptrs.values());
-          var d = Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y);
-          var mx = (a[0].x + a[1].x) / 2;
-          var my = (a[0].y + a[1].y) / 2;
-          var cssN = N / dpr;
-          pan.x = clamp(pan.x - (mx - pinch.mx) / cssN, -22, 22);
-          pan.y = clamp(pan.y - (my - pinch.my) / cssN, -16, 16);
-          pinch.mx = mx;
-          pinch.my = my;
-          if (d > pinch.d * 1.3) {
-            setZoom(1);
-            pinch.d = d;
-          } else if (d < pinch.d * 0.77) {
-            setZoom(-1);
-            pinch.d = d;
-          }
+          if (rec.type === "mouse") {
+            if (stroke) strokeAt(tile[0], tile[1]);
+          } else if (rec.moved && S.phase === "playing") setGhost(tile[0], tile[1]); // drag aims, never builds
         }
         function onPointerUp(e) {
           var rec = ptrs.get(e.pointerId);
           ptrs.delete(e.pointerId);
-          if (ptrs.size < 2) pinch = null;
+          var now = performance.now();
+          if (ptrs.size < 2 && pinch) {
+            pinch = null;
+            lastMultiEnd = now;
+          }
           if (!rec) return;
-          var wasStroke = !!stroke;
           if (e.pointerType === "mouse") {
             stroke = null;
             return;
           }
-          if (stroke) stroke = null;
-          var quick = performance.now() - rec.t < 600;
-          if (
-            !wasStroke &&
+          var isTap =
+            e.type === "pointerup" &&
             !rec.moved &&
-            quick &&
-            !lookMode &&
+            !rec.multi &&
+            now - rec.t < TAP_MAX_MS &&
+            now - lastMultiEnd > 250 && // a lift right after a pinch is part of the pinch
             ptrs.size === 0 &&
-            S.phase === "playing"
-          ) {
-            aim.tx = rec.tile[0];
-            aim.ty = rec.tile[1];
-            aim.has = true;
-            aim.until = performance.now() + 700;
-            if (S.mode === "break") applyBreak(rec.tile[0], rec.tile[1], true);
-            else applyPlace(rec.tile[0], rec.tile[1]);
-          }
+            !lookMode &&
+            S.phase === "playing";
+          if (isTap) tapTile(rec.tile);
         }
+        /** Wheel zooms about the cursor (Shift + wheel cycles the hotbar; Ctrl + wheel = trackpad pinch). */
         function onWheel(e) {
           if (S.phase !== "playing") return;
           e.preventDefault();
-          if (e.ctrlKey) setZoom(e.deltaY < 0 ? 1 : -1);
-          else selectSlot(S.sel + (e.deltaY > 0 ? 1 : -1));
-        }
-        function bindHold(id, key, jump) {
-          var el = $(id);
-          function down(e) {
-            e.preventDefault();
-            sfx.init();
-            tp[key] = 1;
-            if (jump) P.jumpBuf = JUMP_BUFFER;
-            el.classList.add("on");
-            try {
-              el.setPointerCapture(e.pointerId);
-            } catch (err) {
-              /* best effort */
-            }
-            mergeInput();
+          var delta = (e.deltaY || e.deltaX) * (e.deltaMode === 1 ? 16 : 1);
+          if (e.shiftKey) {
+            selectSlot(S.sel + (delta > 0 ? 1 : -1));
+            return;
           }
-          function up() {
-            tp[key] = 0;
-            el.classList.remove("on");
-            mergeInput();
-          }
-          el.addEventListener("pointerdown", down);
-          el.addEventListener("pointerup", up);
-          el.addEventListener("pointercancel", up);
-          el.addEventListener("lostpointercapture", up);
-          // keyboard users can still activate the on-screen buttons
-          el.addEventListener("keydown", function (e) {
-            if (e.code === "Enter" || e.code === "Space") {
-              e.preventDefault();
-              if (jump) P.jumpBuf = JUMP_BUFFER;
-              tp[key] = 1;
-              mergeInput();
-            }
-          });
-          el.addEventListener("keyup", function (e) {
-            if (e.code === "Enter" || e.code === "Space") up();
-          });
+          var p = canvasPoint(e.clientX, e.clientY);
+          zoomAt(
+            zoomCss() * Math.exp(-clamp(delta, -240, 240) * (e.ctrlKey ? 0.01 : 0.0016)),
+            p.x,
+            p.y,
+          );
         }
         function onClick(id, fn) {
           $(id).addEventListener("click", fn);
@@ -8510,10 +10114,12 @@
         }
         function bindPanelAndLook() {
           $("request").addEventListener("scroll", updateCardCue, { passive: true });
-          onClick("reqToggle", function (e) {
+          // the whole header is the toggle (a small chip when folded); the arrow button inside is the same control
+          document.querySelector("#request .req-head").addEventListener("click", function (e) {
             reqUser = !reqOpen;
+            writeUi();
             setPanel(reqUser);
-            releaseFocus(e);
+            if (e.detail > 0) $("reqToggle").blur();
           });
           onClick("tLook", function (e) {
             lookMode = !lookMode;
@@ -8523,10 +10129,21 @@
           });
         }
         function bindTouchButtons() {
-          bindHold("tLeft", "l", false);
-          bindHold("tRight", "r", false);
-          bindHold("tJump", "u", true);
-          bindHold("tDown", "d", false);
+          bindJoystick();
+          onClick("recenterBtn", function (e) {
+            recenterView();
+            sfx.click();
+            releaseFocus(e);
+          });
+          onClick("trayBtn", function (e) {
+            setTray(!trayOpenNow, true);
+            sfx.click();
+            releaseFocus(e);
+          });
+          onClick("swatchDot", function () {
+            if (swatchesOpen()) closeSwatches();
+            else openSwatches();
+          });
         }
         function bindCanvasPointer() {
           view.addEventListener("pointerdown", onPointerDown);
@@ -8578,6 +10195,7 @@
         }
         function bindUi() {
           bindTitleAndMenu();
+          bindModeChoice();
           bindNewWorldConfirm();
           bindBuildUi();
           bindPanelAndLook();
@@ -8623,6 +10241,7 @@
             aim.has = true;
           } else if (aim.until && performance.now() > aim.until) {
             aim.has = false;
+            aim.pending = false;
             aim.until = 0;
           }
         }
@@ -8728,6 +10347,7 @@
           probeKey = key;
           probe = regionAt(W, H, fg, bg, cx, cy, {});
           probeClaimed = !!(probe.room && isOccupied(probe.room));
+          updateGoalCells();
           refreshRequestPanel(false);
         }
         function tick(dt) {
@@ -8737,6 +10357,8 @@
           for (var i = 0; i < V.length; i++) tickBuddy(V[i], dt);
           tickDoors(dt);
           tickParts(dt);
+          tickPops(dt);
+          tickCritters(dt);
           tickRain(dt);
           tickWeather(dt);
           if (pan.x || pan.y) {
@@ -8755,6 +10377,7 @@
           tickProbe(dt);
           tickPanel(dt);
           tickCoach(dt);
+          tickTray(dt);
           hudTimer += dt;
           if (hudTimer > 0.5) {
             hudTimer = 0;
@@ -8771,6 +10394,7 @@
         function tickTitle(dt) {
           S.simTime += dt;
           tickParts(dt);
+          tickCritters(dt);
           tickRain(dt);
           tickWeather(dt);
           for (var i = 0; i < V.length; i++) tickBuddy(V[i], dt);
@@ -9005,6 +10629,98 @@
             },
           };
         }
+        function hookLife() {
+          return {
+            /** Liveliness counters for the probe: per buddy and the ambient critters. */
+            life: function () {
+              return {
+                critters: critters.length,
+                kinds: critters.map(function (c) {
+                  return c.kind;
+                }),
+                buddies: V.map(function (b) {
+                  return {
+                    name: b.name,
+                    role: b.role,
+                    x: b.x,
+                    y: b.y,
+                    face: b.face,
+                    state: b.state,
+                    act: b.act,
+                    anchor: b.anchor,
+                    range: b.range,
+                    turns: b.life.turns,
+                    idles: b.life.idles,
+                    strolls: b.life.strolls,
+                    maxDev: b.life.maxDev,
+                  };
+                }),
+              };
+            },
+          };
+        }
+        function hookTintsAndFx() {
+          return {
+            /** Zoom and look state: css px per tile, its limits, the pan offset, joystick and tray. */
+            view: function () {
+              return {
+                zoomCss: zoomCss(),
+                minZoom: zoomMinCss(),
+                maxZoom: ZOOM_MAX,
+                autoZoom: autoZoomCss(),
+                tilePx: N,
+                pan: { x: pan.x, y: pan.y },
+                recenterShown: !$("recenterBtn").hidden,
+                trayOpen: trayOpenNow,
+                swatchesOpen: swatchesBuilt && swatchesOpen(),
+                mode: S.playMode,
+                joy: { l: inp.l, r: inp.r, u: inp.u, d: inp.d },
+              };
+            },
+            /** Dev helper: world point under screen point (css px) and a placed tile's tint. */
+            tintAt: function (x, y) {
+              return {
+                fg: inb(x, y) ? tintFg[y * W + x] : 0,
+                bg: inb(x, y) ? tintBg[y * W + x] : 0,
+              };
+            },
+            tintOf: function (key) {
+              return tintFor(ITEM_BY_KEY[key]);
+            },
+            playMode: function (m) {
+              setPlayMode(m);
+            },
+            setTint: function (key, i) {
+              if (i > 0) S.tints[key] = i;
+              else delete S.tints[key];
+            },
+          };
+        }
+        function hookFxCounters() {
+          return {
+            particleCount: function () {
+              return parts.length;
+            },
+            popCount: function () {
+              return pops.length;
+            },
+            /** Effect counters: pops ever started, live particles, the cap. */
+            fx: function () {
+              return {
+                popsStarted: fxTotals.pops,
+                particles: parts.length,
+                particleCap: PARTICLE_CAP,
+              };
+            },
+            /** Stress the effect emitters (n breaks + n placements at the builder) to check the particle cap. */
+            stressFx: function (n) {
+              for (var i = 0; i < n; i++) {
+                fxBreak({ x: P.x, y: P.y - 1, tex: null, tint: 0, mat: "wood" });
+                fxSparkle(P.x, P.y - 1, 5);
+              }
+            },
+          };
+        }
         function hookBuddies() {
           return {
             buddies: function () {
@@ -9033,6 +10749,7 @@
               return {
                 tx: aim.tx,
                 ty: aim.ty,
+                pending: aim.pending,
                 valid: aim.valid,
                 mark: aim.mark,
                 reason: aim.reason,
@@ -9054,6 +10771,7 @@
             },
             setZoom: function (i) {
               S.zoomIdx = clamp(i, 0, ZOOM_CSS.length - 1);
+              S.zoomPx = 0;
               layout();
             },
             pan: function (x, y) {
@@ -9076,6 +10794,9 @@
                 flash: weather.flash,
                 shakeCapable: !reducedMotion,
               };
+            },
+            rainTuning: function () {
+              return sfx.rainTuning();
             },
             audio: function () {
               return {
@@ -9139,6 +10860,10 @@
             hut: function () {
               return { xL: HUT.xL, xR: HUT.xR, g: HUT.g, intact: hutIntact() };
             },
+            /** The cells the current goal makes glow in the world: {kind: gap | back | "", cells}. */
+            goalCells: function () {
+              return { kind: goalCells.kind, cells: goalCells.cells.slice() };
+            },
             helpOpen: function () {
               return helpOpen;
             },
@@ -9198,6 +10923,9 @@
             hookRooms(),
             hookPeople(),
             hookBuddies(),
+            hookLife(),
+            hookTintsAndFx(),
+            hookFxCounters(),
             hookEnvironment(),
             hookCoach(),
             hookSoundMotion(),
@@ -9244,7 +10972,11 @@
           }
           saveReady = true;
           $("startBtn").focus({ preventScroll: true });
-          if (touchMode || window.innerWidth < 560) setPanel(false);
+          readUi();
+          var phoneLike = touchMode || window.innerWidth < 560;
+          setPanel(reqUser !== null ? reqUser : !phoneLike);
+          setTray(trayWanted(), false);
+          applyModeUi();
           installHook();
           requestAnimationFrame(loop);
         }

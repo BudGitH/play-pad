@@ -1,6 +1,5 @@
 // Brick Buddies v2 (phone-first controls, goal clarity, two play modes, colour, life).
 // Feature record: features/brick-buddies-v2/ (AC-23.x). Run: npm run smoke
-/* eslint-disable max-lines-per-function -- each test is one linear user scenario (same stance as the deep probes, DECISIONS 2026-11-22) */
 import { test, expect } from "@playwright/test";
 
 const URL = "/games/brick-buddies/index.html";
@@ -20,10 +19,33 @@ async function start(page, { mode } = {}) {
   }, HELP_KEY);
   await page.goto(URL);
   if (mode === "open") await page.locator('.modes:not(.in-menu) [data-play="open"]').click();
+  await pressStart(page);
+}
+
+/** Press Start on the title and wait for play (after a reload or a title-screen check). */
+async function pressStart(page) {
   await page.getByRole("button", { name: "Start building", exact: true }).click();
   await expect.poll(() => page.evaluate(() => window.__buddies?.phase)).toBe("playing");
 }
-
+/** Reload (same storage) and start again. */
+async function startAfterReload(page) {
+  await page.reload();
+  await pressStart(page);
+}
+/** Wait until the smooth camera has stopped moving, so tile -> screen positions are stable. */
+async function cameraSettled(page) {
+  await page.waitForFunction(
+    () => {
+      const c = window.__buddies.debug.camera();
+      const key = c.camL + "," + c.camT;
+      window.__camRun = key === window.__camKey ? (window.__camRun || 0) + 1 : 0;
+      window.__camKey = key;
+      return window.__camRun >= 8;
+    },
+    null,
+    { polling: "raf" },
+  );
+}
 const dbg = (page, fn, arg) => page.evaluate(fn, arg);
 const view = (page) => dbg(page, () => window.__buddies.debug.view());
 
@@ -39,21 +61,22 @@ async function touchSession(page) {
 }
 
 /** A free, reachable tile near the builder for the held block (or null). */
-function freeTileNear(page, key) {
+function freeTileNear(page, key, skip = null) {
   return dbg(
     page,
-    (k) => {
+    ([k, not]) => {
       const d = window.__buddies.debug;
       const p = window.__buddies.player;
       for (let dx = -4; dx <= 4; dx++)
         for (let dy = -3; dy <= 0; dy++) {
           const x = Math.floor(p.x) + dx;
           const y = Math.floor(p.y - 0.5) + dy;
+          if (not && not[0] === x && not[1] === y) continue;
           if (dx && d.canPlace(k, x, y).ok) return [x, y];
         }
       return null;
     },
-    key,
+    [key, skip],
   );
 }
 const tileAt = (page, t) => dbg(page, (c) => window.__buddies.debug.getTile(c[0], c[1]), t);
@@ -61,6 +84,7 @@ const screenOf = (page, t) => dbg(page, (c) => window.__buddies.debug.tileToScre
 const countPlanks = (page) =>
   dbg(page, () => window.__buddies.debug.countTiles(window.__buddies.debug.ids.PLANKS));
 
+/* eslint-disable max-lines-per-function -- each test is one linear user scenario (same stance as the deep probes, DECISIONS 2026-11-22) */
 test.describe("brick-buddies v2 (phone landscape 915x412)", () => {
   test.use({ viewport: PHONE, hasTouch: true, isMobile: true });
 
@@ -87,8 +111,7 @@ test.describe("brick-buddies v2 (phone landscape 915x412)", () => {
     await send("touchStart", [[cx, cy, 1]]);
     await send("touchMove", [[cx + 40, cy, 1]]);
     await expect.poll(async () => (await view(page)).joy.r).toBe(1);
-    await page.waitForTimeout(400);
-    expect(await dbg(page, () => window.__buddies.player.x)).toBeGreaterThan(x0 + 0.5);
+    await expect.poll(() => dbg(page, () => window.__buddies.player.x)).toBeGreaterThan(x0 + 0.5);
     await send("touchMove", [[cx - 40, cy, 1]]);
     await expect.poll(async () => (await view(page)).joy.l).toBe(1);
     await send("touchMove", [[cx, cy - 42, 1]]);
@@ -107,9 +130,24 @@ test.describe("brick-buddies v2 (phone landscape 915x412)", () => {
     // the keyboard still works
     const x1 = await dbg(page, () => window.__buddies.player.x);
     await page.keyboard.down("KeyD");
-    await page.waitForTimeout(300);
+    await expect.poll(() => dbg(page, () => window.__buddies.player.x)).toBeGreaterThan(x1);
     await page.keyboard.up("KeyD");
-    expect(await dbg(page, () => window.__buddies.player.x)).toBeGreaterThan(x1);
+
+    // a cancelled touch, and a window that loses focus, both let go of the stick
+    const stickRight = async () => {
+      await send("touchStart", [[cx, cy, 1]]);
+      await send("touchMove", [[cx + 40, cy, 1]]);
+      await expect.poll(async () => (await view(page)).joy.r).toBe(1);
+    };
+    const released = () =>
+      expect.poll(async () => Object.values((await view(page)).joy).join("")).toBe("0000");
+    await stickRight();
+    await send("touchCancel", []);
+    await released();
+    await stickRight();
+    await page.evaluate(() => window.dispatchEvent(new Event("blur")));
+    await released();
+    await send("touchEnd", []);
     expect(errors).toEqual([]);
   });
 
@@ -186,9 +224,11 @@ test.describe("brick-buddies v2 (phone landscape 915x412)", () => {
         [560 - i * 20, 150, 2],
       ]);
     await send("touchEnd", []);
-    await page.waitForTimeout(500);
-    const cam1 = await dbg(page, () => window.__buddies.debug.camera());
-    expect(Math.abs(cam1.x - cam0.x)).toBeGreaterThan(2);
+    await expect
+      .poll(async () =>
+        Math.abs((await dbg(page, () => window.__buddies.debug.camera())).x - cam0.x),
+      )
+      .toBeGreaterThan(2);
     expect((await view(page)).recenterShown).toBe(true);
   });
 
@@ -209,13 +249,11 @@ test.describe("brick-buddies v2 (phone landscape 915x412)", () => {
     await expect(page.locator("#reqList li").first()).toBeVisible();
     expect(await page.evaluate((k) => JSON.parse(localStorage.getItem(k)).goal, UI_KEY)).toBe(1);
 
-    await page.reload();
-    await page.getByRole("button", { name: "Start building", exact: true }).click();
+    await startAfterReload(page);
     await expect(page.locator("#request")).not.toHaveClass(/collapsed/); // remembered
     await head.click();
     await expect(page.locator("#request")).toHaveClass(/collapsed/);
-    await page.reload();
-    await page.getByRole("button", { name: "Start building", exact: true }).click();
+    await startAfterReload(page);
     await expect(page.locator("#request")).toHaveClass(/collapsed/);
   });
 
@@ -225,15 +263,15 @@ test.describe("brick-buddies v2 (phone landscape 915x412)", () => {
     await start(page);
     // an old save with an explicit "tray open" would hide this: start fresh
     await page.evaluate((k) => localStorage.removeItem(k), UI_KEY);
-    await page.reload();
-    await page.getByRole("button", { name: "Start building", exact: true }).click();
+    await startAfterReload(page);
     await page.evaluate(() => {
       const d = window.__buddies.debug;
       d.teleport(d.world.houseX + 24.5, d.world.houseY + 16); // away from the hut: no coach ring needs the tray
       const h = d.hut();
       d.place(h.xL, h.g - 2, 0); // a wrecked hut ends the simple first run, so Items is shown
     });
-    await page.waitForTimeout(500);
+    await expect.poll(async () => (await view(page)).trayOpen).toBe(false);
+    await cameraSettled(page);
     const area = await page.evaluate(() => {
       const sel = [
         "#joy",
@@ -271,12 +309,66 @@ test.describe("brick-buddies v2 (phone landscape 915x412)", () => {
     expect(await page.evaluate((k) => JSON.parse(localStorage.getItem(k)).tray, UI_KEY)).toBe(1);
   });
 
+  test("AC-23.4 compact controls keep a 48px hit area (slots, chip, tray toggle, view buttons, dot); swatches are 44px+", async ({
+    page,
+  }) => {
+    await start(page);
+    await page.evaluate((k) => localStorage.removeItem(k), UI_KEY);
+    await startAfterReload(page);
+    await page.evaluate(() => {
+      const d = window.__buddies.debug;
+      d.teleport(d.world.houseX + 24.5, d.world.houseY + 16);
+      const h = d.hut();
+      d.place(h.xL, h.g - 2, 0); // ends the simple first run so Items is shown
+    });
+    await page.getByRole("button", { name: /block tray/ }).click();
+    await page.evaluate(() => window.__buddies.debug.select("planks"));
+    await expect(page.locator("#swatchDot")).toBeVisible();
+    await page.locator("#swatchDot").click();
+    await expect(page.locator("#swatches")).toBeVisible();
+    // effective hit size = the control's box, or its transparent ::after box when that is bigger
+    const hits = await page.evaluate(() => {
+      const sel = [
+        "#hotbar .slot",
+        "#buildBtn",
+        "#modeBtn",
+        "#trayBtn",
+        "#tLook",
+        "#swatchDot",
+        "#request .req-head",
+        "#reqToggle",
+        ".swatch",
+      ];
+      const out = [];
+      for (const q of sel)
+        for (const e of document.querySelectorAll(q)) {
+          const r = e.getBoundingClientRect();
+          if (!r.width) continue;
+          const a = getComputedStyle(e, "::after");
+          out.push({
+            q,
+            w: Math.max(r.width, parseFloat(a.width) || 0),
+            h: Math.max(r.height, parseFloat(a.height) || 0),
+            visualW: r.width,
+          });
+        }
+      return out;
+    });
+    expect(hits.length).toBeGreaterThan(15);
+    for (const h of hits) {
+      const need = h.q === ".swatch" ? 44 : 48;
+      expect(Math.min(h.w, h.h), JSON.stringify(h)).toBeGreaterThanOrEqual(need - 0.5);
+    }
+    // the visuals stay compact: slots are 40px pictures
+    expect(hits.filter((h) => h.q === "#hotbar .slot").every((h) => h.visualW === 40)).toBe(true);
+  });
+
   test("AC-23.5 a tap previews, a second tap on the preview places; pinches never build", async ({
     page,
   }) => {
     await start(page);
     await dbg(page, () => window.__buddies.debug.select("planks"));
-    await page.waitForTimeout(800);
+    await cameraSettled(page);
     const tgt = await freeTileNear(page, "planks");
     expect(tgt).not.toBeNull();
     const at = await screenOf(page, tgt);
@@ -288,13 +380,18 @@ test.describe("brick-buddies v2 (phone landscape 915x412)", () => {
     expect(await countPlanks(page)).toBe(before);
 
     // a tap elsewhere moves the preview
-    const other = [tgt[0] - 1, tgt[1]];
-    if (await dbg(page, (c) => window.__buddies.debug.canPlace("planks", c[0], c[1]).ok, other)) {
-      const o = await screenOf(page, other);
-      await page.touchscreen.tap(o.x, o.y);
-      expect(await dbg(page, () => window.__buddies.debug.aim().tx)).toBe(other[0]);
-      await page.touchscreen.tap(at.x, at.y); // back to the first
-    }
+    const other = await freeTileNear(page, "planks", tgt); // a different free tile, found by the game's own rules
+    expect(other).not.toBeNull();
+    expect(other).not.toEqual(tgt);
+    const o = await screenOf(page, other);
+    await page.touchscreen.tap(o.x, o.y);
+    await expect
+      .poll(() =>
+        dbg(page, () => window.__buddies.debug.aim().tx + "," + window.__buddies.debug.aim().ty),
+      )
+      .toBe(other.join(","));
+    expect(await countPlanks(page)).toBe(before);
+    await page.touchscreen.tap(at.x, at.y); // back to the first
     // a pinch over empty tiles (and the lift of its first finger) builds nothing
     const { send } = await touchSession(page);
     await send("touchStart", [
@@ -307,32 +404,70 @@ test.describe("brick-buddies v2 (phone landscape 915x412)", () => {
         [at.x + 120 + i * 2, at.y - 40, 2],
       ]);
     await send("touchEnd", [[at.x + 128, at.y - 40, 2]]); // finger 1 lifts first
-    await page.waitForTimeout(80);
     await send("touchEnd", []);
-    await page.waitForTimeout(300);
-    expect(await countPlanks(page)).toBe(before);
-
-    // the pinch moved the camera: find the preview again, then tap it (it is still waiting there)
-    const again = await screenOf(page, tgt);
+    expect(await countPlanks(page)).toBe(before); // lifts are synchronous: nothing was built
     expect((await dbg(page, () => window.__buddies.debug.aim())).pending).toBe(true);
-    await page.touchscreen.tap(again.x, again.y);
-    await expect.poll(async () => (await tileAt(page, tgt)).fg).toBe(1);
+
+    // the pinch moved the camera: find the preview again and tap it. A tap in the first 250 ms after
+    // a pinch is ignored on purpose, so the tap is retried until it lands.
+    await expect(async () => {
+      const again = await screenOf(page, tgt);
+      await page.touchscreen.tap(again.x, again.y);
+      expect((await tileAt(page, tgt)).fg).toBe(1);
+    }).toPass();
     expect(await countPlanks(page)).toBe(before + 1);
+    expect(await dbg(page, () => window.__buddies.debug.fx().popsStarted)).toBeGreaterThan(0); // the pop ran
     expect(await dbg(page, () => window.__buddies.debug.particleCount())).toBeGreaterThan(0);
 
     // Break mode previews first too
     await page.keyboard.press("KeyB");
+    await cameraSettled(page);
     const bt = await screenOf(page, tgt);
     await page.touchscreen.tap(bt.x, bt.y);
+    await expect.poll(() => dbg(page, () => window.__buddies.debug.aim().pending)).toBe(true);
     expect((await tileAt(page, tgt)).fg).toBe(1);
     await page.touchscreen.tap(bt.x, bt.y);
     await expect.poll(async () => (await tileAt(page, tgt)).fg).toBe(0);
   });
 
+  test("AC-23.5 a waiting preview goes away when the item, Build / Break, the menu or the mode changes", async ({
+    page,
+  }) => {
+    await start(page);
+    await dbg(page, () => window.__buddies.debug.select("planks"));
+    await cameraSettled(page);
+    const tgt = await freeTileNear(page, "planks");
+    const preview = async () => {
+      const at = await screenOf(page, tgt);
+      await page.touchscreen.tap(at.x, at.y);
+      await expect.poll(() => dbg(page, () => window.__buddies.debug.aim().pending)).toBe(true);
+    };
+    const gone = () =>
+      expect.poll(() => dbg(page, () => window.__buddies.debug.aim().pending)).toBe(false);
+
+    await preview();
+    await page.keyboard.press("Digit2"); // another hotbar slot: the held item changes
+    await gone();
+    await preview();
+    await page.keyboard.press("KeyB"); // Build -> Break
+    await gone();
+    await page.keyboard.press("KeyB");
+    await preview();
+    await dbg(page, () => window.__buddies.debug.select("brick")); // an item picked from the Items menu
+    await gone();
+    await preview();
+    await dbg(page, () => window.__buddies.debug.playMode("open")); // Goals -> Open play
+    await gone();
+    await dbg(page, () => window.__buddies.debug.playMode("goals"));
+    await preview();
+    await page.getByRole("button", { name: "Menu", exact: true }).click(); // the menu opens
+    await gone();
+  });
+
   test("AC-23.5 an invalid tile previews red and places nothing", async ({ page }) => {
     await start(page);
     await dbg(page, () => window.__buddies.debug.select("planks"));
-    await page.waitForTimeout(800);
+    await cameraSettled(page);
     // the tile the builder stands in is never placeable
     const p = await dbg(page, () => window.__buddies.player);
     const t = [Math.floor(p.x), Math.floor(p.y - 0.5)];
@@ -340,9 +475,7 @@ test.describe("brick-buddies v2 (phone landscape 915x412)", () => {
     const before = await countPlanks(page);
     await page.touchscreen.tap(at.x, at.y);
     await page.touchscreen.tap(at.x, at.y);
-    await page.waitForTimeout(200);
-    const aim = await dbg(page, () => window.__buddies.debug.aim());
-    expect(aim.valid).toBe(false);
+    await expect.poll(() => dbg(page, () => window.__buddies.debug.aim().valid)).toBe(false);
     expect(await countPlanks(page)).toBe(before);
   });
 
@@ -412,8 +545,7 @@ test.describe("brick-buddies v2 (phone landscape 915x412)", () => {
         .getByRole("radiogroup", { name: "How do you want to play?" })
         .getByRole("radio", { name: /Open play/ }),
     ).toHaveAttribute("aria-checked", "true");
-    await page.getByRole("button", { name: "Start building", exact: true }).click();
-    await expect.poll(() => dbg(page, () => window.__buddies?.phase)).toBe("playing");
+    await pressStart(page);
 
     // switch to Goals from the menu: the world is kept and a goal appears
     const furnaces = await dbg(page, () =>
@@ -449,8 +581,7 @@ test.describe("brick-buddies v2 (phone landscape 915x412)", () => {
         .getByRole("radiogroup", { name: "How do you want to play?" })
         .getByRole("radio", { name: /Goals/ }),
     ).toHaveAttribute("aria-checked", "true");
-    await page.getByRole("button", { name: "Start building", exact: true }).click();
-    await expect.poll(() => dbg(page, () => window.__buddies?.phase)).toBe("playing");
+    await pressStart(page);
     expect((await view(page)).mode).toBe("goals");
     await expect(page.locator("#request")).toBeVisible();
   });
@@ -469,12 +600,13 @@ test.describe("brick-buddies v2 (phone landscape 915x412)", () => {
     const picker = page.getByRole("group", { name: "Block colour" });
     await expect(picker).toBeVisible();
     const swatches = picker.getByRole("button");
-    expect(await swatches.count()).toBeGreaterThanOrEqual(7); // 6-8 colours + original
+    expect(await swatches.count()).toBe(9); // "original" + 8 colours
     await picker.getByRole("button", { name: "Red", exact: true }).click();
     await expect(picker).toBeHidden();
     expect(await dbg(page, () => window.__buddies.debug.tintOf("planks"))).toBe(1);
 
     // a placed block keeps the tint
+    await cameraSettled(page);
     const tgt = await freeTileNear(page, "planks");
     const at = await screenOf(page, tgt);
     await page.touchscreen.tap(at.x, at.y);
@@ -501,9 +633,7 @@ test.describe("brick-buddies v2 (phone landscape 915x412)", () => {
 
     // the tint is saved, and a save without tints (an older one) still loads
     await dbg(page, () => window.__buddies.debug.save());
-    await page.reload();
-    await page.getByRole("button", { name: "Start building", exact: true }).click();
-    await expect.poll(() => dbg(page, () => window.__buddies?.phase)).toBe("playing");
+    await startAfterReload(page);
     expect(await dbg(page, (c) => window.__buddies.debug.tintAt(c[0], c[1]).fg, tgt)).toBe(1);
     expect(await dbg(page, () => window.__buddies.debug.tintOf("planks"))).toBe(4);
     expect(errors).toEqual([]);
@@ -568,6 +698,47 @@ test.describe("brick-buddies v2 (phone landscape 915x412)", () => {
     expect(life.critters).toBeLessThanOrEqual(12);
   });
 
+  test("AC-23.8 normal motion pops, and the effect particles stay under the cap", async ({
+    page,
+  }) => {
+    await start(page);
+    const fx = await dbg(page, () => window.__buddies.debug.fx());
+    expect(fx.particleCap).toBe(700);
+    await dbg(page, () => {
+      const d = window.__buddies.debug;
+      d.stressFx(400); // far more than the cap, in one go
+      d.step(1);
+    });
+    const after = await dbg(page, () => window.__buddies.debug.fx());
+    expect(after.particles).toBeGreaterThan(0);
+    expect(after.particles).toBeLessThanOrEqual(after.particleCap);
+  });
+
+  test("AC-23.7 the mode choice is a radiogroup with a roving tabindex and arrow keys", async ({
+    page,
+  }) => {
+    await page.addInitScript((k) => localStorage.setItem(k, "1"), HELP_KEY);
+    await page.goto(URL);
+    const group = page.getByRole("radiogroup", { name: "How do you want to play?" });
+    const goals = group.getByRole("radio", { name: /Goals/ });
+    const open = group.getByRole("radio", { name: /Open play/ });
+    await expect(goals).toHaveAttribute("tabindex", "0");
+    await expect(open).toHaveAttribute("tabindex", "-1");
+    await goals.focus();
+    await page.keyboard.press("ArrowRight");
+    await expect(open).toHaveAttribute("aria-checked", "true");
+    await expect(open).toBeFocused();
+    await expect(open).toHaveAttribute("tabindex", "0");
+    await expect(goals).toHaveAttribute("tabindex", "-1");
+    await page.keyboard.press("ArrowRight"); // wraps
+    await expect(goals).toBeFocused();
+    await expect(goals).toHaveAttribute("aria-checked", "true");
+    await page.keyboard.press("End");
+    await expect(open).toHaveAttribute("aria-checked", "true");
+    await page.keyboard.press("Home");
+    await expect(goals).toHaveAttribute("aria-checked", "true");
+  });
+
   test("AC-23.8 reduced motion: no pop, no ambient critters", async ({ browser }) => {
     const ctx = await browser.newContext({
       viewport: PHONE,
@@ -578,13 +749,13 @@ test.describe("brick-buddies v2 (phone landscape 915x412)", () => {
     const page = await ctx.newPage();
     await start(page);
     await dbg(page, () => window.__buddies.debug.select("planks"));
-    await page.waitForTimeout(600);
+    await cameraSettled(page);
     const tgt = await freeTileNear(page, "planks");
     const at = await screenOf(page, tgt);
     await page.touchscreen.tap(at.x, at.y);
     await page.touchscreen.tap(at.x, at.y);
     await expect.poll(async () => (await tileAt(page, tgt)).fg).toBe(1);
-    expect(await dbg(page, () => window.__buddies.debug.popCount())).toBe(0);
+    expect(await dbg(page, () => window.__buddies.debug.fx().popsStarted)).toBe(0); // no pop at all
     await dbg(page, () => {
       const d = window.__buddies.debug;
       d.setRain(false);
@@ -592,9 +763,21 @@ test.describe("brick-buddies v2 (phone landscape 915x412)", () => {
       d.step(60 * 30);
     });
     expect((await dbg(page, () => window.__buddies.debug.life())).critters).toBe(0);
+    // no idle show either (look / wave / hop): buddies only walk, turn and stand
+    const acts = new Set();
+    for (let i = 0; i < 60; i++) {
+      const life = await dbg(page, () => {
+        window.__buddies.debug.step(60);
+        return window.__buddies.debug.life();
+      });
+      for (const b of life.buddies) acts.add(b.act);
+    }
+    expect([...acts]).toEqual([""]);
     await ctx.close();
   });
 });
+
+/* eslint-enable max-lines-per-function */
 
 test.describe("brick-buddies v2 (desktop)", () => {
   test.use({ viewport: { width: 1280, height: 800 } });
@@ -619,8 +802,7 @@ test.describe("brick-buddies v2 (desktop)", () => {
   test("AC-23.4 on a desktop the tray starts open; the held block is shown", async ({ page }) => {
     await start(page);
     await page.evaluate((k) => localStorage.removeItem(k), UI_KEY);
-    await page.reload();
-    await page.getByRole("button", { name: "Start building", exact: true }).click();
+    await startAfterReload(page);
     expect((await view(page)).trayOpen).toBe(true);
     await expect(page.locator("#hotbar")).toBeVisible();
     await expect(page.locator("#trayBtn")).toBeVisible();

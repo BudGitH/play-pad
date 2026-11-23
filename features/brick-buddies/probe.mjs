@@ -1725,16 +1725,14 @@ try {
         });
         const small = vis
           .filter((e) => {
-            // v2: hotbar slots 40px (owner asked for smaller), tray / view buttons and the goal chip 44px, the rest 48px;
-            // the colour dot is an 18px picture with a 36px hit area (::after), the swatches are 36px
+            // v2: compact visuals with a 48px HIT area (a transparent ::after box, at least 48 x 48,
+            // centred on the control); the colour swatches are real 44px buttons
             const r = e.getBoundingClientRect();
-            if (e.id === "swatchDot" || e.classList.contains("swatch")) return false;
-            const need = e.classList.contains("slot")
-              ? 39.5
-              : e.closest(".dock-right") || e.id === "reqToggle"
-                ? 43.5
-                : 47.5;
-            return Math.min(r.width, r.height) < need;
+            const hit = getComputedStyle(e, "::after");
+            const w = Math.max(r.width, parseFloat(hit.width) || 0);
+            const h = Math.max(r.height, parseFloat(hit.height) || 0);
+            const need = e.classList.contains("swatch") ? 43.5 : 47.5;
+            return Math.min(w, h) < need;
           })
           .map(
             (e) =>
@@ -1764,7 +1762,7 @@ try {
       assert(m.sw <= m.iw, `horizontal scroll ${m.sw} > ${m.iw}`);
       assert(
         m.small.length === 0,
-        "HUD controls under their minimum (slots 40, tray 44, others 48): " + m.small.join(", "),
+        "HUD controls with a hit area under 48px (swatches 44): " + m.small.join(", "),
       );
       assert(
         m.touchVisible === v.touch,

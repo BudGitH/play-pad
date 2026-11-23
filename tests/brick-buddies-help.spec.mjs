@@ -133,9 +133,9 @@ test.describe("brick-buddies coach (phone)", () => {
     await start(page);
     await page.getByRole("button", { name: "Let’s go!" }).click();
 
-    // far from the hut: walk, with the left pad ringed
+    // far from the hut: walk, with the joystick ringed
     await expect(page.locator("#coachText")).toHaveText("Walk to the hut");
-    await expect(page.locator("#tLeft")).toHaveClass(/coach-pulse/);
+    await expect(page.locator("#joy")).toHaveClass(/coach-pulse/);
     // the simple first run: no coin / star counters, no Items menu yet
     await expect(page.locator("#buildBtn")).toBeHidden();
     await expect(page.locator(".hud-top .adv").first()).toBeHidden();

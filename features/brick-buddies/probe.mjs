@@ -363,7 +363,7 @@ try {
   // ---- AC-3 / AC-12 touch controls (Maya: one-handed phone) ----
   await check(
     "AC-3",
-    "touch: hold the D-pad, jump, tap to place, Break mode tap removes",
+    "touch: joystick walk + jump, tap-preview-then-place, Break mode removes",
     async () => {
       const { page, ctx } = await openPage(browser, {
         viewport: { width: 390, height: 844 },
@@ -373,38 +373,38 @@ try {
       await startGame(page);
       await settle(page, 700);
       const pl = () => page.evaluate(() => window.__buddies.player);
-      const down = (sel) =>
-        page.dispatchEvent(sel, "pointerdown", {
+      // the joystick (AC-23.1): a touch pointer on #joy, pushed left / up from its centre
+      const jb = await page.locator("#joy").boundingBox();
+      const jx = jb.x + jb.width / 2;
+      const jy = jb.y + jb.height / 2;
+      const ptr = (type, x, y) =>
+        page.dispatchEvent("#joy", type, {
           pointerId: 7,
           pointerType: "touch",
           isPrimary: true,
           button: 0,
-          buttons: 1,
-        });
-      const up = (sel) =>
-        page.dispatchEvent(sel, "pointerup", {
-          pointerId: 7,
-          pointerType: "touch",
-          isPrimary: true,
-          button: 0,
-          buttons: 0,
+          buttons: type === "pointerup" ? 0 : 1,
+          clientX: x,
+          clientY: y,
         });
       const p0 = await pl();
-      await down("#tLeft");
+      await ptr("pointerdown", jx, jy);
+      await ptr("pointermove", jx - 40, jy);
       await sleep(450);
-      await up("#tLeft");
+      await ptr("pointerup", jx - 40, jy);
       const p1 = await pl();
       assert(
         p0.x - p1.x > 1.2,
-        "holding the left button should walk left, moved " + (p0.x - p1.x).toFixed(2),
+        "pushing the stick left should walk left, moved " + (p0.x - p1.x).toFixed(2),
       );
-      await down("#tJump");
+      await ptr("pointerdown", jx, jy);
+      await ptr("pointermove", jx, jy - 42);
       await sleep(150);
       const pj = await pl();
-      await up("#tJump");
+      await ptr("pointerup", jx, jy - 42);
       assert(
         pj.y < p1.y - 0.3 || !pj.ground,
-        "the jump button should leave the ground " + JSON.stringify(pj),
+        "pushing the stick up should leave the ground " + JSON.stringify(pj),
       );
       await sleep(900);
       const p = await pl();
@@ -414,9 +414,15 @@ try {
         ([x, y]) => window.__buddies.debug.tileToScreen(x, y),
         [tx, ty],
       );
-      await page.touchscreen.tap(s.x, s.y);
+      await page.touchscreen.tap(s.x, s.y); // first tap: the preview (nothing built yet)
       await sleep(200);
-      assert((await getTile(page, tx, ty)).fg === IDS.PLANKS, "tapping places the selected block");
+      assert((await getTile(page, tx, ty)).fg === 0, "the first tap only previews");
+      await page.touchscreen.tap(s.x, s.y); // second tap on the preview places
+      await sleep(200);
+      assert(
+        (await getTile(page, tx, ty)).fg === IDS.PLANKS,
+        "tapping the preview places the selected block",
+      );
       await page.locator("#modeBtn").tap();
       assert(
         (await page.evaluate(() => window.__buddies.mode)) === "break",
@@ -424,9 +430,15 @@ try {
       );
       await page.touchscreen.tap(s.x, s.y);
       await sleep(200);
-      assert((await getTile(page, tx, ty)).fg === 0, "tapping in Break mode removes it");
+      assert((await getTile(page, tx, ty)).fg === IDS.PLANKS, "Break mode previews first too");
+      await page.touchscreen.tap(s.x, s.y);
+      await sleep(200);
+      assert(
+        (await getTile(page, tx, ty)).fg === 0,
+        "tapping the preview in Break mode removes it",
+      );
       await ctx.close();
-      return "D-pad hold, jump button, tap place, Break-mode tap";
+      return "stick walk, stick jump, tap preview + tap place, Break-mode preview + tap";
     },
   );
 
@@ -776,7 +788,7 @@ try {
       await sleep(600);
       const cl = await dbg(page, () => window.__buddies.debug.checklist());
       assert(
-        cl.some((i) => /bed/.test(i.text) && i.ok === false) && cl[0].ok === true,
+        cl.some((i) => /bed/i.test(i.text) && i.ok === false) && cl[0].ok === true,
         "checklist should flag the missing bed " + JSON.stringify(cl),
       );
       await dbg(page, ([a, t]) => window.__buddies.debug.placeItem("bed", a + 1, t - 1), [x0, top]);
@@ -1382,7 +1394,7 @@ try {
     return `drew ${st.glowsDrawn} glows with 480 emitters in view`;
   });
 
-  await check("AC-12", "C-07 the pad row fits a 320px phone", async () => {
+  await check("AC-12", "C-07 the stick and tray fit a 320px phone", async () => {
     const { page, ctx } = await openPage(browser, {
       viewport: { width: 320, height: 640 },
       touch: true,
@@ -1392,7 +1404,7 @@ try {
     await settle(page, 600);
     const r = await dbg(page, () => {
       const out = {};
-      for (const id of ["tLeft", "tRight", "tDown", "tJump", "modeBtn", "buildBtn"]) {
+      for (const id of ["joy", "modeBtn", "trayBtn"]) {
         const b = document.getElementById(id).getBoundingClientRect();
         out[id] = [Math.round(b.left), Math.round(b.right)];
       }
@@ -1401,7 +1413,7 @@ try {
     const clipped = Object.entries(r.out).filter(([, [l, rt]]) => l < 0 || rt > r.w);
     assert(clipped.length === 0 && r.sw <= r.w, "controls clipped at 320px: " + JSON.stringify(r));
     await ctx.close();
-    return "jump / pad / mode buttons all inside 320px";
+    return "joystick / mode / tray buttons all inside 320px";
   });
 
   // ---- AC-9 lighting ---------------------------------------------------------
@@ -1712,10 +1724,18 @@ try {
           );
         });
         const small = vis
-          .filter(
-            (e) =>
-              Math.min(e.getBoundingClientRect().width, e.getBoundingClientRect().height) < 47.5,
-          )
+          .filter((e) => {
+            // v2: hotbar slots 40px (owner asked for smaller), tray / view buttons and the goal chip 44px, the rest 48px;
+            // the colour dot is an 18px picture with a 36px hit area (::after), the swatches are 36px
+            const r = e.getBoundingClientRect();
+            if (e.id === "swatchDot" || e.classList.contains("swatch")) return false;
+            const need = e.classList.contains("slot")
+              ? 39.5
+              : e.closest(".dock-right") || e.id === "reqToggle"
+                ? 43.5
+                : 47.5;
+            return Math.min(r.width, r.height) < need;
+          })
           .map(
             (e) =>
               (e.id || e.className) +
@@ -1724,13 +1744,13 @@ try {
               "x" +
               Math.round(e.getBoundingClientRect().height),
           );
-        const boxes = [".hud-top", "#request", ".hotrow", ".tc"]
+        const boxes = [".hud-top", "#request", ".tray-bar", "#hotbar", "#joy"]
           .map((s) => [...document.querySelectorAll(s)])
           .flat()
           .map((e) => e.getBoundingClientRect())
           .filter((r) => r.width > 0);
         const area = boxes.reduce((a, r) => a + r.width * r.height, 0);
-        const tj = document.getElementById("tJump").getBoundingClientRect();
+        const tj = document.getElementById("joy").getBoundingClientRect();
         return {
           sw: document.documentElement.scrollWidth,
           iw: innerWidth,
@@ -1744,7 +1764,7 @@ try {
       assert(m.sw <= m.iw, `horizontal scroll ${m.sw} > ${m.iw}`);
       assert(
         m.small.length === 0,
-        "HUD controls under 48px (hotbar slots included): " + m.small.join(", "),
+        "HUD controls under their minimum (slots 40, tray 44, others 48): " + m.small.join(", "),
       );
       assert(
         m.touchVisible === v.touch,
@@ -1782,30 +1802,12 @@ try {
       // objective card: open for a new request (touch screens too), header-only once settled
       const cardOpen = () =>
         page.evaluate(() => !document.getElementById("request").classList.contains("collapsed"));
-      assert(await cardOpen(), "request card is open at the start");
       if (v.touch) {
-        // the first move collapses it (the card never hides the house while you play)
-        const padDown = (sel) =>
-          page.dispatchEvent(sel, "pointerdown", {
-            pointerId: 9,
-            pointerType: "touch",
-            isPrimary: true,
-            button: 0,
-            buttons: 1,
-          });
-        const padUp = (sel) =>
-          page.dispatchEvent(sel, "pointerup", {
-            pointerId: 9,
-            pointerType: "touch",
-            isPrimary: true,
-            button: 0,
-            buttons: 0,
-          });
-        await padDown("#tRight");
-        await sleep(1700);
-        await padUp("#tRight");
-        await sleep(300);
-        assert(!(await cardOpen()), "request card collapses after the first move");
+        assert(!(await cardOpen()), "on a touch screen the goal starts as a chip (folded)");
+        await page.locator("#request .req-head").click();
+        assert(await cardOpen(), "tapping the chip opens the goal");
+        await page.locator("#request .req-head").click();
+        assert(!(await cardOpen()), "tapping it again folds it (and the choice is remembered)");
         await page.evaluate(() => {
           const d = window.__buddies.debug;
           d.teleport(d.spawn.player.x, d.spawn.player.y);
@@ -1813,6 +1815,7 @@ try {
         await sleep(900);
         await page.screenshot({ path: join(SHOTS, `play-${v.id}.jpg`) }); // the settled, header-only look
       } else {
+        assert(await cardOpen(), "request card is open at the start on a desktop");
         await sleep(10500);
         assert(
           !(await cardOpen()),
@@ -1979,7 +1982,11 @@ try {
       await settle(page, 600);
       const tip = await page.locator("#reqHint").textContent();
       assert(
-        /hut/.test(tip) && /left of the house/.test(tip) && /bed, a torch and a door/.test(tip),
+        /hut/.test(tip) &&
+          /left of the house/.test(tip) &&
+          /Bed/.test(tip) &&
+          /Torch/.test(tip) &&
+          /Door/.test(tip),
         "the tip names the hut and its three jobs: " + tip,
       );
       const hut = await dbg(page, () => window.__buddies.debug.hut());
@@ -2186,9 +2193,10 @@ try {
         }),
       );
       assert(rows.length >= 6, "request rows: " + rows.length);
-      const bare = (t) => t.replace(/^(Done|Missing): /, "");
-      const long = rows.filter((q) => bare(q.text).length > 36);
-      assert(long.length === 0, "rows over 36 characters: " + JSON.stringify(long));
+      const bare = (t) => t.replace(/^(Done|Still to do): /, "");
+      // v2 wording names the action and the block, so rows may run to 64 characters (was 36)
+      const long = rows.filter((q) => bare(q.text).length > 64);
+      assert(long.length === 0, "rows over 64 characters: " + JSON.stringify(long));
       const blank = rows.filter((q) => q.ink < 40);
       assert(blank.length === 0, "rows without an icon: " + JSON.stringify(blank));
       // refusal reasons name the blocker
@@ -2362,7 +2370,7 @@ try {
       await tall.page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
       await tall.page.waitForURL((u) => u.pathname === "/index.html");
       await tall.ctx.close();
-      return `${rows.length} icon rows <= 36 chars, blockers named, unlock keeps slot (${hb1.join(",")}), two-tap leave on touch`;
+      return `${rows.length} icon rows <= 64 chars, blockers named, unlock keeps slot (${hb1.join(",")}), two-tap leave on touch`;
     },
   );
 
@@ -2371,6 +2379,7 @@ try {
     const sel = [
       [".hud-top .chip, .hud-top .chip-btn", "chip"],
       ["#request", "card"],
+      ["#joy", "pad"],
       ["#toast.show", "toast"],
       ["#hotbar", "hotbar"],
       [".mode-btn", "mode"],
@@ -2398,8 +2407,10 @@ try {
         const h = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
         if (w > 1 && h > 1 && !covered(boxes[i], boxes[j])) hits.push(boxes[i].id + " x " + boxes[j].id);
       }
+    // the goal card sits on the right: it must clear the right-hand controls (the stick is on the left)
     const dock = Math.min(
-      ...boxes.filter((b) => ["hotbar", "mode", "pad"].includes(b.kind)).map((b) => b.r.top),
+      ...boxes.filter((b) => ["hotbar", "mode"].includes(b.kind)).map((b) => b.r.top),
+      innerHeight,
     );
     const card = document.getElementById("request");
     const cardBox = boxes.find((b) => b.kind === "card");
@@ -2435,9 +2446,10 @@ try {
         await settle(page, 900);
         await page.keyboard.press("Digit9"); // an empty slot: placing with it gives a real toast
         await page.keyboard.press("KeyF");
+        await page.locator("#request .req-head").click(); // the goal starts as a chip: open it for the worst case
         await sleep(250);
         const m = await page.evaluate(`(${HUD_BOXES})()`);
-        assert(m.cardOpen, "the objective card is open at the start on touch screens too");
+        assert(m.cardOpen, "the objective card can be opened from its chip");
         assert(m.toast, "a toast is showing for the check");
         assert(m.hits.length === 0, "overlapping HUD pieces: " + m.hits.join("; "));
         assert(
@@ -2468,6 +2480,7 @@ try {
           );
         }
         // R3-3: with the build sheet open the card steps aside and nothing overlaps
+        await page.getByRole("button", { name: /block tray/ }).click(); // Items lives in the tray
         await page.getByRole("button", { name: /Items, open build menu/ }).click();
         await sleep(500);
         await page.keyboard.press("KeyF"); // a fresh toast while the sheet is open
@@ -2666,7 +2679,7 @@ try {
           `card ${shut.cardBottom} reaches the dock ${shut.dock}`,
         );
         await page.screenshot({ path: join(SHOTS, `onboarding-coach-${v.id}.jpg`) });
-        await page.locator("#reqToggle").click(); // the worst case: the whole checklist + tip open under the coach
+        await page.locator("#reqToggle").click(); // the worst case: the whole checklist + tip open under the coach (the chip is the toggle)
         await sleep(300);
         const wide = await page.evaluate(`(${HUD_BOXES})()`);
         assert(wide.cardOpen, "the toggle opens the checklist");

@@ -30,13 +30,13 @@
 
 ## Probe expectations changed on purpose (`features/brick-buddies/probe.mjs`)
 
-| Check                          | Old                                          | New                                                                | Why                                                           |
-| ------------------------------ | -------------------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------- |
-| AC-12 pad buttons              | `#tLeft #tRight #tDown #tJump` exist, >=48px | `#joy` exists (>=88px); hotbar slots >=40px, others >=44px         | one joystick replaces the pads; owner asked for smaller slots |
-| AC-17 rows                     | rows <= 36 characters                        | rows <= 64 characters; prefix "Still to do:" is screen-reader only | concrete wording names the action and the block               |
-| first-run / coach "pad ringed" | left pad `#tLeft` has `coach-pulse`          | `#joy` has `coach-pulse`                                           | the joystick is the only walk control                         |
-| AC-19 / AC-22.3 overlap boxes  | `.hotrow .tc` boxes                          | `#joy .tray-bar #hotbar` boxes                                     | dock rebuilt                                                  |
-| anything tapping `#reqToggle`  | arrow button                                 | whole `.req-head` is the toggle (the arrow still works)            | folded card is a chip                                         |
+| Check                          | Old                                          | New                                                                                                     | Why                                                           |
+| ------------------------------ | -------------------------------------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| AC-12 pad buttons              | `#tLeft #tRight #tDown #tJump` exist, >=48px | `#joy` exists (>=88px); hit area >=48px (picture may be 40-46px, via an `::after` box), swatches >=44px | one joystick replaces the pads; owner asked for smaller slots |
+| AC-17 rows                     | rows <= 36 characters                        | rows <= 64 characters; prefix "Still to do:" is screen-reader only                                      | concrete wording names the action and the block               |
+| first-run / coach "pad ringed" | left pad `#tLeft` has `coach-pulse`          | `#joy` has `coach-pulse`                                                                                | the joystick is the only walk control                         |
+| AC-19 / AC-22.3 overlap boxes  | `.hotrow .tc` boxes                          | `#joy .tray-bar #hotbar` boxes                                                                          | dock rebuilt                                                  |
+| anything tapping `#reqToggle`  | arrow button                                 | whole `.req-head` is the toggle (the arrow still works)                                                 | folded card is a chip                                         |
 
 ## Test cases
 

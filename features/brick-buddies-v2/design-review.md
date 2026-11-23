@@ -27,7 +27,7 @@
 ## DESIGN-SYSTEM check
 
 - **Tokens only:** all new colours are existing `--bb-*` / `--md-sys-*` roles, apart from the nine tint swatches (content colours of the game's blocks, not UI roles) and the green / red confirm badge (`#4ccf74` / `#e5584d`, always with a tick / cross glyph: never colour alone).
-- **Targets:** hotbar slots are 40 px on purpose (owner asked for smaller; tray 44 px; top chips and the joystick 48 / 96 px+). The colour dot is an 18 px picture with a 36 px hit area. Recorded in `test-plan.md`.
+- **Targets:** compact visuals, 48 px hit areas (owner decision 2026-11-23). Hotbar slots stay 40 px pictures, the tray buttons / Look / Recenter 44-46 px, the goal chip 44 px, the colour dot an 18 px picture; each carries a transparent `::after` box of at least 48 x 48 centred on it (`width: max(100%, 48px)`), checked in the spec and the probe by computed size and by `elementFromPoint` just outside the picture. The colour swatches are real 44 px buttons. Top chips 48 px, joystick 96 px+.
 - **Motion:** pop, sparkles, ghost-badge pulse, goal-cell glow, critters and the hop idle are all off or still with `prefers-reduced-motion`.
 - **Folded by default on a phone:** goal card (chip), hotbar tray, colour picker; each opens on one tap and remembers its state.
 

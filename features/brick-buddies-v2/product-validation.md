@@ -21,11 +21,11 @@
 
 ## 5B - Persona panel (self-run)
 
-| Persona                  | Baseline | Value | Satisfaction | Notes                                                                                                                                                                |
-| ------------------------ | -------- | ----- | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Priya & kid (Sofa Co-op) | met      | met   | 4 / 5        | The stick is one thumb; the tick badge says "tap here again"; Open play removes pressure. Two taps is one more than before: the guided glow still places on one tap. |
-| Maya (Commuter Casual)   | met      | met   | 4 / 5        | One hand: stick left, tray right. The tray is folded so the scene is visible; the held block + Build/Break are always there.                                         |
-| Sam (Keyboard / AT user) | met      | met   | 3 / 5        | Keyboard play unchanged; wheel zoom, + / -, Esc closes the picker, radios are buttons (no arrow-key roving yet), swatches have names.                                |
+| Persona                  | Baseline | Value | Satisfaction | Notes                                                                                                                                                                   |
+| ------------------------ | -------- | ----- | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Priya & kid (Sofa Co-op) | met      | met   | 4 / 5        | The stick is one thumb; the tick badge says "tap here again"; Open play removes pressure. Two taps is one more than before: the guided glow still places on one tap.    |
+| Maya (Commuter Casual)   | met      | met   | 4 / 5        | One hand: stick left, tray right. The tray is folded so the scene is visible; the held block + Build/Break are always there.                                            |
+| Sam (Keyboard / AT user) | met      | met   | 3 / 5        | Keyboard play unchanged; wheel zoom, + / -, Esc closes the picker, the mode radios rove with the arrow keys, swatches have names, small controls keep a 48 px hit area. |
 
 Non-blocking feedback was added to `docs/IDEAS.md`: a one-time pinch hint, a floating stick option, gold glow for a missing door / bed / torch, undo, a paint bucket, more critters, and a real-handset check of the whole-world frame cost.
 

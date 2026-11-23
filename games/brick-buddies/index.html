@@ -444,14 +444,6 @@
       body.touch .dock-right {
         align-items: flex-end;
       }
-      .viewbtns {
-        display: flex;
-        gap: 6px;
-        pointer-events: none;
-      }
-      .viewbtns > * {
-        pointer-events: auto;
-      }
       body:not(.touch) #tLook {
         display: none;
       }
@@ -533,6 +525,7 @@
         background: rgba(255, 207, 138, 0.2);
       }
       .mode-btn {
+        position: relative;
         flex: none;
         min-width: 44px;
         min-height: 44px;
@@ -577,10 +570,31 @@
         box-shadow: 0 0 0 1px rgba(20, 10, 6, 0.7);
         background: conic-gradient(#e5484d, #f2d03b, #4fb35f, #4a8fe8, #9a63d8, #e5484d);
       }
-      .swatch-dot::after {
+      /* Compact visuals, 48px hit areas: a transparent box at least 48 x 48 centred on the control,
+         so the picture stays small (a 40px slot, a 44px chip, an 18px dot) and a finger still lands. */
+      .slot::after,
+      .mode-btn::after,
+      .held-btn::after,
+      .tbtn.small::after,
+      .swatch-dot::after,
+      #reqToggle::after,
+      #request.collapsed .req-head::after {
         content: "";
         position: absolute;
-        inset: -9px; /* a 36px target around the 18px dot */
+        left: 50%;
+        top: 50%;
+        width: max(100%, 48px);
+        height: max(100%, 48px);
+        transform: translate(-50%, -50%);
+      }
+      #reqToggle,
+      #request.collapsed .req-head,
+      .tbtn.small {
+        position: relative;
+      }
+      /* the chip's outer rim sits BEHIND its children, so the arrow button inside stays the click target */
+      #request.collapsed .req-head::after {
+        z-index: -1;
       }
       .swatches {
         pointer-events: auto;
@@ -590,15 +604,15 @@
         flex-wrap: wrap;
         gap: 6px;
         padding: 8px;
-        max-width: min(260px, calc(100vw - 16px));
+        max-width: min(272px, calc(100vw - 16px));
         border-radius: 16px;
         background: var(--bb-glass-strong);
         border: 1px solid var(--bb-line);
         backdrop-filter: blur(8px);
       }
       .swatch {
-        width: 36px;
-        height: 36px;
+        width: 44px;
+        height: 44px;
         padding: 0;
         border-radius: 50%;
         border: 2px solid rgba(255, 255, 255, 0.5);
@@ -636,7 +650,6 @@
         height: 46px;
         font-size: 20px;
       }
-      .tbtn.on,
       .tbtn:active {
         background: var(--md-sys-color-primary-container);
       }
@@ -4807,6 +4820,7 @@
          * or just stand. Everything stays flat, door-free and ladder-free and within `range` of home.
          */
         function liveStep(b) {
+          settleBuddy(b); // a floor broken under an idle buddy: it drops to the ground first
           var r = Math.random();
           b.wait = 1.2 + Math.random() * 3.2;
           if (r < 0.46) {
@@ -4815,10 +4829,35 @@
             b.face = -b.face; // turn round and have a think
             b.life.turns++;
             b.wait = 1.2 + Math.random() * 2;
-          } else if (r < 0.78) startAct(b, "look", 1.1);
-          else if (r < 0.88 && !reducedMotion) startAct(b, "hop", 0.45);
+          } else if (r < 0.95 && reducedMotion)
+            standStill(b); // no idle show (look / hop / wave) with reduced motion
+          else if (r < 0.78) startAct(b, "look", 1.1);
+          else if (r < 0.88) startAct(b, "hop", 0.45);
           else if (r < 0.95) startAct(b, "wave", 1.2);
           else standStill(b);
+        }
+        /** A buddy whose floor was broken falls to the ground below (no gravity otherwise); false = nowhere to land. */
+        function settleBuddy(b) {
+          var c = feetCell(b);
+          if (nodeOK(c[0], c[1])) return true;
+          var land = dropTarget(c[0], c[1]);
+          if (!land) return false;
+          b.x = land[0] + 0.5;
+          b.y = land[1] + 1;
+          return true;
+        }
+        /** The next tile of a stroll is checked every step: a block built in the way, or a floor broken, ends it. */
+        function strollStillOK(wp) {
+          return (
+            nodeOK(wp[0], wp[1]) && !DOORS[getFg(wp[0], wp[1])] && !DOORS[getFg(wp[0], wp[1] - 1)]
+          );
+        }
+        function abortStroll(b) {
+          b.path = null;
+          b.state = "idle";
+          b.climbing = false;
+          settleBuddy(b);
+          b.wait = 0.8 + Math.random() * 1.2;
         }
         function standStill(b) {
           b.wait = 2.5 + Math.random() * 3.5;
@@ -4887,6 +4926,10 @@
             b.path = null;
             b.state = "idle";
             b.climbing = false;
+            return;
+          }
+          if (b.state === "wander" && !strollStillOK(wp)) {
+            abortStroll(b);
             return;
           }
           var tx = wp[0] + 0.5;
@@ -5173,7 +5216,13 @@
             }
             var hue = tintFg[ty * W + tx];
             removeObject(tx, ty);
-            fxBreak(tx, ty, TEX_FG[t] ? fgTex(t, tx, ty) : null, hue, mat);
+            fxBreak({
+              x: tx,
+              y: ty,
+              tex: TEX_FG[t] ? fgTex(t, tx, ty) : null,
+              tint: hue,
+              mat: mat,
+            });
             sfx.crunch(mat);
             settle(tx, ty);
             return { ok: true, reason: "" };
@@ -5182,7 +5231,7 @@
             var wallTex = bgTex(getBg(tx, ty), tx, ty);
             var wallHue = tintBg[ty * W + tx];
             setBg(tx, ty, 0);
-            fxBreak(tx, ty, wallTex, wallHue, "wood");
+            fxBreak({ x: tx, y: ty, tex: wallTex, tint: wallHue, mat: "wood" });
             sfx.crunch("wood");
             return { ok: true, reason: "" };
           }
@@ -6061,6 +6110,8 @@
         var chunkBuilds = 0;
         var rainDrops = [];
         var parts = [];
+        var PARTICLE_CAP = 700; // most live particles; emitters back off well before it, tickParts trims to it
+        var fxTotals = { pops: 0 }; // for the probe: pops ever started
         var floats = [];
         var vignette = null;
         var lightCv = makeCanvas(2, 2);
@@ -6173,6 +6224,7 @@
         }
         /** The one place a particle is made: x, y, life and colour c are required, the rest default. */
         function spawnParticle(o) {
+          if (parts.length >= PARTICLE_CAP) return; // a hard cap: effects never pile up
           parts.push({
             x: o.x,
             y: o.y,
@@ -6225,15 +6277,15 @@
           return out;
         }
         /** Chunks of the broken block fly out and fall; few and still with reduced motion. */
-        function fxBreak(tx, ty, tex, tint, mat) {
-          var pal = tex ? texPalette(tex, tint) : [];
-          if (!pal.length) pal = [MAT_COL[mat] || MAT_COL.wood];
+        function fxBreak(o) {
+          var pal = o.tex ? texPalette(o.tex, o.tint) : [];
+          if (!pal.length) pal = [MAT_COL[o.mat] || MAT_COL.wood];
           var n = reducedMotion ? 4 : 10;
-          if (parts.length > 560) n = 3;
+          if (parts.length > PARTICLE_CAP - 140) n = 3;
           for (var i = 0; i < n; i++) {
             spawnParticle({
-              x: tx + randBetween(0.25, 0.75),
-              y: ty + randBetween(0.25, 0.75),
+              x: o.x + randBetween(0.25, 0.75),
+              y: o.y + randBetween(0.25, 0.75),
               vx: reducedMotion ? 0 : randBetween(-3.5, 3.5),
               vy: reducedMotion ? 0 : randBetween(-6, -1.5),
               g: reducedMotion ? 0 : 18,
@@ -6297,14 +6349,17 @@
               });
             return;
           }
-          if (parts.length > 520) return;
+          if (parts.length > PARTICLE_CAP - 180) return;
           it.tiles.forEach(function (t) {
             if (pops.length >= POP_CAP) return;
             var tex =
               it.layer === "bg"
                 ? TEX_BG[t[2]] && bgTex(t[2], tx + t[0], ty + t[1])
                 : fgTex(t[2], tx + t[0], ty + t[1]);
-            if (tex) pops.push({ x: tx + t[0], y: ty + t[1], tex: tinted(tex, tint), t: 0 });
+            if (tex) {
+              pops.push({ x: tx + t[0], y: ty + t[1], tex: tinted(tex, tint), t: 0 });
+              fxTotals.pops++;
+            }
           });
           fxPuff(cx, ty + 1, 5);
           fxSparkle(cx, ty + 0.5, 5);
@@ -6447,7 +6502,7 @@
             floats[j].y -= dt * 0.9;
             if (floats[j].life <= 0) floats.splice(j, 1);
           }
-          if (parts.length > 700) parts.splice(0, parts.length - 700);
+          if (parts.length > PARTICLE_CAP) parts.splice(0, parts.length - PARTICLE_CAP);
         }
 
         // ---- ambient life: birds by day, fireflies at dusk, a frog now and then (tiny, capped, none with reduced motion) ----
@@ -8128,6 +8183,7 @@
         function selectSlot(i) {
           S.sel = (i + HOTBAR_SLOTS) % HOTBAR_SLOTS;
           coachTimer = 0; // the coach reacts to the very next frame
+          dropPreview();
           if (S.mode === "break") setMode("build");
           refreshHotbar();
           sfx.click();
@@ -8447,6 +8503,7 @@
 
         function setMode(m) {
           S.mode = m;
+          dropPreview();
           coachTimer = 0;
           var b = $("modeBtn");
           b.dataset.mode = m;
@@ -9256,6 +9313,7 @@
           $("menuBtn").setAttribute("aria-expanded", open ? "true" : "false");
           if (open) {
             setPhase("paused");
+            dropPreview();
             clearHeld(); // a held stick or key must not keep walking behind the menu
             closeSwatches();
             refreshMenu();
@@ -9287,7 +9345,9 @@
         // ---- play mode: Goals (buddies ask for rooms) or Open play (a sandbox: everything unlocked) ----
         function syncModeButtons() {
           Array.prototype.forEach.call(document.querySelectorAll(".mode-opt"), function (b) {
-            b.setAttribute("aria-checked", b.dataset.play === S.playMode ? "true" : "false");
+            var on = b.dataset.play === S.playMode;
+            b.setAttribute("aria-checked", on ? "true" : "false");
+            b.tabIndex = on ? 0 : -1; // roving tabindex: Tab enters the group once, arrows move inside it
           });
         }
         function applyModeUi() {
@@ -9324,6 +9384,7 @@
           }
           S.playMode = m;
           saveDirty = true;
+          dropPreview();
           if (S.phase !== "title") {
             if (m === "open") endGoals();
             else beginGoals();
@@ -9337,10 +9398,30 @@
             announce(msg);
           }
         }
+        var RADIO_STEP = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 };
+        /** Arrow keys (and Home / End) move through a radiogroup, choosing as they go. */
+        function radioKey(e, group) {
+          var radios = Array.prototype.slice.call(group.querySelectorAll(".mode-opt"));
+          var at = radios.indexOf(e.currentTarget);
+          var next = -1;
+          if (RADIO_STEP[e.key]) next = (at + RADIO_STEP[e.key] + radios.length) % radios.length;
+          else if (e.key === "Home") next = 0;
+          else if (e.key === "End") next = radios.length - 1;
+          if (next < 0) return;
+          e.preventDefault();
+          e.stopPropagation(); // the game's own keys must not also act
+          setPlayMode(radios[next].dataset.play);
+          radios[next].focus({ preventScroll: true });
+        }
         function bindModeChoice() {
-          Array.prototype.forEach.call(document.querySelectorAll(".mode-opt"), function (b) {
-            b.addEventListener("click", function () {
-              setPlayMode(b.dataset.play);
+          Array.prototype.forEach.call(document.querySelectorAll(".modes"), function (group) {
+            Array.prototype.forEach.call(group.querySelectorAll(".mode-opt"), function (b) {
+              b.addEventListener("click", function () {
+                setPlayMode(b.dataset.play);
+              });
+              b.addEventListener("keydown", function (e) {
+                radioKey(e, group);
+              });
             });
           });
         }
@@ -9719,6 +9800,10 @@
           aim.has = aim.mode === "kb";
           aim.pending = false;
           aim.until = 0;
+        }
+        /** The held item, the Build / Break switch, a menu or the play mode changed: a waiting preview goes away. */
+        function dropPreview() {
+          if (aim.pending) clearGhost();
         }
         /** The tiles the preview covers: the held item's footprint, or one tile in Break mode. */
         function ghostTiles() {
@@ -10602,15 +10687,37 @@
             tintOf: function (key) {
               return tintFor(ITEM_BY_KEY[key]);
             },
+            playMode: function (m) {
+              setPlayMode(m);
+            },
             setTint: function (key, i) {
               if (i > 0) S.tints[key] = i;
               else delete S.tints[key];
             },
+          };
+        }
+        function hookFxCounters() {
+          return {
             particleCount: function () {
               return parts.length;
             },
             popCount: function () {
               return pops.length;
+            },
+            /** Effect counters: pops ever started, live particles, the cap. */
+            fx: function () {
+              return {
+                popsStarted: fxTotals.pops,
+                particles: parts.length,
+                particleCap: PARTICLE_CAP,
+              };
+            },
+            /** Stress the effect emitters (n breaks + n placements at the builder) to check the particle cap. */
+            stressFx: function (n) {
+              for (var i = 0; i < n; i++) {
+                fxBreak({ x: P.x, y: P.y - 1, tex: null, tint: 0, mat: "wood" });
+                fxSparkle(P.x, P.y - 1, 5);
+              }
             },
           };
         }
@@ -10818,6 +10925,7 @@
             hookBuddies(),
             hookLife(),
             hookTintsAndFx(),
+            hookFxCounters(),
             hookEnvironment(),
             hookCoach(),
             hookSoundMotion(),

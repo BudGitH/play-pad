@@ -323,7 +323,16 @@ async function contrastOf(page, targets) {
 }
 async function checkContrast(browser) {
   const k = await open(browser);
-  const all = await contrastOf(k.page, { "Start button": "#startBtn", tagline: ".tagline" });
+  const all = await contrastOf(k.page, {
+    "Start button": "#startBtn",
+    tagline: ".tagline",
+    // v2 additions (QA round): the album's gold count, its empty message and caption, the saved note (the wish labels are
+    // checked below, on the client card, where they exist)
+    "album count": ".album-btn .count",
+    "album empty": ".album-empty",
+    "album caption": ".album-cap",
+    "saved note": ".saved-note",
+  });
   await begin(k.page);
   await S(k.page, () => window.__salon.debug.completeStep());
   Object.assign(
@@ -347,7 +356,6 @@ async function checkContrast(browser) {
       "photo caption": ".photo .cap",
       "new best": ".res-best.new",
       "results title": ".res-title",
-      "look chip": ".res-card .look b",
       "coin pill": ".coin-pill",
       "earn line": ".earn",
       "play again": "#againBtn",
@@ -357,7 +365,11 @@ async function checkContrast(browser) {
   await k.page.waitForFunction(() => document.querySelector("#reqModal.open"));
   Object.assign(
     all,
-    await contrastOf(k.page, { "sheet title": "#reqTitle", "look pill": "#reqLook" }),
+    await contrastOf(k.page, {
+      "sheet title": "#reqTitle",
+      "look pill": "#reqLook",
+      "wish label": ".wants small",
+    }),
   );
   const low = Object.entries(all)
     .filter(([, v]) => v !== null && v < 4.5)
@@ -647,16 +659,57 @@ async function checkMultiTab(browser) {
       }),
     ),
   );
-  await a.evaluate(() => window.__salon.debug.addCoins(1)); // A still believes rev ~2: it must adopt rev 99 first, then add
+  // localStorage writes reach other tabs asynchronously (browser process -> renderers, no cross-tab mutex), so
+  // A can still read its old copy for a few ms after B's setItem returns. Wait on that state, not on time:
+  // once A's own storage view shows rev 99, A's next write is a real "stale in memory, newer on disk" case.
+  const seenRev99 = await a
+    .waitForFunction(
+      () => JSON.parse(localStorage.getItem("playpad.sparkleSalon.v1") || "{}").rev === 99,
+      null,
+      { timeout: 4000 },
+    )
+    .then(
+      () => true,
+      () => false,
+    );
+  await a.evaluate(() => window.__salon.debug.addCoins(1)); // A still believes rev ~2 (or just adopted 99): add on top of rev 99
   const merged = await a.evaluate(() => ({
+    coins: window.__salon.coins,
+    rev: window.__salon.saved.rev,
+  }));
+  // Deterministic stale-in-memory case: a page's own setItem raises no storage event in that page, so A's memory
+  // is guaranteed behind the disk copy here (the cross-tab write above may be adopted by the event first).
+  await a.evaluate(() =>
+    localStorage.setItem(
+      "playpad.sparkleSalon.v1",
+      JSON.stringify({
+        v: 1,
+        rev: 150,
+        coins: 20,
+        unlocked: [],
+        sound: true,
+        looks: [],
+        bestOverall: 0,
+      }),
+    ),
+  );
+  await a.evaluate(() => window.__salon.debug.addCoins(1));
+  const stale = await a.evaluate(() => ({
     coins: window.__salon.coins,
     rev: window.__salon.saved.rev,
   }));
   check(
     "SS-QA-05",
     "two tabs: a write in one shows up in the other, and a stale tab adopts the newer revision instead of overwriting it",
-    seenByA && seenByB && revs[0] === revs[1] && merged.coins === 8 && merged.rev === 100,
-    JSON.stringify({ seenByA, seenByB, revs, merged }),
+    seenByA &&
+      seenByB &&
+      seenRev99 &&
+      revs[0] === revs[1] &&
+      merged.coins === 8 &&
+      merged.rev === 100 &&
+      stale.coins === 21 &&
+      stale.rev === 151,
+    JSON.stringify({ seenByA, seenByB, seenRev99, revs, merged, stale }),
   );
   await ctx.close();
 }
@@ -1551,7 +1604,7 @@ async function main() {
     );
     check(
       "AC-13",
-      "Play again starts a new makeover (new client card, phase=playing); ← PlayPad links to the hub",
+      "Play again starts a new makeover (new client card, phase=playing); the hub link (now the round 'Back to PlayPad' icon) still goes to the hub",
       hubHref === "../../index.html" && (await S(page, () => window.__salon.step)) === 0,
     );
     await page.getByRole("button", { name: "Let's glam!" }).click();
@@ -1853,6 +1906,15 @@ async function main() {
       ["844x390", 844, 390],
       ["820x1180", 820, 1180],
       ["1280x800", 1280, 800],
+      ["1024x1366", 1024, 1366], // iPad portrait (v2 AC-22.5)
+      ["1366x1024", 1366, 1024], // iPad landscape: the right-hand tool bar (v2 AC-22.5)
+      ["1024x768", 1024, 768], // iPad landscapes of the 9th / 10th gen, Air and Pro 11 (v2 AC-22.5, AC-22.6)
+      ["1080x810", 1080, 810],
+      ["1180x820", 1180, 820],
+      ["1194x834", 1194, 834],
+      ["768x1024", 768, 1024], // ... and their portraits
+      ["810x1080", 810, 1080],
+      ["834x1194", 834, 1194],
       ["360x640", 360, 640],
     ];
     for (const [label, w, hgt] of viewports) {
@@ -1874,14 +1936,16 @@ async function main() {
         nextBox.x >= 0 &&
         nextBox.x + nextBox.width <= w &&
         nextBox.y + nextBox.height <= hgt;
-      if (label === "1280x800" || label === "844x390") await shot(v.page, label + "-play");
+      if (["1280x800", "844x390", "1024x1366", "1366x1024"].includes(label))
+        await shot(v.page, label + "-play");
       await S(v.page, () => window.__salon.debug.skipToResults());
       await v.page.waitForFunction(() => window.__salon.phase === "results", null, {
         timeout: 10000,
       });
       const againBox = await v.page.locator("#againBtn").boundingBox();
       const againInside = againBox && againBox.y + againBox.height <= hgt + 1 && againBox.y >= 0;
-      if (label === "1280x800" || label === "844x390") await shot(v.page, label + "-results");
+      if (["1280x800", "844x390", "1024x1366", "1366x1024"].includes(label))
+        await shot(v.page, label + "-results");
       check(
         `AC-16 ${label}`,
         "no horizontal scroll; Start, tray, Next and Play again are all reachable on screen",

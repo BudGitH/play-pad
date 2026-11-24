@@ -1,0 +1,81 @@
+# PlayPad deep AC probes (PLAY-012) — the slow, per-game acceptance probes that `ci.yml` does not run.
+#
+# Why a separate workflow: a workflow-level `paths:` filter applies to EVERY job in the file, and the
+# fast checks in ci.yml (secrets, lint, smoke) must run on every PR. The probes take ~2-3 minutes each, so
+# on PRs they run only when something they exercise changed; the nightly run catches everything else
+# (a `styles/` tweak that a path list missed, a Playwright / Chromium bump, a flaky check).
+# Do NOT make these jobs "required" checks: a path-filtered workflow that is skipped never reports
+# a status, so a required check would block every PR that does not touch the listed paths.
+#
+# Fork-safe like ci.yml: `pull_request` (not pull_request_target), read-only token, no secrets, nothing uploaded.
+# Chromium comes from `npx playwright install` (PW_CHROMIUM_PATH is unset, so every probe uses Playwright's own browser).
+name: Probes
+
+on:
+  pull_request:
+    paths:
+      - "games/**"
+      - "features/**/probe.mjs"
+      - "tests/probes/**"
+      - "tools/serve.mjs"
+      - "styles/**"
+      - "scripts/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/probes.yml"
+  push:
+    branches: [main]
+    paths:
+      - "games/**"
+      - "features/**/probe.mjs"
+      - "tests/probes/**"
+      - "tools/serve.mjs"
+      - "styles/**"
+      - "scripts/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/probes.yml"
+  schedule:
+    - cron: "23 3 * * *" # nightly, 03:23 UTC (default branch only)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: probes-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  probes:
+    # One matrix job per game so a red check names the game: "Probes / Sparkle Salon".
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false # a Stride failure must not hide a Salon / Buddies result
+      matrix:
+        include:
+          - name: Sunset Stride
+            # Stride's probe needs the repo's static server up first; it renders WebGL in software (SwiftShader).
+            run: |
+              node tools/serve.mjs 5599 &
+              for i in $(seq 1 50); do curl -fs http://localhost:5599/ >/dev/null && break; sleep 0.2; done
+              node tests/probes/stride-probe.mjs
+          - name: Sparkle Salon
+            run: node features/sparkle-salon/probe.mjs # starts its own server on :5601
+          - name: Brick Buddies
+            run: node features/brick-buddies/probe.mjs # starts its own server on :5602
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Probe (${{ matrix.name }})
+        run: ${{ matrix.run }}

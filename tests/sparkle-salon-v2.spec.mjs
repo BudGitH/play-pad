@@ -1,9 +1,10 @@
 // Sparkle Salon v2 UX round (S1..S8 = AC-22.5 .. AC-22.12): iPad layout, tablet sizing, pointing-hand demo, heart meter,
-// picture client card, results, accessories + sticker drag, My Album. Feature record: features/sparkle-salon-v2/.
+// picture client card, results, accessories + sticker drag, My Album; plus the QA-round regressions (ACC-1..10, U-1) and cheap
+// performance guards (AC-22.2). Feature record: features/sparkle-salon-v2/.
 // Run: npm run smoke   (the deep v1 checks stay in features/sparkle-salon/probe.mjs)
 import { test, expect } from "@playwright/test";
 
-const URL = "/games/sparkle-salon/index.html";
+const GAME_URL = "/games/sparkle-salon/index.html";
 const SAVE_KEY = "playpad.sparkleSalon.v1";
 const PHONE = { width: 390, height: 844 };
 const IPAD_P = { width: 1024, height: 1366 };
@@ -13,6 +14,25 @@ const DEVICES = [
   ["iPad portrait 1024x1366", IPAD_P],
   ["iPad landscape 1366x1024", IPAD_L],
 ];
+// The iPad screens people really own (CSS px): landscape and portrait of the 9th / 10th generation, Air and Pro 11. They must
+// all get tablet sizing and a sensible layout (AC-22.5, AC-22.6), so the layout tests run on these as well.
+const IPAD_SIZES = [
+  ["iPad landscape 1024x768", { width: 1024, height: 768 }],
+  ["iPad landscape 1080x810", { width: 1080, height: 810 }],
+  ["iPad landscape 1180x820", { width: 1180, height: 820 }],
+  ["iPad landscape 1194x834", { width: 1194, height: 834 }],
+  ["iPad portrait 768x1024", { width: 768, height: 1024 }],
+  ["iPad portrait 810x1080", { width: 810, height: 1080 }],
+  ["iPad portrait 820x1180", { width: 820, height: 1180 }],
+  ["iPad portrait 834x1194", { width: 834, height: 1194 }],
+];
+const LAYOUT_DEVICES = [...DEVICES, ...IPAD_SIZES];
+/** A tablet gets the finger-sized tray and the side bar by screen size (the same thresholds as the page's media queries). */
+const isTablet = ({ width, height }) =>
+  (width >= 700 && height >= 900) || (width >= 1000 && height >= 640);
+const isLandscapeTablet = ({ width, height }) => width >= 1000 && width > height && height >= 640;
+const TABLET_ZOOM_BOOST = 1.25; // the page's TABLET_ZOOM_BOOST (AC-22.5)
+const PHONE_SHADOW_ZOOM = 1.3; // the shadow step's camera zoom
 
 const hub = (page) => page.locator('#results a[href="../../index.html"]');
 const salon = (page, fn, arg) => page.evaluate(fn, arg);
@@ -20,6 +40,24 @@ const salon = (page, fn, arg) => page.evaluate(fn, arg);
 /** Open the game (optionally with a seeded save) and wait for the debug hook. */
 async function open(page, { save } = {}) {
   const errors = [];
+  // window.__fire(type, x, y, { id, kind, target }): one synthetic PointerEvent on #stage (or another element), so a test can
+  // read the page in the same task as the event (a real mouse cannot): pointercancel, touch down / up, same-task cancel checks
+  await page.addInitScript(() => {
+    window.__fire = (type, x, y, { id = 9, kind = "touch", target = "stage" } = {}) =>
+      document.getElementById(target).dispatchEvent(
+        new PointerEvent(type, {
+          pointerType: kind,
+          clientX: x,
+          clientY: y,
+          pointerId: id,
+          isPrimary: true,
+          bubbles: true,
+          cancelable: true,
+          button: type === "pointerdown" ? 0 : -1,
+          buttons: type === "pointerup" || type === "pointercancel" ? 0 : 1,
+        }),
+      );
+  });
   page.on("pageerror", (e) => errors.push("pageerror: " + e.message));
   page.on("console", (m) => {
     if (m.type() === "error") errors.push("console: " + m.text());
@@ -35,7 +73,7 @@ async function open(page, { save } = {}) {
       },
       [SAVE_KEY, typeof save === "string" ? save : JSON.stringify(save)],
     );
-  await page.goto(URL);
+  await page.goto(GAME_URL);
   await page.waitForFunction(() => window.__salon && typeof window.__salon.phase === "string");
   return errors;
 }
@@ -58,6 +96,11 @@ async function playTo(page, id) {
   }
   expect(await salon(page, () => window.__salon.stepId)).toBe(id);
 }
+/** Wait for the stage's camera glide (a CSS transition on #stage) to finish: no fixed sleep. */
+const glide = (page) =>
+  page.waitForFunction(() => document.getElementById("stage").getAnimations().length === 0);
+/** The page's own origin (the test server's port is not hard-coded). */
+const originOf = (page) => new URL(page.url()).origin;
 const inside = (box, w, h) =>
   !!box &&
   box.x >= -0.5 &&
@@ -108,7 +151,7 @@ const save = (looks) => ({
 // ----------------------------------------------------------------------------------------------------------------------
 // AC-22.5 (S1) iPad layout · AC-22.6 (S2) tablet sizing
 // ----------------------------------------------------------------------------------------------------------------------
-for (const [name, viewport] of DEVICES) {
+for (const [name, viewport] of LAYOUT_DEVICES) {
   test.describe(`layout: ${name}`, () => {
     test.use({ viewport, hasTouch: true, isMobile: true });
 
@@ -141,7 +184,7 @@ for (const [name, viewport] of DEVICES) {
       expect(errors).toEqual([]);
     });
 
-    if (viewport.width >= 900) {
+    if (isTablet(viewport)) {
       test("a wider column, a bigger tablet zoom and finger-sized controls (AC-22.5, AC-22.6)", async ({
         page,
       }) => {
@@ -156,9 +199,11 @@ for (const [name, viewport] of DEVICES) {
         expect(app.width).toBeLessThanOrEqual(viewport.width);
         await begin(page);
         await playTo(page, "shadow");
-        await page.waitForTimeout(900); // the camera glide
-        // a tablet gets the extra 1.25x: a phone's shadow zoom is 1.3 x fit (fit <= 1.12), a tablet's at least 1.3 x 1.25
-        expect(await stageScale(page)).toBeGreaterThanOrEqual(1.3 * 1.25 * 0.99);
+        await glide(page);
+        // a tablet gets the extra boost: a phone's shadow zoom is 1.3 x fit (fit <= 1.12), a tablet's at least 1.3 x 1.25
+        expect(await stageScale(page)).toBeGreaterThanOrEqual(
+          PHONE_SHADOW_ZOOM * TABLET_ZOOM_BOOST * 0.99,
+        );
         const sizes = await salon(page, () => {
           const px = (sel, prop) => parseFloat(getComputedStyle(document.querySelector(sel))[prop]);
           const box = (sel) => document.querySelector(sel).getBoundingClientRect();
@@ -185,7 +230,7 @@ for (const [name, viewport] of DEVICES) {
       });
     }
 
-    if (viewport.width >= 1100 && viewport.width > viewport.height) {
+    if (isLandscapeTablet(viewport)) {
       test("landscape tablet: the tools, Redo, the heart and Next sit in a right-hand bar (AC-22.5)", async ({
         page,
       }) => {
@@ -203,12 +248,17 @@ for (const [name, viewport] of DEVICES) {
           expect(b.x).toBeGreaterThanOrEqual(host.x + host.width - 2);
         expect(redo.y).toBeLessThan(tool.y);
         expect(next.y).toBeGreaterThan(tool.y);
-        // the face gets the rest: the host is at least 60 % of the column and about as tall as the screen
+        // the face gets the rest: the host is as tall as the screen and at least 60 % of its width
         expect(host.height).toBeGreaterThan(viewport.height - 2);
+        expect(host.width).toBeGreaterThanOrEqual(viewport.width * 0.6);
+        // and the tray circles stay on screen (the bar scrolls if there are more than fit)
+        expect(inside(tool, viewport.width, viewport.height), "the first tool on screen").toBe(
+          true,
+        );
       });
     }
 
-    if (viewport.width < 700) {
+    if (!isTablet(viewport)) {
       test("a phone keeps the 62 px tray and 48 px buttons (AC-22.6 only grows tablets)", async ({
         page,
       }) => {
@@ -249,17 +299,7 @@ test.describe("pointing-hand demo (AC-22.7)", () => {
     const cancelled = await salon(
       page,
       ([x, y]) => {
-        const stage = document.getElementById("stage");
-        stage.dispatchEvent(
-          new PointerEvent("pointerdown", {
-            pointerType: "touch",
-            clientX: x,
-            clientY: y,
-            pointerId: 9,
-            bubbles: true,
-            button: 0,
-          }),
-        );
+        window.__fire("pointerdown", x, y);
         return {
           demo: window.__salon.demo,
           shown: document.getElementById("demoHand").classList.contains("on"),
@@ -280,11 +320,21 @@ test.describe("pointing-hand demo (AC-22.7)", () => {
     await open(page);
     await begin(page);
     await page.waitForFunction(() => window.__salon.demo === true, null, { timeout: 5000 });
-    const seen = [];
-    while (await salon(page, () => window.__salon.demo)) {
-      seen.push(await salon(page, () => window.__salon.progress));
-      await page.waitForTimeout(150);
-    }
+    // sample the progress on every animation frame while the hand plays: it must never move
+    const seen = await salon(
+      page,
+      () =>
+        new Promise((resolve) => {
+          const samples = [];
+          const tick = () => {
+            samples.push(window.__salon.progress);
+            if (window.__salon.demo) requestAnimationFrame(tick);
+            else resolve(samples);
+          };
+          tick();
+        }),
+    );
+    expect(seen.length).toBeGreaterThan(30);
     expect(Math.max(...seen)).toBe(0); // never painted
     expect(await salon(page, () => window.__salon.done[0])).toBe(false);
     expect(await salon(page, () => window.__salon.progress)).toBe(0);
@@ -295,11 +345,15 @@ test.describe("pointing-hand demo (AC-22.7)", () => {
     await page.waitForFunction(() => window.__salon.phase === "results", null, { timeout: 10_000 });
     await page.locator("#againBtn").click();
     await page.getByRole("button", { name: "Let's glam!" }).click();
-    await page.waitForTimeout(1500);
+    // absence can only be shown over a window: twice the demo's start delay (850 ms) after the card closes
+    await page.waitForFunction(() => !document.querySelector("#reqModal.open"));
+    await page.waitForTimeout(1700);
     expect(await salon(page, () => window.__salon.demo)).toBe(false);
   });
 
-  test("pick steps: the hand taps a tray circle (with a ripple)", async ({ page }) => {
+  test("pick steps: the hand taps the circle the client wished for, with a ripple", async ({
+    page,
+  }) => {
     await open(page);
     await begin(page);
     await playTo(page, "lens");
@@ -308,13 +362,73 @@ test.describe("pointing-hand demo (AC-22.7)", () => {
     expect(
       await salon(page, () => document.getElementById("demoRipple").getAnimations().length),
     ).toBeGreaterThan(0);
+    // the tap point is the centre of the wished tray circle (the hand's keyframe at its first touch, app-local px)
+    const tap = await salon(page, () => {
+      const keys = document.getElementById("demoHand").getAnimations()[0].effect.getKeyframes();
+      const touch = keys.find((k) => k.offset === 0.22);
+      const [x, y] = /translate3d\(([-\d.]+)px,\s*([-\d.]+)px/
+        .exec(touch.transform)
+        .slice(1)
+        .map(Number);
+      const app = document.getElementById("app").getBoundingClientRect();
+      const wish = document.querySelector("#tools .tool.wish").getBoundingClientRect();
+      return {
+        dx: app.left + x - (wish.left + wish.width / 2),
+        dy: app.top + y - (wish.top + wish.height / 2),
+      };
+    });
+    expect(Math.abs(tap.dx)).toBeLessThan(4);
+    expect(Math.abs(tap.dy)).toBeLessThan(4);
+  });
+
+  test("a resize does not lose the demo: it starts again on the new layout (ACC-10)", async ({
+    page,
+  }) => {
+    await open(page);
+    await begin(page);
+    // 1) while it waits for its start (iPad Safari's toolbars resize the window the moment a page settles)
+    await page.setViewportSize({ width: 390, height: 780 });
+    await page.waitForFunction(() => window.__salon.demo === true, null, { timeout: 5000 });
+    // 2) while it plays: it is cut off, then plays again (watch the demo flag on every frame through the resize)
+    const watching = page.evaluate(
+      () =>
+        new Promise((resolve) => {
+          const states = [window.__salon.demo];
+          const t0 = performance.now();
+          const tick = () => {
+            const now = window.__salon.demo;
+            if (now !== states.at(-1)) states.push(now);
+            if (performance.now() - t0 > 3500) resolve(states);
+            else requestAnimationFrame(tick);
+          };
+          tick();
+        }),
+    );
+    await page.setViewportSize({ width: 390, height: 844 });
+    expect(await watching, "playing, cut off by the resize, playing again").toEqual([
+      true,
+      false,
+      true,
+    ]);
+    await page.waitForFunction(() => window.__salon.demo === true, null, { timeout: 5000 });
+    // the new demo is laid out on the resized screen: the zig-zag stays inside the visible width
+    const pts = await salon(page, () => {
+      const hand = document.getElementById("demoHand").getAnimations()[0].effect.getKeyframes();
+      return hand.map((k) => Number(/translate3d\(([-\d.]+)px/.exec(k.transform)[1]));
+    });
+    expect(Math.min(...pts)).toBeGreaterThan(-5);
+    expect(Math.max(...pts)).toBeLessThan(395);
+    // a real press still ends it for good
+    const p = await salon(page, () => window.__salon.debug.unitsToClient(200, 250));
+    await salon(page, ([x, y]) => window.__fire("pointerdown", x, y), [p.x, p.y]);
+    expect(await salon(page, () => window.__salon.demo)).toBe(false);
   });
 
   test("a press that starts the step stops the demo from ever showing there", async ({ page }) => {
     await open(page);
     await begin(page);
     await page.locator("#tools .tool").first().click(); // the player acts before the hand would start
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(1700); // absence can only be shown over a window: twice the demo's start delay (850 ms)
     expect(await salon(page, () => window.__salon.demo)).toBe(false);
   });
 });
@@ -395,27 +509,9 @@ test.describe("heart progress meter (AC-22.8)", () => {
     await expect(page.getByRole("button", { name: "Skip this step" })).toBeVisible();
     const ringOnTouch = await salon(page, () => {
       const p = window.__salon.debug.unitsToClient(200, 250);
-      const stage = document.getElementById("stage");
-      stage.dispatchEvent(
-        new PointerEvent("pointerdown", {
-          pointerType: "touch",
-          clientX: p.x,
-          clientY: p.y,
-          pointerId: 5,
-          bubbles: true,
-          button: 0,
-        }),
-      );
+      window.__fire("pointerdown", p.x, p.y, { id: 5 });
       const on = document.getElementById("toolRing").classList.contains("on");
-      stage.dispatchEvent(
-        new PointerEvent("pointerup", {
-          pointerType: "touch",
-          clientX: p.x,
-          clientY: p.y,
-          pointerId: 5,
-          bubbles: true,
-        }),
-      );
+      window.__fire("pointerup", p.x, p.y, { id: 5 });
       return on;
     });
     expect(ringOnTouch).toBe(false);
@@ -439,6 +535,34 @@ test.describe("heart progress meter (AC-22.8)", () => {
     await page.getByRole("button", { name: "Earrings", exact: true }).click();
     await page.getByRole("button", { name: /Earrings: Pearl/ }).click();
     await expect(page.locator("#ring")).toHaveAttribute("aria-label", "Accessories worn: 2 of 3");
+  });
+});
+
+test.describe("heart progress meter, reduced motion (AC-22.8)", () => {
+  test.use({ viewport: PHONE, hasTouch: true, isMobile: true, reducedMotion: "reduce" });
+
+  test("no Next hop, no milestone star pops; the meter, the words and the tick still work", async ({
+    page,
+  }) => {
+    const errors = await open(page);
+    await begin(page);
+    await playTo(page, "shadow");
+    await glide(page);
+    await page.locator(".tool.wish").first().click();
+    const twinkles = () => salon(page, () => document.querySelectorAll("i.twk").length);
+    const before = await twinkles();
+    await rub(page, (progress) => progress >= 0.4); // past the 25 % and 50 % milestones
+    await expect(page.locator("#sr")).toHaveText(/A quarter done|Halfway there|Nearly done/); // still spoken
+    expect(await twinkles(), "no milestone star was popped").toBe(before);
+    await rub(page);
+    await expect(page.locator("#ringTxt")).toHaveText("✓");
+    await expect(page.locator("#nextBtn")).toHaveAttribute("data-ready", "true");
+    await expect(page.locator("#nextTxt")).toHaveText("Next");
+    // the pulse, glow and hop are cut to a single 0.001 ms run, so nothing is left animating on Next
+    await page.waitForFunction(
+      () => document.getElementById("nextBtn").getAnimations().length === 0,
+    );
+    expect(errors).toEqual([]);
   });
 });
 
@@ -601,7 +725,7 @@ for (const [name, viewport] of DEVICES) {
       await open(page);
       await begin(page);
       await playTo(page, "acc");
-      await page.waitForTimeout(900); // the camera glide
+      await glide(page);
       const inHost = (sel) =>
         salon(
           page,
@@ -625,15 +749,15 @@ for (const [name, viewport] of DEVICES) {
           () => document.querySelector('[data-acc="tiara:pearl"]').getAnimations().length,
         ),
       ).toBeGreaterThan(0); // pops on
-      await page.waitForTimeout(500);
+      await glide(page);
       expect(await inHost('[data-acc="tiara:pearl"]'), "the tiara is fully visible").toBe(true);
       await page.getByRole("button", { name: "Earrings", exact: true }).click();
       await page.getByRole("button", { name: /Earrings: Star/ }).click();
-      await page.waitForTimeout(1000);
+      await glide(page);
       expect(await inHost('[data-acc="earring:star"]'), "the earrings are in view").toBe(true);
       await page.getByRole("button", { name: "Necklace", exact: true }).click();
       await page.getByRole("button", { name: /Necklace: Butterfly/ }).click();
-      await page.waitForTimeout(1000);
+      await glide(page);
       expect(await inHost('[data-acc="necklace:butterfly"]'), "the necklace is in view").toBe(true);
     });
   });
@@ -648,7 +772,7 @@ test.describe("stickers: drag and drop (AC-22.11)", () => {
     const errors = await open(page);
     await begin(page);
     await playTo(page, "stickers");
-    await page.waitForTimeout(900);
+    await glide(page);
     const tool = await page.locator("#tools .tool").nth(1).boundingBox();
     const face = await salon(page, () => window.__salon.debug.unitsToClient(200, 300));
     // drag onto the face
@@ -660,7 +784,6 @@ test.describe("stickers: drag and drop (AC-22.11)", () => {
     await expect(page.locator("#dragGhost.on")).toHaveCount(0);
     expect(await salon(page, () => window.__salon.stickers)).toBe(1);
     expect(await salon(page, () => window.__salon.done[window.__salon.step])).toBe(true);
-    expect(await salon(page, () => window.__salon.saved && 1)).toBe(1);
     // the dropped sticker became the selected one
     await expect(page.locator("#tools .tool").nth(1)).toHaveAttribute("aria-pressed", "true");
     // dropping back on the tray cancels (no new sticker)
@@ -683,7 +806,7 @@ test.describe("stickers: drag and drop (AC-22.11)", () => {
     await open(page);
     await begin(page);
     await playTo(page, "stickers");
-    await page.waitForTimeout(900);
+    await glide(page);
     const at = await salon(page, () => window.__salon.debug.unitsToClient(200, 300));
     await page.mouse.click(at.x, at.y);
     expect(await salon(page, () => window.__salon.stickers)).toBe(1);
@@ -705,15 +828,72 @@ test.describe("stickers: drag and drop (AC-22.11)", () => {
     await open(page);
     await begin(page);
     await playTo(page, "stickers");
-    await page.waitForTimeout(900);
+    await glide(page);
     const at = await salon(page, () => window.__salon.debug.unitsToClient(200, 300));
     await page.mouse.click(at.x, at.y);
     expect(await salon(page, () => window.__salon.stickers)).toBe(1);
     await page.mouse.move(at.x, at.y);
     await page.mouse.down();
-    await page.waitForTimeout(800);
+    await page.waitForTimeout(800); // a hold is a duration: LONG_PRESS_MS is 600
     await page.mouse.up();
     await page.waitForFunction(() => window.__salon.stickers === 0);
+  });
+
+  test("a grab that the system cancels is not a tap: nothing is placed (ACC-5)", async ({
+    page,
+  }) => {
+    const errors = await open(page);
+    await begin(page);
+    await playTo(page, "stickers");
+    await glide(page);
+    const at = await salon(page, () => window.__salon.debug.unitsToClient(200, 300));
+    await page.mouse.click(at.x, at.y);
+    expect(await salon(page, () => window.__salon.stickers)).toBe(1);
+    // touch down on the placed sticker, then the system cancels the touch (a gesture, a call, the toolbar)
+    await salon(page, ([x, y]) => window.__fire("pointerdown", x, y), [at.x, at.y]);
+    await salon(page, ([x, y]) => window.__fire("pointercancel", x, y), [at.x, at.y]);
+    expect(await salon(page, () => window.__salon.stickers)).toBe(1);
+    // the stroke is over: a long hold afterwards must not shrink the sticker away either
+    await page.waitForTimeout(800); // longer than LONG_PRESS_MS (600): its timer must have been cleared
+    expect(await salon(page, () => window.__salon.stickers)).toBe(1);
+    // control: the same touch that ends normally is a tap and does add one
+    await salon(page, ([x, y]) => window.__fire("pointerdown", x, y), [at.x, at.y]);
+    await salon(page, ([x, y]) => window.__fire("pointerup", x, y), [at.x, at.y]);
+    expect(await salon(page, () => window.__salon.stickers)).toBe(2);
+    expect(errors).toEqual([]);
+  });
+
+  test("dropping a dragged sticker beside the face changes nothing, not even the selection (ACC-6)", async ({
+    page,
+  }) => {
+    await open(page);
+    await begin(page);
+    await playTo(page, "stickers");
+    await glide(page);
+    const tools = page.locator("#tools .tool");
+    await expect(tools.nth(0)).toHaveAttribute("aria-pressed", "true"); // the heart is the picked one
+    const tool = await tools.nth(2).boundingBox();
+    // a point on the stage that is inside the host but outside the face (the far left, in the hair's gutter)
+    const host = await page.locator("#playHost").boundingBox();
+    const beside = await salon(
+      page,
+      ([hostLeft, hostTop]) => {
+        const u = window.__salon.debug.clientToUnits(hostLeft + 4, hostTop + 120);
+        return u;
+      },
+      [host.x, host.y],
+    );
+    expect(beside.x, "the drop point is outside the face").toBeLessThan(70);
+    await page.mouse.move(tool.x + tool.width / 2, tool.y + tool.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(host.x + 4, host.y + 120, { steps: 8 });
+    await expect(page.locator("#dragGhost.on")).toHaveCount(1);
+    await page.mouse.up();
+    await expect(page.locator("#dragGhost.on")).toHaveCount(0);
+    expect(await salon(page, () => window.__salon.stickers)).toBe(0);
+    expect(await salon(page, () => window.__salon.done[window.__salon.step])).toBe(false);
+    await expect(tools.nth(0)).toHaveAttribute("aria-pressed", "true"); // the selection did not move
+    await expect(tools.nth(2)).toHaveAttribute("aria-pressed", "false");
   });
 });
 
@@ -750,7 +930,7 @@ test.describe("My Album: saving and sanitising (AC-22.12)", () => {
     await playTo(page, "acc");
     await page.getByRole("button", { name: /Tiara: Heart/ }).click();
     await playTo(page, "stickers");
-    await page.waitForTimeout(900);
+    await glide(page);
     const face = await salon(page, () => window.__salon.debug.unitsToClient(200, 260));
     await page.mouse.click(face.x, face.y);
     await salon(page, () => window.__salon.debug.skipToResults());
@@ -779,6 +959,57 @@ test.describe("My Album: saving and sanitising (AC-22.12)", () => {
     expect(await salon(page, () => window.__salon.album)).toBe(1);
     await expect(page.locator("#albumBtn")).toHaveAttribute("aria-label", "My Album, 1 look");
     expect(errors).toEqual([]);
+  });
+
+  for (const how of ["Redo", "skip"]) {
+    test(`a step that was ${how === "Redo" ? "Redo'd" : "only half painted, then skipped"} is not in the saved look (ACC-1)`, async ({
+      page,
+    }) => {
+      const errors = await open(page);
+      await begin(page);
+      await playTo(page, "shadow");
+      await glide(page);
+      await page.locator(".tool.wish").first().click();
+      await rub(page, (progress) => progress >= 0.1); // some paint, but the step is not done
+      expect(await salon(page, () => window.__salon.done[window.__salon.step])).toBe(false);
+      expect(await salon(page, () => window.__salon.progress)).toBeGreaterThan(0);
+      if (how === "Redo") await page.locator("#clearBtn").click();
+      // skip every step that is left without finishing any
+      for (let i = 0; i < 10; i++) {
+        if ((await salon(page, () => window.__salon.phase)) === "results") break;
+        await salon(page, () => window.__salon.debug.nextStep());
+      }
+      await page.waitForFunction(() => window.__salon.phase === "results", null, {
+        timeout: 10_000,
+      });
+      const recipe = await salon(page, () => window.__salon.saved.looks[0].recipe);
+      expect(recipe.shadow, "no shadow colour is remembered").toBeUndefined();
+      expect(Object.keys(recipe)).toEqual(["stickers"]);
+      expect(errors).toEqual([]);
+    });
+  }
+
+  test("a finished step is remembered with the colour it ended with (ACC-1 control)", async ({
+    page,
+  }) => {
+    await open(page);
+    await begin(page);
+    await playTo(page, "shadow");
+    await glide(page);
+    await page.locator(".tool.wish").first().click();
+    await rub(page); // to the end
+    expect(await salon(page, () => window.__salon.done[window.__salon.step])).toBe(true);
+    await salon(page, () => window.__salon.debug.nextStep());
+    for (let i = 0; i < 10; i++) {
+      if ((await salon(page, () => window.__salon.phase)) === "results") break;
+      await salon(page, () => window.__salon.debug.nextStep());
+    }
+    await page.waitForFunction(() => window.__salon.phase === "results", null, {
+      timeout: 10_000,
+    });
+    expect(await salon(page, () => window.__salon.saved.looks[0].recipe.shadow)).toEqual(
+      expect.any(String),
+    );
   });
 
   test("hostile or unknown recipe data is dropped; old looks without a recipe load unchanged", async ({
@@ -867,6 +1098,41 @@ test.describe("My Album: saving and sanitising (AC-22.12)", () => {
   });
 });
 
+/** Is the canvas's face area drawn on (a picture was painted into it)? Evaluated in the page. */
+const PAINTED = (c) =>
+  c.getContext("2d").getImageData(c.width / 2, c.height * 0.55, 1, 1).data[3] > 0;
+const paintedCount = (page) =>
+  page.evaluate(
+    (src) => [...document.querySelectorAll("#albumGrid canvas")].filter(eval(src)).length,
+    PAINTED.toString(),
+  );
+/** The live princess as a picture, minus the blink / happy / smile classes that come and go on their own. */
+const LOOK_NOW = () =>
+  decodeURIComponent(window.__salon.debug.lookUrl())
+    .replace(/\b(blink|happy|smile)\b/g, "")
+    .replace(/ +"/g, '"')
+    .replace(/ {2,}/g, " ")
+    .replace(/style="([^"]*)"/g, (_, css) => 'style="' + css.replace(/[\s;]/g, "") + '"'); // "display:none" == "display: none;"
+const lookNow = (page) => salon(page, LOOK_NOW);
+const STICKERS = [
+  ["heart", 200, 250],
+  ["star", 150, 300],
+  ["flower", 250, 320],
+];
+const REQ_IDS = ["pink-party", "ocean-ball", "lilac-dream"];
+/** Twelve different looks (lens x sticker count never repeats within 12), the most an album keeps. */
+const MANY_LOOKS = Array.from({ length: 12 }, (_, i) =>
+  LOOK({
+    stars: 1 + (i % 3),
+    req: REQ_IDS[i % 3],
+    recipe: {
+      ...GOOD_RECIPE,
+      lens: ["violet", "aqua", "sapphire"][i % 3],
+      stickers: STICKERS.slice(0, i % 4),
+    },
+  }),
+);
+
 for (const [name, viewport] of DEVICES) {
   test.describe(`My Album sheet: ${name}`, () => {
     test.use({ viewport, hasTouch: true, isMobile: true });
@@ -905,12 +1171,8 @@ for (const [name, viewport] of DEVICES) {
         expect(box.height).toBeGreaterThanOrEqual(48);
       }
       await page.waitForFunction(
-        () =>
-          [...document.querySelectorAll("#albumGrid canvas")].every((c) => {
-            const d = c.getContext("2d").getImageData(c.width / 2, c.height * 0.55, 1, 1).data; // her face
-            return d[3] > 0;
-          }),
-        null,
+        (src) => [...document.querySelectorAll("#albumGrid canvas")].every(eval(src)),
+        PAINTED.toString(),
         { timeout: 8000 },
       );
       // different looks are different pictures
@@ -918,11 +1180,19 @@ for (const [name, viewport] of DEVICES) {
         [...document.querySelectorAll("#albumGrid canvas")].map((c) => c.toDataURL().length),
       );
       expect(new Set(urls).size).toBeGreaterThan(1);
-      // Tab stays inside the sheet; Enter on a polaroid opens it big; Escape goes back, then closes
+      // Tab wraps inside the sheet (it is modal): from Close forwards to the first picture, from it backwards to Close
+      await page.locator("#albumClose").focus();
+      await page.keyboard.press("Tab");
+      await expect(tiles.first()).toBeFocused();
+      await page.keyboard.press("Shift+Tab");
+      await expect(page.locator("#albumClose")).toBeFocused();
+      // Enter on a polaroid opens it big (a named picture); Escape goes back, then closes
       await tiles.first().focus();
       await page.keyboard.press("Enter");
       await expect(page.locator("#albumView")).toBeVisible();
       await expect(page.locator("#albumBack")).toBeFocused();
+      await expect(page.locator("#albumBigCv")).toHaveAttribute("role", "img");
+      await expect(page.locator("#albumBigCv")).toHaveAttribute("aria-labelledby", "albumBigCap");
       await page.waitForFunction(
         () =>
           document.getElementById("albumBigCv").getContext("2d").getImageData(240, 400, 1, 1)
@@ -940,10 +1210,405 @@ for (const [name, viewport] of DEVICES) {
       expect(await page.locator("#albumGrid canvas").count()).toBe(0);
       expect(await salon(page, () => window.__salon.phase)).toBe("title");
       // nothing was fetched: only this page (data: pictures are not requests)
-      expect(requests.filter((u) => !u.startsWith("http://localhost:5599/"))).toEqual([]);
+      expect(requests.filter((u) => !u.startsWith(originOf(page) + "/"))).toEqual([]);
       expect(errors).toEqual([]);
     });
   });
 }
+
+// A full album (12 looks, taller than any screen) on a phone and on the iPad sizes the owner plays on.
+const FULL_ALBUM_SCREENS = [
+  ["phone 390x844", PHONE],
+  ["iPad landscape 1024x768", { width: 1024, height: 768 }],
+  ["iPad portrait 768x1024", { width: 768, height: 1024 }],
+];
+for (const [name, viewport] of FULL_ALBUM_SCREENS) {
+  test.describe(`My Album, 12 looks: ${name}`, () => {
+    test.use({ viewport, hasTouch: true, isMobile: true });
+
+    test("the frames show at once, the pictures follow one per frame, the title princess is untouched (ACC-2)", async ({
+      page,
+    }) => {
+      const errors = await open(page, { save: save(MANY_LOOKS) });
+      const before = await lookNow(page);
+      // in ONE task: the click handler, then what is on screen the moment it returns; then one sample per animation frame
+      const run = await salon(
+        page,
+        async ([src, snapshotSrc, own]) => {
+          const painted = eval(src);
+          const snapshot = eval(snapshotSrc);
+          /** "" when the live princess is exactly `own`, else where she differs (kept short: the pictures are 230 KB). */
+          const differs = () => {
+            const now = snapshot();
+            if (now === own) return "";
+            let i = 0;
+            while (now[i] === own[i]) i++;
+            return (
+              "at " +
+              i +
+              ": was ..." +
+              own.slice(i - 60, i + 60) +
+              " now ..." +
+              now.slice(i - 60, i + 60)
+            );
+          };
+          const cvs = () => [...document.querySelectorAll("#albumGrid canvas")];
+          const t0 = performance.now();
+          document.getElementById("albumBtn").click();
+          const handlerMs = performance.now() - t0;
+          const atClick = {
+            frames: cvs().length,
+            drawn: cvs().filter(painted).length,
+            renders: window.__salon.albumRenders,
+          };
+          const drawnPerFrame = [];
+          const seenDifferent = [];
+          await new Promise((resolve) => {
+            const tick = () => {
+              const n = cvs().filter(painted).length;
+              drawnPerFrame.push(n);
+              const d = differs();
+              if (d) seenDifferent.push(d);
+              if (n >= 12 || drawnPerFrame.length > 600) resolve();
+              else requestAnimationFrame(tick);
+            };
+            requestAnimationFrame(tick);
+          });
+          return {
+            handlerMs,
+            atClick,
+            drawnPerFrame,
+            seenDifferent,
+            renders: window.__salon.albumRenders,
+          };
+        },
+        [PAINTED.toString(), LOOK_NOW.toString(), before],
+      );
+      expect(run.atClick).toEqual({ frames: 12, drawn: 0, renders: 0 }); // frames first, no picture made yet
+      // a sanity bound only (the regression guard is `atClick` above: it was 100-500 ms when it drew every picture)
+      expect(run.handlerMs, "the click handler only lays out the frames").toBeLessThan(400);
+      const steps = run.drawnPerFrame.map((n, i) => n - (run.drawnPerFrame[i - 1] ?? 0));
+      expect(Math.max(...steps), "never more than one new picture per frame").toBeLessThanOrEqual(
+        1,
+      );
+      expect(run.drawnPerFrame.at(-1)).toBe(12);
+      expect(run.renders).toBe(12); // each look was generated exactly once
+      // between the frames the princess is never seen wearing a saved look: she is back before the next frame
+      expect(run.seenDifferent, "her own look at every frame").toEqual([]);
+      // closing, reopening: the same pictures come from the cache (no new renders), and she is still herself
+      await page.locator("#albumClose").click();
+      expect(await lookNow(page)).toBe(before);
+      await page.locator("#albumBtn").click();
+      await page.waitForFunction(
+        (src) => [...document.querySelectorAll("#albumGrid canvas")].every(eval(src)),
+        PAINTED.toString(),
+        { timeout: 8000 },
+      );
+      expect(await salon(page, () => window.__salon.albumRenders)).toBe(12);
+      expect(errors).toEqual([]);
+    });
+
+    test("Close stays on screen without scrolling, and a tap on the dim backdrop closes too (ACC-3)", async ({
+      page,
+    }) => {
+      await open(page, { save: save(MANY_LOOKS) });
+      await page.locator("#albumBtn").click();
+      await expect(page.locator("#albumGrid .polaroid")).toHaveCount(12);
+      // the sheet pops in with an overshoot (scale > 1 for a moment): measure once it has settled
+      await page.waitForFunction(
+        () => document.getElementById("albumModal").getAnimations({ subtree: true }).length === 0,
+      );
+      const modal = await salon(page, () => {
+        const m = document.getElementById("albumModal");
+        return { top: m.scrollTop, scrollH: m.scrollHeight, h: m.clientHeight };
+      });
+      expect(modal.top).toBe(0); // nothing scrolled
+      expect(modal.scrollH, "the album really is taller than the screen").toBeGreaterThan(
+        modal.h * 1.5,
+      );
+      const close = await page.locator("#albumClose").boundingBox();
+      expect(inside(close, viewport.width, viewport.height), "Close is in view").toBe(true);
+      expect(close.height).toBeGreaterThanOrEqual(48);
+      // still in view after scrolling to the middle and the end of the album
+      for (const y of [modal.scrollH / 2, modal.scrollH]) {
+        await salon(page, (top) => (document.getElementById("albumModal").scrollTop = top), y);
+        expect(
+          inside(await page.locator("#albumClose").boundingBox(), viewport.width, viewport.height),
+        ).toBe(true);
+      }
+      // a tap on the backdrop (the strip round the sheet) closes the album and gives focus back
+      await salon(page, () => (document.getElementById("albumModal").scrollTop = 0));
+      await page.mouse.click(3, 3);
+      await expect(page.locator("#albumModal")).not.toHaveClass(/open/);
+      await expect(page.locator("#albumBtn")).toBeFocused();
+      // a tap on the sheet itself does not
+      await page.locator("#albumBtn").click();
+      await page.locator("#albumTitle").click();
+      await expect(page.locator("#albumModal")).toHaveClass(/open/);
+    });
+
+    test("All looks does not rebuild or redraw; closing mid-generation leaves nothing behind (ACC-2, ACC-8)", async ({
+      page,
+    }) => {
+      const errors = await open(page, { save: save(MANY_LOOKS) });
+      const all = (src) => [...document.querySelectorAll("#albumGrid canvas")].every(eval(src));
+      await page.locator("#albumBtn").click();
+      await page.waitForFunction(all, PAINTED.toString(), { timeout: 8000 });
+      await salon(page, () => (document.querySelector("#albumGrid li").dataset.kept = "yes"));
+      // open one look big and come back: the same frames, still painted, nothing generated again
+      await page.locator("#albumGrid .polaroid").nth(5).click();
+      await expect(page.locator("#albumView")).toBeVisible();
+      await page.waitForFunction(
+        () =>
+          document.getElementById("albumBigCv").getContext("2d").getImageData(240, 400, 1, 1)
+            .data[3] > 0,
+        null,
+        { timeout: 8000 },
+      );
+      await page.locator("#albumBack").click();
+      await expect(page.locator("#albumGrid")).toBeVisible();
+      expect(await salon(page, () => document.querySelector("#albumGrid li").dataset.kept)).toBe(
+        "yes",
+      );
+      expect(await paintedCount(page)).toBe(12);
+      expect(await salon(page, () => window.__salon.albumRenders)).toBe(12);
+      await page.locator("#albumClose").click();
+      // open and close in the same task, then wait: no picture is generated for an album nobody sees
+      const gen = await salon(page, async () => {
+        const before = window.__salon.albumRenders;
+        document.getElementById("albumBtn").click();
+        document.getElementById("albumClose").click();
+        await new Promise((resolve) => setTimeout(resolve, 400));
+        return {
+          before,
+          after: window.__salon.albumRenders,
+          canvases: document.querySelectorAll("#albumGrid canvas").length,
+        };
+      });
+      expect(gen.after).toBe(gen.before);
+      expect(gen.canvases).toBe(0);
+      expect(errors).toEqual([]);
+    });
+  });
+}
+
+test.describe("My Album: stale pictures never land (ACC-8) and a changed save is redrawn (ACC-2)", () => {
+  test.use({ viewport: PHONE, hasTouch: true, isMobile: true });
+
+  test("going back or closing before the big picture decodes leaves its canvas empty and says nothing", async ({
+    page,
+  }) => {
+    const errors = await open(page, { save: save(MANY_LOOKS.slice(0, 3)) });
+    await page.locator("#albumBtn").click();
+    await expect(page.locator("#albumGrid .polaroid")).toHaveCount(3);
+    const stale = await salon(page, async () => {
+      const bigPixels = () => {
+        const cv = document.getElementById("albumBigCv");
+        const px = cv.getContext("2d").getImageData(0, 0, cv.width, cv.height).data;
+        return px.some((v, i) => i % 4 === 3 && v > 0);
+      };
+      const out = {};
+      // open a look big and go back in the same task: its picture decodes afterwards and must be dropped
+      document.querySelector("#albumGrid .polaroid").click();
+      document.getElementById("albumBack").click();
+      await new Promise((resolve) => setTimeout(resolve, 600));
+      out.afterBack = bigPixels();
+      // the same, but closing the album
+      document.querySelector("#albumGrid .polaroid").click();
+      document.getElementById("albumClose").click();
+      await new Promise((resolve) => setTimeout(resolve, 600));
+      out.afterClose = bigPixels();
+      out.said = document.getElementById("sr").textContent;
+      return out;
+    });
+    expect(stale.afterBack).toBe(false);
+    expect(stale.afterClose).toBe(false);
+    expect(stale.said).not.toMatch(/Showing/);
+    expect(errors).toEqual([]);
+  });
+
+  test("when the saved looks change, the old pictures are forgotten and only the new look is drawn", async ({
+    page,
+  }) => {
+    await open(page, { save: save(MANY_LOOKS.slice(0, 3)) });
+    await page.locator("#albumBtn").click();
+    await page.waitForFunction(
+      (src) => [...document.querySelectorAll("#albumGrid canvas")].every(eval(src)),
+      PAINTED.toString(),
+      { timeout: 8000 },
+    );
+    expect(await salon(page, () => window.__salon.albumRenders)).toBe(3);
+    await page.locator("#albumClose").click();
+    // another tab saves a newer album (one old look, one new one): the page adopts it on the storage event
+    await salon(
+      page,
+      ([key, looks]) => {
+        const stored = JSON.parse(localStorage.getItem(key));
+        stored.rev += 10;
+        stored.looks = looks;
+        localStorage.setItem(key, JSON.stringify(stored));
+        window.dispatchEvent(new StorageEvent("storage", { key }));
+      },
+      [SAVE_KEY, [MANY_LOOKS[0], MANY_LOOKS[7]]],
+    );
+    expect(await salon(page, () => window.__salon.album)).toBe(2);
+    await page.locator("#albumBtn").click();
+    await page.waitForFunction(
+      (src) => [...document.querySelectorAll("#albumGrid canvas")].every(eval(src)),
+      PAINTED.toString(),
+      { timeout: 8000 },
+    );
+    expect(await salon(page, () => window.__salon.albumRenders)).toBe(4); // look 0 from the cache, look 7 new
+  });
+});
+
+test.describe("My Album, reduced motion (AC-22.12)", () => {
+  test.use({ viewport: PHONE, hasTouch: true, isMobile: true, reducedMotion: "reduce" });
+
+  test("the sheet and the big picture do not animate", async ({ page }) => {
+    await open(page, { save: save(MANY_LOOKS.slice(0, 3)) });
+    await page.locator("#albumBtn").click();
+    await expect(page.locator("#albumGrid .polaroid")).toHaveCount(3);
+    await page.locator("#albumGrid .polaroid").first().click();
+    await expect(page.locator("#albumView")).toBeVisible();
+    // the pop-in is cut to a single 0.001 ms run: nothing is left running on the sheet or inside it
+    await page.waitForFunction(
+      () => document.getElementById("albumModal").getAnimations({ subtree: true }).length === 0,
+    );
+  });
+});
+
+// ----------------------------------------------------------------------------------------------------------------------
+// AC-22.2 / AC-22.3: cheap guards for the performance work (the measured numbers live in perf.md)
+// ----------------------------------------------------------------------------------------------------------------------
+test.describe("performance guards (AC-22.2)", () => {
+  test.use({ viewport: IPAD_L, deviceScaleFactor: 2, hasTouch: true, isMobile: true });
+
+  test("no <filter> in the page, #fx hidden while nothing sparkles, its backing store within 3 Mpx", async ({
+    page,
+  }) => {
+    await open(page);
+    expect(await salon(page, () => document.querySelectorAll("filter").length)).toBe(0);
+    const fx = () =>
+      salon(page, () => {
+        const cv = document.getElementById("fx");
+        return {
+          visibility: getComputedStyle(cv).visibility,
+          px: cv.width * cv.height,
+          dpr: devicePixelRatio,
+        };
+      });
+    const title = await fx();
+    expect(title.dpr).toBe(2);
+    expect(title.visibility).toBe("hidden");
+    expect(title.px).toBeLessThanOrEqual(3e6);
+    await begin(page);
+    await playTo(page, "shadow");
+    await glide(page);
+    // play idle: no burst is running, so the big particle layer is not composited
+    await page.waitForFunction(
+      () => getComputedStyle(document.getElementById("fx")).visibility === "hidden",
+    );
+    expect((await fx()).px).toBeLessThanOrEqual(3e6);
+  });
+
+  test("idle play does no style writes on the tool, its ring or the nudge ring (ACC-9)", async ({
+    page,
+  }) => {
+    test.setTimeout(60_000);
+    await open(page);
+    await begin(page);
+    // any press ends the demo for the step; the idle nudge then counts 4 s from there
+    await salon(page, () => window.__fire("pointerdown", 5, 5, { target: "app" }));
+    await salon(page, () => window.__fire("pointerup", 5, 5, { target: "app" }));
+    for (const id of ["cleanse", "shadow"]) {
+      await playTo(page, id);
+      await glide(page);
+      await salon(page, () => window.__fire("pointerdown", 5, 5, { target: "app" }));
+      await page.waitForFunction(
+        () => document.getElementById("nudge").classList.contains("on"),
+        null,
+        {
+          timeout: 10_000,
+        },
+      );
+      // the nudge ring is on and the tool rests: settle (the ring eases into place), then watch for 3 s
+      await page.waitForFunction(
+        () =>
+          new Promise((resolve) => {
+            const quiet = new MutationObserver(() => (quiet.hit = true));
+            for (const el of ["tool", "toolRing", "nudge"])
+              quiet.observe(document.getElementById(el), { attributes: true, subtree: true });
+            setTimeout(() => {
+              quiet.disconnect();
+              resolve(!quiet.hit);
+            }, 400);
+          }),
+        null,
+        { timeout: 10_000, polling: 100 },
+      );
+      const writes = await salon(
+        page,
+        () =>
+          new Promise((resolve) => {
+            const seen = { tool: 0, toolRing: 0, nudge: 0 };
+            const watcher = new MutationObserver((list) => {
+              for (const m of list) if (m.target.id in seen) seen[m.target.id]++;
+            });
+            for (const el of Object.keys(seen))
+              watcher.observe(document.getElementById(el), { attributes: true, subtree: true });
+            setTimeout(() => {
+              watcher.disconnect();
+              resolve(seen);
+            }, 3000);
+          }),
+      );
+      expect(writes, "style writes in 3 s of idle on " + id).toEqual({
+        tool: 0,
+        toolRing: 0,
+        nudge: 0,
+      });
+    }
+  });
+});
+
+// ----------------------------------------------------------------------------------------------------------------------
+// AC-22.4 calm sound: the brush voice does not outlive a hidden tab
+// ----------------------------------------------------------------------------------------------------------------------
+test.describe("calm sound (AC-22.4)", () => {
+  test.use({ viewport: PHONE, hasTouch: true, isMobile: true });
+
+  test("hiding the page closes the brush voice at once, so no noise tail returns on resume (U-1)", async ({
+    page,
+  }) => {
+    const errors = await open(page);
+    await begin(page);
+    await playTo(page, "shadow");
+    await glide(page);
+    await page.locator(".tool.wish").first().click();
+    const a = await salon(page, () => window.__salon.debug.regionPoint(0));
+    const b = await salon(page, () => window.__salon.debug.regionPoint(0.5));
+    await page.mouse.move(a.x, a.y);
+    await page.mouse.down();
+    await page.mouse.move(b.x, b.y, { steps: 8 });
+    expect(await salon(page, () => window.__salon.audio.swishOpen), "the brush is sounding").toBe(
+      true,
+    );
+    // the tab goes to the background in the middle of the stroke
+    await salon(page, () => {
+      Object.defineProperty(document, "hidden", { configurable: true, get: () => true });
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    expect(await salon(page, () => window.__salon.audio.swishOpen)).toBe(false);
+    // and back: nothing of the old stroke opens again by itself
+    await salon(page, () => {
+      Object.defineProperty(document, "hidden", { configurable: true, get: () => false });
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    await page.mouse.up();
+    expect(await salon(page, () => window.__salon.audio.swishOpen)).toBe(false);
+    expect(errors).toEqual([]);
+  });
+});
 
 /* eslint-enable max-lines-per-function */

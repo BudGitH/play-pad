@@ -323,7 +323,16 @@ async function contrastOf(page, targets) {
 }
 async function checkContrast(browser) {
   const k = await open(browser);
-  const all = await contrastOf(k.page, { "Start button": "#startBtn", tagline: ".tagline" });
+  const all = await contrastOf(k.page, {
+    "Start button": "#startBtn",
+    tagline: ".tagline",
+    // v2 additions (QA round): the album's gold count, its empty message and caption, the saved note (the wish labels are
+    // checked below, on the client card, where they exist)
+    "album count": ".album-btn .count",
+    "album empty": ".album-empty",
+    "album caption": ".album-cap",
+    "saved note": ".saved-note",
+  });
   await begin(k.page);
   await S(k.page, () => window.__salon.debug.completeStep());
   Object.assign(
@@ -356,7 +365,11 @@ async function checkContrast(browser) {
   await k.page.waitForFunction(() => document.querySelector("#reqModal.open"));
   Object.assign(
     all,
-    await contrastOf(k.page, { "sheet title": "#reqTitle", "look pill": "#reqLook" }),
+    await contrastOf(k.page, {
+      "sheet title": "#reqTitle",
+      "look pill": "#reqLook",
+      "wish label": ".wants small",
+    }),
   );
   const low = Object.entries(all)
     .filter(([, v]) => v !== null && v < 4.5)
@@ -1854,6 +1867,13 @@ async function main() {
       ["1280x800", 1280, 800],
       ["1024x1366", 1024, 1366], // iPad portrait (v2 AC-22.5)
       ["1366x1024", 1366, 1024], // iPad landscape: the right-hand tool bar (v2 AC-22.5)
+      ["1024x768", 1024, 768], // iPad landscapes of the 9th / 10th gen, Air and Pro 11 (v2 AC-22.5, AC-22.6)
+      ["1080x810", 1080, 810],
+      ["1180x820", 1180, 820],
+      ["1194x834", 1194, 834],
+      ["768x1024", 768, 1024], // ... and their portraits
+      ["810x1080", 810, 1080],
+      ["834x1194", 834, 1194],
       ["360x640", 360, 640],
     ];
     for (const [label, w, hgt] of viewports) {

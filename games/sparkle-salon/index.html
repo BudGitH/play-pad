@@ -20,7 +20,13 @@
 
     <!--
     Sparkle Salon — a solo kids' princess make-up game (PlayPad game #6, PLAY-008).
-    Self-contained, build-free: ONE page, no network, no assets. Features: features/sparkle-salon/.
+    Self-contained, build-free: ONE page, no network, nothing fetched (the soft-focus backdrop is an inline WebP data URI baked
+    once by features/sparkle-salon-v2/bake-bg.mjs, so there is no runtime SVG filter). Features: features/sparkle-salon/ (v1)
+    and features/sparkle-salon-v2/ (the redrawn princess, iPad speed, the picture-first UX round).
+    v2 adds: an iPad layout (wider column, landscape side bar for the tray, tablet zoom and 92 px tools), a pointing-hand demo
+    once per step, a heart progress meter, a picture client card, a results screen led by the photo, drag-and-drop stickers, and
+    My Album (each finished look is saved as a recipe of option ids; the album redraws the pictures locally, one per frame).
+    How to test: npm run smoke (tests/sparkle-salon-v2.spec.mjs) and node features/sparkle-salon/probe.mjs (the deep probe).
 
     How it is drawn: the princess is layered inline SVG (hair-back / body+face / dress / [paint canvases] /
     eyes+brows+smudges / hair-front+accessories+stickers) so every "feature" can be restyled live. The RIGHT
@@ -70,6 +76,15 @@
         --sp-gold: #ffcf3f;
         --sp-amber-ink: #8a4f00;
         --sp-focus: #3b1d8f;
+        /* pastel washes: sheet foot, picture mats, the tablet side bar */
+        --sp-pink-50: #ffeef7;
+        --sp-pink-100: #ffe0f0;
+        --sp-pink-halo: #ffb4d8; /* the ring round a polaroid */
+        --sp-rail-top: #ffd5ea;
+        --sp-rail-foot: #ffc2e0;
+        --sp-mist: #f7f0ff; /* the cool white at the centre of a round badge */
+        --sp-mat-top: #cdbbf7; /* the lilac-to-pink mat behind a picture */
+        --sp-mat-foot: #f3b8dc;
         /* white text on these is >= 4.5:1 at every stop */
         --sp-grad-pink: linear-gradient(180deg, var(--sp-pink-600) 0, var(--sp-pink-700) 100%);
         --sp-grad-lilac: linear-gradient(180deg, var(--sp-lilac-600) 0, var(--sp-lilac-700) 100%);
@@ -566,7 +581,7 @@
         place-items: center;
         background: var(--sp-gold);
         border: 2px solid var(--sp-white);
-        color: var(--sp-amber-ink);
+        color: var(--sp-ink); /* the ink on gold is 8:1; the amber ink was 4.3:1 */
         font-size: 14px;
         font-weight: 900;
         line-height: 1;
@@ -842,7 +857,7 @@
         z-index: 12;
         flex: none;
         padding: 10px 6px max(12px, env(safe-area-inset-bottom));
-        background: linear-gradient(180deg, #ffd5ea 0, #ffc2e0 100%);
+        background: linear-gradient(180deg, var(--sp-rail-top) 0, var(--sp-rail-foot) 100%);
         border-top: 7px solid var(--sp-pink-rim);
         box-shadow:
           0 -4px 14px rgba(160, 40, 120, 0.3),
@@ -917,7 +932,7 @@
         overflow: hidden;
         display: grid;
         place-items: center;
-        background: radial-gradient(circle at 50% 40%, var(--sp-white) 0, #f7f0ff 100%);
+        background: radial-gradient(circle at 50% 40%, var(--sp-white) 0, var(--sp-mist) 100%);
       }
       .tool .face svg {
         width: 100%;
@@ -1224,11 +1239,12 @@
 
       /* ---------- Modals (request card, unlock, leave) ---------- */
       .modal {
+        --modal-pad: 18px; /* the gap round the sheet (a sticky bar inside it reaches back over this) */
         position: absolute;
         inset: 0;
         z-index: 30;
         display: none;
-        padding: 18px;
+        padding: var(--modal-pad);
         overflow-y: auto; /* a sheet taller than a short landscape screen scrolls instead of clipping */
         overscroll-behavior: contain;
         background: rgba(88, 30, 110, 0.45);
@@ -1242,7 +1258,7 @@
         padding: 20px 18px 18px;
         border: 5px solid var(--sp-white);
         border-radius: 28px;
-        background: linear-gradient(180deg, var(--sp-white) 0, #ffeef7 100%);
+        background: linear-gradient(180deg, var(--sp-white) 0, var(--sp-pink-50) 100%);
         box-shadow: 0 14px 40px rgba(80, 20, 100, 0.5);
         text-align: center;
         animation: pop 0.35s cubic-bezier(0.3, 1.5, 0.5, 1);
@@ -1287,7 +1303,7 @@
         object-position: 50% 8%;
         border-radius: 50%;
         border: 4px solid var(--sp-white);
-        background: linear-gradient(180deg, #cdbbf7 0, #f3b8dc 100%);
+        background: linear-gradient(180deg, var(--sp-mat-top) 0, var(--sp-mat-foot) 100%);
         box-shadow: 0 4px 12px rgba(90, 20, 80, 0.35);
       }
       .req-portrait img:not([src]) {
@@ -1342,7 +1358,7 @@
         overflow: hidden;
         border: 3px solid var(--sp-ink-deep);
         box-shadow: 0 0 0 4px var(--sp-pink-hi);
-        background: radial-gradient(circle at 50% 40%, var(--sp-white) 0, #f7f0ff 100%);
+        background: radial-gradient(circle at 50% 40%, var(--sp-white) 0, var(--sp-mist) 100%);
       }
       .wish-ico svg {
         display: block;
@@ -1411,10 +1427,15 @@
         aspect-ratio: 3 / 4;
         padding: 10px;
         border-radius: 20px;
-        background: linear-gradient(145deg, var(--sp-white) 0, #ffe0f0 50%, var(--sp-white) 100%);
+        background: linear-gradient(
+          145deg,
+          var(--sp-white) 0,
+          var(--sp-pink-100) 50%,
+          var(--sp-white) 100%
+        );
         box-shadow:
           0 12px 28px rgba(80, 20, 100, 0.45),
-          0 0 0 4px #ffb4d8;
+          0 0 0 4px var(--sp-pink-halo);
         transform: rotate(-2deg);
         animation: dropin 0.7s cubic-bezier(0.3, 1.4, 0.5, 1);
       }
@@ -1430,7 +1451,7 @@
         border-radius: 12px;
         background: radial-gradient(circle at 20% 18%, #fff7 0, transparent 30%),
           radial-gradient(circle at 80% 70%, #fff5 0, transparent 35%),
-          linear-gradient(180deg, #cdbbf7 0, #f3b8dc 100%);
+          linear-gradient(180deg, var(--sp-mat-top) 0, var(--sp-mat-foot) 100%);
       }
       .photo .tape {
         position: absolute;
@@ -1643,17 +1664,22 @@
         padding: 8px 8px 6px;
         border: 0;
         border-radius: 14px;
-        background: linear-gradient(145deg, var(--sp-white) 0, #ffe0f0 55%, var(--sp-white) 100%);
+        background: linear-gradient(
+          145deg,
+          var(--sp-white) 0,
+          var(--sp-pink-100) 55%,
+          var(--sp-white) 100%
+        );
         box-shadow:
           0 6px 14px rgba(80, 20, 100, 0.35),
-          0 0 0 3px #ffb4d8;
+          0 0 0 3px var(--sp-pink-halo);
       }
       .polaroid canvas {
         width: 100%;
         height: auto;
         aspect-ratio: 2 / 3;
         border-radius: 8px;
-        background: linear-gradient(180deg, #cdbbf7 0, #f3b8dc 100%);
+        background: linear-gradient(180deg, var(--sp-mat-top) 0, var(--sp-mat-foot) 100%);
       }
       .polaroid .mini-stars {
         display: flex;
@@ -1675,6 +1701,17 @@
       }
       .album .btns .big-btn[hidden] {
         display: none;
+      }
+      /* The button bar sticks to the bottom of the screen (the sheet scrolls under it), so Close and All looks stay on
+         screen however many looks are saved. */
+      .sheet.album .btns {
+        position: sticky;
+        bottom: calc(
+          var(--modal-pad) * -1
+        ); /* a sticky box keeps clear of the scroller's padding: reach back over it */
+        z-index: 2;
+        padding: 14px 0 max(10px, env(safe-area-inset-bottom));
+        background: linear-gradient(180deg, transparent 0, var(--sp-pink-50) 14px);
       }
 
       /* ---------- Pointing-hand demo (a pre-reader's first cue): decoration only, removed by any touch ---------- */
@@ -1919,7 +1956,7 @@
       /* ---------- Short screens: compact sheets, every button still >= 48px ---------- */
       @media (max-height: 540px) {
         .modal {
-          padding: 8px;
+          --modal-pad: 8px;
         }
         .sheet {
           width: min(100%, 560px);
@@ -2029,15 +2066,18 @@
       }
 
       /* ---------- Tablets (S1 / S2): the big screen is a big mirror, with finger-sized controls ---------- */
-      /* A wider column on any screen at least 900 x 700 (the art still fits by height; the backdrop covers the rest). */
-      @media (min-width: 900px) and (min-height: 700px) {
+      /* Tablet thresholds (media queries cannot read variables, so they are spelled out; keep them in step with TABLET_MIN_PX
+         in the script and AC-22.5 / AC-22.6): a landscape iPad is 1024 x 768 .. 1194 x 834, and Safari's toolbars take about
+         80 px of that, so "landscape tablet" starts at 1000 x 640. Portrait tablets are 700 x 900 and up. */
+      /* A wider column on any screen at least 900 x 640 (the art still fits by height; the backdrop covers the rest). */
+      @media (min-width: 900px) and (min-height: 640px) {
         .app {
           width: min(100vw, max(calc(var(--pp-app-h, 100dvh) * 0.78), min(100vw, 1100px)));
         }
       }
       /* Finger-sized everything on tablets: a 5-year-old needs about 2 cm targets. */
       @media (min-width: 700px) and (min-height: 900px),
-        (min-width: 1100px) and (min-height: 700px) {
+        (min-width: 1000px) and (min-height: 640px) {
         :root {
           --tray-circle: 92px;
         }
@@ -2284,7 +2324,7 @@
         }
       }
       /* ... and on a landscape tablet the photo sits beside the card */
-      @media (min-width: 900px) and (min-height: 700px) and (orientation: landscape) {
+      @media (min-width: 900px) and (min-height: 640px) and (orientation: landscape) {
         .res-inner {
           max-width: none;
           min-height: 100%;
@@ -2301,7 +2341,7 @@
         }
       }
       /* Landscape tablets: the tools, Redo, the heart and Next live in a bar on the right; the face gets the rest. */
-      @media (min-width: 1100px) and (orientation: landscape) and (min-height: 700px) {
+      @media (min-width: 1000px) and (orientation: landscape) and (min-height: 640px) {
         :root {
           --rail-w: 260px;
         }
@@ -2319,7 +2359,7 @@
           align-self: stretch;
           justify-self: stretch;
           z-index: 11;
-          background: linear-gradient(180deg, #ffd5ea 0, #ffc2e0 100%);
+          background: linear-gradient(180deg, var(--sp-rail-top) 0, var(--sp-rail-foot) 100%);
           border-left: 7px solid var(--sp-pink-rim);
           box-shadow:
             -4px 0 14px rgba(160, 40, 120, 0.3),
@@ -2379,7 +2419,7 @@
           overflow-y: auto;
           overflow-x: hidden;
           max-height: 100%;
-          padding: 14px 6px;
+          padding: 22px 10px 14px; /* room for the picked circle, which is drawn 1.14x */
           gap: 18px 14px;
           scroll-snap-type: none;
         }
@@ -2518,7 +2558,7 @@
               <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path
                   d="M5 4.5h10.5a3 3 0 0 1 3 3V20H8a3 3 0 0 1-3-3z"
-                  fill="#fff"
+                  style="fill: var(--sp-white)"
                   fill-opacity=".25"
                   stroke="currentColor"
                   stroke-width="2"
@@ -2664,6 +2704,7 @@
               </svg>
               <span>Redo</span>
             </button>
+            <!-- #ring is the heart meter now (the name is from the old round ring): the fill is the step's progress -->
             <div class="ring" id="ring" role="img" aria-label="Step progress 0 percent">
               <svg viewBox="0 0 48 48" aria-hidden="true" focusable="false">
                 <defs>
@@ -2701,14 +2742,13 @@
               <svg class="ico-next" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path
                   d="M12 1.6l3 6.3 6.9.9-5 4.8 1.3 6.8L12 17.1l-6.2 3.3 1.3-6.8-5-4.8 6.9-.9z"
-                  fill="#ffcf3f"
-                  stroke="#fff"
+                  style="fill: var(--sp-gold); stroke: var(--sp-white)"
                   stroke-width="1.4"
                   stroke-linejoin="round"
                 />
                 <path
                   d="M8 11.4h7.2m-2.8-2.8 2.8 2.8-2.8 2.8"
-                  stroke="#4a1f66"
+                  style="stroke: var(--sp-ink)"
                   stroke-width="2.2"
                   stroke-linecap="round"
                   stroke-linejoin="round"
@@ -2717,8 +2757,7 @@
               <svg class="ico-cam" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path
                   d="M3.5 8.2A2 2 0 0 1 5.5 6.2h2L9 4h6l1.5 2.2h2a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"
-                  fill="#fff"
-                  stroke="#fff"
+                  style="fill: var(--sp-white); stroke: var(--sp-white)"
                   stroke-width="1.4"
                   stroke-linejoin="round"
                 />
@@ -2726,8 +2765,7 @@
                   cx="12"
                   cy="13"
                   r="3.6"
-                  fill="#d6287f"
-                  stroke="#4a1f66"
+                  style="fill: var(--sp-pink-600); stroke: var(--sp-ink)"
                   stroke-width="1.6"
                 />
               </svg>
@@ -2747,7 +2785,7 @@
             <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <path
                 d="M4 11.2 12 4l8 7.2V20a1 1 0 0 1-1 1h-4.5v-5.5h-5V21H5a1 1 0 0 1-1-1z"
-                fill="#fff"
+                style="fill: var(--sp-white)"
                 fill-opacity=".25"
                 stroke="currentColor"
                 stroke-width="2.2"
@@ -2791,13 +2829,16 @@
               <div class="earn">
                 <svg class="coin-ico" viewBox="0 0 32 32" aria-hidden="true">
                   <use href="#ico-coin" /></svg
-                ><span id="resEarn">+0</span><span class="vh" id="resCoinsWord"> coins</span>
+                ><span id="resEarn">+0</span><span class="vh"> coins</span>
               </div>
               <p class="earn-detail vh" id="resDetail"></p>
               <p class="res-best" id="resBest"></p>
-              <p class="saved-note" id="resSaved">
+              <p class="saved-note">
                 <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M12 21C3 14.5 5.5 6.5 12 11 18.5 6.5 21 14.5 12 21Z" fill="#d6287f" />
+                  <path
+                    d="M12 21C3 14.5 5.5 6.5 12 11 18.5 6.5 21 14.5 12 21Z"
+                    style="fill: var(--sp-pink-600)"
+                  />
                 </svg>
                 Saved in My Album
               </p>
@@ -2816,7 +2857,10 @@
             <img id="reqPortrait" alt="" width="96" height="96" />
             <span class="req-heart" aria-hidden="true">
               <svg viewBox="0 0 24 24">
-                <path d="M12 21C3 14.5 5.5 6.5 12 11 18.5 6.5 21 14.5 12 21Z" fill="#d6287f" />
+                <path
+                  d="M12 21C3 14.5 5.5 6.5 12 11 18.5 6.5 21 14.5 12 21Z"
+                  style="fill: var(--sp-pink-600)"
+                />
               </svg>
             </span>
           </div>
@@ -2861,7 +2905,13 @@
           <ul class="album-grid" id="albumGrid"></ul>
           <div class="album-view" id="albumView" hidden>
             <div class="polaroid big">
-              <canvas id="albumBigCv" width="480" height="720"></canvas>
+              <canvas
+                id="albumBigCv"
+                width="480"
+                height="720"
+                role="img"
+                aria-labelledby="albumBigCap"
+              ></canvas>
             </div>
             <p class="album-cap" id="albumBigCap"></p>
           </div>
@@ -2883,7 +2933,7 @@
           <p>Your coins are safe, but this makeover will be lost.</p>
           <div class="btns">
             <button id="leaveNo" class="big-btn" type="button">Keep playing</button>
-            <a id="leaveYes" class="big-btn alt" href="../../index.html">Leave</a>
+            <a class="big-btn alt" href="../../index.html">Leave</a>
           </div>
         </div>
       </div>
@@ -2909,14 +2959,13 @@
         <svg viewBox="0 0 72 100" focusable="false">
           <path
             d="M30 8c0-5 12-5 12 0v29c3-3 9-3 11 2 4-2 10 0 10 5 4-1 9 2 8 7l-3 20c-1 6-5 11-11 12H29c-5 0-8-3-10-7L9 59c-2-5 3-9 8-6l9 7V8z"
-            fill="#fff"
-            stroke="#4a1f66"
+            style="fill: var(--sp-white); stroke: var(--sp-ink)"
             stroke-width="3"
             stroke-linejoin="round"
           />
           <path
             d="M42 38v14m11-13v13m11-8v12"
-            stroke="#c9b0ff"
+            style="stroke: var(--sp-lilac-300)"
             stroke-width="2.4"
             stroke-linecap="round"
           />
@@ -2926,15 +2975,14 @@
             width="46"
             height="16"
             rx="6"
-            fill="#d6287f"
-            stroke="#4a1f66"
+            style="fill: var(--sp-pink-600); stroke: var(--sp-ink)"
             stroke-width="3"
           />
         </svg>
         <svg class="demo-arrow" viewBox="0 0 24 24" fill="none" focusable="false">
           <path
             d="M12 20V5m-6 6 6-6 6 6"
-            stroke="#d6287f"
+            style="stroke: var(--sp-pink-600)"
             stroke-width="3.4"
             stroke-linecap="round"
             stroke-linejoin="round"
@@ -2943,7 +2991,7 @@
       </div>
       <div id="demoRipple" aria-hidden="true"></div>
       <svg id="demoTrail" aria-hidden="true" focusable="false">
-        <path id="demoTrailPath" />
+        <path />
       </svg>
       <div id="tipGuide" aria-hidden="true"><i></i><b></b></div>
       <div id="nudge" aria-hidden="true"><i></i></div>
@@ -3768,12 +3816,22 @@
             clearInterval(timer);
             timer = 0;
           }
+          /** Close the brush voice at once and mark it idle: nothing of a stroke is left to ramp up again later. */
+          function silenceSwish() {
+            swishActive = false;
+            swishSpeed = 0;
+            if (!swishGain) return;
+            const t = ctx.currentTime;
+            swishGain.gain.cancelScheduledValues(t);
+            swishGain.gain.setValueAtTime(0, t);
+          }
           function setHidden(v) {
             hidden = v;
             if (!ctx) return;
             try {
               if (v) {
                 stopMusic();
+                silenceSwish(); // the context's clock stops, so a pending brush ramp would come back on resume
                 ctx.suspend();
               } else if (on()) {
                 ctx.resume();
@@ -3824,20 +3882,27 @@
             stats,
             isOn: on,
             ctxState: () => (ctx ? ctx.state : "none"),
+            swishOpen: () => swishActive, // test hook: is the brush voice open (a stroke is sounding)?
           };
         })();
 
         // ============================================================================================
         // 4. STAGE — one princess element that is MOVED between hosts; CSS camera zooms to the face
         // ============================================================================================
+        /** A --sp-* colour as a literal (an SVG picture or a canvas sprite cannot read the page's custom properties). */
+        const spColor = (name) =>
+          getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+        const INK_DEEP = spColor("--sp-ink-deep"); // the natural lash colour
+        const GOLD = spColor("--sp-gold");
         const stage = $("stage");
         const inner = $("stageInner");
         const app = $("app");
         let stageHost = null;
         const cam = { zoom: 1, fx: 200, fy: 300 };
-        const TABLET_MIN = 700; // a host at least this wide AND tall is a tablet's: the face steps zoom in a little more
+        const TABLET_MIN_PX = 640; // a host at least this wide AND tall is a tablet's: the face steps zoom in a little more
+        const TABLET_ZOOM_BOOST = 1.25; // ... by this factor (AC-22.5; the spec reads the same number)
+        const PHONE_LANDSCAPE_BOOST = 1.3; // wide, short hosts (landscape phones) zoom the face steps by this instead
 
-        /** Fit the 400x600 art into the host (contain), bottom-aligned, then apply the camera transform. */
         /** Layout rects are read at most once per animation frame: every reader shares the snapshot, so a style write
          *  (tool cursor, iris, nudge) is never followed by a forced synchronous layout. `loop` clears it each frame;
          *  resize / camera moves clear it too. Sub-pixel staleness (the breathing sway) is invisible. */
@@ -3851,6 +3916,7 @@
           return r;
         }
         const clearRects = () => rectCache.clear();
+        /** Fit the 400x600 art into the host (contain), bottom-aligned, then apply the camera transform. */
         function layoutStage(animate) {
           clearRects(); // the stage is about to move: no reader may keep the old rects
           if (!stageHost) return;
@@ -3866,10 +3932,11 @@
           // A host taller than the art would leave a gap above the hair: zoom in a little to use it.
           const zFit = stageHost.dataset.fit === "contain" ? 1 : clamp(hh / sh, 1, 1.12);
           // Wide, short hosts (landscape phones) zoom the face steps a little more: the art is height-limited there.
-          const wideBoost = hw > hh * 1.15 && cam.zoom > 1.05 ? 1.3 : 1;
+          const wideBoost = hw > hh * 1.15 && cam.zoom > 1.05 ? PHONE_LANDSCAPE_BOOST : 1;
           // Tablets have the pixels to show the features bigger (the eyes and lips are the finger's targets); never stacked
           // with the landscape-phone boost.
-          const tabletBoost = Math.min(hw, hh) >= TABLET_MIN && cam.zoom > 1.05 ? 1.25 : 1;
+          const tabletBoost =
+            Math.min(hw, hh) >= TABLET_MIN_PX && cam.zoom > 1.05 ? TABLET_ZOOM_BOOST : 1;
           const z = zFit * cam.zoom * Math.max(wideBoost, tabletBoost);
           const focusY = hh * 0.5 + (stageHost.id === "playHost" ? 8 : 0);
           let hostLeft = hw / 2 - z * cam.fx * s0;
@@ -3919,7 +3986,14 @@
           const r = rectOf(app);
           return { x: cx - r.left, y: cy - r.top };
         }
-        const unitsPerPx = () => W / rectOf(inner).width;
+        /** Client position of art point (x, y) WITHOUT the breathing / bounce animation of #stageInner: the place the face rests
+         *  at. Everything that idles (the resting tool, the nudge ring, the iris) reads this, so the 1-2 px of breathing never
+         *  makes them rewrite a style every frame (ACC-9). Painting still uses the animated rect (toUnits / toClient). */
+        function toClientStill(x, y) {
+          const r = rectOf(stage);
+          return { x: r.left + (x / W) * r.width, y: r.top + (y / H) * r.height };
+        }
+        const unitsPerPx = () => W / rectOf(stage).width;
 
         // ============================================================================================
         // 5. REGIONS — coverage grids + bbox-sized paint canvases (rub-to-apply engine)
@@ -4550,11 +4624,13 @@
           while (stickerList.length > MAX_STICKERS) dropSticker(stickerList[0]);
           return st;
         }
+        /** Remove a placed sticker from the face and from the list. */
         function dropSticker(st) {
           st.g.remove();
           const i = stickerList.indexOf(st);
           if (i >= 0) stickerList.splice(i, 1);
         }
+        /** Move a placed sticker to (x, y) in art units, keeping its tilt and size. */
         function moveSticker(st, x, y) {
           st.x = x;
           st.y = y;
@@ -4571,7 +4647,7 @@
           updateLashes(0);
           setSmudges(1);
           applyIris(null);
-          setLashColor("#1d1432");
+          setLashColor(INK_DEEP);
           setLidTint(null);
           applyAcc("tiara", "none");
           applyAcc("earring", "none");
@@ -4647,7 +4723,7 @@
         /** The princess as the page shows her right now, over the viewBox "x y w h" (the page's CSS is not available to an
          *  image, so the lash colour is written out). Synchronous: the caller may change the look straight afterwards. */
         function stageSvgUrl(viewBox) {
-          const lash = eyesLayer.style.getPropertyValue("--lash") || "#1d1432";
+          const lash = eyesLayer.style.getPropertyValue("--lash") || INK_DEEP;
           const body = Array.from(inner.children, snapLayer).join("");
           const svg =
             '<svg xmlns="http://www.w3.org/2000/svg" viewBox="' +
@@ -4659,11 +4735,13 @@
             "</svg>";
           return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
         }
-        /** Draw an SVG data URL into a canvas (resolves when painted; a failed decode leaves the canvas empty). */
-        function paintSvgUrl(canvas, url) {
+        /** Draw an SVG data URL into a canvas. Resolves true when painted; a failed decode, or `stillWanted()` turning false
+         *  while the image decodes (the sheet moved on), leaves the canvas as it was and resolves false. */
+        function paintSvgUrl(canvas, url, stillWanted = () => true) {
           return new Promise((resolve) => {
             const img = new Image();
             img.onload = () => {
+              if (!stillWanted()) return resolve(false);
               canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
               resolve(true);
             };
@@ -5423,6 +5501,7 @@
           const pct = Math.round(clamp(done ? 1 : rub ? stepProgress(i) / DONE_AT : 0, 0, 1) * 100);
           return { pct, done, label: "Step progress " + pct + " percent" };
         }
+        /** Paint the heart meter from a meterOf() result: its fill height, the full state, the tick and the spoken name. */
         function drawMeter(m) {
           const ring = $("ring");
           $("heartFill").setAttribute("y", (44 - 38 * (m.pct / 100)).toFixed(1));
@@ -5443,7 +5522,7 @@
               popPool[i] = document.createElement("i");
               popPool[i].className = "twk";
               popPool[i].setAttribute("aria-hidden", "true");
-              popPool[i].style.backgroundImage = "url(" + starSprite("#ffd23f").toDataURL() + ")";
+              popPool[i].style.backgroundImage = "url(" + starSprite(GOLD).toDataURL() + ")";
               fxCv.after(popPool[i]);
             }
             const el = popPool[i];
@@ -5880,9 +5959,9 @@
             if (stepDef.id === "shadow") setLidTint(null);
           }
           if (stepDef.id === "cleanse") setSmudges(1);
+          if (stepDef.id in run.applied) run.applied[stepDef.id] = null; // a Redo'd step is not part of the saved look
           if (stepDef.id === "lens") {
             run.sel.lens = null;
-            run.applied.lens = null;
             applyIris(null);
           }
           if (stepDef.id === "acc") {
@@ -5924,16 +6003,20 @@
             starCoins: stars * STAR_COINS,
           };
         }
-        /** What this makeover looked like, as option ids (never pictures): the painted colours, what is worn, the stickers. */
+        /** What this makeover looked like, as option ids (never pictures): the finished colours, what is worn, the stickers.
+         *  A painted or picked slot is remembered only when its step is DONE: a Redo'd, skipped or half-painted step is not
+         *  part of the look (ACC-1), while worn pieces are read from the selection (a worn piece always completes its step). */
         function recipeOf() {
           const r = {};
           for (const slot of RECIPE_SLOTS) {
-            const id = slot in run.applied ? run.applied[slot] : run.sel[slot];
+            const id = slot in run.applied ? finishedChoice(slot) : run.sel[slot];
             if (id) r[slot] = id;
           }
           r.stickers = stickerList.map((st) => [st.id, Math.round(st.x), Math.round(st.y)]);
           return r;
         }
+        /** The colour / lens id applied to a painted or picked slot, or null when that step was not finished. */
+        const finishedChoice = (slot) => (run.done[STEP_IDX[slot]] ? run.applied[slot] : null);
         function finishMakeover() {
           Save.sync();
           const res = computeResult();
@@ -6089,9 +6172,16 @@
         }
 
         // ---- My Album: the saved looks, drawn here and now from their recipes (nothing is stored but option ids) ----
-        const ALBUM_VIEW = "0 0 400 600";
-        const albumState = { token: 0 };
+        const ALBUM_VIEW = "0 0 400 600"; // the whole 400 x 600 art
+        const ALBUM_TILE_PX = { w: 300, h: 450 }; // one polaroid picture's backing store (2:3, like the art)
+        const albumState = {
+          token: 0, // bumped whenever painting must stop (big view, back, close): a stale painter checks it before it draws
+          tiles: [], // { look, li, cv, painted } of the grid that is built now
+          pictures: new Map(), // look content -> its picture URL; kept until the saved looks change
+          renders: 0, // pictures generated so far (debug hook: a cached look is never generated again)
+        };
         const albumLooks = () => Save.data.looks.filter((l) => l.recipe);
+        /** Show how many looks are saved on the album button (a gold count and its accessible name). */
         function updateAlbumBtn() {
           const n = albumLooks().length;
           $("albumCount").hidden = n === 0;
@@ -6106,6 +6196,9 @@
           const r = lookRequest(look);
           return (r ? r.look + " for " + r.client : "A look") + ", " + look.stars + " of 3 stars";
         };
+        /** What a look's picture depends on: its recipe (cleanRecipe writes the keys in a fixed order, so equal looks match). */
+        const lookKey = (look) => JSON.stringify(look.recipe);
+        /** The three small stars under a polaroid: n lit, the rest outlined (decoration; the look's name carries the count). */
         function miniStars(n) {
           const wrap = htmlEl("span", { class: "mini-stars", "aria-hidden": "true" });
           for (let i = 0; i < 3; i++)
@@ -6118,9 +6211,13 @@
             );
           return wrap;
         }
-        /** One polaroid: an empty canvas now (the picture is painted into it a moment later) and the stars. */
+        /** One polaroid: an empty frame now (its picture is painted into the canvas a moment later) and the stars. */
         function albumTile(look) {
-          const cv = htmlEl("canvas", { width: "300", height: "450", "aria-hidden": "true" });
+          const cv = htmlEl("canvas", {
+            width: String(ALBUM_TILE_PX.w),
+            height: String(ALBUM_TILE_PX.h),
+            "aria-hidden": "true",
+          });
           const btn = htmlEl(
             "button",
             { type: "button", class: "polaroid", "aria-label": lookName(look) },
@@ -6128,43 +6225,62 @@
             miniStars(look.stars),
           );
           btn.addEventListener("click", () => openAlbumBig(look));
-          return { li: htmlEl("li", {}, btn), cv };
+          return { look, li: htmlEl("li", {}, btn), cv, painted: false };
         }
-        /** Each look's picture URL, made by wearing its recipe on the live (hidden) princess; her own look is restored after. */
-        function albumPictures(looks) {
-          const urls = looks.map((look) => {
+        /** A look's picture URL: the cached one, or made by wearing its recipe on the live (hidden) princess. It is all one
+         *  synchronous task, so her own look is back before the next frame can draw (nothing flickers behind the sheet). */
+        function albumPicture(look) {
+          const key = lookKey(look);
+          let url = albumState.pictures.get(key);
+          if (!url) {
+            // TRUST_BOUNDARY(recipe sanitised by cleanRecipe): the saved recipe was copied from allow-listed ids when the
+            // save was read; applyRecipe only ever looks its ids up in CATALOG and the picture is a local data: SVG
             applyRecipe(look.recipe);
-            return stageSvgUrl(ALBUM_VIEW);
-          });
-          demoLook();
-          return urls;
+            url = stageSvgUrl(ALBUM_VIEW);
+            demoLook();
+            albumState.pictures.set(key, url);
+            albumState.renders++;
+          }
+          return url;
+        }
+        /** Forget the pictures of looks that are no longer saved (a new look pushed an old one out, or another tab saved). */
+        function pruneAlbumPictures(looks) {
+          const keep = new Set(looks.map(lookKey));
+          for (const key of albumState.pictures.keys())
+            if (!keep.has(key)) albumState.pictures.delete(key);
         }
         const nextFrame = () => new Promise((resolve) => requestAnimationFrame(resolve));
-        async function paintAlbum(canvases, urls, token) {
-          for (let i = 0; i < urls.length; i++) {
+        /** Fill the empty frames one look per animation frame (skipping painted ones) until the token changes. */
+        async function paintAlbum(token) {
+          for (const tile of albumState.tiles) {
+            if (tile.painted) continue;
+            await nextFrame(); // the frames are on screen first; one picture per frame keeps the sheet responsive
             if (albumState.token !== token) return;
-            await paintSvgUrl(canvases[i], urls[i]);
-            await nextFrame(); // one picture per frame: the sheet stays responsive
+            const url = albumPicture(tile.look);
+            tile.painted = await paintSvgUrl(tile.cv, url, () => albumState.token === token);
+            if (albumState.token !== token) return;
           }
         }
+        /** Show the grid of polaroids (and hide the big picture and its All looks button). */
         function showAlbumGrid() {
           $("albumGrid").hidden = false;
           $("albumView").hidden = true;
           $("albumBack").hidden = true;
         }
-        /** Lay out one empty polaroid per look, then paint the pictures into them one at a time. */
+        const clearAlbumBig = () => {
+          const cv = $("albumBigCv");
+          cv.getContext("2d").clearRect(0, 0, cv.width, cv.height);
+        };
+        /** Lay out one empty polaroid per look at once, then paint the pictures into them one frame at a time. */
         function buildAlbum() {
           const looks = albumLooks();
-          const tiles = looks.map(albumTile);
-          $("albumGrid").replaceChildren(...tiles.map((t) => t.li));
+          pruneAlbumPictures(looks);
+          albumState.tiles = looks.map(albumTile);
+          $("albumGrid").replaceChildren(...albumState.tiles.map((t) => t.li));
           $("albumEmpty").hidden = looks.length > 0;
-          const token = ++albumState.token;
-          paintAlbum(
-            tiles.map((t) => t.cv),
-            albumPictures(looks),
-            token,
-          );
+          paintAlbum(++albumState.token);
         }
+        /** Open My Album from the title: the frames appear at once, the pictures follow one per frame. */
         function openAlbum() {
           if (state.phase !== "title") return;
           Sfx.unlock();
@@ -6174,28 +6290,34 @@
           buildAlbum();
         }
         async function openAlbumBig(look) {
-          albumState.token++; // the small pictures stop painting
-          const cv = $("albumBigCv");
-          cv.getContext("2d").clearRect(0, 0, cv.width, cv.height);
+          const token = ++albumState.token; // the small pictures stop painting
+          clearAlbumBig();
           $("albumBigCap").textContent = lookName(look);
           $("albumGrid").hidden = true;
           $("albumView").hidden = false;
           $("albumBack").hidden = false;
           $("albumBack").focus();
-          const [url] = albumPictures([look]);
-          if (await paintSvgUrl(cv, url)) announce("Showing " + lookName(look));
+          const painted = await paintSvgUrl(
+            $("albumBigCv"),
+            albumPicture(look),
+            () => albumState.token === token, // back / close meanwhile: nothing is drawn any more
+          );
+          if (painted) announce("Showing " + lookName(look));
         }
+        /** Back to the grid it came from: nothing is rebuilt, and only frames still empty get their picture. */
         function albumBack() {
-          $("albumBigCv").getContext("2d").clearRect(0, 0, 480, 720);
+          clearAlbumBig();
           showAlbumGrid();
-          buildAlbum();
+          paintAlbum(++albumState.token);
           const first = $("albumGrid").querySelector("button");
           (first || $("albumClose")).focus();
         }
+        /** Close My Album and drop the pictures on screen (only the cached URLs stay, until the saved looks change). */
         function closeAlbum() {
           albumState.token++;
-          $("albumGrid").replaceChildren(); // the pictures are not kept: they are drawn again next time
-          $("albumBigCv").getContext("2d").clearRect(0, 0, 480, 720);
+          albumState.tiles = [];
+          $("albumGrid").replaceChildren(); // the pictures on screen are not kept (the cache holds only their URLs)
+          clearAlbumBig();
           closeModal("albumModal");
         }
 
@@ -6254,7 +6376,7 @@
             let dx = 0;
             let dy = 0;
             if (tgt) {
-              const c = toClient(EYE_CENTER[side].x, EYE_CENTER[side].y);
+              const c = toClientStill(EYE_CENTER[side].x, EYE_CENTER[side].y);
               const vx = tgt.cx - c.x;
               const vy = tgt.cy - c.y;
               const len = Math.hypot(vx, vy) || 1;
@@ -6366,7 +6488,7 @@
         }
         let nudgeCss = "";
         function placeNudge() {
-          const at = toClient(nudgeAt.x, nudgeAt.y);
+          const at = toClientStill(nudgeAt.x, nudgeAt.y);
           const c = toApp(at.x, at.y);
           const d = clamp((2 * nudgeAt.r) / unitsPerPx(), 64, 140);
           const css =
@@ -6451,13 +6573,16 @@
           (p[1] + dy).toFixed(1) +
           "px,0)" +
           (k ? " scale(" + k + ")" : "");
+        /** Queue the pointing-hand demo for the current step after the camera has settled (never twice for one step). */
         function scheduleDemo() {
           clearTimeout(demo.timer);
           if (!run || state.phase !== "playing" || demo.seen.has(STEPS[state.step].id)) return;
           demo.timer = setTimeout(runDemo, DEMO_DELAY);
         }
+        /** Stop the demo at once (or cancel it before it starts): its animations, its hand and its ripple go away. */
         function cancelDemo() {
           clearTimeout(demo.timer);
+          demo.timer = 0;
           if (!demo.active) return;
           clearTimeout(demo.end);
           demo.active = false;
@@ -6490,6 +6615,7 @@
           r.right <= box.right + 1 &&
           r.top >= box.top - 1 &&
           r.bottom <= box.bottom + 1;
+        /** Start the demo for the current step if the player is still idle, using the plan from demoPlan. */
         function runDemo() {
           demo.timer = 0;
           const stepDef = STEPS[state.step];
@@ -6503,6 +6629,7 @@
           else if (plan.zig) playZig(plan.zig);
           else playTap(plan.tap);
         }
+        /** Reduced motion: a still hand (and arrow) at the first point of the plan for two seconds. */
         function showStillHand(plan) {
           const p = plan.tap || plan.zig[0];
           demoHand.style.transform = at(p, 0);
@@ -6527,6 +6654,7 @@
           keys.push({ transform: at(pts[n - 1], dy), opacity: fade ? 0 : 1, offset: 1 });
           return keys;
         }
+        /** Animate the hand and the real tool in a zig-zag over the points, with a dotted trail (about 2.8 s). */
         function playZig(pts) {
           const lift = touchLift(); // the fingertip sits below the tool tip, as on a real touch
           const home =
@@ -6557,6 +6685,7 @@
             ),
           ];
         }
+        /** Animate the hand tapping a point twice, each tap with a ripple (about 2.2 s). */
         function playTap(pt) {
           const D = 2200;
           const press = [pt[0], pt[1] + 10];
@@ -6608,7 +6737,7 @@
          *  on screen above the Redo / Skip row, whatever the step's camera zoom or the phone's size. */
         function homeSpot() {
           const ext = TOOL_EXT[STEPS[state.step].tool] || [-30, -30, 30, 30];
-          const want = toClient(312, 410);
+          const want = toClientStill(312, 410);
           const wrap = rectOf($("playHost")); // the host fills .stagewrap (which is display: contents in the side-bar layout)
           const fab = rectOf(fabRow);
           const m = 12; // keeps the idle bob inside too
@@ -6637,6 +6766,7 @@
         };
         const brushKey = () => STEPS[state.step].id;
 
+        /** A press landed: paint a dab, place a sticker (or grab one), or sparkle, depending on the step's kind. */
         function beginStroke(u, cx, cy, finger) {
           const stepDef = STEPS[state.step];
           stroke.last = u;
@@ -6686,7 +6816,13 @@
           if (!stroke.batch) updateProgressUI();
           return touched;
         }
-        const inFace = (u) => u.x >= 70 && u.x <= 330 && u.y >= 80 && u.y <= 450;
+        /** Where a sticker may sit, in art units: the face and hair (a drop or a drag outside it places / moves nothing). */
+        const STICKER_BOUNDS = { x0: 70, x1: 330, y0: 80, y1: 450 };
+        const inFace = (u) =>
+          u.x >= STICKER_BOUNDS.x0 &&
+          u.x <= STICKER_BOUNDS.x1 &&
+          u.y >= STICKER_BOUNDS.y0 &&
+          u.y <= STICKER_BOUNDS.y1;
         function placeSticker(u) {
           if (!inFace(u)) return;
           const st = addSticker(run.sel.sticker, u.x, u.y);
@@ -6720,6 +6856,7 @@
           gone: false,
           timer: 0,
         };
+        /** The topmost placed sticker within reach of art point u, or null. */
         function stickerAt(u) {
           for (let i = stickerList.length - 1; i >= 0; i--) {
             const st = stickerList[i];
@@ -6727,6 +6864,7 @@
           }
           return null;
         }
+        /** A press on the sticker step: grab the sticker under the fingertip (drag / hold), else place a new one at the tip. */
         function placeOrGrab(tip, finger) {
           const at = finger ? toUnits(finger.x, finger.y) : null;
           const hit = at && stickerAt(at);
@@ -6746,6 +6884,7 @@
           clearTimeout(grab.timer);
           grab.timer = setTimeout(() => shrinkAway(hit), LONG_PRESS_MS);
         }
+        /** A long press removed this sticker: shrink it away (or drop it at once under reduced motion). */
         function shrinkAway(st) {
           if (grab.st !== st || grab.moved) return;
           grab.gone = true;
@@ -6758,6 +6897,7 @@
               fill: "forwards",
             }).onfinish = () => dropSticker(st);
         }
+        /** Move the grabbed sticker with the finger once it has travelled more than a tap's wobble. */
         function dragPlaced(e) {
           const u = toUnits(e.clientX, e.clientY);
           const dx = u.x - grab.start.x;
@@ -6765,7 +6905,11 @@
           if (!grab.moved && Math.hypot(dx, dy) < 6) return;
           grab.moved = true;
           clearTimeout(grab.timer);
-          moveSticker(grab.st, clamp(grab.x0 + dx, 70, 330), clamp(grab.y0 + dy, 80, 450));
+          moveSticker(
+            grab.st,
+            clamp(grab.x0 + dx, STICKER_BOUNDS.x0, STICKER_BOUNDS.x1),
+            clamp(grab.y0 + dy, STICKER_BOUNDS.y0, STICKER_BOUNDS.y1),
+          );
         }
         /** The finger lifted: a tap on a sticker (not a drag, not a long press) adds a new one where the tip was. */
         function finishGrab() {
@@ -6778,14 +6922,17 @@
         // ---- drag a sticker out of the tray onto the face (a ghost follows the finger; dropping off the face cancels) ----
         const drag = { id: null, opt: null, sx: 0, sy: 0, on: false, touch: false, hush: false };
         const ghostEl = $("dragGhost");
+        /** Where the drag ghost (and the drop) is for this pointer: lifted above the fingertip on touch. */
         function ghostPoint(e) {
           return { cx: e.clientX, cy: e.clientY - (drag.touch ? touchLift() : 0) };
         }
+        /** Forget the tray drag and hide its ghost. */
         function endDrag() {
           ghostEl.classList.remove("on");
           drag.id = null;
           drag.on = false;
         }
+        /** The tray drag moved: past 12 px the ghost appears and follows the pointer; the demo stops. */
         function onDragMove(e) {
           if (e.pointerId !== drag.id) return;
           if (!drag.on) {
@@ -6800,6 +6947,7 @@
           ghostEl.style.transform =
             "translate3d(" + p.x.toFixed(1) + "px," + p.y.toFixed(1) + "px,0)";
         }
+        /** The tray drag ended: on the face it selects that sticker and places it; anywhere else it changes nothing. */
         function onDragEnd(e) {
           if (e.pointerId !== drag.id) return;
           const wasDrag = drag.on;
@@ -6812,14 +6960,17 @@
           const host = rectOf(stageHost);
           const over =
             pt.cx >= host.left && pt.cx <= host.right && pt.cy >= host.top && pt.cy <= host.bottom;
-          if (!over || !canPlay()) return;
+          const drop = toUnits(pt.cx, pt.cy);
+          // off the face (on the tray, the hair, the bars): a cancelled drag, so the selection stays as it was (ACC-6)
+          if (!over || !canPlay() || !inFace(drop)) return;
           run.sel.sticker = opt.id;
           setToolColor(opt);
           previewSticker(opt.id);
-          placeSticker(toUnits(pt.cx, pt.cy));
+          placeSticker(drop);
           renderTray();
           updateProgressUI();
         }
+        /** Make a sticker tray circle draggable (pointer capture); a plain tap still selects it by click. */
         function attachStickerDrag(btn, opt) {
           btn.addEventListener("pointerdown", (e) => {
             if (!canPlay() || e.button > 0) return;
@@ -6837,11 +6988,16 @@
         }
         /** Root class `painting` pauses the ambient animations while a stroke is down; it clears 250 ms after the stroke. */
         let quietTimer = 0;
+        const QUIET_AFTER_STROKE_MS = 250; // the ambient animations resume this long after the stroke ends
+        const QUIET_SAFETY_MS = 1500; // ... or this long after the last move, if an end event never arrives
         function setStrokeQuiet(on) {
           clearTimeout(quietTimer);
           if (on && !app.classList.contains("painting")) app.classList.add("painting");
           // end of stroke: 250 ms grace; while painting: a safety net in case an end event never arrives
-          quietTimer = setTimeout(() => app.classList.remove("painting"), on ? 1500 : 250);
+          quietTimer = setTimeout(
+            () => app.classList.remove("painting"),
+            on ? QUIET_SAFETY_MS : QUIET_AFTER_STROKE_MS,
+          );
         }
         function strokeTo(u, e) {
           const stepDef = STEPS[state.step];
@@ -6957,6 +7113,12 @@
             if (e.pointerType !== "mouse") toolHome.on = true;
           }
         }
+        /** The system took the touch away (a gesture, a call): the stroke ends, and a grabbed sticker is NOT a tap (ACC-5). */
+        function onPointerCancel(e) {
+          if (!stroke.down || e.pointerId !== stroke.id) return;
+          endStroke(); // also forgets the grab and its long-press timer
+          if (e.pointerType !== "mouse") toolHome.on = true;
+        }
 
         function onStageKey(e) {
           if (!canPlay()) return;
@@ -7054,6 +7216,10 @@
         $("startBtn").addEventListener("click", startMakeover);
         $("albumBtn").addEventListener("click", openAlbum);
         $("albumClose").addEventListener("click", closeAlbum);
+        // a tap on the dim backdrop (outside the sheet) closes the album, like Close
+        $("albumModal").addEventListener("click", (e) => {
+          if (e.target === $("albumModal")) closeAlbum();
+        });
         $("albumBack").addEventListener("click", albumBack);
         $("againBtn").addEventListener("click", startMakeover);
         $("soundBtn").addEventListener("click", toggleSound);
@@ -7078,7 +7244,7 @@
         stage.addEventListener("pointerdown", onPointerDown);
         stage.addEventListener("pointermove", onPointerMove);
         stage.addEventListener("pointerup", onPointerUp);
-        stage.addEventListener("pointercancel", onPointerUp);
+        stage.addEventListener("pointercancel", onPointerCancel);
         stage.addEventListener("pointerleave", (e) => {
           if (e.pointerType === "mouse" && !stroke.down) {
             pointer.has = false;
@@ -7128,11 +7294,19 @@
         document.addEventListener("gesturestart", (e) => e.preventDefault());
         document.addEventListener("dblclick", (e) => e.preventDefault());
 
+        /** The window changed size (iPad Safari's toolbars do this while scrolling and rotating): everything re-lays out, and
+         *  a demo that was playing starts again on the new layout instead of being lost (ACC-10). Only a real press, key or sheet
+         *  cancels a demo for good. */
         function onResize() {
+          const replay = demo.active || demo.timer !== 0; // playing, or waiting for its start
           cancelDemo();
           clearRects();
           sizeFx();
           layoutStage(false);
+          if (replay) {
+            demo.seen.delete(STEPS[state.step].id);
+            scheduleDemo();
+          }
         }
         window.addEventListener("resize", onResize);
         if (window.ResizeObserver) {
@@ -7159,13 +7333,22 @@
         live("stickers", () => stickersGrp.childNodes.length);
         live("demo", () => demo.active);
         live("album", () => albumLooks().length);
+        live("albumRenders", () => albumState.renders);
         live("kbd", () => ({ x: kbd.x, y: kbd.y, held: kbd.held }));
         live("audio", () =>
-          Object.assign({ state: Sfx.ctxState(), on: Sfx.isOn(), gain: Sfx.level() }, Sfx.stats),
+          Object.assign(
+            {
+              state: Sfx.ctxState(),
+              on: Sfx.isOn(),
+              gain: Sfx.level(),
+              swishOpen: Sfx.swishOpen(),
+            },
+            Sfx.stats,
+          ),
         );
         live("saved", () => JSON.parse(JSON.stringify(Save.data)));
-        // Every helper is inert outside a live makeover EXCEPT addCoins (the probe seeds the wallet on the title screen) and
-        // camera (a pure view change): the two documented exceptions in requirements.md AC-20.
+        // Every helper is inert outside a live makeover EXCEPT addCoins (the probe seeds the wallet on the title screen),
+        // camera (a pure view change) and lookUrl (a read-only snapshot): the documented exceptions in requirements.md AC-20.
         dbg.debug = {
           completeStep: () => {
             if (state.phase === "playing") completeStep(state.step);
@@ -7182,6 +7365,9 @@
             return toClient(i >= 0 ? region.xs[i] : stepDef.fx, i >= 0 ? region.ys[i] : stepDef.fy);
           },
           unitsToClient: (x, y) => toClient(x, y),
+          clientToUnits: (x, y) => toUnits(x, y),
+          /** The live princess as a picture URL (what My Album would draw now): lets a test see that she is unchanged. */
+          lookUrl: () => stageSvgUrl(ALBUM_VIEW),
           regionCells: () => {
             const region = stepRegion();
             return region ? region.xs.map((x, i) => [x, region.ys[i]]) : [];

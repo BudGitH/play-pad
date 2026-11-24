@@ -72,6 +72,6 @@ PW_CHROMIUM_PATH=/opt/pw-browsers/chromium node features/sparkle-salon-v2/perf/s
 - [x] All tests above pass.
 - [x] Every acceptance criterion in `requirements.md` is covered.
 - [x] The tests encode the **chosen** design (option A for the art; the UX items as specified in the UX review).
-- [ ] `qa-report.md` is clean (no unresolved CRITICAL/HIGH) (QA panel is run by the orchestrator).
+- [x] `qa-report.md` is clean (no unresolved CRITICAL/HIGH) (QA panel is run by the orchestrator).
 
 > The full release checklist is the **Definition of Done** in `docs/WORKFLOW.md` (Phase 6).

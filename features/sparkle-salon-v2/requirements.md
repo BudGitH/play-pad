@@ -2,7 +2,7 @@
 
 > **Phase 1 of the workflow.** Define what "done" means _before_ writing code.
 
-**Status:** IN PROGRESS
+**Status:** SHIPPED (QA clean: `qa-report.md`; product gate PASS: `product-validation.md`)
 **Owner:** @BudGitH
 **Ticket:** PLAY-008 (follow-up: owner feedback round 2)
 **Created:** 2026-11-24

@@ -3193,9 +3193,12 @@
             m.restore();
           }
           clipMaskToFace(region, m);
-          region.tmp = document.createElement("canvas");
-          region.tmp.width = 320;
-          region.tmp.height = 320;
+          // Dabs go UNMASKED into `raw` (this frame's paint only); flushPaint masks them once per frame via `scratch`.
+          region.raw = document.createElement("canvas");
+          region.raw.width = region.cv.width;
+          region.raw.height = region.cv.height;
+          region.rawCtx = region.raw.getContext("2d");
+          region.dirty = null;
           region.scratch = document.createElement("canvas");
           region.scratch.width = region.cv.width;
           region.scratch.height = region.cv.height;
@@ -3218,6 +3221,9 @@
             bh: y1 - y0,
             cv: null,
             ctx: null,
+            raw: null,
+            rawCtx: null,
+            dirty: null, // pending box {x0,y0,x1,y1} of `raw` not yet composited onto `cv`
             mask: null,
             color: null,
             applied: null,
@@ -3243,7 +3249,8 @@
           return m;
         }
 
-        /** Soft radial dab of colour, masked to the region; returns how many cells the dab touched. */
+        /** Soft radial dab of colour: drawn straight into the unmasked buffer and added to the dirty box.
+         *  The mask is applied once per frame by flushPaint (this used to cost 4 canvas ops per dab). */
         function stampPaint(region, x, y, r, color, alpha) {
           const S = PAINT_SCALE;
           const px = (x - region.bx) * S;
@@ -3253,21 +3260,44 @@
           const y0 = Math.max(0, Math.floor(py - pr));
           const x1 = Math.min(region.cv.width, Math.ceil(px + pr));
           const y1 = Math.min(region.cv.height, Math.ceil(py + pr));
-          const w = x1 - x0;
-          const hh = y1 - y0;
-          if (w <= 0 || hh <= 0 || w > 320 || hh > 320) return;
-          const t = region.tmp.getContext("2d");
-          t.globalCompositeOperation = "source-over";
-          t.clearRect(0, 0, 320, 320);
-          const g = t.createRadialGradient(px - x0, py - y0, 0, px - x0, py - y0, pr);
+          if (x1 <= x0 || y1 <= y0) return;
+          const t = region.rawCtx;
+          const g = t.createRadialGradient(px, py, 0, px, py, pr);
           g.addColorStop(0, rgba(color, alpha));
           g.addColorStop(0.55, rgba(color, alpha * 0.6));
           g.addColorStop(1, rgba(color, 0));
           t.fillStyle = g;
-          t.fillRect(0, 0, w, hh);
-          t.globalCompositeOperation = "destination-in";
-          t.drawImage(region.mask, x0, y0, w, hh, 0, 0, w, hh);
-          region.ctx.drawImage(region.tmp, 0, 0, w, hh, x0, y0, w, hh);
+          t.fillRect(x0, y0, x1 - x0, y1 - y0);
+          const d = region.dirty;
+          if (!d) region.dirty = { x0, y0, x1, y1 };
+          else {
+            d.x0 = Math.min(d.x0, x0);
+            d.y0 = Math.min(d.y0, y0);
+            d.x1 = Math.max(d.x1, x1);
+            d.y1 = Math.max(d.y1, y1);
+          }
+        }
+        /** This frame's dabs x the soft mask, added to the visible canvas: ONE composite for the dirty box (the old code
+         *  did four canvas ops per dab). Frame-sized batches keep the look: paint still builds up across frames, so the
+         *  soft mask edge saturates as it always did. Must run before anything else touches `ctx` (fill / recolor / clear). */
+        function flushPaint(region) {
+          const d = region.dirty;
+          if (!d) return;
+          region.dirty = null;
+          const w = d.x1 - d.x0;
+          const h = d.y1 - d.y0;
+          const sc = region.scratch.getContext("2d");
+          sc.globalCompositeOperation = "source-over";
+          sc.clearRect(d.x0, d.y0, w, h);
+          sc.drawImage(region.raw, d.x0, d.y0, w, h, d.x0, d.y0, w, h);
+          sc.globalCompositeOperation = "destination-in"; // unbounded, but scratch is only read inside the box
+          sc.drawImage(region.mask, d.x0, d.y0, w, h, d.x0, d.y0, w, h);
+          sc.globalCompositeOperation = "source-over";
+          region.ctx.drawImage(region.scratch, d.x0, d.y0, w, h, d.x0, d.y0, w, h);
+          region.rawCtx.clearRect(d.x0, d.y0, w, h);
+        }
+        function flushAllPaint() {
+          for (const k in REGIONS) if (REGIONS[k].dirty) flushPaint(REGIONS[k]);
         }
 
         /** One brush stamp: raises coverage of nearby cells and (if the region has a canvas) paints. */
@@ -3300,6 +3330,7 @@
         /** Even out the whole region with a translucent tinted copy of its mask (completion + demo look). */
         function fillRegion(region, color, alpha) {
           if (!region.ctx) return;
+          flushPaint(region);
           const sc = region.scratch.getContext("2d");
           sc.globalCompositeOperation = "source-over";
           sc.clearRect(0, 0, region.scratch.width, region.scratch.height);
@@ -3313,6 +3344,7 @@
             sc.fillStyle = gr;
           } else sc.fillStyle = color;
           sc.fillRect(0, 0, region.scratch.width, region.scratch.height);
+          sc.globalCompositeOperation = "source-over";
           region.ctx.globalAlpha = alpha;
           region.ctx.drawImage(region.scratch, 0, 0);
           region.ctx.globalAlpha = 1;
@@ -3320,6 +3352,7 @@
         /** Swap the colour of paint already on the canvas, keeping its coverage and softness. */
         function recolorRegion(region, color) {
           if (!region.ctx) return;
+          flushPaint(region);
           region.ctx.save();
           region.ctx.globalCompositeOperation = "source-in";
           region.ctx.fillStyle = color;
@@ -3327,7 +3360,11 @@
           region.ctx.restore();
         }
         function clearRegion(region) {
-          if (region.ctx) region.ctx.clearRect(0, 0, region.cv.width, region.cv.height);
+          if (region.ctx) {
+            region.rawCtx.clearRect(0, 0, region.raw.width, region.raw.height);
+            region.ctx.clearRect(0, 0, region.cv.width, region.cv.height);
+            region.dirty = null;
+          }
           region.vs.fill(0);
           region.sum = 0;
           region.done = false;
@@ -5350,6 +5387,7 @@
             hadParts = parts.length > 0;
             if (!hadParts) setFxShown(false); // the final draw cleared the canvas
           }
+          flushAllPaint(); // one masked composite per painted region per frame
           Sfx.tick();
         }
 

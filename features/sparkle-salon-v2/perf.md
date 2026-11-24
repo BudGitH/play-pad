@@ -5,11 +5,15 @@
 
 ## How it was measured
 
-- Harness: the profiler's `measure.mjs` (kept in the session scratchpad, not in the repo). 4x CPU throttle, synthetic touch
-  strokes at 120 Hz, Chromium 1243, profiles iPad 1024x1366 @2x, iPad landscape 1366x1024 @2x, phone 390x844 @3x.
+- Harness: [`perf/measure.mjs`](perf/measure.mjs) (committed; it started life as the profiler's script). 4x CPU throttle,
+  synthetic touch strokes at 120 Hz, Chromium 1243, profiles iPad 1024x1366 @2x, iPad landscape 1366x1024 @2x, phone 390x844 @3x.
+  The calm-sound table comes from [`perf/sound.mjs`](perf/sound.mjs).
 - **Before** = HEAD `76ec1b0` (the art redraw `0769e74` is already in). **After** = this branch.
-- Raw results (`before.json`, `after.json`) are not committed; the tables below are generated from them. Re-run with
-  `node measure.mjs --cpu 4` against `node tools/serve.mjs 5611`.
+- Raw results (the JSON) are not committed; the tables below are generated from them. Re-run with
+  `PW_CHROMIUM_PATH=<chromium> node features/sparkle-salon-v2/perf/measure.mjs --cpu 4` (it starts `tools/serve.mjs` itself;
+  `--page index.old.html` measures an older copy of the page, which is how a "before" and an "after" are paired in one session).
+  The first tables below (before = `76ec1b0`) were measured with the profiler's original script; the committed one is that
+  script plus a server start, a port / page option and no hard-coded browser path; the measuring code is unchanged.
 
 ## What changed (in the order it was done)
 
@@ -114,11 +118,12 @@ with the same harness and the same throttle (4x CPU, 120 Hz synthetic touch stro
   - The demo hand animates the real tool and the hand with WAAPI transforms for about 2.8 s, once per step per session, and never
     runs at idle. Nothing runs per frame; the idle nudge check only reads one boolean.
   - The coin count-up is 20 timers over 800 ms; the album draws one picture per animation frame, only while the sheet is open,
-    into plain canvases that are dropped when it closes. Nothing in the album animates.
+    into plain canvases that are dropped when it closes. Nothing in the album animates. (The QA round, below, made the album lazy.)
   - The 25 / 50 / 75 % milestone does **not** use the particle canvas: three pooled `.twk` elements animate with WAAPI. (A first
     version used `sparkleUnits`; it kept the big `#fx` layer on screen for the whole stroke and cost 8-14 % of the iPad stroke
     frame rate.)
-  - No SVG or CSS `filter`, no `backdrop-filter`, no new blurred shadow on a large element. `#fx` is still `visibility: hidden`
+  - No `<filter>` element anywhere and no `backdrop-filter`; the only CSS `filter`s are two small `drop-shadow`s on the demo hand
+    (72-104 px) and the drag ghost, both `display: none` unless showing. No new blurred shadow on a large element. `#fx` is still `visibility: hidden`
     when empty; the batched paint flush is untouched.
 - **The wider iPad column means more pixels** (landscape stage 603x905 -> 683x1024 px, and the tablet camera boost zooms the face
   steps 1.25x more). The one thing that grew with it was the particle layer, which is sized to the app column: 1100 x 1024 at 2x
@@ -176,6 +181,86 @@ Stage 437x655 -> 437x655 px; canvas backing stores 2.43 -> 2.78 Mpx.
 
 Largest drops in the final pairs: iPad landscape step transition -20 %; everything else -3 % or better.
 
+## After the QA fixes: "after QA" rows
+
+The QA round changed the page in four places that touch the hot paths: the album is lazy and cached, the idle tool / nudge ring
+read the un-animated face (`toClientStill`), a cancelled touch ends the stroke without placing, and a hidden tab silences the
+brush voice. Tablet breakpoints and the album's sticky button bar are CSS only. Measured with the committed harness, 4x CPU,
+120 Hz synthetic strokes, **back to back in one session**: "before QA" is the page at HEAD `6f8f7f1` (the end of the UX round),
+"after QA" is this branch. Single-row noise is about +/- 10 % on iPad portrait (see the repeat below).
+
+**iPad 1024x1366 @2x**
+
+| Scenario                 | fps before QA | fps after QA | change | p95 gap ms   | max gap ms   | main busy %  | script ms  | long tasks |
+| ------------------------ | ------------- | ------------ | ------ | ------------ | ------------ | ------------ | ---------- | ---------- |
+| title idle 5s            | 56            | **50.7**     | -9 %   | 33.3 -> 33.3 | 49.9 -> 33.4 | 27.2 -> 27.1 | 46 -> 42   | 0 -> 0     |
+| play idle 5s             | 44            | **37.2**     | -15 %  | 33.4 -> 33.4 | 50.1 -> 50.1 | 22 -> 17.4   | 98 -> 88   | 0 -> 0     |
+| cleanse sponge stroke 3s | 30.7          | **30.1**     | -2 %   | 50 -> 50.1   | 50 -> 66.6   | 61.7 -> 64.7 | 182 -> 202 | 0 -> 0     |
+| shadow idle 3s           | 32.6          | **30.9**     | -5 %   | 50 -> 50     | 66.7 -> 50.1 | 25.1 -> 20.9 | 62 -> 70   | 0 -> 0     |
+| shadow stroke 3s         | 43.4          | **41.8**     | -4 %   | 50 -> 50     | 66.6 -> 50.1 | 61.6 -> 59.5 | 546 -> 530 | 0 -> 0     |
+| blush stroke 3s          | 41.2          | **44.5**     | +8 %   | 50.1 -> 50   | 83.3 -> 83.4 | 59.3 -> 59.6 | 445 -> 429 | 0 -> 0     |
+| step transition          | 38.2          | **34.9**     | -9 %   | 33.4 -> 50   | 50.1 -> 83.4 | 69.9 -> 74.3 | 86 -> 109  | 0 -> 1     |
+
+Stage 803x1205 -> 803x1205 px; canvas backing stores 4.47 -> 4.47 Mpx.
+
+**iPad landscape 1366x1024 @2x**
+
+| Scenario                 | fps before QA | fps after QA | change | p95 gap ms   | max gap ms   | main busy %  | script ms  | long tasks |
+| ------------------------ | ------------- | ------------ | ------ | ------------ | ------------ | ------------ | ---------- | ---------- |
+| title idle 5s            | 59.9          | **59.7**     | -0 %   | 16.8 -> 16.8 | 16.8 -> 16.8 | 30.6 -> 26   | 46 -> 37   | 0 -> 0     |
+| play idle 5s             | 58.9          | **59.7**     | +1 %   | 16.8 -> 16.8 | 33.4 -> 33.3 | 27.9 -> 23   | 124 -> 109 | 0 -> 0     |
+| cleanse sponge stroke 3s | 43.7          | **49.1**     | +12 %  | 33.4 -> 33.4 | 66.6 -> 33.4 | 87.8 -> 83.8 | 221 -> 192 | 1 -> 0     |
+| shadow idle 3s           | 50.6          | **58.3**     | +15 %  | 33.3 -> 16.8 | 50.1 -> 33.4 | 31.3 -> 24.9 | 71 -> 47   | 0 -> 0     |
+| shadow stroke 3s         | 46.7          | **51.3**     | +10 %  | 33.4 -> 33.4 | 66.6 -> 49.9 | 69.9 -> 71   | 583 -> 549 | 0 -> 0     |
+| blush stroke 3s          | 49.5          | **46.8**     | -5 %   | 33.4 -> 49.9 | 50.1 -> 50.1 | 56.4 -> 65.8 | 403 -> 470 | 0 -> 0     |
+| step transition          | 36.2          | **46.3**     | +28 %  | 50.1 -> 33.4 | 66.7 -> 66.7 | 78 -> 76.8   | 107 -> 84  | 3 -> 1     |
+
+Stage 683x1024 -> 683x1024 px; canvas backing stores 4.45 -> 4.46 Mpx.
+
+**Phone 390x844 @3x**
+
+| Scenario                 | fps before QA | fps after QA | change | p95 gap ms   | max gap ms   | main busy %  | script ms  | long tasks |
+| ------------------------ | ------------- | ------------ | ------ | ------------ | ------------ | ------------ | ---------- | ---------- |
+| title idle 5s            | 59.9          | **60**       | +0 %   | 16.7 -> 16.7 | 16.8 -> 16.8 | 32.2 -> 27.5 | 46 -> 43   | 0 -> 0     |
+| play idle 5s             | 59.3          | **59.8**     | +1 %   | 16.8 -> 16.7 | 50 -> 16.8   | 26.7 -> 23   | 117 -> 111 | 0 -> 0     |
+| cleanse sponge stroke 3s | 57.6          | **58.9**     | +2 %   | 16.8 -> 16.8 | 33.3 -> 33.3 | 79 -> 73.7   | 207 -> 206 | 0 -> 0     |
+| shadow idle 3s           | 59.8          | **59.5**     | -1 %   | 16.7 -> 16.8 | 16.8 -> 33.3 | 23.9 -> 21.4 | 62 -> 49   | 0 -> 0     |
+| shadow stroke 3s         | 59.1          | **57**       | -4 %   | 16.7 -> 16.8 | 33.3 -> 50   | 70.8 -> 72.4 | 623 -> 633 | 0 -> 0     |
+| blush stroke 3s          | 53.7          | **57.3**     | +7 %   | 33.3 -> 16.8 | 50 -> 33.4   | 65.6 -> 61.5 | 462 -> 444 | 0 -> 0     |
+| step transition          | 57.2          | **56.4**     | -1 %   | 33.2 -> 33.3 | 33.4 -> 33.4 | 72.3 -> 76.1 | 110 -> 116 | 0 -> 0     |
+
+Stage 437x655 -> 437x655 px; canvas backing stores 2.78 -> 2.78 Mpx.
+
+- **Flagged on the first run (more than 10 % worse): iPad portrait "play idle" (-15 %) and, just under, "title idle" and "step
+  transition" (-9 %).** Script time and main-thread busy % were _lower_ on those rows, which points at the compositor (software
+  GL) rather than at the page, so the three rows were measured again, interleaved (before, after, before, after) on the same
+  profile: title idle 51.3 / 52.1 before vs 53.2 / 48.5 after, play idle 39.7 / 36.4 vs 41.2 / 33.1, step transition 24.5 / 23.8
+  vs 26.0 / 23.5 (fps). The means are within 3 % of each other (-1.5 %, -2.4 %, +2 %) and the order flips between pairs, so the
+  first-run difference is noise. No scenario is slower beyond the noise; iPad landscape and phone are level or better
+  (landscape step transition +28 % here, but that row swung from 55 to 44 fps between sessions in the UX round, so read it as noise too).
+- **Idle writes (ACC-9).** A `MutationObserver` on `#tool`, `#toolRing` and `#nudge` over 3 s of idle play (phone, touch):
+  cleanse step, tool resting: 26 + 26 style writes before, **0 + 0** after; shadow step with the nudge ring showing: 44 writes to
+  `#nudge` before, **0** after. The cause was the 1-2 px breathing animation moving the rect the home spot was computed from.
+  The spec (`performance guards`) keeps this at zero on both steps.
+- **My Album with 12 looks** ([`perf/album.mjs`](perf/album.mjs), phone profile, medians of three opens; "before" is the page at
+  `6f8f7f1`, which made every picture inside the click handler):
+
+| Measure                                | before, CPU x1 | after, CPU x1 | before, CPU x4 | after, CPU x4 |
+| -------------------------------------- | -------------- | ------------- | -------------- | ------------- |
+| Album button click handler (the tap)   | 129 ms         | **1.3 ms**    | 579 ms         | **9 ms**      |
+| ... the very first open of the page    | 198 ms         | 40 ms         | 535 ms         | 33 ms         |
+| "All looks" click handler (back)       | 98 ms          | **1.4 ms**    | 510 ms         | **8 ms**      |
+| All 12 pictures painted                | 510 ms         | 365 ms        | 2413 ms        | 1737 ms       |
+| Longest animation frame while painting | 37 ms          | 30 ms         | 124 ms         | 115 ms        |
+
+The 12 frames are on screen when the handler returns (spec: 12 frames, 0 pictures, 0 renders). The work did not vanish, it moved:
+one look per animation frame (a long task of about 115-190 ms at 4x CPU, 30-45 ms at 1x, instead of one 500-600 ms task before
+anything showed), and a look made once is cached (reopening and "All looks" generate nothing, so the second open's handler and
+paint are cheap). The first open of a page pays about 35 ms extra for the first style / layout of the sheet.
+
+- **Guards in the spec** (they run in `npm run smoke`): no `<filter>` element in the page; `#fx` is `visibility: hidden` at idle;
+  its backing store is at most 3 Mpx at 1366x1024 @2x.
+
 ## Calm brush sound (AC-22.4)
 
 The only brush voices are `Sfx.fx.swish` (brush, wand, lipstick, sponge) and the sponge squeak inside it. All still synthesised.
@@ -189,7 +274,7 @@ The only brush voices are `Sfx.fx.swish` (brush, wand, lipstick, sponge) and the
 | Sponge squeak | 1.8-2.7 kHz sine, gain 0.045, 70 ms, rising 14 %, every 150 ms above 120 px/s                  | 620-920 Hz sine, gain 0.016, 180 ms with 45 ms attack, rising 7 %, every 450 ms above 160 px/s                                                    |
 
 Offline render (real strokes through the real handlers into a virtual-time `OfflineAudioContext`, 44.1 kHz, 3 s per tool,
-music and unrelated tones muted; FFT 4096 over the steady part of the stroke; `sound.mjs` in the scratchpad):
+music and unrelated tones muted; FFT 4096 over the steady part of the stroke; [`perf/sound.mjs`](perf/sound.mjs)):
 
 | Voice                | RMS before | RMS after  | Energy above 4 kHz before | after                | Centroid before -> after | Onset max sample step before -> after |
 | -------------------- | ---------- | ---------- | ------------------------- | -------------------- | ------------------------ | ------------------------------------- |

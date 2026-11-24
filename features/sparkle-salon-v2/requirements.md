@@ -56,7 +56,7 @@
   - The princess SVG has no more elements, filters or gradients than v1.
 - [x] **AC-22.2 iPad performance:** at 1024×1366 and 1366×1024, both at 2× scale:
   - Each canvas backing store is capped at the budget from the perf report.
-  - Idle play does no canvas redraws and no per-frame style writes.
+  - Idle play does no canvas redraws and no per-frame style writes: the resting tool, its ring and the nudge ring read the face's un-animated layout, so the breathing animation never makes them rewrite a style (verified over 3 s with a `MutationObserver`).
   - A rub stroke does at most one paint composite per animation frame and does not read back the whole canvas per pointer move.
   - Measured before and after with the perf script; the numbers are recorded in `perf.md`. **Status:** met. The fx canvas is hidden (not composited) while empty, and in the UX round its backing store was capped at 3 Mpx (`FX_MAX_PX`; it had kept a 2048x2732 store before); see `perf.md`, "After the UX round".
 - [x] **AC-22.3 Phone performance:** at 390×844 at 3× scale, nothing gets slower than before. Same script.
@@ -65,15 +65,17 @@
   - The level is lower than v1 and follows stroke speed smoothly, rate-limited.
   - The sponge squeak is gentler.
   - Still all synthesised (AC-14).
+  - Hiding the tab closes the brush voice at once (gain to zero, marked idle) before the context suspends, so no noise tail returns on resume.
 - [x] **AC-22.5 (S1) iPad layout:**
-  - On screens at least 900 wide and at least 700 tall, the app column is wider than in v1 and the background still covers it.
-  - Step cameras get an extra tablet zoom of about 1.25×.
-  - In iPad landscape (at least 1100 wide and at least 700 tall) the tray and the Redo / ring / Next row move into a right-hand side bar.
-  - No horizontal scroll at the AC-16 sizes plus 1024×1366 and 1366×1024. Start, a tray tool, Next and Play again are all on screen.
-- [x] **AC-22.6 (S2) Tablet sizing:** on tablets, tray circles are about 92 px, round buttons 64 px, and Next and Redo at least 64 px tall with larger text.
+  - A "tablet" is a screen at least 700 wide and 900 tall (any iPad portrait: 768×1024, 810×1080, 820×1180, 834×1194, 1024×1366) or at least 1000 wide and 640 tall in landscape (1024×768, 1080×810, 1180×820, 1194×834, 1366×1024; Safari's toolbars take about 80 px of an iPad's height, so the landscape floor is 640, not 768).
+  - On screens at least 900 wide and at least 640 tall, the app column is wider than in v1 and the background still covers it.
+  - Step cameras get an extra tablet zoom of about 1.25× wherever the stage host is at least 640 px in both directions.
+  - In iPad landscape (at least 1000 wide and at least 640 tall) the tray and the Redo / ring / Next row move into a right-hand side bar. **Why a side bar down to 1024×768:** a bottom tray at that size leaves a 1024×649 stage (the face is height-limited and the tablet zoom does not apply); the side bar leaves 764×768, so the face is about 20 % bigger and the controls are 92 px tall circles in two columns, all on screen.
+  - No horizontal scroll at the AC-16 sizes plus all eight iPad sizes above and 1024×1366 / 1366×1024. Start, a tray tool, Next and Play again are all on screen.
+- [x] **AC-22.6 (S2) Tablet sizing:** on tablets (as defined in AC-22.5), tray circles are about 92 px, round buttons 64 px, and Next and Redo at least 64 px tall with larger text. Phones keep the 62 px tray and 48 px buttons.
 - [x] **AC-22.7 (S3) Pointing-hand demo:**
   - On the first visit to each step in a session, a hand demonstrates the action: zig-zags over the region on paint steps, taps the client's wish on pick steps.
-  - It never paints, and any pointerdown cancels it at once.
+  - It never paints, and any pointerdown cancels it at once. A window resize (iPad Safari's toolbars) does not cancel it for good: it starts again on the new layout.
   - The idle nudge is suppressed while the demo plays.
   - Reduced motion shows a still hand instead.
 - [x] **AC-22.8 (S4) Picture progress:**
@@ -90,10 +92,11 @@
 - [x] **AC-22.11 (S7) Accessories and stickers:**
   - The camera frames each accessory slot, so the tiara is fully visible when it is chosen.
   - A worn item pops on.
-  - Stickers can also be dragged from the tray onto the face; tap still works.
+  - Stickers can also be dragged from the tray onto the face; tap still works. A drop anywhere off the face (the tray, the hair's gutter, the bars) places nothing and does not change the selected sticker. A touch the system cancels (`pointercancel`) on a placed sticker is not a tap and places nothing.
 - [x] **AC-22.12 (S8) My Album:**
-  - Each finished look saves a small recipe of option ids, and up to 12 looks are kept.
-  - An **Album** button on the title screen opens a grid of saved looks drawn locally, with no network.
+  - Each finished look saves a small recipe of option ids, and up to 12 looks are kept. A painted or picked slot (shadow, lenses, mascara, blush, lips) is remembered only when its step was **finished**: a Redo'd, skipped or half-painted step is not part of the look. Worn accessories and stickers are remembered as worn.
+  - An **Album** button on the title screen opens a grid of saved looks drawn locally, with no network. The grid of empty polaroid frames shows at once (the click handler does no drawing); the pictures are made one look per animation frame, each cached by its recipe until the saved looks change, so **All looks** and reopening do not redraw. The title princess is restored in the same task as each picture, so she never shows another look. Closing or going back mid-way drops any picture still being made.
+  - The sheet's button bar (Close, All looks) is sticky at the bottom of the screen, so Close is in view with a full album (12 looks) on a phone and on every iPad size; a tap on the dim backdrop outside the sheet closes it too.
   - Bad or unknown recipe data is sanitised.
   - Old saves load unchanged.
 

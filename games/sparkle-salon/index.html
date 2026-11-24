@@ -406,7 +406,6 @@
       .artHair {
         animation: sway 6s ease-in-out infinite;
         transform-origin: 50% 12%;
-        will-change: transform;
       }
       @keyframes sway {
         50% {
@@ -459,6 +458,15 @@
       }
       .smudge {
         transition: opacity 0.25s;
+      }
+      /* While a stroke is down the ambient loops stand still (kept at their current pose, so nothing jumps): the main
+         thread and the compositor both need every frame for the paint. Set by setStrokeQuiet(). */
+      #app.painting #stageInner,
+      #app.painting .artHair,
+      #app.painting .glint,
+      #app.painting .big-btn,
+      #app.painting #nextBtn {
+        animation-play-state: paused;
       }
 
       /* ---------- Title ---------- */
@@ -3407,13 +3415,15 @@
           const m = /^M\s*([\d.-]+)\s+([\d.-]+)/.exec(el.getAttribute("d") || "");
           if (!m) return;
           const root = localToUnits(el).transformPoint(new DOMPoint(Number(m[1]), Number(m[2])));
-          lashes.push({ el, x: root.x, y: root.y, low: el.classList.contains("lfLow") });
+          lashes.push({ el, x: root.x, y: root.y, low: el.classList.contains("lfLow"), t: -1 });
         });
         function updateLashes(force) {
           const region = REGIONS.mascara;
           for (const l of lashes) {
             const v = force !== undefined ? force : valueNear(region, l.x, l.y, 9) / NEED;
             const t = clamp(v, 0, 1);
+            if (t === l.t) continue; // most lashes are untouched by any one stroke move
+            l.t = t;
             l.el.style.opacity = String(t);
             l.el.setAttribute(
               "stroke-width",
@@ -5057,11 +5067,12 @@
           }
           return n ? { x: sx / n, y: sy / n, r: Math.sqrt((n * CELL * CELL) / Math.PI) } : null;
         }
+        let nudgeCss = "";
         function placeNudge() {
           const at = toClient(nudgeAt.x, nudgeAt.y);
           const c = toApp(at.x, at.y);
           const d = clamp((2 * nudgeAt.r) / unitsPerPx(), 64, 140);
-          nudgeEl.style.cssText =
+          const css =
             "left:" +
             (c.x - d / 2).toFixed(1) +
             "px;top:" +
@@ -5071,6 +5082,9 @@
             "px;height:" +
             d.toFixed(1) +
             "px";
+          if (css === nudgeCss) return; // called every frame while the ring shows: no style write when nothing moved
+          nudgeCss = css;
+          nudgeEl.style.cssText = css;
         }
         function hideNudge() {
           nudgeAt = null;
@@ -5207,9 +5221,18 @@
           sparkleUnits(u.x, u.y, 8, { max: 160 });
           if (!run.done[state.step]) completeStep(state.step);
         }
+        /** Root class `painting` pauses the ambient animations while a stroke is down; it clears 250 ms after the stroke. */
+        let quietTimer = 0;
+        function setStrokeQuiet(on) {
+          clearTimeout(quietTimer);
+          if (on && !app.classList.contains("painting")) app.classList.add("painting");
+          // end of stroke: 250 ms grace; while painting: a safety net in case an end event never arrives
+          quietTimer = setTimeout(() => app.classList.remove("painting"), on ? 1500 : 250);
+        }
         function strokeTo(u, e) {
           const stepDef = STEPS[state.step];
           if (stepDef.kind !== "paint" && stepDef.kind !== "wipe") return;
+          setStrokeQuiet(true);
           const last = stroke.last || u;
           const dist = Math.hypot(u.x - last.x, u.y - last.y);
           const r =
@@ -5245,6 +5268,7 @@
         }
         /** Ends any stroke (pointer or keyboard) and releases the keyboard "Space held" latch. */
         function endStroke() {
+          setStrokeQuiet(false);
           stroke.down = false;
           stroke.id = null;
           stroke.last = null;
@@ -5257,6 +5281,8 @@
         function onPointerDown(e) {
           if (!canPlay() || (e.button !== undefined && e.button > 0)) return;
           e.preventDefault();
+          if (STEPS[state.step].kind === "paint" || STEPS[state.step].kind === "wipe")
+            setStrokeQuiet(true);
           touchIdle();
           hideNudge();
           try {

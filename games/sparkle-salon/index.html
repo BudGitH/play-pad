@@ -2521,12 +2521,20 @@
           let echo = null;
           let swishGain = null;
           let swishFilter = null;
+          let swishSpeed = 0; // smoothed stroke speed (px/s) that drives the brush voice
           let noiseBuf = null;
           let timer = 0;
           let nextTime = 0;
           let slot = 0;
           let lastSwish = 0;
           let lastSqueak = 0;
+          let lastSwishAt = 0;
+          // Brush voice tuning (AC-22.4): low-passed noise, slow ramps, quiet.
+          const SWISH_LOWPASS_HZ = 2600; // 2-pole low-pass: next to nothing above ~3.5 kHz reaches the speakers
+          const SWISH_ATTACK_S = 0.06; // time constant of every level / pitch change (63 % in 60 ms)
+          const SWISH_RELEASE_S = 0.1; // fade after the last movement (63 % in 100 ms)
+          const SWISH_GAP_MS = 45; // at most one automation update per 45 ms, not one per pointer move
+          const SWISH_PITCH = { lipstick: 450, wand: 800, sponge: 560, brush: 650 }; // band-pass centre at rest (Hz)
           let swishActive = false; // true while the swish noise bed is open (so the fade is scheduled once per stroke)
           let hidden = false;
           const stats = { played: 0, music: 0, last: "" };
@@ -2564,7 +2572,8 @@
             lowpass.connect(wet);
             wet.connect(master);
           }
-          /** Looping white noise feeds the swish (a band-passed, gain-ridden source) and one-shot hits. */
+          /** Looping white noise feeds the swish and one-shot hits. The swish is a soft "whoosh": the noise is low-passed
+           *  (nothing above ~3 kHz) and then band-passed low (400-1200 Hz), so it never hisses. */
           function makeNoise() {
             const len = ctx.sampleRate * 2;
             noiseBuf = ctx.createBuffer(1, len, ctx.sampleRate);
@@ -2573,13 +2582,18 @@
             const src = ctx.createBufferSource();
             src.buffer = noiseBuf;
             src.loop = true;
+            const swishLow = ctx.createBiquadFilter();
+            swishLow.type = "lowpass";
+            swishLow.frequency.value = SWISH_LOWPASS_HZ;
+            swishLow.Q.value = 0.5;
             swishFilter = ctx.createBiquadFilter();
             swishFilter.type = "bandpass";
-            swishFilter.frequency.value = 2400;
-            swishFilter.Q.value = 0.9;
+            swishFilter.frequency.value = 700;
+            swishFilter.Q.value = 0.6;
             swishGain = ctx.createGain();
             swishGain.gain.value = 0;
-            src.connect(swishFilter);
+            src.connect(swishLow);
+            swishLow.connect(swishFilter);
             swishFilter.connect(swishGain);
             swishGain.connect(fxBus);
             src.start();
@@ -2732,31 +2746,31 @@
               play("sticker", (t) =>
                 tone(1200, t, 0.08, { gain: 0.1, end: 1700, type: "triangle" }),
               ),
-            /** Brush / wand / lipstick swish: filtered noise whose level follows stroke speed. */
+            /** Brush / wand / lipstick / sponge: a soft low whoosh whose level follows the (smoothed) stroke speed.
+             *  Rate-limited, and every change is a ramp (setTargetAtTime), never a jump, so there are no clicks. */
             swish: (speed, kind) => {
               if (!ready() || !swishGain) return;
+              const now = performance.now();
+              lastSwish = now; // keeps the voice open while the pointer moves, even when this call is rate-limited
+              if (now - lastSwishAt < SWISH_GAP_MS) return;
+              lastSwishAt = now;
               try {
-                const lvl = clamp(speed * 0.00042, 0, 0.17);
-                const base =
-                  kind === "lipstick"
-                    ? 1000
-                    : kind === "wand"
-                      ? 3200
-                      : kind === "sponge"
-                        ? 1500
-                        : 2300;
+                swishSpeed = swishActive ? swishSpeed + (speed - swishSpeed) * 0.35 : speed;
+                const lvl = clamp(swishSpeed * 0.0002, 0.02, 0.085);
+                const base = SWISH_PITCH[kind] || SWISH_PITCH.brush;
+                const t = ctx.currentTime;
                 swishFilter.frequency.setTargetAtTime(
-                  base + clamp(speed, 0, 900) * 2,
-                  ctx.currentTime,
-                  0.03,
+                  base + clamp(swishSpeed, 0, 900) * 0.4,
+                  t,
+                  SWISH_ATTACK_S,
                 );
-                swishGain.gain.setTargetAtTime(lvl, ctx.currentTime, 0.025);
-                lastSwish = performance.now();
+                swishGain.gain.setTargetAtTime(lvl, t, SWISH_ATTACK_S);
                 swishActive = true;
-                if (kind === "sponge" && speed > 120 && performance.now() - lastSqueak > 150) {
-                  lastSqueak = performance.now();
-                  const f = rand(1800, 2700);
-                  tone(f, ctx.currentTime, 0.07, { gain: 0.045, end: f * 1.14 });
+                if (kind === "sponge" && swishSpeed > 160 && now - lastSqueak > 450) {
+                  lastSqueak = now;
+                  const f = rand(620, 920);
+                  // a soft, low "squeak": a quiet sine with a slow attack and a short glide
+                  tone(f, t, 0.18, { gain: 0.016, end: f * 1.07, attack: 0.045 });
                 }
               } catch {
                 /* a failed swish must never reach the game loop */
@@ -2765,10 +2779,10 @@
           };
           /** Called every frame; schedules the swish fade ONCE per stroke, 80 ms after the last movement. */
           function tick() {
-            if (!swishActive || performance.now() - lastSwish <= 80) return;
+            if (!swishActive || performance.now() - lastSwish <= 120) return;
             swishActive = false;
             try {
-              swishGain.gain.setTargetAtTime(0, ctx.currentTime, 0.04);
+              swishGain.gain.setTargetAtTime(0, ctx.currentTime, SWISH_RELEASE_S);
             } catch {
               /* the context may have closed: nothing left to fade */
             }

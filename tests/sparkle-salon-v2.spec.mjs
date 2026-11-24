@@ -760,6 +760,25 @@ for (const [name, viewport] of DEVICES) {
       await glide(page);
       expect(await inHost('[data-acc="necklace:butterfly"]'), "the necklace is in view").toBe(true);
     });
+
+    test("the tiara worn a step earlier stays in view on the stickers step (product-panel U1)", async ({
+      page,
+    }) => {
+      await open(page);
+      await begin(page);
+      await playTo(page, "acc");
+      await glide(page);
+      await page.getByRole("button", { name: /Tiara: Pearl/ }).click();
+      await playTo(page, "stickers");
+      await glide(page);
+      const clear = await salon(page, () => {
+        const host = document.getElementById("playHost").getBoundingClientRect();
+        const steps = document.querySelector("#play .steps").getBoundingClientRect();
+        const r = document.querySelector('[data-acc="tiara:pearl"]').getBoundingClientRect();
+        return r.left >= host.left && r.right <= host.right && r.top >= steps.bottom;
+      });
+      expect(clear, "the crown is not cropped under the step bar").toBe(true);
+    });
   });
 }
 

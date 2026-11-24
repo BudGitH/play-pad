@@ -3291,9 +3291,11 @@
             slot: "sticker",
             kind: "place",
             tool: "sticker",
-            zoom: 1.18,
+            // Zoom under 1 (no tablet boost), framed like the tiara camera: stickers dress the whole look, so the tiara
+            // chosen a step earlier stays in view below the step bar and the speech bubble.
+            zoom: 0.92,
             fx: 200,
-            fy: 300,
+            fy: 215,
             hint: "Tap the face to stick on some sparkles!",
           },
         ];

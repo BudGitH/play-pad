@@ -529,10 +529,50 @@
         padding: 6px 18px max(16px, env(safe-area-inset-bottom));
         z-index: 6;
       }
-      .titlebar .row {
+      .titlebar .row,
+      .startrow {
         display: flex;
         align-items: center;
         gap: 12px;
+      }
+      .startrow {
+        max-width: 100%;
+      }
+      /* Start shares the row with the album button: it shrinks (never overflows) on a narrow phone */
+      .startrow .big-btn {
+        min-width: min(230px, calc(100vw - 36px - 76px));
+        padding: 0 clamp(16px, 5vw, 34px);
+        font-size: clamp(19px, 6vw, 24px);
+      }
+      /* The album: a book beside Start, with a gold count of the saved looks */
+      .album-btn {
+        width: 64px;
+        height: 64px;
+      }
+      .album-btn svg {
+        width: 30px;
+        height: 30px;
+      }
+      .album-btn .count {
+        position: absolute;
+        right: -6px;
+        top: -6px;
+        min-width: 26px;
+        height: 26px;
+        padding: 0 5px;
+        box-sizing: border-box;
+        border-radius: 999px;
+        display: grid;
+        place-items: center;
+        background: var(--sp-gold);
+        border: 2px solid var(--sp-white);
+        color: var(--sp-amber-ink);
+        font-size: 14px;
+        font-weight: 900;
+        line-height: 1;
+      }
+      .album-btn .count[hidden] {
+        display: none;
       }
       .big-btn {
         min-height: 64px;
@@ -679,35 +719,51 @@
       .fab[disabled] {
         opacity: 0.45;
       }
+      /* The progress meter is a heart that fills from the bottom (the number lives in its accessible name only). */
       .ring {
-        --p: 0;
         flex: none;
         position: relative;
         width: 58px;
         height: 58px;
         border-radius: 50%;
-        background: conic-gradient(var(--sp-gold) calc(var(--p) * 1%), rgba(255, 255, 255, 0.55) 0);
+        background: rgba(255, 255, 255, 0.82);
         display: grid;
         place-items: center;
         box-shadow: var(--sp-shadow);
         align-self: center;
       }
-      .ring::after {
-        content: "";
-        position: absolute;
-        inset: 7px;
-        border-radius: 50%;
-        background: var(--sp-white);
+      .ring svg {
+        width: 78%;
+        height: 78%;
+        overflow: visible;
+      }
+      .ring .h-back {
+        fill: var(--sp-pink-200);
+      }
+      .ring .h-fill {
+        fill: var(--sp-pink-600);
+      }
+      .ring .h-line {
+        fill: none;
+        stroke: var(--sp-pink-700);
+        stroke-width: 3;
+        stroke-linejoin: round;
+      }
+      .ring.full .h-fill {
+        fill: var(--sp-gold);
       }
       .ring b {
-        position: relative;
-        z-index: 1;
-        font-size: 15px;
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        font-size: 24px;
         font-weight: 900;
-        color: var(--sp-ink);
+        color: var(--sp-white);
+        -webkit-text-stroke: 4px var(--sp-pink-700);
+        paint-order: stroke fill;
       }
       .ring.full {
-        background: conic-gradient(#ffe36b 0, #ffb21f 100%);
         animation: bump 0.5s ease;
       }
       .next {
@@ -730,6 +786,19 @@
         width: 20px;
         height: 20px;
       }
+      .next .ico-next,
+      .next .ico-cam {
+        display: none;
+      }
+      .next[data-ready="true"] .ico-chev {
+        display: none;
+      }
+      .next[data-ready="true"][data-last="false"] .ico-next,
+      .next[data-ready="true"][data-last="true"] .ico-cam {
+        display: block;
+        width: 26px;
+        height: 26px;
+      }
       .next[data-ready="true"] {
         color: var(--sp-white);
         font-size: 22px;
@@ -743,6 +812,20 @@
           0 0 0 0 rgba(255, 79, 154, 0.7),
           var(--sp-shadow);
         animation: glow 1.3s ease-in-out infinite;
+      }
+      /* finishing a step: Next hops three times (the glow keeps pulsing) */
+      .next[data-ready="true"].pop {
+        animation:
+          nextHop 0.55s ease 3,
+          glow 1.3s ease-in-out infinite;
+      }
+      @keyframes nextHop {
+        40% {
+          transform: translateY(-14px) scale(1.07);
+        }
+        70% {
+          transform: translateY(0) scale(0.97);
+        }
       }
       @keyframes glow {
         70% {
@@ -889,6 +972,52 @@
       .tool.locked .face {
         filter: saturate(0.8);
       }
+      /* the colour the client asked for: a slow pulsing ring (calm, composited: opacity and transform only) */
+      .tool.wish::after {
+        content: "";
+        position: absolute;
+        inset: -8px;
+        border-radius: 50%;
+        border: 3px solid var(--sp-pink-500);
+        pointer-events: none;
+        animation: wishRing 2s ease-out infinite;
+      }
+      @keyframes wishRing {
+        from {
+          transform: scale(0.9);
+          opacity: 0.95;
+        }
+        to {
+          transform: scale(1.28);
+          opacity: 0;
+        }
+      }
+      #app.painting .tool.wish::after {
+        animation-play-state: paused;
+      }
+      /* a sticker can be dragged out of the tray: only sideways swipes scroll the tray, up/down is the drag */
+      .tools[data-slot="sticker"] .tool {
+        touch-action: pan-x;
+      }
+      #dragGhost {
+        position: absolute;
+        left: 0;
+        top: 0;
+        z-index: 45;
+        width: 72px;
+        height: 72px;
+        margin: -36px 0 0 -36px;
+        display: none;
+        pointer-events: none;
+      }
+      #dragGhost.on {
+        display: block;
+      }
+      #dragGhost svg {
+        width: 100%;
+        height: 100%;
+        filter: drop-shadow(0 4px 3px rgba(80, 20, 80, 0.35));
+      }
 
       /* ---------- Tool cursor + fx ---------- */
       #tool {
@@ -959,11 +1088,6 @@
         width: 44px;
         height: 44px;
         margin: -58px 0 0 26px;
-        display: grid;
-        place-items: center;
-        font-weight: 900;
-        font-size: 12px;
-        color: var(--sp-ink);
         border-radius: 50%;
         background: conic-gradient(var(--sp-gold) calc(var(--p) * 1%), rgba(255, 255, 255, 0.6) 0);
         box-shadow: 0 2px 8px rgba(100, 20, 100, 0.4);
@@ -978,10 +1102,6 @@
         inset: 5px;
         border-radius: 50%;
         background: var(--sp-white);
-      }
-      #toolRing b {
-        position: relative;
-        z-index: 1;
       }
       #toolRing.on {
         opacity: 1;
@@ -1154,34 +1274,80 @@
         font-weight: 900;
         font-size: 20px;
       }
+      .req-portrait {
+        position: relative;
+        width: 96px;
+        height: 96px;
+        margin: -2px auto 4px;
+      }
+      .req-portrait img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: 50% 8%;
+        border-radius: 50%;
+        border: 4px solid var(--sp-white);
+        background: linear-gradient(180deg, #cdbbf7 0, #f3b8dc 100%);
+        box-shadow: 0 4px 12px rgba(90, 20, 80, 0.35);
+      }
+      .req-portrait img:not([src]) {
+        visibility: hidden;
+      }
+      .req-heart {
+        position: absolute;
+        right: -14px;
+        top: -6px;
+        width: 40px;
+        height: 36px;
+        display: grid;
+        place-items: center;
+        border-radius: 16px 16px 16px 4px;
+        background: var(--sp-white);
+        border: 3px solid var(--sp-pink-300);
+        box-shadow: 0 2px 6px rgba(90, 20, 80, 0.3);
+      }
+      .req-heart svg {
+        width: 22px;
+        height: 22px;
+      }
+      /* The wishes are pictures: the same icon the child will tap in the tray, with a short label under it. */
       .wants {
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 8px;
-        margin: 8px 0 14px;
+        margin: 8px 0 10px;
         padding: 0;
         list-style: none;
       }
       .wants li {
         display: flex;
+        flex-direction: column;
         align-items: center;
-        gap: 8px;
-        padding: 6px 8px;
+        gap: 4px;
+        padding: 8px 6px 6px;
         border-radius: 16px;
         background: var(--sp-white);
         border: 2px solid var(--sp-pink-200);
-        text-align: left;
+        text-align: center;
         font-weight: 800;
         font-size: 13px;
         line-height: 1.15;
       }
-      .wants .dot {
+      .wish-ico {
+        display: block;
         flex: none;
-        width: 28px;
-        height: 28px;
+        width: 64px;
+        height: 64px;
         border-radius: 50%;
-        border: 3px solid var(--sp-white);
-        box-shadow: 0 1px 4px rgba(90, 20, 80, 0.45);
+        overflow: hidden;
+        border: 3px solid var(--sp-ink-deep);
+        box-shadow: 0 0 0 4px var(--sp-pink-hi);
+        background: radial-gradient(circle at 50% 40%, var(--sp-white) 0, #f7f0ff 100%);
+      }
+      .wish-ico svg {
+        display: block;
+        width: 100%;
+        height: 100%;
       }
       .wants small {
         display: block;
@@ -1237,9 +1403,10 @@
         align-items: center;
         gap: 6px;
       }
+      /* the child's own photo is the hero: 70 % of the screen width on a phone (what is left once the rest is stacked below it) */
       .photo {
         position: relative;
-        width: min(60vw, 240px, calc((var(--pp-app-h, 100dvh) - 410px) * 0.75));
+        width: min(70vw, 300px, calc((var(--pp-app-h, 100dvh) - 380px) * 0.75));
         min-width: 150px;
         aspect-ratio: 3 / 4;
         padding: 10px;
@@ -1342,72 +1509,56 @@
         text-align: center;
         font-weight: 800;
       }
-      .res-card .look {
-        margin: 0 0 6px;
-        font-size: 15px;
-        color: var(--sp-ink-soft);
-      }
-      .res-card .look b {
-        color: var(--sp-pink-700);
-      }
+      /* the four wishes, as the pictures the child tapped: a tick when matched, faded when not (never colour alone) */
       .res-wants {
         display: flex;
-        gap: 6px;
+        gap: 10px;
         justify-content: center;
-        margin: 0 0 6px;
+        margin: 2px 0 6px;
         padding: 0;
         list-style: none;
-        flex-wrap: wrap;
       }
       .res-wants li {
-        display: flex;
-        align-items: center;
-        gap: 5px;
-        padding: 3px 9px 3px 4px;
-        border-radius: 999px;
-        background: var(--sp-lilac-100);
-        font-size: 13px;
+        position: relative;
+        flex: none;
       }
-      .res-wants .dot {
+      .res-wants .wish-ico {
+        width: 48px;
+        height: 48px;
+        border-width: 2px;
+        box-shadow: 0 0 0 3px var(--sp-pink-hi);
+      }
+      .res-wants .miss .wish-ico {
+        opacity: 0.45;
+        box-shadow: 0 0 0 3px var(--sp-lilac-300);
+      }
+      /* the matched tick is a white disc with an ink tick, so it reads on any picture */
+      .res-wants .tick {
+        position: absolute;
+        right: -6px;
+        bottom: -6px;
+        display: grid;
+        place-items: center;
         width: 22px;
         height: 22px;
         border-radius: 50%;
-        border: 2px solid var(--sp-white);
-        box-shadow: 0 1px 3px rgba(90, 20, 80, 0.4);
-        display: grid;
-        place-items: center;
-      }
-      /* the matched tick is a white disc with an ink tick, so it reads on any swatch colour */
-      .res-wants .tick {
-        display: grid;
-        place-items: center;
-        width: 14px;
-        height: 14px;
-        border-radius: 50%;
         background: var(--sp-white);
+        border: 2px solid var(--sp-pink-600);
         color: var(--sp-ink);
-        font-size: 10px;
+        font-size: 13px;
         font-weight: 900;
-      }
-      .res-wants .miss {
-        opacity: 0.75;
       }
       .earn {
         display: flex;
         justify-content: center;
         align-items: center;
         gap: 8px;
-        font-size: 18px;
+        font-size: 24px;
         color: var(--sp-amber-ink);
       }
       .earn .coin-ico {
-        width: 26px;
-        height: 26px;
-      }
-      .earn-detail {
-        margin: 2px 0 0;
-        font-size: 13px;
-        color: var(--sp-ink-soft);
+        width: 32px;
+        height: 32px;
       }
       .res-best {
         margin: 4px 0 0;
@@ -1417,14 +1568,25 @@
       .res-best.new {
         color: var(--sp-pink-700);
       }
-      /* Sticky: Play again / PlayPad stay on screen even when the results are taller than the viewport. */
+      .saved-note {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 6px;
+        margin: 4px 0 0;
+        font-size: 13px;
+        color: var(--sp-ink-soft);
+      }
+      .saved-note svg {
+        width: 16px;
+        height: 16px;
+      }
+      /* Sticky: Play again stays on screen even when the results are taller than the viewport. It is the one big button. */
       .res-actions {
         position: sticky;
         bottom: 0;
         z-index: 5;
         display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
         justify-content: center;
         width: 100%;
         padding: 10px 0 max(10px, env(safe-area-inset-bottom));
@@ -1436,9 +1598,11 @@
         );
       }
       .res-actions .big-btn {
-        min-height: 52px;
+        width: 100%;
+        max-width: 340px;
+        min-height: 60px;
         min-width: 0;
-        font-size: 19px;
+        font-size: 24px;
         padding: 0 24px;
         animation: none;
       }
@@ -1446,21 +1610,149 @@
       .res-card[hidden] {
         display: none;
       }
-      /* narrow phones: both buttons share one row, so the bar stays one button tall */
-      @media (max-width: 380px) {
-        .res-actions {
-          flex-wrap: nowrap;
-          gap: 8px;
-          padding-left: 12px;
-          padding-right: 12px;
-          box-sizing: border-box;
-        }
-        .res-actions .big-btn {
-          flex: 1 1 0;
-          padding: 0 8px;
-          font-size: 17px;
-          white-space: nowrap;
-        }
+
+      /* ---------- My Album: the saved looks as polaroids (pictures are drawn once when the album opens) ---------- */
+      .sheet.album {
+        width: min(100%, 560px);
+        padding-bottom: 14px;
+      }
+      .album-empty {
+        margin: 24px 8px;
+        font-size: 18px;
+        color: var(--sp-ink-soft);
+      }
+      .album-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px 12px;
+        margin: 10px 0 14px;
+        padding: 0;
+        list-style: none;
+      }
+      .album-grid[hidden],
+      .album-view[hidden],
+      .album-empty[hidden] {
+        display: none;
+      }
+      .polaroid {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        width: 100%;
+        padding: 8px 8px 6px;
+        border: 0;
+        border-radius: 14px;
+        background: linear-gradient(145deg, var(--sp-white) 0, #ffe0f0 55%, var(--sp-white) 100%);
+        box-shadow:
+          0 6px 14px rgba(80, 20, 100, 0.35),
+          0 0 0 3px #ffb4d8;
+      }
+      .polaroid canvas {
+        width: 100%;
+        height: auto;
+        aspect-ratio: 2 / 3;
+        border-radius: 8px;
+        background: linear-gradient(180deg, #cdbbf7 0, #f3b8dc 100%);
+      }
+      .polaroid .mini-stars {
+        display: flex;
+        gap: 2px;
+      }
+      .polaroid .mini-stars svg {
+        width: 22px;
+        height: 22px;
+      }
+      .polaroid.big {
+        width: min(100%, 360px);
+        margin: 10px auto 6px;
+        transform: rotate(-1.5deg);
+      }
+      .album-cap {
+        margin: 4px 0 10px;
+        font-size: 15px;
+        color: var(--sp-ink-soft);
+      }
+      .album .btns .big-btn[hidden] {
+        display: none;
+      }
+
+      /* ---------- Pointing-hand demo (a pre-reader's first cue): decoration only, removed by any touch ---------- */
+      #demoHand {
+        --hand-w: 72px;
+        position: absolute;
+        left: 0;
+        top: 0;
+        z-index: 17;
+        width: var(--hand-w);
+        margin: -4px 0 0 calc(var(--hand-w) / -2);
+        display: none;
+        pointer-events: none;
+        transform-origin: 50% 0;
+        opacity: 0;
+      }
+      #demoHand.on {
+        display: block;
+      }
+      #demoHand svg {
+        display: block;
+        width: 100%;
+        height: auto;
+        filter: drop-shadow(0 4px 3px rgba(80, 20, 80, 0.35));
+      }
+      #demoHand .demo-arrow {
+        display: none;
+        position: absolute;
+        left: 50%;
+        top: 100%;
+        width: 36px;
+        margin-left: -18px;
+        filter: none;
+      }
+      #demoHand.still {
+        opacity: 1;
+      }
+      #demoHand.still .demo-arrow {
+        display: block;
+      }
+      #demoRipple {
+        position: absolute;
+        left: 0;
+        top: 0;
+        z-index: 16;
+        width: 56px;
+        height: 56px;
+        margin: -28px 0 0 -28px;
+        border-radius: 50%;
+        border: 4px solid var(--sp-white);
+        box-shadow: 0 0 0 3px var(--sp-pink-500);
+        display: none;
+        opacity: 0;
+        pointer-events: none;
+      }
+      #demoRipple.on {
+        display: block;
+      }
+      #demoTrail {
+        position: absolute;
+        inset: 0;
+        z-index: 15;
+        width: 100%;
+        height: 100%;
+        display: none;
+        pointer-events: none;
+        opacity: 0;
+      }
+      #demoTrail.on {
+        display: block;
+      }
+      #demoTrail path {
+        fill: none;
+        stroke: var(--sp-pink-500);
+        stroke-width: 8;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-dasharray: 0.1 20;
       }
 
       /* ---------- Landscape phones / short viewports: stage left, tools in a column on the right ---------- */
@@ -1656,12 +1948,23 @@
           margin: 6px 0 8px;
         }
         .wants li {
+          flex-direction: row;
+          gap: 6px;
           padding: 4px 6px;
           font-size: 12px;
+          text-align: left;
         }
-        .wants .dot {
-          width: 22px;
-          height: 22px;
+        .wish-ico {
+          width: 36px;
+          height: 36px;
+          border-width: 2px;
+          box-shadow: 0 0 0 2px var(--sp-pink-hi);
+        }
+        .req-portrait {
+          display: none;
+        }
+        .wants small {
+          font-size: 10.5px;
         }
         .sheet .big-btn {
           min-height: var(--hit);
@@ -1820,9 +2123,14 @@
           font-size: 19px;
           padding: 0 24px;
         }
-        .big-btn {
+        .big-btn,
+        .startrow .big-btn {
           min-height: 76px;
           font-size: 28px;
+        }
+        .startrow .big-btn {
+          min-width: 260px;
+          padding: 0 40px;
         }
         .title-head {
           padding-top: 72px;
@@ -1845,12 +2153,157 @@
           min-height: 64px;
           font-size: 22px;
         }
+        .sheet {
+          width: min(100%, 640px);
+          padding: 28px 26px 24px;
+        }
+        .sheet h2 {
+          font-size: 32px;
+        }
+        .sheet p {
+          font-size: 21px;
+        }
+        .sheet .look {
+          font-size: 26px;
+        }
+        .req-portrait {
+          width: 124px;
+          height: 124px;
+        }
+        .wants {
+          grid-template-columns: repeat(4, 1fr);
+          gap: 12px;
+        }
+        .wants li {
+          font-size: 16px;
+          padding: 12px 6px 10px;
+        }
+        .wants small {
+          font-size: 14px;
+        }
+        .wish-ico {
+          width: 92px;
+          height: 92px;
+        }
+        .star {
+          width: 76px;
+          height: 76px;
+        }
+        .star:nth-child(2) {
+          width: 90px;
+          height: 90px;
+        }
+        .res-title {
+          font-size: 36px;
+          -webkit-text-stroke-width: 7px;
+        }
+        .res-card {
+          padding: 14px 20px;
+        }
+        .res-wants {
+          gap: 16px;
+          margin-bottom: 10px;
+        }
+        .res-wants .wish-ico {
+          width: 68px;
+          height: 68px;
+        }
+        .res-wants .tick {
+          width: 28px;
+          height: 28px;
+          font-size: 17px;
+        }
+        .earn {
+          font-size: 34px;
+        }
+        .earn .coin-ico {
+          width: 42px;
+          height: 42px;
+        }
+        .res-best {
+          font-size: 19px;
+        }
+        .saved-note {
+          font-size: 17px;
+        }
+        .saved-note svg {
+          width: 20px;
+          height: 20px;
+        }
+        .res-actions {
+          position: static;
+          background: none;
+        }
+        .res-actions .big-btn {
+          min-height: 76px;
+          font-size: 30px;
+          max-width: 420px;
+        }
+        .photo .cap {
+          font-size: 17px;
+          padding: 3px 20px;
+        }
+        .sheet.album {
+          width: min(100%, 860px);
+        }
+        .album-grid {
+          grid-template-columns: repeat(3, 1fr);
+          gap: 20px 18px;
+        }
+        .album-cap {
+          font-size: 20px;
+        }
+        .polaroid.big {
+          width: min(100%, 480px);
+        }
+        .polaroid .mini-stars svg {
+          width: 30px;
+          height: 30px;
+        }
+        .album-btn {
+          width: 76px;
+          height: 76px;
+        }
+        .album-btn svg {
+          width: 36px;
+          height: 36px;
+        }
+        #demoHand {
+          --hand-w: 104px;
+        }
+      }
+      /* the results on a portrait tablet: the photo is half the screen wide */
+      @media (min-width: 700px) and (min-height: 900px) and (orientation: portrait) {
+        .res-inner {
+          max-width: 700px;
+          padding-top: 100px;
+          gap: 12px;
+        }
+        .photo {
+          width: min(50vw, calc((var(--pp-app-h, 100dvh) - 600px) * 0.75));
+        }
+      }
+      /* ... and on a landscape tablet the photo sits beside the card */
+      @media (min-width: 900px) and (min-height: 700px) and (orientation: landscape) {
+        .res-inner {
+          max-width: none;
+          min-height: 100%;
+          flex-direction: row;
+          justify-content: center;
+          gap: 40px;
+          padding: 90px 40px 30px;
+        }
+        .photo {
+          width: min(calc((var(--pp-app-h, 100dvh) - 190px) * 0.75), 42vw, 500px);
+        }
+        .res-side {
+          max-width: 440px;
+        }
       }
       /* Landscape tablets: the tools, Redo, the heart and Next live in a bar on the right; the face gets the rest. */
       @media (min-width: 1100px) and (orientation: landscape) and (min-height: 700px) {
         :root {
-          --rail-w: 244px;
-          --tray-circle: 84px;
+          --rail-w: 260px;
         }
         #play.active {
           display: grid;
@@ -1965,6 +2418,9 @@
 
       /* ---------- Reduced motion: keep every state visible, drop the decoration ---------- */
       @media (prefers-reduced-motion: reduce) {
+        .tool.wish::after {
+          display: none; /* the pulsing ring around the client's colour is motion: off */
+        }
         *,
         *::before,
         *::after {
@@ -2051,7 +2507,32 @@
           </div>
         </div>
         <div class="titlebar">
-          <button id="startBtn" class="big-btn" type="button">Start makeover</button>
+          <div class="startrow">
+            <button id="startBtn" class="big-btn" type="button">Start makeover</button>
+            <button
+              id="albumBtn"
+              class="round-btn alt album-btn"
+              type="button"
+              aria-label="My Album"
+            >
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path
+                  d="M5 4.5h10.5a3 3 0 0 1 3 3V20H8a3 3 0 0 1-3-3z"
+                  fill="#fff"
+                  fill-opacity=".25"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linejoin="round"
+                />
+                <path d="M5 17a3 3 0 0 1 3-3h10.5" stroke="currentColor" stroke-width="2" />
+                <path
+                  d="M12 6.6l1 2 2.2.3-1.6 1.5.4 2.2-2-1.1-2 1.1.4-2.2-1.6-1.5 2.2-.3z"
+                  fill="currentColor"
+                />
+              </svg>
+              <span class="count" id="albumCount" hidden>0</span>
+            </button>
+          </div>
           <div class="row">
             <button
               id="soundBtn"
@@ -2184,17 +2665,70 @@
               <span>Redo</span>
             </button>
             <div class="ring" id="ring" role="img" aria-label="Step progress 0 percent">
-              <b id="ringTxt">0%</b>
+              <svg viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+                <defs>
+                  <clipPath id="heartClip">
+                    <path
+                      d="M24 43C6 30 3 16 11.5 10 17 6.4 22 8.6 24 13.5 26 8.6 31 6.4 36.5 10 45 16 42 30 24 43Z"
+                    />
+                  </clipPath>
+                </defs>
+                <path
+                  class="h-back"
+                  d="M24 43C6 30 3 16 11.5 10 17 6.4 22 8.6 24 13.5 26 8.6 31 6.4 36.5 10 45 16 42 30 24 43Z"
+                />
+                <g clip-path="url(#heartClip)">
+                  <rect id="heartFill" class="h-fill" x="0" y="44" width="48" height="40" />
+                </g>
+                <path
+                  class="h-line"
+                  d="M24 43C6 30 3 16 11.5 10 17 6.4 22 8.6 24 13.5 26 8.6 31 6.4 36.5 10 45 16 42 30 24 43Z"
+                />
+              </svg>
+              <b id="ringTxt"></b>
             </div>
-            <button id="nextBtn" class="next" type="button" data-ready="false">
+            <button id="nextBtn" class="next" type="button" data-ready="false" data-last="false">
               <span id="nextTxt">Skip</span>
-              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <svg class="ico-chev" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path
                   d="M9 5l7 7-7 7"
                   stroke="currentColor"
                   stroke-width="3.4"
                   stroke-linecap="round"
                   stroke-linejoin="round"
+                />
+              </svg>
+              <svg class="ico-next" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path
+                  d="M12 1.6l3 6.3 6.9.9-5 4.8 1.3 6.8L12 17.1l-6.2 3.3 1.3-6.8-5-4.8 6.9-.9z"
+                  fill="#ffcf3f"
+                  stroke="#fff"
+                  stroke-width="1.4"
+                  stroke-linejoin="round"
+                />
+                <path
+                  d="M8 11.4h7.2m-2.8-2.8 2.8 2.8-2.8 2.8"
+                  stroke="#4a1f66"
+                  stroke-width="2.2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+              <svg class="ico-cam" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path
+                  d="M3.5 8.2A2 2 0 0 1 5.5 6.2h2L9 4h6l1.5 2.2h2a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"
+                  fill="#fff"
+                  stroke="#fff"
+                  stroke-width="1.4"
+                  stroke-linejoin="round"
+                />
+                <circle
+                  cx="12"
+                  cy="13"
+                  r="3.6"
+                  fill="#d6287f"
+                  stroke="#4a1f66"
+                  stroke-width="1.6"
                 />
               </svg>
             </button>
@@ -2209,6 +2743,18 @@
       <!-- ========== PHOTO + RESULTS ========== -->
       <section id="results" class="screen" aria-label="Your photo and results">
         <div class="topbar">
+          <a class="round-btn" href="../../index.html" aria-label="Back to PlayPad">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                d="M4 11.2 12 4l8 7.2V20a1 1 0 0 1-1 1h-4.5v-5.5h-5V21H5a1 1 0 0 1-1-1z"
+                fill="#fff"
+                fill-opacity=".25"
+                stroke="currentColor"
+                stroke-width="2.2"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </a>
           <span class="spacer"></span>
           <div class="coin-pill">
             <svg class="coin-ico" viewBox="0 0 32 32" aria-hidden="true">
@@ -2240,19 +2786,24 @@
             </div>
             <h2 class="res-title" id="resTitle">Say cheese!</h2>
             <div class="res-card" id="resCard" hidden>
-              <p class="look" id="resLook"></p>
+              <p class="look vh" id="resLook"></p>
               <ul class="res-wants" id="resWants"></ul>
               <div class="earn">
                 <svg class="coin-ico" viewBox="0 0 32 32" aria-hidden="true">
                   <use href="#ico-coin" /></svg
-                ><span id="resEarn">+0</span>
+                ><span id="resEarn">+0</span><span class="vh" id="resCoinsWord"> coins</span>
               </div>
-              <p class="earn-detail" id="resDetail"></p>
+              <p class="earn-detail vh" id="resDetail"></p>
               <p class="res-best" id="resBest"></p>
+              <p class="saved-note" id="resSaved">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 21C3 14.5 5.5 6.5 12 11 18.5 6.5 21 14.5 12 21Z" fill="#d6287f" />
+                </svg>
+                Saved in My Album
+              </p>
             </div>
             <div class="res-actions" id="resActions" hidden>
               <button id="againBtn" class="big-btn" type="button">Play again</button>
-              <a class="big-btn alt" href="../../index.html">← PlayPad</a>
             </div>
           </div>
         </div>
@@ -2261,6 +2812,14 @@
       <!-- ========== MODALS ========== -->
       <div id="reqModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="reqTitle">
         <div class="sheet">
+          <div class="req-portrait">
+            <img id="reqPortrait" alt="" width="96" height="96" />
+            <span class="req-heart" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M12 21C3 14.5 5.5 6.5 12 11 18.5 6.5 21 14.5 12 21Z" fill="#d6287f" />
+              </svg>
+            </span>
+          </div>
           <h2 id="reqTitle">New client!</h2>
           <p id="reqIntro"></p>
           <span class="look" id="reqLook"></span>
@@ -2284,6 +2843,31 @@
           <div class="btns">
             <button id="unlockYes" class="big-btn" type="button">Unlock</button>
             <button id="unlockNo" class="big-btn alt" type="button">Not now</button>
+          </div>
+        </div>
+      </div>
+      <div
+        id="albumModal"
+        class="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="albumTitle"
+      >
+        <div class="sheet album">
+          <h2 id="albumTitle">My Album</h2>
+          <p class="album-empty" id="albumEmpty" hidden>
+            Finish a makeover and your look is saved here!
+          </p>
+          <ul class="album-grid" id="albumGrid"></ul>
+          <div class="album-view" id="albumView" hidden>
+            <div class="polaroid big">
+              <canvas id="albumBigCv" width="480" height="720"></canvas>
+            </div>
+            <p class="album-cap" id="albumBigCap"></p>
+          </div>
+          <div class="btns">
+            <button id="albumBack" class="big-btn alt" type="button" hidden>All looks</button>
+            <button id="albumClose" class="big-btn" type="button">Close</button>
           </div>
         </div>
       </div>
@@ -2319,7 +2903,48 @@
         <!-- prettier-ignore -->
         <svg class="t-sticker" width="60" height="60" viewBox="0 0 60 60"><g id="stickerPreview" transform="translate(30 30) scale(1.7)"></g></svg>
       </div>
-      <div id="toolRing" aria-hidden="true"><b id="toolRingTxt">0%</b></div>
+      <div id="toolRing" aria-hidden="true"></div>
+      <div id="dragGhost" aria-hidden="true"></div>
+      <div id="demoHand" aria-hidden="true">
+        <svg viewBox="0 0 72 100" focusable="false">
+          <path
+            d="M30 8c0-5 12-5 12 0v29c3-3 9-3 11 2 4-2 10 0 10 5 4-1 9 2 8 7l-3 20c-1 6-5 11-11 12H29c-5 0-8-3-10-7L9 59c-2-5 3-9 8-6l9 7V8z"
+            fill="#fff"
+            stroke="#4a1f66"
+            stroke-width="3"
+            stroke-linejoin="round"
+          />
+          <path
+            d="M42 38v14m11-13v13m11-8v12"
+            stroke="#c9b0ff"
+            stroke-width="2.4"
+            stroke-linecap="round"
+          />
+          <rect
+            x="22"
+            y="80"
+            width="46"
+            height="16"
+            rx="6"
+            fill="#d6287f"
+            stroke="#4a1f66"
+            stroke-width="3"
+          />
+        </svg>
+        <svg class="demo-arrow" viewBox="0 0 24 24" fill="none" focusable="false">
+          <path
+            d="M12 20V5m-6 6 6-6 6 6"
+            stroke="#d6287f"
+            stroke-width="3.4"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
+      </div>
+      <div id="demoRipple" aria-hidden="true"></div>
+      <svg id="demoTrail" aria-hidden="true" focusable="false">
+        <path id="demoTrailPath" />
+      </svg>
       <div id="tipGuide" aria-hidden="true"><i></i><b></b></div>
       <div id="nudge" aria-hidden="true"><i></i></div>
       <canvas id="fx" aria-hidden="true"></canvas>
@@ -2503,6 +3128,19 @@
           ],
         };
         const findOpt = (slot, id) => (CATALOG[slot] || []).find((o) => o.id === id) || null;
+        const MAX_STICKERS = 14;
+        /** The slots a saved look remembers (option ids only; stickers are [id, x, y] triples). */
+        const RECIPE_SLOTS = [
+          "shadow",
+          "lens",
+          "mascara",
+          "blush",
+          "lips",
+          "tiara",
+          "earring",
+          "necklace",
+        ];
+        const MAX_LOOKS = 12;
         const PRICED = new Set();
         for (const slot of Object.keys(CATALOG))
           for (const o of CATALOG[slot]) if (o.cost > 0) PRICED.add(slot + ":" + o.id);
@@ -2683,21 +3321,50 @@
               if (typeof key === "string" && PRICED.has(key) && !out.includes(key)) out.push(key);
             return out;
           }
-          /** At most 6 recent look summaries, each field range-checked. */
+          /** Sticker triples [id, x, y]: known sticker ids only, coordinates clamped onto the art (at most 14). */
+          function cleanStickers(list) {
+            const out = [];
+            for (const it of Array.isArray(list) ? list.slice(0, MAX_STICKERS) : []) {
+              const ok =
+                Array.isArray(it) &&
+                typeof it[0] === "string" &&
+                findOpt("sticker", it[0]) &&
+                Number.isFinite(it[1]) &&
+                Number.isFinite(it[2]);
+              if (ok)
+                out.push([it[0], clamp(Math.round(it[1]), 0, W), clamp(Math.round(it[2]), 0, H)]);
+            }
+            return out;
+          }
+          /** A look's recipe: allow-listed option ids per slot plus the stickers; anything else is dropped. */
+          function cleanRecipe(r) {
+            if (!r || typeof r !== "object" || Array.isArray(r)) return null;
+            const out = {};
+            for (const slot of RECIPE_SLOTS) {
+              const id = r[slot];
+              if (typeof id === "string" && findOpt(slot, id)) out[slot] = id;
+            }
+            out.stickers = cleanStickers(r.stickers);
+            return out;
+          }
+          /** At most 12 recent look summaries, each field range-checked; the recipe (optional, old saves have none) is sanitised. */
           function cleanLooks(list) {
             const out = [];
-            for (const look of Array.isArray(list) ? list.slice(0, 6) : []) {
+            for (const look of Array.isArray(list) ? list.slice(0, MAX_LOOKS) : []) {
               const ok =
                 look &&
                 typeof look === "object" &&
                 REQ_IDS.has(look.req) &&
                 int(look.stars, 3) >= 1;
-              if (ok)
-                out.push({
-                  stars: int(look.stars, 3),
-                  score: int(look.score, 99999),
-                  req: look.req,
-                });
+              if (!ok) continue;
+              const entry = {
+                stars: int(look.stars, 3),
+                score: int(look.score, 99999),
+                req: look.req,
+              };
+              const recipe = cleanRecipe(look.recipe);
+              if (recipe) entry.recipe = recipe;
+              out.push(entry);
             }
             return out;
           }
@@ -2751,7 +3418,14 @@
           window.addEventListener("storage", (e) => {
             if (e.key === null || e.key === KEY) sync();
           });
-          return { data, persist, sync, int, onExternalChange: (fn) => listeners.push(fn) };
+          return {
+            data,
+            persist,
+            sync,
+            int,
+            cleanRecipe,
+            onExternalChange: (fn) => listeners.push(fn),
+          };
         })();
 
         // ============================================================================================
@@ -2990,6 +3664,20 @@
             sticker: () =>
               play("sticker", (t) =>
                 tone(1200, t, 0.08, { gain: 0.1, end: 1700, type: "triangle" }),
+              ),
+            /** 25 / 50 / 75 % of a rub: C5, E5, G5, one soft note each (a tiny win on the way to the big chime). */
+            milestone: (level) =>
+              play("milestone", (t) =>
+                tone([523.25, 659.25, 783.99][clamp(level, 1, 3) - 1], t, 0.4, {
+                  gain: 0.09,
+                  type: "triangle",
+                  echo: true,
+                }),
+              ),
+            /** One tick of the coin counter: a short bright blip that climbs with the count. */
+            clink: (k) =>
+              play("clink", (t) =>
+                tone(1500 + 600 * clamp(k, 0, 1), t, 0.07, { gain: 0.05, type: "triangle" }),
               ),
             /** Brush / wand / lipstick / sponge: a soft low whoosh whose level follows the (smoothed) stroke speed.
              *  Rate-limited, and every change is a ramp (setTargetAtTime), never a jump, so there are no clicks. */
@@ -3499,6 +4187,7 @@
             color: null,
             applied: null,
             done: false,
+            painted: false, // true once anything was drawn on `cv` (stroke, fill): the snapshot skips empty canvases
           };
           if (def.canvas) setupPaintCanvas(region, paths, excl);
           return region;
@@ -3532,6 +4221,7 @@
           const x1 = Math.min(region.cv.width, Math.ceil(px + pr));
           const y1 = Math.min(region.cv.height, Math.ceil(py + pr));
           if (x1 <= x0 || y1 <= y0) return;
+          region.painted = true;
           const t = region.rawCtx;
           const g = t.createRadialGradient(px, py, 0, px, py, pr);
           g.addColorStop(0, rgba(color, alpha));
@@ -3602,6 +4292,7 @@
         function fillRegion(region, color, alpha) {
           if (!region.ctx) return;
           flushPaint(region);
+          region.painted = true;
           const sc = region.scratch.getContext("2d");
           sc.globalCompositeOperation = "source-over";
           sc.clearRect(0, 0, region.scratch.width, region.scratch.height);
@@ -3635,6 +4326,7 @@
             region.rawCtx.clearRect(0, 0, region.raw.width, region.raw.height);
             region.ctx.clearRect(0, 0, region.cv.width, region.cv.height);
             region.dirty = null;
+            region.painted = false;
           }
           region.vs.fill(0);
           region.sum = 0;
@@ -3823,33 +4515,55 @@
           ],
         };
         const stickersGrp = $("stickersGrp");
-        const MAX_STICKERS = 14;
+        /** Placed stickers, oldest first: { id, x, y, rot, sc, g } (g = the outer group that carries the placement). */
+        const stickerList = [];
         function stickerNode(id) {
           const g = svgEl("g", {});
           for (const n of (STICKER_SHAPES[id] || STICKER_SHAPES.star)()) g.appendChild(n);
           return g;
         }
-        function addSticker(id, x, y) {
-          const g = stickerNode(id);
-          const rot = Math.round(rand(-25, 25));
-          const sc = rand(0.85, 1.15).toFixed(2);
-          g.setAttribute(
-            "transform",
-            "translate(" +
-              x.toFixed(1) +
-              " " +
-              y.toFixed(1) +
-              ") rotate(" +
-              rot +
-              ") scale(" +
-              sc +
-              ")",
-          );
-          stickersGrp.appendChild(g);
-          while (stickersGrp.childNodes.length > MAX_STICKERS)
-            stickersGrp.removeChild(stickersGrp.firstChild);
+        const placement = (st) =>
+          "translate(" +
+          st.x.toFixed(1) +
+          " " +
+          st.y.toFixed(1) +
+          ") rotate(" +
+          st.rot +
+          ") scale(" +
+          st.sc +
+          ")";
+        /** A placed sticker is an outer group (the placement) around an inner one (the shapes, free to pop and shrink). */
+        function addSticker(id, x, y, look) {
+          const inner = stickerNode(id);
+          inner.setAttribute("class", "stk");
+          const st = {
+            id,
+            x,
+            y,
+            rot: look ? look.rot : Math.round(rand(-25, 25)),
+            sc: look ? look.sc : rand(0.85, 1.15).toFixed(2),
+            g: svgEl("g", {}, inner),
+          };
+          st.g.setAttribute("transform", placement(st));
+          stickersGrp.appendChild(st.g);
+          stickerList.push(st);
+          while (stickerList.length > MAX_STICKERS) dropSticker(stickerList[0]);
+          return st;
         }
-        const clearStickers = () => stickersGrp.replaceChildren();
+        function dropSticker(st) {
+          st.g.remove();
+          const i = stickerList.indexOf(st);
+          if (i >= 0) stickerList.splice(i, 1);
+        }
+        function moveSticker(st, x, y) {
+          st.x = x;
+          st.y = y;
+          st.g.setAttribute("transform", placement(st));
+        }
+        const clearStickers = () => {
+          stickersGrp.replaceChildren();
+          stickerList.length = 0;
+        };
 
         /** Bare face: no make-up, dirty, natural eyes, nothing worn. */
         function resetLook() {
@@ -3865,18 +4579,97 @@
           clearStickers();
           eyesLayer.classList.remove("happy", "smile", "blink");
         }
-        /** The glam look from the owner's reference (shown on the title screen). */
-        function demoLook() {
+        /** Wear a saved recipe on the (reset) face: the same calls a finished makeover would have made. */
+        function applyRecipe(r) {
           resetLook();
           setSmudges(0);
-          applyIris("sapphire");
-          fillRegion(REGIONS.shadow, findOpt("shadow", "sky").c, 0.7);
-          setLidTint(findOpt("shadow", "sky").c);
-          fillRegion(REGIONS.blush, findOpt("blush", "rose").c, 0.5);
-          fillRegion(REGIONS.lips, findOpt("lips", "cherry").c, 0.95);
-          updateLashes(1);
-          applyAcc("tiara", "pearl");
-          applyAcc("necklace", "butterfly");
+          const opt = (slot) => (r[slot] ? findOpt(slot, r[slot]) : null);
+          if (opt("lens")) applyIris(r.lens);
+          if (opt("shadow")) {
+            fillRegion(REGIONS.shadow, opt("shadow").c, 0.7);
+            setLidTint(opt("shadow").c);
+          }
+          if (opt("blush")) fillRegion(REGIONS.blush, opt("blush").c, 0.5);
+          if (opt("lips")) fillRegion(REGIONS.lips, opt("lips").c, 0.95);
+          if (opt("mascara")) setLashColor(opt("mascara").c);
+          updateLashes(opt("mascara") ? 1 : 0);
+          for (const slot of ACC_SLOTS) applyAcc(slot, r[slot] || "none");
+          (r.stickers || []).forEach(([id, x, y], i) =>
+            addSticker(id, x, y, {
+              rot: ((i * 37) % 51) - 25,
+              sc: (0.85 + ((i * 13) % 30) / 100).toFixed(2),
+            }),
+          );
+        }
+        /** The glam look from the owner's reference (shown on the title screen). */
+        const DEMO_RECIPE = {
+          shadow: "sky",
+          lens: "sapphire",
+          mascara: "black",
+          blush: "rose",
+          lips: "cherry",
+          tiara: "pearl",
+          necklace: "butterfly",
+          stickers: [],
+        };
+        const demoLook = () => applyRecipe(DEMO_RECIPE);
+
+        // ============================================================================================
+        // 6b. SNAPSHOT — the live princess as a standalone SVG picture (client portrait, album). All local: a data: URL.
+        // ============================================================================================
+        const PAINT_REGION = { cvShadow: "shadow", cvBlush: "blush", cvLips: "lips" };
+        /** One stage layer as markup: art layers are cloned (never moved) and serialised; a paint canvas becomes an <image>. */
+        function snapLayer(node) {
+          if (node.nodeName.toLowerCase() === "svg") {
+            const c = node.cloneNode(true);
+            c.setAttribute("width", String(W));
+            c.setAttribute("height", String(H));
+            c.setAttribute("style", "overflow:visible");
+            return new XMLSerializer().serializeToString(c);
+          }
+          const region = REGIONS[PAINT_REGION[node.id]];
+          if (!region || !region.painted) return "";
+          flushPaint(region);
+          return (
+            '<image x="' +
+            region.bx +
+            '" y="' +
+            region.by +
+            '" width="' +
+            region.bw +
+            '" height="' +
+            region.bh +
+            '" href="' +
+            region.cv.toDataURL("image/png") +
+            '"/>'
+          );
+        }
+        /** The princess as the page shows her right now, over the viewBox "x y w h" (the page's CSS is not available to an
+         *  image, so the lash colour is written out). Synchronous: the caller may change the look straight afterwards. */
+        function stageSvgUrl(viewBox) {
+          const lash = eyesLayer.style.getPropertyValue("--lash") || "#1d1432";
+          const body = Array.from(inner.children, snapLayer).join("");
+          const svg =
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="' +
+            viewBox +
+            '"><style>.lf{stroke:' +
+            lash +
+            "}</style>" +
+            body +
+            "</svg>";
+          return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+        }
+        /** Draw an SVG data URL into a canvas (resolves when painted; a failed decode leaves the canvas empty). */
+        function paintSvgUrl(canvas, url) {
+          return new Promise((resolve) => {
+            const img = new Image();
+            img.onload = () => {
+              canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+              resolve(true);
+            };
+            img.onerror = () => resolve(false);
+            img.src = url;
+          });
         }
 
         // ============================================================================================
@@ -3887,6 +4680,7 @@
         let fxW = 0;
         let fxH = 0;
         let fxDpr = 1;
+        const FX_MAX_PX = 3e6; // backing-store budget of the particle layer (perf.md)
         const parts = [];
         /** The overlay is only composited while something is drawn on it (the twinkles are separate elements). */
         let fxShown = false;
@@ -3897,9 +4691,11 @@
         }
         function sizeFx() {
           const r = app.getBoundingClientRect();
-          fxDpr = Math.min(2, window.devicePixelRatio || 1);
           fxW = Math.max(1, Math.round(r.width));
           fxH = Math.max(1, Math.round(r.height));
+          // 2x at most, and never more than FX_MAX_PX backing pixels: a wide tablet column would otherwise composite a
+          // 4-5 Mpx layer for as long as a burst lives (measured: 30 % off the step-transition frame rate on iPad landscape)
+          fxDpr = Math.min(2, window.devicePixelRatio || 1, Math.sqrt(FX_MAX_PX / (fxW * fxH)));
           fxCv.width = Math.round(fxW * fxDpr);
           fxCv.height = Math.round(fxH * fxDpr);
         }
@@ -4440,7 +5236,7 @@
           timers.clear();
         }
         const SCREENS = ["title", "play", "results"];
-        const MODALS = ["reqModal", "unlockModal", "leaveModal"];
+        const MODALS = ["reqModal", "unlockModal", "leaveModal", "albumModal"];
         const STEP_COINS = 10;
         const COMPLETE_STAGGER = 0.12; // s between the completion chime, the coin and the giggle
         const MATCH_COINS = 25;
@@ -4463,6 +5259,7 @@
             skipped: STEPS.map(() => false),
             awarded: STEPS.map(() => false),
             tipLearned: STEPS.map(() => false), // a touch stroke has already added coverage on this step: no more "paint with the tip" guide
+            mile: STEPS.map(() => 0), // the last 25 / 50 / 75 % milestone (0..3) celebrated on each step
             sel: {
               sponge: "pink",
               shadow: def("shadow"),
@@ -4529,6 +5326,7 @@
           state.coins = Save.data.coins;
           updateCoinUI();
           updateBest();
+          updateAlbumBtn();
           for (const id of ["soundBtn", "soundBtn2"])
             $(id).setAttribute("aria-pressed", Save.data.sound ? "true" : "false");
           Sfx.applySound(); // the toggle and the audio graph must agree
@@ -4569,6 +5367,7 @@
           eyesLayer.classList.remove("happy", "smile");
           stage.classList.remove("bounce");
           endStroke();
+          cancelDemo();
           hideGuides();
           toolRingEl.classList.remove("on");
           $("bubble").classList.remove("show");
@@ -4596,6 +5395,8 @@
           const last = i === STEPS.length - 1;
           const ready = run.done[i];
           next.dataset.ready = ready ? "true" : "false";
+          next.dataset.last = last ? "true" : "false";
+          if (!ready) next.classList.remove("pop");
           // One word until the step is done ("Skip", as in AC-8); the aria-label still says what pressing it does on the last step
           $("nextTxt").textContent = ready ? (last ? "Photo!" : "Next") : "Skip";
           next.setAttribute(
@@ -4609,29 +5410,85 @@
                 : "Skip this step",
           );
         }
+        /** What the heart shows for step i: how full (0..100), whether the step is complete, and the spoken version. */
+        function meterOf(i) {
+          const stepDef = STEPS[i];
+          const done = !!run.done[i];
+          if (stepDef.id === "acc") {
+            const worn = ACC_SLOTS.filter((sl) => run.sel[sl]).length;
+            const label = "Accessories worn: " + worn + " of " + ACC_SLOTS.length;
+            return { pct: Math.round((worn / ACC_SLOTS.length) * 100), done, label };
+          }
+          const rub = stepDef.kind === "paint" || stepDef.kind === "wipe";
+          const pct = Math.round(clamp(done ? 1 : rub ? stepProgress(i) / DONE_AT : 0, 0, 1) * 100);
+          return { pct, done, label: "Step progress " + pct + " percent" };
+        }
+        function drawMeter(m) {
+          const ring = $("ring");
+          $("heartFill").setAttribute("y", (44 - 38 * (m.pct / 100)).toFixed(1));
+          ring.classList.toggle("full", m.done && m.pct >= 100);
+          $("ringTxt").textContent = m.done ? "✓" : "";
+          ring.setAttribute("aria-label", m.label);
+        }
+        const MILESTONE_SAYS = ["", "A quarter done", "Halfway there", "Nearly done"];
+        /** Three stars pop around a point: pooled composited elements animated by WAAPI. (Particles would keep the big fx
+         *  canvas on screen for the whole stroke, which is the per-frame cost the perf pass removed.) */
+        const popPool = [];
+        function popStars(ux, uy) {
+          if (reduceMotion) return;
+          const c = toClient(ux, uy);
+          const p = toApp(c.x, c.y);
+          for (let i = 0; i < 3; i++) {
+            if (!popPool[i]) {
+              popPool[i] = document.createElement("i");
+              popPool[i].className = "twk";
+              popPool[i].setAttribute("aria-hidden", "true");
+              popPool[i].style.backgroundImage = "url(" + starSprite("#ffd23f").toDataURL() + ")";
+              fxCv.after(popPool[i]);
+            }
+            const el = popPool[i];
+            const d = rand(26, 38);
+            el.style.width = el.style.height = d.toFixed(1) + "px";
+            el.style.left = (p.x + rand(-56, 56) - d / 2).toFixed(1) + "px";
+            el.style.top = (p.y + rand(-44, 44) - d / 2).toFixed(1) + "px";
+            if (el.anim) el.anim.cancel();
+            el.anim = el.animate(
+              [
+                { opacity: 0, transform: "scale(0.3) rotate(0deg)" },
+                { opacity: 1, transform: "scale(1.25) rotate(40deg)", offset: 0.45 },
+                { opacity: 0, transform: "scale(0.6) rotate(80deg)" },
+              ],
+              { duration: 700, delay: i * 90, easing: "ease-out" },
+            );
+          }
+        }
+        /** 25 / 50 / 75 % of a rub: a small sparkle and a rising note (and a spoken line), once each per step. */
+        function checkMilestone(i, m) {
+          const level = m.pct >= 75 ? 3 : m.pct >= 50 ? 2 : m.pct >= 25 ? 1 : 0;
+          if (m.done || level <= run.mile[i]) return;
+          run.mile[i] = level;
+          popStars(STEPS[i].fx, STEPS[i].fy);
+          Sfx.fx.milestone(level);
+          announce(MILESTONE_SAYS[level]);
+        }
+        /** Finishing a step: Next hops three times (it keeps glowing). */
+        function popNext() {
+          const next = $("nextBtn");
+          next.classList.remove("pop");
+          void next.offsetWidth; // restart the hop
+          if (!reduceMotion) next.classList.add("pop");
+        }
         function updateProgressUI() {
           if (!run) return;
           const i = state.step;
-          const stepDef = STEPS[i];
-          const p = stepProgress(i);
-          const pct = Math.round(
-            clamp(run.done[i] ? 1 : p / (stepDef.kind === "paint" ? DONE_AT : 1), 0, 1) * 100,
-          );
+          const m = meterOf(i);
           // Skip the DOM writes when nothing visible changed (this runs on every brush move)
-          const key = i + "|" + pct + "|" + run.done.join() + "|" + run.skipped.join();
+          const key = i + "|" + m.pct + "|" + run.done.join() + "|" + run.skipped.join();
           if (key === updateProgressUI.last) return;
           updateProgressUI.last = key;
-          const ring = $("ring");
-          ring.style.setProperty("--p", String(pct));
-          ring.classList.toggle("full", !!run.done[i]);
-          $("ringTxt").textContent = run.done[i]
-            ? "✓"
-            : stepDef.kind === "paint" || stepDef.kind === "wipe"
-              ? pct + "%"
-              : "–";
-          ring.setAttribute("aria-label", "Step progress " + pct + " percent");
-          toolRingEl.style.setProperty("--p", String(pct));
-          $("toolRingTxt").textContent = pct + "%";
+          drawMeter(m);
+          toolRingEl.style.setProperty("--p", String(m.pct));
+          checkMilestone(i, m);
           updateNextButton(i);
           updateDots(i);
         }
@@ -4649,9 +5506,10 @@
         }
         function toolButton(slot, opt) {
           const locked = !isUnlocked(slot, opt);
+          const wished = !locked && run.req.want[slot] === opt.id;
           const b = htmlEl("button", {
             type: "button",
-            class: "tool" + (locked ? " locked" : ""),
+            class: "tool" + (locked ? " locked" : "") + (wished ? " wish" : ""),
             "data-opt": opt.id,
             "aria-pressed": !locked && isSelected(slot, opt) ? "true" : "false",
             "aria-label": optLabel(slot, opt, locked),
@@ -4659,9 +5517,12 @@
           });
           b.appendChild(htmlEl("span", { class: "face" }, makeIcon(slot, opt)));
           if (locked) b.appendChild(htmlEl("span", { class: "badge" }, lockIcon()));
-          else if (run.req.want[slot] === opt.id)
-            b.appendChild(htmlEl("span", { class: "want" }, heartIcon()));
-          b.addEventListener("click", () => onToolPress(slot, opt));
+          else if (wished) b.appendChild(htmlEl("span", { class: "want" }, heartIcon()));
+          b.addEventListener("click", () => {
+            if (drag.hush) return; // the click that follows a drag-and-drop release is not a tap
+            onToolPress(slot, opt);
+          });
+          if (slot === "sticker" && !locked) attachStickerDrag(b, opt);
           return b;
         }
         function renderSubtabs() {
@@ -4708,13 +5569,15 @@
           for (const opt of CATALOG[currentSlot()])
             wrap.appendChild(toolButton(currentSlot(), opt));
           wrap.setAttribute("aria-label", stepDef.title + " choices");
+          wrap.dataset.slot = currentSlot();
           const sel = wrap.querySelector('[aria-pressed="true"]');
           wrap.scrollLeft = sel ? sel.offsetLeft - (wrap.clientWidth - sel.offsetWidth) / 2 : 0;
         }
-        // One camera per accessory tab, framed so the chosen piece is fully on screen when it lands: the whole head for the
-        // tiara (zoom 1 gets no tablet boost), the ears for earrings, the neckline for the necklace.
+        // One camera per accessory tab, framed so the chosen piece is fully on screen when it lands: the whole head with sky
+        // above it for the tiara (a zoom under 1 gets no tablet boost, and leaves the crown clear of the top bar and the
+        // speech bubble), the ears for earrings, the neckline for the necklace.
         const ACC_CAM = {
-          tiara: [1.0, 200, 200],
+          tiara: [0.88, 200, 200],
           earring: [1.3, 200, 335],
           necklace: [1.0, 200, 380],
         };
@@ -4785,10 +5648,27 @@
           applyAcc(slot, on ? opt.id : "none");
           const spots = { tiara: [212, 70], earring: [100, 355], necklace: [200, 520] };
           sparkleUnits(spots[slot][0], spots[slot][1], on ? 16 : 5);
-          if (on) Sfx.fx.chime(3);
+          if (on) {
+            Sfx.fx.chime(3);
+            popOn(slot, opt.id);
+          }
           if (on && !run.done[state.step]) completeStep(state.step);
           // nothing worn any more: the step is open again (the coin stays latched, so it can never be farmed)
           if (!on && ACC_SLOTS.every((slot) => !run.sel[slot])) run.done[state.step] = false;
+        }
+        /** A worn piece drops in from above with a little bounce (the `translate` property leaves the art's own transform alone). */
+        function popOn(slot, id) {
+          const g = document.querySelector('[data-acc="' + slot + ":" + id + '"]');
+          if (reduceMotion || !g || !g.animate) return;
+          g.animate(
+            [
+              { translate: "0 -34px", opacity: 0 },
+              { translate: "0 5px", opacity: 1, offset: 0.55 },
+              { translate: "0 -3px", offset: 0.78 },
+              { translate: "0 0", opacity: 1 },
+            ],
+            { duration: 320, easing: "ease-out" },
+          );
         }
         function previewSticker(id) {
           const g = $("stickerPreview");
@@ -4799,6 +5679,7 @@
         let pendingUnlock = null;
         let lastFocus = null;
         function openModal(id, focusId) {
+          cancelDemo(); // nothing demonstrates under a sheet
           lastFocus = document.activeElement;
           $(id).classList.add("open");
           $(focusId).focus();
@@ -4810,6 +5691,7 @@
           for (const sc of SCREENS) $(sc).inert = false;
           if (lastFocus && typeof lastFocus.focus === "function" && document.contains(lastFocus))
             lastFocus.focus();
+          if (!modalOpen()) scheduleDemo(); // a sheet that closes on a step nobody has touched yet: show how
         }
         /** Writes the sheet for `opt` from the current wallet; returns whether the player can afford it. */
         function paintUnlockSheet(opt) {
@@ -4883,28 +5765,36 @@
         }
 
         // ---- request card ----
-        function wantItem(slot, id) {
+        /** A wish as a picture: the very icon the child will tap in the tray, with the slot and colour under it. */
+        function wantCard(slot, id) {
           const o = findOpt(slot, id);
-          const dot = htmlEl("span", { class: "dot" });
-          dot.style.background = o.c;
-          return { o, dot };
+          const ico = htmlEl("span", { class: "wish-ico" }, makeIcon(slot, o));
+          const txt = htmlEl(
+            "span",
+            {},
+            document.createTextNode(SLOT_LABEL[slot]),
+            htmlEl("small", { text: o.name }),
+          );
+          return htmlEl("li", {}, ico, txt);
+        }
+        const PORTRAIT_VIEW = "30 50 340 360"; // the head and hair, in art units
+        let portraitUrl = "";
+        /** The client's portrait: this princess, clean-faced and bare (taken once, before any make-up). */
+        function ensurePortrait() {
+          if (!portraitUrl) {
+            setSmudges(0);
+            portraitUrl = stageSvgUrl(PORTRAIT_VIEW);
+            setSmudges(1);
+          }
+          $("reqPortrait").src = portraitUrl;
         }
         function openRequest() {
           const r = run.req;
-          $("reqIntro").textContent = r.client + " is coming to the salon and wants the";
+          $("reqIntro").textContent = r.client.replace(/^Princess /, "") + " wants:";
           $("reqLook").textContent = r.look + " look";
           const ul = $("reqWants");
           ul.replaceChildren();
-          for (const slot of WANT_SLOTS) {
-            const { o, dot } = wantItem(slot, r.want[slot]);
-            const txt = htmlEl(
-              "span",
-              {},
-              document.createTextNode(SLOT_LABEL[slot]),
-              htmlEl("small", { text: o.name }),
-            );
-            ul.appendChild(htmlEl("li", {}, dot, txt));
-          }
+          for (const slot of WANT_SLOTS) ul.appendChild(wantCard(slot, r.want[slot]));
           Sfx.fx.chime(3);
           openModal("reqModal", "reqGo");
         }
@@ -4939,6 +5829,8 @@
           toolHome.on = true;
           hideTipGuide();
           touchIdle();
+          cancelDemo();
+          scheduleDemo();
         }
         /** Pays a step's coins once; returns how many reached the wallet (0 when already paid or the wallet is full). */
         function award(i) {
@@ -4966,6 +5858,7 @@
           say(pick(CHEERS) + (paid ? " +" + paid + " coins" : ""), 2200);
           announce(stepDef.title + " complete!" + (paid ? " Plus " + paid + " coins." : ""));
           updateProgressUI();
+          popNext();
         }
         function onNext() {
           if (!canPlay()) return;
@@ -5001,6 +5894,7 @@
           if (stepDef.id === "stickers") clearStickers();
           run.done[i] = false;
           run.skipped[i] = false;
+          run.mile[i] = 0;
           Sfx.fx.tap();
           renderTray();
           updateProgressUI();
@@ -5030,6 +5924,16 @@
             starCoins: stars * STAR_COINS,
           };
         }
+        /** What this makeover looked like, as option ids (never pictures): the painted colours, what is worn, the stickers. */
+        function recipeOf() {
+          const r = {};
+          for (const slot of RECIPE_SLOTS) {
+            const id = slot in run.applied ? run.applied[slot] : run.sel[slot];
+            if (id) r[slot] = id;
+          }
+          r.stickers = stickerList.map((st) => [st.id, Math.round(st.x), Math.round(st.y)]);
+          return r;
+        }
         function finishMakeover() {
           Save.sync();
           const res = computeResult();
@@ -5043,9 +5947,11 @@
             stars: res.stars,
             score: Save.int(res.score, 99999),
             req: run.req.id,
+            recipe: Save.cleanRecipe(recipeOf()),
           });
-          Save.data.looks = Save.data.looks.slice(0, 6);
+          Save.data.looks = Save.data.looks.slice(0, MAX_LOOKS);
           addCoins(res.matchCoins + res.starCoins, true);
+          updateAlbumBtn();
           state.phase = "reveal";
           setStageLive(false);
           endStroke();
@@ -5058,25 +5964,25 @@
           f.classList.add("go");
           later(showResults, reduceMotion ? 40 : 230);
         }
+        /** The four wishes as the pictures the child tapped: a tick when matched, faded when not (never colour alone). */
         function renderWants(res) {
           const ul = $("resWants");
           ul.replaceChildren();
           for (const d of res.detail) {
             const o = findOpt(d.slot, d.want);
-            const dot = htmlEl("span", { class: "dot" });
-            if (d.hit) dot.appendChild(htmlEl("span", { class: "tick", text: "✓" })); // white disc + ink tick: readable on any swatch
-            dot.style.background = o.c;
-            ul.appendChild(
-              htmlEl(
-                "li",
-                {
-                  class: d.hit ? "hit" : "miss",
-                  "aria-label": d.label + (d.hit ? " matched" : " not matched"),
-                },
-                dot,
-                htmlEl("span", { text: d.label }),
-              ),
+            const ico = htmlEl(
+              "span",
+              {
+                class: "wish-ico",
+                role: "img",
+                "aria-label": d.label + " " + o.name + (d.hit ? ", matched" : ", not matched"),
+              },
+              makeIcon(d.slot, o),
             );
+            const li = htmlEl("li", { class: d.hit ? "hit" : "miss" }, ico);
+            if (d.hit)
+              li.appendChild(htmlEl("span", { class: "tick", "aria-hidden": "true", text: "✓" }));
+            ul.appendChild(li);
           }
         }
         function renderResults(res) {
@@ -5087,13 +5993,11 @@
               : res.stars === 2
                 ? "Beautiful work!"
                 : "Lovely look!";
-          $("resLook").replaceChildren(
-            document.createTextNode(r.look + " for " + r.client + " · "),
-            htmlEl("b", { text: res.matches + " of 4 matched" }),
-          );
+          $("resLook").textContent =
+            r.look + " for " + r.client + ", " + res.matches + " of 4 matched";
           renderWants(res);
           const nominal = run.earned.steps + res.matchCoins + res.starCoins;
-          $("resEarn").textContent = "+" + run.banked + " coins";
+          $("resEarn").textContent = "+0";
           $("resDetail").textContent =
             "Steps +" +
             run.earned.steps +
@@ -5111,6 +6015,21 @@
           document.querySelectorAll("#stars .star").forEach((el) => el.classList.remove("lit"));
           $("resCard").hidden = true;
           $("resActions").hidden = true;
+        }
+        /** The coin total counts up in about 20 ticks over 800 ms, each with a small clink (at once under reduced motion). */
+        function countCoins(el, to) {
+          if (reduceMotion || to < 2) {
+            el.textContent = "+" + to;
+            return;
+          }
+          el.textContent = "+0";
+          const ticks = Math.min(20, to);
+          for (let k = 1; k <= ticks; k++) {
+            later(() => {
+              el.textContent = "+" + Math.round((to * k) / ticks);
+              if (k % 3 === 0 || k === ticks) Sfx.fx.clink(k / ticks);
+            }, k * 40);
+          }
         }
         /** Light the earned stars one by one, then reveal the card + actions (phase becomes "results"). */
         function animateStars(res) {
@@ -5133,11 +6052,12 @@
               state.phase = "results";
               Sfx.fx.coin();
               bumpCoins();
+              countCoins($("resEarn"), run.banked);
               announce(
                 res.stars +
                   " out of 3 stars. " +
-                  $("resEarn").textContent +
-                  ". " +
+                  run.banked +
+                  " coins. " +
                   $("resBest").textContent,
               );
               $("againBtn").focus({ preventScroll: true });
@@ -5168,11 +6088,123 @@
             : "Best: none yet";
         }
 
+        // ---- My Album: the saved looks, drawn here and now from their recipes (nothing is stored but option ids) ----
+        const ALBUM_VIEW = "0 0 400 600";
+        const albumState = { token: 0 };
+        const albumLooks = () => Save.data.looks.filter((l) => l.recipe);
+        function updateAlbumBtn() {
+          const n = albumLooks().length;
+          $("albumCount").hidden = n === 0;
+          $("albumCount").textContent = String(n);
+          $("albumBtn").setAttribute(
+            "aria-label",
+            n ? "My Album, " + n + (n === 1 ? " look" : " looks") : "My Album",
+          );
+        }
+        const lookRequest = (look) => REQUESTS.find((r) => r.id === look.req);
+        const lookName = (look) => {
+          const r = lookRequest(look);
+          return (r ? r.look + " for " + r.client : "A look") + ", " + look.stars + " of 3 stars";
+        };
+        function miniStars(n) {
+          const wrap = htmlEl("span", { class: "mini-stars", "aria-hidden": "true" });
+          for (let i = 0; i < 3; i++)
+            wrap.appendChild(
+              svgEl(
+                "svg",
+                { viewBox: "0 0 64 64" },
+                svgEl("use", { href: i < n ? "#ico-star-on" : "#ico-star-off" }),
+              ),
+            );
+          return wrap;
+        }
+        /** One polaroid: an empty canvas now (the picture is painted into it a moment later) and the stars. */
+        function albumTile(look) {
+          const cv = htmlEl("canvas", { width: "300", height: "450", "aria-hidden": "true" });
+          const btn = htmlEl(
+            "button",
+            { type: "button", class: "polaroid", "aria-label": lookName(look) },
+            cv,
+            miniStars(look.stars),
+          );
+          btn.addEventListener("click", () => openAlbumBig(look));
+          return { li: htmlEl("li", {}, btn), cv };
+        }
+        /** Each look's picture URL, made by wearing its recipe on the live (hidden) princess; her own look is restored after. */
+        function albumPictures(looks) {
+          const urls = looks.map((look) => {
+            applyRecipe(look.recipe);
+            return stageSvgUrl(ALBUM_VIEW);
+          });
+          demoLook();
+          return urls;
+        }
+        const nextFrame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+        async function paintAlbum(canvases, urls, token) {
+          for (let i = 0; i < urls.length; i++) {
+            if (albumState.token !== token) return;
+            await paintSvgUrl(canvases[i], urls[i]);
+            await nextFrame(); // one picture per frame: the sheet stays responsive
+          }
+        }
+        function showAlbumGrid() {
+          $("albumGrid").hidden = false;
+          $("albumView").hidden = true;
+          $("albumBack").hidden = true;
+        }
+        /** Lay out one empty polaroid per look, then paint the pictures into them one at a time. */
+        function buildAlbum() {
+          const looks = albumLooks();
+          const tiles = looks.map(albumTile);
+          $("albumGrid").replaceChildren(...tiles.map((t) => t.li));
+          $("albumEmpty").hidden = looks.length > 0;
+          const token = ++albumState.token;
+          paintAlbum(
+            tiles.map((t) => t.cv),
+            albumPictures(looks),
+            token,
+          );
+        }
+        function openAlbum() {
+          if (state.phase !== "title") return;
+          Sfx.unlock();
+          Sfx.fx.tap();
+          showAlbumGrid();
+          openModal("albumModal", "albumClose");
+          buildAlbum();
+        }
+        async function openAlbumBig(look) {
+          albumState.token++; // the small pictures stop painting
+          const cv = $("albumBigCv");
+          cv.getContext("2d").clearRect(0, 0, cv.width, cv.height);
+          $("albumBigCap").textContent = lookName(look);
+          $("albumGrid").hidden = true;
+          $("albumView").hidden = false;
+          $("albumBack").hidden = false;
+          $("albumBack").focus();
+          const [url] = albumPictures([look]);
+          if (await paintSvgUrl(cv, url)) announce("Showing " + lookName(look));
+        }
+        function albumBack() {
+          $("albumBigCv").getContext("2d").clearRect(0, 0, 480, 720);
+          showAlbumGrid();
+          buildAlbum();
+          const first = $("albumGrid").querySelector("button");
+          (first || $("albumClose")).focus();
+        }
+        function closeAlbum() {
+          albumState.token++;
+          $("albumGrid").replaceChildren(); // the pictures are not kept: they are drawn again next time
+          $("albumBigCv").getContext("2d").clearRect(0, 0, 480, 720);
+          closeModal("albumModal");
+        }
+
         function startMakeover() {
           Sfx.unlock();
           Sfx.fx.tap();
           run = newRun();
           resetLook();
+          ensurePortrait();
           show("play");
           state.phase = "playing";
           mountStage($("playHost"), false);
@@ -5369,6 +6401,7 @@
             (stepDef.kind === "paint" || stepDef.kind === "wipe") &&
             !run.done[state.step] &&
             !stroke.down &&
+            !demo.active &&
             now - idleSince > NUDGE_AFTER &&
             canPlay();
           if (!want) {
@@ -5386,6 +6419,181 @@
             }
           }
         }
+
+        // ---- the pointing-hand demo: shows a pre-reader what to do, once per step per session ----
+        // It animates only while it plays (WAAPI transforms, nothing per frame), it never paints (no coverage changes), and any
+        // press cancels it at once. Reduced motion gets a still hand with an arrow for two seconds instead.
+        const demoHand = $("demoHand");
+        const demoRipple = $("demoRipple");
+        const demoTrail = $("demoTrail");
+        const demo = { active: false, timer: 0, end: 0, anims: [], seen: new Set() };
+        const DEMO_DELAY = 850; // after the camera glide (750 ms) has settled
+        const DEMO_MS = 2800;
+        const ZIG = [
+          [-1, -0.7],
+          [1, -0.35],
+          [-1, 0],
+          [1, 0.35],
+          [-1, 0.7],
+          [1, 0.35],
+          [-1, 0],
+          [1, -0.35],
+        ];
+        const appPoint = (ux, uy) => {
+          const c = toClient(ux, uy);
+          const p = toApp(c.x, c.y);
+          return [p.x, p.y];
+        };
+        const at = (p, dy, k) =>
+          "translate3d(" +
+          p[0].toFixed(1) +
+          "px," +
+          (p[1] + dy).toFixed(1) +
+          "px,0)" +
+          (k ? " scale(" + k + ")" : "");
+        function scheduleDemo() {
+          clearTimeout(demo.timer);
+          if (!run || state.phase !== "playing" || demo.seen.has(STEPS[state.step].id)) return;
+          demo.timer = setTimeout(runDemo, DEMO_DELAY);
+        }
+        function cancelDemo() {
+          clearTimeout(demo.timer);
+          if (!demo.active) return;
+          clearTimeout(demo.end);
+          demo.active = false;
+          for (const a of demo.anims) a.cancel();
+          demo.anims = [];
+          for (const el of [demoHand, demoRipple, demoTrail]) el.classList.remove("on", "still");
+          touchIdle(); // the idle nudge counts from here, not from before the demo
+        }
+        /** Where the hand goes on this step: a zig-zag over the unpainted part, or taps on a tray circle / the cheek. */
+        function demoPlan(stepDef) {
+          if (stepDef.kind === "paint" || stepDef.kind === "wipe") {
+            const t = nudgeTarget(stepDef);
+            if (!t) return null;
+            const rx = Math.max(t.r * 1.2, 16);
+            return { zig: ZIG.map(([zx, zy]) => appPoint(t.x + rx * zx, t.y + rx * 0.45 * zy)) };
+          }
+          if (stepDef.kind === "place") return { tap: appPoint(262, 346) }; // a cheek
+          const wrap = rectOf($("tools"));
+          const open = Array.from($("tools").querySelectorAll(".tool:not(.locked)"));
+          const btn =
+            open.find((b) => b.classList.contains("wish") && onScreen(rectOf(b), wrap)) ||
+            open.find((b) => onScreen(rectOf(b), wrap));
+          if (!btn) return null;
+          const r = rectOf(btn);
+          const p = toApp(r.left + r.width / 2, r.top + r.height / 2);
+          return { tap: [p.x, p.y] };
+        }
+        const onScreen = (r, box) =>
+          r.left >= box.left - 1 &&
+          r.right <= box.right + 1 &&
+          r.top >= box.top - 1 &&
+          r.bottom <= box.bottom + 1;
+        function runDemo() {
+          demo.timer = 0;
+          const stepDef = STEPS[state.step];
+          if (!canPlay() || stroke.down || demo.seen.has(stepDef.id)) return;
+          const plan = demoPlan(stepDef);
+          if (!plan) return;
+          demo.seen.add(stepDef.id);
+          demo.active = true;
+          demoHand.classList.add("on");
+          if (reduceMotion) showStillHand(plan);
+          else if (plan.zig) playZig(plan.zig);
+          else playTap(plan.tap);
+        }
+        function showStillHand(plan) {
+          const p = plan.tap || plan.zig[0];
+          demoHand.style.transform = at(p, 0);
+          demoHand.classList.add("still");
+          demo.end = setTimeout(cancelDemo, 2000);
+        }
+        /** Keyframes spread over 14 %..86 % of the run: the hand fades in at the first point and out at the last. */
+        function keysAlong(pts, dy, fade) {
+          const n = pts.length;
+          const keys = [
+            { transform: at(pts[0], dy), opacity: fade ? 0 : 1, offset: 0, easing: "ease-in-out" },
+          ];
+          keys.push({ transform: at(pts[0], dy), opacity: 1, offset: 0.14, easing: "ease-in-out" });
+          pts.forEach((p, i) =>
+            keys.push({
+              transform: at(p, dy),
+              opacity: 1,
+              offset: 0.14 + (0.72 * (i + 1)) / n,
+              easing: "ease-in-out",
+            }),
+          );
+          keys.push({ transform: at(pts[n - 1], dy), opacity: fade ? 0 : 1, offset: 1 });
+          return keys;
+        }
+        function playZig(pts) {
+          const lift = touchLift(); // the fingertip sits below the tool tip, as on a real touch
+          const home =
+            "translate3d(" + toolHome.ax.toFixed(1) + "px," + toolHome.ay.toFixed(1) + "px,0)";
+          const toolKeys = keysAlong(pts, 0, false);
+          for (const k of toolKeys) delete k.opacity; // the tool is already visible: only its position is demonstrated
+          toolKeys[0].transform = home;
+          toolKeys[toolKeys.length - 1].transform = home;
+          demoTrail.firstElementChild.setAttribute(
+            "d",
+            "M" + pts.map((p) => p[0].toFixed(1) + " " + p[1].toFixed(1)).join("L"),
+          );
+          demoTrail.classList.add("on");
+          const opts = { duration: DEMO_MS };
+          const handAnim = demoHand.animate(keysAlong(pts, lift, true), opts);
+          handAnim.onfinish = cancelDemo;
+          demo.anims = [
+            handAnim,
+            toolEl.animate(toolKeys, opts),
+            demoTrail.animate(
+              [
+                { opacity: 0 },
+                { opacity: 0.9, offset: 0.14 },
+                { opacity: 0.9, offset: 0.86 },
+                { opacity: 0 },
+              ],
+              opts,
+            ),
+          ];
+        }
+        function playTap(pt) {
+          const D = 2200;
+          const press = [pt[0], pt[1] + 10];
+          const keys = [
+            { transform: at([pt[0] + 40, pt[1] + 90], 0), opacity: 0, offset: 0 },
+            { transform: at(pt, 0), opacity: 1, offset: 0.22 },
+            { transform: at(press, 0, 0.9), offset: 0.34 },
+            { transform: at(pt, 0), offset: 0.44 },
+            { transform: at(press, 0, 0.9), offset: 0.58 },
+            { transform: at(pt, 0), opacity: 1, offset: 0.68 },
+            { transform: at(pt, 0), opacity: 1, offset: 0.84 },
+            { transform: at(pt, 0), opacity: 0, offset: 1 },
+          ];
+          const handAnim = demoHand.animate(keys, { duration: D });
+          handAnim.onfinish = cancelDemo;
+          demoRipple.classList.add("on");
+          const ripple = (frac) =>
+            demoRipple.animate(
+              [
+                { transform: at(pt, 0, 0.4), opacity: 0.9 },
+                { transform: at(pt, 0, 1.5), opacity: 0 },
+              ],
+              { duration: 520, delay: D * frac },
+            );
+          demo.anims = [handAnim, ripple(0.34), ripple(0.58)];
+        }
+        // Any press means the player knows what to do: stop the demo, and never start it on a step they began themselves.
+        document.addEventListener(
+          "pointerdown",
+          () => {
+            if (run && state.phase === "playing" && !modalOpen())
+              demo.seen.add(STEPS[state.step].id);
+            cancelDemo();
+          },
+          true,
+        );
+        document.addEventListener("keydown", cancelDemo, true);
 
         // Drawn size of each tool around its tip, in px [left, top, right, bottom], so it can be parked fully on screen.
         const TOOL_EXT = {
@@ -5429,13 +6637,13 @@
         };
         const brushKey = () => STEPS[state.step].id;
 
-        function beginStroke(u, cx, cy) {
+        function beginStroke(u, cx, cy, finger) {
           const stepDef = STEPS[state.step];
           stroke.last = u;
           if (stepDef.kind === "paint" || stepDef.kind === "wipe") {
             applyAt(u, true, cx, cy);
           } else if (stepDef.kind === "place") {
-            placeSticker(u);
+            placeOrGrab(u, finger);
           } else {
             sparkleUnits(u.x, u.y, 5);
             Sfx.fx.tap();
@@ -5478,12 +6686,154 @@
           if (!stroke.batch) updateProgressUI();
           return touched;
         }
+        const inFace = (u) => u.x >= 70 && u.x <= 330 && u.y >= 80 && u.y <= 450;
         function placeSticker(u) {
-          if (u.x < 70 || u.x > 330 || u.y < 80 || u.y > 450) return;
-          addSticker(run.sel.sticker, u.x, u.y);
+          if (!inFace(u)) return;
+          const st = addSticker(run.sel.sticker, u.x, u.y);
+          popSticker(st);
           Sfx.fx.sticker();
           sparkleUnits(u.x, u.y, 8, { max: 160 });
           if (!run.done[state.step]) completeStep(state.step);
+        }
+        /** A new sticker pops in; a removed one shrinks away (animating the inner group, whose own origin is its centre). */
+        function popSticker(st) {
+          const inner = st.g.firstChild;
+          if (reduceMotion || !inner.animate) return;
+          inner.animate(
+            [
+              { scale: 0.2, opacity: 0 },
+              { scale: 1.2, opacity: 1, offset: 0.6 },
+              { scale: 1, opacity: 1 },
+            ],
+            { duration: 280, easing: "ease-out" },
+          );
+        }
+        // A sticker already on the face can be dragged to move it, or held (600 ms) to shrink it away; a plain tap still adds one.
+        const LONG_PRESS_MS = 600;
+        const grab = {
+          st: null,
+          tip: null,
+          start: null,
+          x0: 0,
+          y0: 0,
+          moved: false,
+          gone: false,
+          timer: 0,
+        };
+        function stickerAt(u) {
+          for (let i = stickerList.length - 1; i >= 0; i--) {
+            const st = stickerList[i];
+            if (Math.hypot(st.x - u.x, st.y - u.y) < 15 * st.sc) return st;
+          }
+          return null;
+        }
+        function placeOrGrab(tip, finger) {
+          const at = finger ? toUnits(finger.x, finger.y) : null;
+          const hit = at && stickerAt(at);
+          if (!hit) {
+            placeSticker(tip);
+            return;
+          }
+          Object.assign(grab, {
+            st: hit,
+            tip,
+            start: at,
+            x0: hit.x,
+            y0: hit.y,
+            moved: false,
+            gone: false,
+          });
+          clearTimeout(grab.timer);
+          grab.timer = setTimeout(() => shrinkAway(hit), LONG_PRESS_MS);
+        }
+        function shrinkAway(st) {
+          if (grab.st !== st || grab.moved) return;
+          grab.gone = true;
+          Sfx.fx.tap();
+          const inner = st.g.firstChild;
+          if (reduceMotion || !inner.animate) dropSticker(st);
+          else
+            inner.animate([{ scale: 1 }, { scale: 0, opacity: 0 }], {
+              duration: 160,
+              fill: "forwards",
+            }).onfinish = () => dropSticker(st);
+        }
+        function dragPlaced(e) {
+          const u = toUnits(e.clientX, e.clientY);
+          const dx = u.x - grab.start.x;
+          const dy = u.y - grab.start.y;
+          if (!grab.moved && Math.hypot(dx, dy) < 6) return;
+          grab.moved = true;
+          clearTimeout(grab.timer);
+          moveSticker(grab.st, clamp(grab.x0 + dx, 70, 330), clamp(grab.y0 + dy, 80, 450));
+        }
+        /** The finger lifted: a tap on a sticker (not a drag, not a long press) adds a new one where the tip was. */
+        function finishGrab() {
+          clearTimeout(grab.timer);
+          const tapped = grab.st && !grab.moved && !grab.gone;
+          grab.st = null;
+          if (tapped) placeSticker(grab.tip);
+        }
+
+        // ---- drag a sticker out of the tray onto the face (a ghost follows the finger; dropping off the face cancels) ----
+        const drag = { id: null, opt: null, sx: 0, sy: 0, on: false, touch: false, hush: false };
+        const ghostEl = $("dragGhost");
+        function ghostPoint(e) {
+          return { cx: e.clientX, cy: e.clientY - (drag.touch ? touchLift() : 0) };
+        }
+        function endDrag() {
+          ghostEl.classList.remove("on");
+          drag.id = null;
+          drag.on = false;
+        }
+        function onDragMove(e) {
+          if (e.pointerId !== drag.id) return;
+          if (!drag.on) {
+            if (Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) < 12) return;
+            drag.on = true;
+            ghostEl.replaceChildren(makeIcon("sticker", drag.opt));
+            ghostEl.classList.add("on");
+            cancelDemo();
+          }
+          const pt = ghostPoint(e);
+          const p = toApp(pt.cx, pt.cy);
+          ghostEl.style.transform =
+            "translate3d(" + p.x.toFixed(1) + "px," + p.y.toFixed(1) + "px,0)";
+        }
+        function onDragEnd(e) {
+          if (e.pointerId !== drag.id) return;
+          const wasDrag = drag.on;
+          const opt = drag.opt;
+          const pt = ghostPoint(e);
+          endDrag();
+          if (!wasDrag) return; // a plain tap: the click handler selects the sticker
+          drag.hush = true; // swallow the click that follows the release
+          setTimeout(() => (drag.hush = false), 80);
+          const host = rectOf(stageHost);
+          const over =
+            pt.cx >= host.left && pt.cx <= host.right && pt.cy >= host.top && pt.cy <= host.bottom;
+          if (!over || !canPlay()) return;
+          run.sel.sticker = opt.id;
+          setToolColor(opt);
+          previewSticker(opt.id);
+          placeSticker(toUnits(pt.cx, pt.cy));
+          renderTray();
+          updateProgressUI();
+        }
+        function attachStickerDrag(btn, opt) {
+          btn.addEventListener("pointerdown", (e) => {
+            if (!canPlay() || e.button > 0) return;
+            Object.assign(drag, { id: e.pointerId, opt, sx: e.clientX, sy: e.clientY, on: false });
+            drag.touch = e.pointerType === "touch";
+            try {
+              btn.setPointerCapture(e.pointerId);
+            } catch {
+              /* some browsers refuse capture for synthetic events */
+            }
+          });
+          btn.addEventListener("pointermove", onDragMove);
+          btn.addEventListener("pointerup", onDragEnd);
+          btn.addEventListener("pointercancel", endDrag);
         }
         /** Root class `painting` pauses the ambient animations while a stroke is down; it clears 250 ms after the stroke. */
         let quietTimer = 0;
@@ -5536,6 +6886,8 @@
           stroke.down = false;
           stroke.id = null;
           stroke.last = null;
+          clearTimeout(grab.timer);
+          grab.st = null;
           kbd.held = false;
           toolRingEl.classList.remove("on");
           toolEl.style.setProperty("--press", "0");
@@ -5570,9 +6922,9 @@
             placeToolAtClient(tip.cx, tip.cy);
             toolEl.classList.add("on");
             const k = STEPS[state.step].kind;
-            if (k === "paint" || k === "wipe") toolRingEl.classList.add("on");
+            if ((k === "paint" || k === "wipe") && !stroke.touch) toolRingEl.classList.add("on"); // one meter is enough on touch
           }
-          beginStroke(toUnits(tip.cx, tip.cy), tip.cx, tip.cy);
+          beginStroke(toUnits(tip.cx, tip.cy), tip.cx, tip.cy, { x: e.clientX, y: e.clientY });
           const kind = STEPS[state.step].kind;
           if (kind === "paint" || kind === "wipe") Sfx.fx.swish(300, STEPS[state.step].tool);
           if (guided) {
@@ -5593,10 +6945,14 @@
             placeToolAtClient(tip.cx, tip.cy);
             toolEl.classList.add("on");
           }
-          if (stroke.down && e.pointerId === stroke.id) strokeTo(toUnits(tip.cx, tip.cy), tip);
+          if (stroke.down && e.pointerId === stroke.id) {
+            if (grab.st) dragPlaced(e);
+            else strokeTo(toUnits(tip.cx, tip.cy), tip);
+          }
         }
         function onPointerUp(e) {
           if (stroke.down && e.pointerId === stroke.id) {
+            finishGrab();
             endStroke();
             if (e.pointerType !== "mouse") toolHome.on = true;
           }
@@ -5696,6 +7052,9 @@
         const toggleSound = () => setSound(!Save.data.sound);
 
         $("startBtn").addEventListener("click", startMakeover);
+        $("albumBtn").addEventListener("click", openAlbum);
+        $("albumClose").addEventListener("click", closeAlbum);
+        $("albumBack").addEventListener("click", albumBack);
         $("againBtn").addEventListener("click", startMakeover);
         $("soundBtn").addEventListener("click", toggleSound);
         $("soundBtn2").addEventListener("click", toggleSound);
@@ -5758,6 +7117,8 @@
           if ($("reqModal").classList.contains("open")) $("reqGo").click();
           else if ($("unlockModal").classList.contains("open")) $("unlockNo").click();
           else if ($("leaveModal").classList.contains("open")) closeModal("leaveModal");
+          else if ($("albumModal").classList.contains("open"))
+            ($("albumView").hidden ? closeAlbum : albumBack)();
           else if (state.phase === "playing") openModal("leaveModal", "leaveNo");
         });
         document.addEventListener("visibilitychange", () => {
@@ -5768,6 +7129,7 @@
         document.addEventListener("dblclick", (e) => e.preventDefault());
 
         function onResize() {
+          cancelDemo();
           clearRects();
           sizeFx();
           layoutStage(false);
@@ -5795,6 +7157,8 @@
         live("want", () => (run ? Object.assign({}, run.req.want) : null));
         live("result", () => (run && run.result ? Object.assign({}, run.result) : null));
         live("stickers", () => stickersGrp.childNodes.length);
+        live("demo", () => demo.active);
+        live("album", () => albumLooks().length);
         live("kbd", () => ({ x: kbd.x, y: kbd.y, held: kbd.held }));
         live("audio", () =>
           Object.assign({ state: Sfx.ctxState(), on: Sfx.isOn(), gain: Sfx.level() }, Sfx.stats),
@@ -5847,6 +7211,7 @@
         demoLook();
         updateCoinUI();
         updateBest();
+        updateAlbumBtn();
         sizeFx();
         $("soundBtn").setAttribute("aria-pressed", Save.data.sound ? "true" : "false");
         $("soundBtn2").setAttribute("aria-pressed", Save.data.sound ? "true" : "false");

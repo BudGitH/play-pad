@@ -347,7 +347,6 @@ async function checkContrast(browser) {
       "photo caption": ".photo .cap",
       "new best": ".res-best.new",
       "results title": ".res-title",
-      "look chip": ".res-card .look b",
       "coin pill": ".coin-pill",
       "earn line": ".earn",
       "play again": "#againBtn",
@@ -1551,7 +1550,7 @@ async function main() {
     );
     check(
       "AC-13",
-      "Play again starts a new makeover (new client card, phase=playing); ← PlayPad links to the hub",
+      "Play again starts a new makeover (new client card, phase=playing); the hub link (now the round 'Back to PlayPad' icon) still goes to the hub",
       hubHref === "../../index.html" && (await S(page, () => window.__salon.step)) === 0,
     );
     await page.getByRole("button", { name: "Let's glam!" }).click();
@@ -1853,6 +1852,8 @@ async function main() {
       ["844x390", 844, 390],
       ["820x1180", 820, 1180],
       ["1280x800", 1280, 800],
+      ["1024x1366", 1024, 1366], // iPad portrait (v2 AC-22.5)
+      ["1366x1024", 1366, 1024], // iPad landscape: the right-hand tool bar (v2 AC-22.5)
       ["360x640", 360, 640],
     ];
     for (const [label, w, hgt] of viewports) {
@@ -1874,14 +1875,16 @@ async function main() {
         nextBox.x >= 0 &&
         nextBox.x + nextBox.width <= w &&
         nextBox.y + nextBox.height <= hgt;
-      if (label === "1280x800" || label === "844x390") await shot(v.page, label + "-play");
+      if (["1280x800", "844x390", "1024x1366", "1366x1024"].includes(label))
+        await shot(v.page, label + "-play");
       await S(v.page, () => window.__salon.debug.skipToResults());
       await v.page.waitForFunction(() => window.__salon.phase === "results", null, {
         timeout: 10000,
       });
       const againBox = await v.page.locator("#againBtn").boundingBox();
       const againInside = againBox && againBox.y + againBox.height <= hgt + 1 && againBox.y >= 0;
-      if (label === "1280x800" || label === "844x390") await shot(v.page, label + "-results");
+      if (["1280x800", "844x390", "1024x1366", "1366x1024"].includes(label))
+        await shot(v.page, label + "-results");
       check(
         `AC-16 ${label}`,
         "no horizontal scroll; Start, tray, Next and Play again are all reachable on screen",

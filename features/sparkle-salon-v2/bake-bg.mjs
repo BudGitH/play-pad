@@ -2,9 +2,11 @@
 // table, drawn with a sigma-4 blur) ONCE to a small transparent WebP, printed as a data URI. The page embeds
 // that image instead of running a live SVG blur filter over the whole screen (see perf.md).
 //
-//   node features/sparkle-salon-v2/bake-bg.mjs > /tmp/bg.txt   (PW_CHROMIUM_PATH=<chromium>; needs `sharp`-free: uses the page's canvas)
+//   PW_CHROMIUM_PATH=<chromium> node features/sparkle-salon-v2/bake-bg.mjs [source.svg] [scale] > /tmp/bg.txt
 //
-// The SOURCE group is kept below, so the bake can be re-run if the backdrop art changes.
+// No image library is needed: the page's own canvas does the encoding (canvas.toDataURL("image/webp")).
+// The SOURCE group lives next to this script in bg-source.svg (the default input), so the bake can be re-run whenever
+// the backdrop art changes; paste the printed data URI into the `<image>` in the page's `.bgSvg`.
 import { chromium } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";

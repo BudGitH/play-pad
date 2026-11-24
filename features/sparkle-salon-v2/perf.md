@@ -95,11 +95,86 @@ Reading it:
 
 ## Acceptance criteria status
 
-| AC                 | Status                                                                                                                                                                                                                                                                                                                                           |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| AC-22.2 iPad       | Idle frames do no canvas redraw (fx hidden and not drawn) and no per-frame style write (nudge deduped; iris and tool already write on change only). A stroke does at most one paint composite per frame and no read-back (there was never a `getImageData`). The fx backing store is NOT capped below 2048x2732 (hidden when empty; see item 2). |
-| AC-22.3 phone      | Met: no scenario is slower (table above).                                                                                                                                                                                                                                                                                                        |
-| AC-22.4 calm sound | Met (below).                                                                                                                                                                                                                                                                                                                                     |
+| AC                 | Status                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| AC-22.2 iPad       | Idle frames do no canvas redraw (fx hidden and not drawn) and no per-frame style write (nudge deduped; iris and tool already write on change only). A stroke does at most one paint composite per frame and no read-back (there was never a `getImageData`). The fx backing store was NOT capped in the perf pass (hidden when empty; see item 2); the UX round added the cap (`FX_MAX_PX` = 3 Mpx, see "After the UX round"). |
+| AC-22.3 phone      | Met: no scenario is slower (table above).                                                                                                                                                                                                                                                                                                                                                                                      |
+| AC-22.4 calm sound | Met (below).                                                                                                                                                                                                                                                                                                                                                                                                                   |
+
+## After the UX round (S1-S8): "after UX" rows
+
+The UX round (iPad layout, heart meter, pointing-hand demo, picture client card, results, sticker drag, My Album) was measured
+with the same harness and the same throttle (4x CPU, 120 Hz synthetic touch strokes).
+
+- **Pairing.** The "before UX" column is the page at HEAD `dc64771` (the end of the perf pass above), run **back to back in the
+  same session** with the final page, because absolute numbers move by 10-20 % between sessions on this machine (the tables
+  above came from an earlier session: the same page gave 309 ms of script for a shadow stroke then and about 500 ms now). Read
+  each row as a pair, not against the tables above. Run-to-run noise on a single row is about +/- 8 %.
+- **What is new on the hot paths, and how it was kept cheap.**
+  - The demo hand animates the real tool and the hand with WAAPI transforms for about 2.8 s, once per step per session, and never
+    runs at idle. Nothing runs per frame; the idle nudge check only reads one boolean.
+  - The coin count-up is 20 timers over 800 ms; the album draws one picture per animation frame, only while the sheet is open,
+    into plain canvases that are dropped when it closes. Nothing in the album animates.
+  - The 25 / 50 / 75 % milestone does **not** use the particle canvas: three pooled `.twk` elements animate with WAAPI. (A first
+    version used `sparkleUnits`; it kept the big `#fx` layer on screen for the whole stroke and cost 8-14 % of the iPad stroke
+    frame rate.)
+  - No SVG or CSS `filter`, no `backdrop-filter`, no new blurred shadow on a large element. `#fx` is still `visibility: hidden`
+    when empty; the batched paint flush is untouched.
+- **The wider iPad column means more pixels** (landscape stage 603x905 -> 683x1024 px, and the tablet camera boost zooms the face
+  steps 1.25x more). The one thing that grew with it was the particle layer, which is sized to the app column: 1100 x 1024 at 2x
+  is 4.5 Mpx. It is now **capped at 3 Mpx of backing store** (`FX_MAX_PX`; drawing scale 1.46 on iPad portrait, 1.63 on iPad
+  landscape, still 2 on phones). That also meets the "backing store cap" half of AC-22.2 that was open before: the largest canvas
+  is now 3 Mpx (iPad portrait canvas total 6.7 -> 4.5 Mpx). Sparkles are drawn from a sprite at that scale; at tablet size the
+  difference is not visible in the screenshots.
+- **Result.** Every scenario is within +/- 10 % of its pair except **iPad landscape, step transition (-20 %, 55 -> 44 fps)**.
+  That row is two camera glides with a 28-star completion burst each, and the stage there is 28 % bigger on screen. Variants
+  with the tablet boost off, the demo off, the wish ring off or the Next hop off did not change it beyond the noise; removing
+  the burst did, which is how the particle-layer cap above was found (it was -44 % before the cap). It is a software-GL number
+  in a 2.4 s window; it was not reproduced on a real GPU.
+
+**iPad 1024x1366 @2x**
+
+| Scenario                 | fps before UX | fps after UX | change | p95 gap ms   | max gap ms   | main busy %  | script ms  | long tasks |
+| ------------------------ | ------------- | ------------ | ------ | ------------ | ------------ | ------------ | ---------- | ---------- |
+| title idle 5s            | 49.5          | **54.1**     | +9 %   | 33.4 -> 33.3 | 50 -> 50     | 23 -> 23.6   | 30 -> 29   | 0 -> 0     |
+| play idle 5s             | 42            | **41.6**     | -1 %   | 33.4 -> 33.4 | 50.1 -> 50   | 21.8 -> 17.1 | 105 -> 82  | 0 -> 0     |
+| cleanse sponge stroke 3s | 28.1          | **34.4**     | +22 %  | 50 -> 49.9   | 50.1 -> 66.6 | 81 -> 56.2   | 163 -> 136 | 0 -> 0     |
+| shadow idle 3s           | 37.3          | **37.9**     | +2 %   | 33.4 -> 33.4 | 83.3 -> 50   | 21 -> 20.4   | 51 -> 44   | 0 -> 0     |
+| shadow stroke 3s         | 46.1          | **48.6**     | +5 %   | 49.9 -> 33.4 | 66.6 -> 66.7 | 64.7 -> 56.5 | 466 -> 487 | 0 -> 0     |
+| blush stroke 3s          | 45.9          | **48**       | +5 %   | 49.9 -> 33.4 | 66.7 -> 50.1 | 59.3 -> 47.4 | 376 -> 339 | 0 -> 0     |
+| step transition 2x       | 39.8          | **39.1**     | -2 %   | 33.5 -> 33.5 | 50 -> 66.6   | 85 -> 66.9   | 72 -> 88   | 0 -> 0     |
+
+Stage 831x1247 -> 803x1205 px; canvas backing stores 6.72 -> 4.47 Mpx.
+
+**iPad landscape 1366x1024 @2x**
+
+| Scenario                 | fps before UX | fps after UX | change | p95 gap ms   | max gap ms   | main busy %  | script ms  | long tasks |
+| ------------------------ | ------------- | ------------ | ------ | ------------ | ------------ | ------------ | ---------- | ---------- |
+| title idle 5s            | 59.9          | **59.9**     | 0 %    | 16.8 -> 16.7 | 16.8 -> 16.8 | 26.5 -> 21.3 | 33 -> 20   | 0 -> 0     |
+| play idle 5s             | 56.7          | **59.7**     | +5 %   | 16.8 -> 16.7 | 100 -> 16.8  | 24.3 -> 20.1 | 122 -> 89  | 0 -> 0     |
+| cleanse sponge stroke 3s | 52.2          | **53.8**     | +3 %   | 33.4 -> 33.3 | 33.4 -> 50   | 78.9 -> 83.1 | 151 -> 156 | 0 -> 0     |
+| shadow idle 3s           | 57.9          | **58.3**     | +1 %   | 16.8 -> 16.8 | 33.4 -> 33.4 | 19.9 -> 25   | 55 -> 50   | 0 -> 0     |
+| shadow stroke 3s         | 50.7          | **51.9**     | +2 %   | 33.3 -> 33.4 | 116.6 -> 50  | 59.9 -> 66   | 469 -> 542 | 0 -> 0     |
+| blush stroke 3s          | 52.8          | **51.8**     | -2 %   | 33.3 -> 33.4 | 50 -> 49.9   | 54.8 -> 60.2 | 349 -> 403 | 0 -> 0     |
+| step transition 2x       | 55.1          | **44.3**     | -20 %  | 33.4 -> 33.4 | 50 -> 50     | 81.9 -> 70.9 | 83 -> 71   | 0 -> 0     |
+
+Stage 603x905 -> 683x1024 px; canvas backing stores 4.4 -> 4.47 Mpx.
+
+**Phone 390x844 @3x**
+
+| Scenario                 | fps before UX | fps after UX | change | p95 gap ms   | max gap ms   | main busy %  | script ms  | long tasks |
+| ------------------------ | ------------- | ------------ | ------ | ------------ | ------------ | ------------ | ---------- | ---------- |
+| title idle 5s            | 59.9          | **59.9**     | 0 %    | 16.7 -> 16.8 | 16.8 -> 16.8 | 25.2 -> 26.5 | 28 -> 38   | 0 -> 0     |
+| play idle 5s             | 59.8          | **59.8**     | 0 %    | 16.7 -> 16.8 | 16.8 -> 33.3 | 19.5 -> 17.5 | 94 -> 81   | 0 -> 0     |
+| cleanse sponge stroke 3s | 59.3          | **59.4**     | +0 %   | 16.8 -> 16.8 | 33.3 -> 33.3 | 64.3 -> 62.2 | 165 -> 187 | 0 -> 0     |
+| shadow idle 3s           | 59.6          | **59.6**     | 0 %    | 16.8 -> 16.7 | 16.8 -> 16.8 | 16.6 -> 20.7 | 50 -> 58   | 0 -> 0     |
+| shadow stroke 3s         | 59.3          | **59.4**     | +0 %   | 16.8 -> 16.7 | 33.4 -> 33.4 | 60 -> 57.8   | 510 -> 522 | 0 -> 0     |
+| blush stroke 3s          | 59.3          | **59.2**     | -0 %   | 16.8 -> 16.8 | 33.3 -> 33.4 | 50.4 -> 54.6 | 354 -> 390 | 0 -> 0     |
+| step transition 2x       | 59.6          | **58.1**     | -3 %   | 16.8 -> 16.8 | 33.3 -> 33.4 | 62.3 -> 68.9 | 83 -> 115  | 0 -> 0     |
+
+Stage 437x655 -> 437x655 px; canvas backing stores 2.43 -> 2.78 Mpx.
+
+Largest drops in the final pairs: iPad landscape step transition -20 %; everything else -3 % or better.
 
 ## Calm brush sound (AC-22.4)
 
@@ -127,6 +202,10 @@ Time to 90 % of the steady level after stroke start: 49-58 ms before (sponge 12 
 release: 150-215 ms before -> 285-330 ms after. The sponge voice is the quietest because its strokes are slower.
 
 ## Not verified / risks
+
+- **The wider iPad column and the tablet camera boost are unmeasured on a real iPad.** Chromium with software GL shows -20 % on one
+  landscape row (above); a real GPU is expected to be cheaper, but Safari was not tested. The stage is bigger on screen, so the
+  five art layers raster more pixels at the end of each camera glide.
 
 - **No WebKit here.** That SVG filters and SVG-child animations are the iPad Safari cost is the profiler's best lead
   (confirmed for Chromium), not a measurement on Safari. The fixes remove those costs outright, so they should not make

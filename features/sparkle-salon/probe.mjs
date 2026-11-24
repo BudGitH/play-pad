@@ -659,16 +659,57 @@ async function checkMultiTab(browser) {
       }),
     ),
   );
-  await a.evaluate(() => window.__salon.debug.addCoins(1)); // A still believes rev ~2: it must adopt rev 99 first, then add
+  // localStorage writes reach other tabs asynchronously (browser process -> renderers, no cross-tab mutex), so
+  // A can still read its old copy for a few ms after B's setItem returns. Wait on that state, not on time:
+  // once A's own storage view shows rev 99, A's next write is a real "stale in memory, newer on disk" case.
+  const seenRev99 = await a
+    .waitForFunction(
+      () => JSON.parse(localStorage.getItem("playpad.sparkleSalon.v1") || "{}").rev === 99,
+      null,
+      { timeout: 4000 },
+    )
+    .then(
+      () => true,
+      () => false,
+    );
+  await a.evaluate(() => window.__salon.debug.addCoins(1)); // A still believes rev ~2 (or just adopted 99): add on top of rev 99
   const merged = await a.evaluate(() => ({
+    coins: window.__salon.coins,
+    rev: window.__salon.saved.rev,
+  }));
+  // Deterministic stale-in-memory case: a page's own setItem raises no storage event in that page, so A's memory
+  // is guaranteed behind the disk copy here (the cross-tab write above may be adopted by the event first).
+  await a.evaluate(() =>
+    localStorage.setItem(
+      "playpad.sparkleSalon.v1",
+      JSON.stringify({
+        v: 1,
+        rev: 150,
+        coins: 20,
+        unlocked: [],
+        sound: true,
+        looks: [],
+        bestOverall: 0,
+      }),
+    ),
+  );
+  await a.evaluate(() => window.__salon.debug.addCoins(1));
+  const stale = await a.evaluate(() => ({
     coins: window.__salon.coins,
     rev: window.__salon.saved.rev,
   }));
   check(
     "SS-QA-05",
     "two tabs: a write in one shows up in the other, and a stale tab adopts the newer revision instead of overwriting it",
-    seenByA && seenByB && revs[0] === revs[1] && merged.coins === 8 && merged.rev === 100,
-    JSON.stringify({ seenByA, seenByB, revs, merged }),
+    seenByA &&
+      seenByB &&
+      seenRev99 &&
+      revs[0] === revs[1] &&
+      merged.coins === 8 &&
+      merged.rev === 100 &&
+      stale.coins === 21 &&
+      stale.rev === 151,
+    JSON.stringify({ seenByA, seenByB, seenRev99, revs, merged, stale }),
   );
   await ctx.close();
 }

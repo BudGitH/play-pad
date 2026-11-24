@@ -11,7 +11,7 @@
 // `window.__buddies.debug` only to build fixtures, read state and run the pure room-detection
 // function on hand-made grids. See features/brick-buddies/test-plan.md for the AC -> test map.
 /* eslint-disable max-lines-per-function -- a probe is a long linear script of checks; splitting it per line adds no clarity */
-import { chromium } from "playwright";
+import { chromium } from "@playwright/test";
 import { spawn } from "node:child_process";
 import { mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";

@@ -58,9 +58,9 @@
   - Each canvas backing store is capped at the budget from the perf report.
   - Idle play does no canvas redraws and no per-frame style writes.
   - A rub stroke does at most one paint composite per animation frame and does not read back the whole canvas per pointer move.
-  - Measured before and after with the perf script; the numbers are recorded.
-- [ ] **AC-22.3 Phone performance:** at 390×844 at 3× scale, nothing gets slower than before. Same script.
-- [ ] **AC-22.4 Calm brush sound:**
+  - Measured before and after with the perf script; the numbers are recorded in `perf.md`. **Status:** met except the backing-store cap: the fx canvas keeps its 2048x2732 store but is hidden (not composited) while empty; see `perf.md`.
+- [x] **AC-22.3 Phone performance:** at 390×844 at 3× scale, nothing gets slower than before. Same script.
+- [x] **AC-22.4 Calm brush sound:**
   - The brush and swish voices are low-passed (cut-off at most ~3.5 kHz), with a soft attack and release of at least 30 ms so there are no clicks.
   - The level is lower than v1 and follows stroke speed smoothly, rate-limited.
   - The sponge squeak is gentler.

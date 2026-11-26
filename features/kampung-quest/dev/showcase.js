@@ -9,6 +9,7 @@
   var BACK2 = ["hawker_aminah", "barber_raju", "dr_nurul", "librarian_farah", "postman_dan"];
   var FRONT = ["nenek", "kid_aisyah", "hero", "kid_irfan", "kid_wei", "atuk"];
 
+  var MAT_TOP = 0.004; // the placemat sits 4 mm above the lacquer; feet stand on it
   var state = { solo: "hero", view: "lineup", pose: "idle", phase: 0.25, frozen: false, cycle: false, turn: 0, cycleT: 0 };
   var app = {};
 
@@ -27,7 +28,7 @@
 
   function makeLights(scene) {
     var sun = new THREE.DirectionalLight(0xfff0dc, 2.3);
-    sun.position.set(2.6, 5.5, 4.2);
+    sun.position.set(3.4, 5.8, 2.2);
     sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048);
     sun.shadow.bias = -0.0004;
@@ -69,7 +70,29 @@
     var entry = { id: id, fig: fig, twinFig: twin, home: x, homeZ: z, rig: fig.userData.rig, twin: twin.userData.rig };
     entry.anim = F.Animator(fig.userData.rig);
     addStool(entry);
+    addContactShadow(entry);
     list.push(entry);
+  }
+
+  /** Soft contact shadow under the feet so every figure reads as standing on the mat. */
+  function addContactShadow(entry) {
+    if (!app.blobTex) {
+      var c = document.createElement("canvas");
+      c.width = c.height = 64;
+      var x = c.getContext("2d");
+      var g = x.createRadialGradient(32, 32, 2, 32, 32, 31);
+      g.addColorStop(0, "rgba(0,0,0,0.55)");
+      g.addColorStop(1, "rgba(0,0,0,0)");
+      x.fillStyle = g;
+      x.fillRect(0, 0, 64, 64);
+      app.blobTex = new THREE.CanvasTexture(c);
+    }
+    var m = new THREE.MeshBasicMaterial({ map: app.blobTex, transparent: true, depthWrite: false });
+    var blob = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.3), m);
+    blob.rotation.x = -Math.PI / 2;
+    blob.position.y = 0.002;
+    blob.renderOrder = 1;
+    entry.fig.add(blob);
   }
 
   /** A little wooden stool for the sit / eat poses: feet on the table, thighs on the seat. */
@@ -115,7 +138,7 @@
   }
 
   var VIEWS = {
-    lineup: { pos: [0, 1.95, 4.4], at: [0, 0.36, -0.4], fov: 36 },
+    lineup: { pos: [0, 2.3, 4.5], at: [0, 0.34, -0.45], fov: 36 },
     hero: { pos: [0.8, 0.9, 2.25], at: [0, 0.5, 0.3], fov: 30 },
     side: { pos: [-2.5, 0.72, 0.45], at: [0, 0.4, 0.3], fov: 30 },
     turntable: { pos: [0, 0.75, 2.3], at: [0, 0.47, 0.3], fov: 30 },
@@ -155,7 +178,7 @@
     var seated = state.pose === "sit" || state.pose === "eat";
     app.figs.forEach(function (f) {
       f.stool.visible = seated;
-      f.fig.position.y = f.twinFig.position.y = seated ? f.seatY : 0;
+      f.fig.position.y = f.twinFig.position.y = MAT_TOP + (seated ? f.seatY : 0);
       if (state.frozen) F.pose(f.rig, state.pose, state.phase, 1);
       else f.anim.update(dt);
       syncTwin(f.rig, f.twin);

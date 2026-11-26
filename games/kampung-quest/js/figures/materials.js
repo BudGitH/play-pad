@@ -65,9 +65,20 @@
     "    + texture2D(kqMicro, p.xy * 21.0).rgb * w.z;",
     "}",
   ].join("\n");
+  // Mould details: a faint parting line where the two mould halves meet (the part's z = 0 plane, so it
+  // runs round the sides of torsos, legs, arms and over the top of head pieces) and a little edge wear
+  // (lighter, slightly rougher plastic on high-curvature bevels such as shoulders and hat rims).
+  var FRAG_COLOR = [
+    "#include <color_fragment>",
+    "float kqSeam = (1.0 - smoothstep(0.0006, 0.0016, abs(vKqPos.z))) * step(0.5, length(vKqNrm.xy));",
+    "float kqCurv = clamp(length(fwidth(vKqNrm)) / max(length(fwidth(vKqPos)) * 90.0, 1e-5), 0.0, 1.0);",
+    "kqCurv = smoothstep(0.35, 1.0, kqCurv);",
+    "diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * 1.12 + 0.025, kqCurv * 0.45);",
+    "diffuseColor.rgb *= 1.0 - kqSeam * 0.22;",
+  ].join("\n");
   var FRAG_ROUGH =
     "#include <roughnessmap_fragment>\nvec3 kqM = kqTri(vKqPos, vKqNrm);\n" +
-    "roughnessFactor = clamp(roughnessFactor * (0.78 + 0.44 * kqM.b), 0.04, 1.0);";
+    "roughnessFactor = clamp(roughnessFactor * (0.78 + 0.44 * kqM.b) + kqCurv * 0.12 + kqSeam * 0.25, 0.04, 1.0);";
   var FRAG_NORMAL = "#include <normal_fragment_maps>\nnormal = normalize(normal + (kqM - 0.5) * kqMicroAmt);";
   var FRAG_EMIT = "#include <emissivemap_fragment>\ntotalEmissiveRadiance += vSkin * kqSkinGlow * diffuseColor.rgb;";
 
@@ -82,12 +93,13 @@
         .replace("#include <begin_vertex>", VERT_BODY);
       shader.fragmentShader = shader.fragmentShader
         .replace("#include <common>", FRAG_HEAD)
+        .replace("#include <color_fragment>", FRAG_COLOR)
         .replace("#include <roughnessmap_fragment>", FRAG_ROUGH)
         .replace("#include <normal_fragment_maps>", FRAG_NORMAL)
         .replace("#include <emissivemap_fragment>", FRAG_EMIT);
     };
     mat.customProgramCacheKey = function () {
-      return "kq-plastic-v1";
+      return "kq-plastic-v2";
     };
   }
 

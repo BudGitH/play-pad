@@ -1,0 +1,314 @@
+/* ============================================================================
+ * FILE: ui-screens.js
+ * PURPOSE: The dock screens: My missions board, Bag (stickers, carrying, look), Map (with the
+ *          five-prayer day strip), How to play, and the Pause dialog with its settings.
+ * BUSINESS CONTEXT: AC-11 (a mission board of >= 8 missions), AC-15 (mute, pause, caption size,
+ *   read-to-me, less motion; every control >= 48 px), design D ("day of prayers" strip in the
+ *   map / pause screen).
+ * DEPENDENCIES: ui-core.js, pictures.js, names.js, minimap.js, KQ.Sim state passed in `ctx`.
+ * ========================================================================== */
+(function (KQ) {
+  "use strict";
+  const G = (KQ.Game = KQ.Game || {});
+  const U = G.U;
+
+  function missionTile(m, status, paused) {
+    const mark =
+      status === "done"
+        ? "Done"
+        : status === "active"
+          ? paused
+            ? "Kept, waiting"
+            : "Doing now"
+          : G.Names.npc(m.giver);
+    const icon =
+      status === "done" ? G.Pictures.icon("check", "kq-ic-lg") : G.Pictures.missionIcon(m.id);
+    return U.el(
+      "div",
+      {
+        cls: "kq-tile kq-static is-" + status,
+        tabindex: "0",
+        role: "group",
+        "aria-label": m.title + ". " + mark,
+      },
+      U.el("span", { cls: "kq-tile-ic" }, icon),
+      U.el("b", { text: m.title }),
+      U.el("span", { cls: "kq-small", text: mark }),
+    );
+  }
+
+  /** My missions. ctx: { sim, onClose } */
+  function missions(ctx) {
+    const sim = ctx.sim;
+    const done = sim.missions.completed();
+    const activeId = sim.missions.active() && sim.missions.active().id;
+    const paused = sim.missions.isPausedNow();
+    const grid = U.el("div", { cls: "kq-grid kq-grid-missions" });
+    KQ.Sim.MISSIONS.forEach(function (m) {
+      const status = done.indexOf(m.id) !== -1 ? "done" : m.id === activeId ? "active" : "new";
+      grid.appendChild(missionTile(m, status, paused));
+    });
+    const left = KQ.Sim.MISSIONS.length - done.length;
+    const msg =
+      left === 0
+        ? "All " + done.length + " missions done. Masya-Allah! New missions come tomorrow at 07:00."
+        : paused
+          ? "Missions wait while we pray. Your mission is kept."
+          : "Find the neighbour named on a picture and say salam.";
+    const note = U.el("p", { cls: "kq-note" + (paused ? " is-prayer" : ""), text: msg });
+    const read = G.UI.readButton(() => msg);
+    const box = U.el(
+      "div",
+      { cls: "kq-menu" },
+      G.UI.header("My missions · " + done.length + " of " + KQ.Sim.MISSIONS.length + " done", {
+        extras: [read],
+      }),
+      note,
+      grid,
+    );
+    return G.UI.openSheet({ el: box, label: "My missions", onClose: ctx.onClose });
+  }
+
+  function stickerCell(s, owned) {
+    return U.el(
+      "span",
+      {
+        cls: "kq-sticker" + (owned ? " is-owned" : ""),
+        title: s.name,
+        "aria-label": s.name + (owned ? ", collected" : ", not yet"),
+      },
+      G.Pictures.icon(owned ? "star" : "sticker"),
+      U.el("span", { cls: "kq-small", text: s.name }),
+    );
+  }
+
+  /** Bag. ctx: { sim, carrying: string|null, outfitName } */
+  function bag(ctx) {
+    const have = ctx.sim.missions.stickers();
+    const grid = U.el("div", { cls: "kq-stickers" });
+    KQ.Sim.STICKERS.forEach((s) => grid.appendChild(stickerCell(s, have.indexOf(s.id) !== -1)));
+    const carrying = ctx.carrying
+      ? "You are carrying: " + ctx.carrying + "."
+      : "You are not carrying anything for a mission.";
+    const box = U.el(
+      "div",
+      { cls: "kq-menu" },
+      G.UI.header("My bag"),
+      U.el("p", { cls: "kq-note", text: carrying }),
+      U.el("p", {
+        cls: "kq-small",
+        text: "Look: " + ctx.outfitName + " · Coins: " + ctx.sim.economy.coins,
+      }),
+      U.el("h3", {
+        cls: "kq-h3",
+        text: "Stickers " + have.length + " of " + KQ.Sim.STICKERS.length,
+      }),
+      grid,
+    );
+    return G.UI.openSheet({ el: box, label: "My bag", onClose: ctx.onClose });
+  }
+
+  const STATUS_TEXT = {
+    done: "Prayed",
+    "qada-done": "Made up",
+    due: "Time to pray",
+    "in-progress": "Praying",
+    qada: "Make up (qada)",
+    upcoming: "Later",
+  };
+
+  /** The five-prayer day strip: name, time, raka'at, status. */
+  function dayStrip(sim) {
+    const row = U.el("ol", { cls: "kq-day" });
+    sim.prayer.state().prayers.forEach(function (p) {
+      const st = p.status;
+      row.appendChild(
+        U.el(
+          "li",
+          {
+            cls: "kq-day-item is-" + st,
+            "aria-label": p.label + " " + p.time + ", " + p.rakaat + " rakaat, " + STATUS_TEXT[st],
+          },
+          G.Pictures.icon(st === "done" || st === "qada-done" ? "check" : "mosque"),
+          U.el("b", { text: p.label }),
+          U.el("span", { cls: "kq-small", text: p.time + " · " + p.rakaat }),
+          U.el("span", { cls: "kq-small", text: STATUS_TEXT[st] }),
+        ),
+      );
+    });
+    return row;
+  }
+
+  /** Full map screen. ctx: { sim, mapView() -> view for Minimap.draw, onClose } */
+  function map(ctx) {
+    const canvas = U.el("canvas", {
+      cls: "kq-bigmap",
+      width: "640",
+      height: "640",
+      role: "img",
+      "aria-label": "Map of the neighbourhood",
+    });
+    const legend = U.el("p", {
+      cls: "kq-small kq-legend",
+      text: "White arrow: you. Pink dot: your mission. Green dot: the mosque. Orange: hawker centre. Pink house: home.",
+    });
+    const box = U.el(
+      "div",
+      { cls: "kq-menu kq-mapmenu" },
+      G.UI.header("Map"),
+      U.el(
+        "div",
+        { cls: "kq-mapbody" },
+        canvas,
+        U.el(
+          "div",
+          { cls: "kq-col" },
+          U.el("h3", { cls: "kq-h3", text: "Today's prayers" }),
+          dayStrip(ctx.sim),
+          legend,
+        ),
+      ),
+    );
+    const draw = () => G.Minimap.draw(canvas.getContext("2d"), 640, ctx.mapView(), false);
+    draw();
+    const h = G.UI.openSheet({ el: box, label: "Map", onClose: ctx.onClose });
+    h.redraw = draw;
+    return h;
+  }
+
+  const HOWTO = [
+    [
+      "run",
+      "Walk with W A S D or the arrow keys, or the joystick. Hold Shift or tap Run to go faster.",
+    ],
+    ["talk", "Walk up to a neighbour with a star and press E or the Talk button."],
+    ["bowl", "Buy food at the hawker stalls. It fills your food meter."],
+    [
+      "mosque",
+      "When you hear the azan, walk to the mosque, take wudu, then pray. Missions wait for you.",
+    ],
+  ];
+
+  function howTo(ctx) {
+    const list = U.el("ul", { cls: "kq-howto" });
+    HOWTO.forEach((i) =>
+      list.appendChild(
+        U.el("li", {}, G.Pictures.icon(i[0], "kq-ic-lg"), U.el("span", { text: i[1] })),
+      ),
+    );
+    const read = G.UI.readButton(() => HOWTO.map((i) => i[1]).join(" "));
+    const ok = G.UI.btn("Got it", {
+      cls: "primary",
+      icon: "check",
+      onClick: () => G.UI.closeSheet("button"),
+    });
+    const box = U.el(
+      "div",
+      { cls: "kq-menu kq-card" },
+      G.UI.header("How to play", { extras: [read] }),
+      list,
+      U.el("div", { cls: "kq-bubble-actions" }, ok),
+    );
+    const onClose = ctx && ctx.onClose;
+    return G.UI.openSheet({
+      el: box,
+      label: "How to play",
+      onClose,
+      focus: ".kq-bubble-actions button",
+    });
+  }
+
+  function choice(label, options, get, set) {
+    const row = U.el("div", { cls: "kq-seg", role: "group", "aria-label": label });
+    const fill = () => {
+      U.clear(row);
+      options.forEach(function (o) {
+        const on = get() === o[0];
+        row.appendChild(
+          U.el("button", {
+            type: "button",
+            cls: "kq-seg-btn" + (on ? " is-on" : ""),
+            "aria-pressed": String(on),
+            text: o[1],
+            on: { click: () => (set(o[0]), G.Audio.play("tap"), fill()) },
+          }),
+        );
+      });
+    };
+    fill();
+    return U.el("div", { cls: "kq-setting" }, U.el("span", { text: label }), row);
+  }
+
+  const YES_NO = [
+    [false, "On"],
+    [true, "Off"],
+  ];
+  const ON_OFF = [
+    [true, "On"],
+    [false, "Off"],
+  ];
+  const QUALITY = [
+    ["auto", "Auto"],
+    ["low", "Low"],
+    ["med", "Medium"],
+    ["high", "High"],
+  ];
+  const MOTION = [
+    ["follow", "Follow device"],
+    ["on", "On"],
+    ["off", "Off"],
+  ];
+  const CAPTION = [
+    ["large", "Large"],
+    ["normal", "Normal"],
+  ];
+
+  function settingRows(ctx) {
+    const prefs = G.Settings.prefs;
+    const fixed = U.el(
+      "div",
+      { cls: "kq-setting" },
+      U.el("span", { text: "Azan captions" }),
+      U.el("b", { cls: "kq-pill", text: "Always on" }),
+    );
+    return [
+      choice("Sound", YES_NO, ctx.getMuted, ctx.setMuted),
+      fixed,
+      choice("Caption size", CAPTION, () => prefs.captionSize, ctx.setCaption),
+      choice("Read to me", ON_OFF, () => prefs.readToMe, ctx.setRead),
+      choice("Picture quality", QUALITY, ctx.getQuality, ctx.setQuality),
+      choice("Less motion", MOTION, () => prefs.lessMotion, ctx.setMotion),
+    ];
+  }
+
+  function pauseButtons(ctx) {
+    const resume = G.UI.btn("Resume", {
+      cls: "primary kq-big",
+      icon: "play",
+      onClick: () => G.UI.closeSheet("button"),
+    });
+    return U.el(
+      "div",
+      { cls: "kq-col" },
+      resume,
+      G.UI.btn("How to play", { icon: "book", onClick: ctx.onHowTo }),
+      G.UI.btn("Save and go to PlayPad", { icon: "home", onClick: ctx.onSaveExit }),
+      G.UI.btn("Start over", { icon: "refresh", onClick: ctx.onStartOver }),
+      U.el("p", { cls: "kq-small", text: ctx.status }),
+    );
+  }
+
+  /** Pause dialog. ctx: { settings handlers..., onHowTo, onSaveExit, onStartOver, onClose } */
+  function pause(ctx) {
+    const right = U.el("div", { cls: "kq-col" }, settingRows(ctx));
+    const box = U.el(
+      "div",
+      { cls: "kq-menu kq-pausebox" },
+      G.UI.header("Paused", { close: false }),
+      U.el("div", { cls: "kq-pause-grid" }, pauseButtons(ctx), right),
+    );
+    return G.UI.openSheet({ el: box, label: "Paused", onClose: ctx.onClose, focus: ".kq-big" });
+  }
+
+  G.Screens = { missions, bag, map, howTo, pause, dayStrip };
+})((window.KQ = window.KQ || {}));

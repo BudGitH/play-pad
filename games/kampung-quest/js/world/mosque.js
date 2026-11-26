@@ -64,12 +64,13 @@
       const x = o.x0 + (o.x1 - o.x0) * t;
       const z = o.z0 + (o.z1 - o.z0) * t;
       B.geo(
-        o.key || "plaster",
+        o.key || "whitePlaster",
         panel(o.types[i], w, o.h),
         P.compose(x, o.y || 0, z, rot, 1, 1, 1),
         o.color,
       );
-      if (o.types[i] === "win") B.plane("glass", x, (o.y || 0) + 2.4, z, 1.6, 2.6, rot);
+      if (o.types[i] === "win") B.plane("hallGlass", x, (o.y || 0) + 2.4, z, 1.6, 2.6, rot);
+      if (P.Ornament) P.Ornament.arch(B, { x, y: o.y || 0, z, rot, type: o.types[i], w });
       if (o.types[i] === "door" || o.types[i] === "arcade")
         jambs(ctx, x, z, rot, w, o.types[i] === "door" ? 1.15 : w / 2 - 0.35);
       else pushWall(ctx, x, z, rot, w / 2);

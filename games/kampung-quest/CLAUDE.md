@@ -1,0 +1,54 @@
+# Kampung Quest — game-local contract
+
+> Constraints for anyone (human or Claude) touching this game. The project-wide rules in the root `CLAUDE.md` / `docs/` still apply; this file adds the game-specific ones. Feature docs: `features/kampung-quest/` (`requirements.md`, `contract.md`, `design-review.md` = the HUD spec, `qa-report.md`, `product-validation.md`).
+
+## Hard constraints
+
+- **Build-free classic scripts under `window.KQ`.** No ES modules, no bundler (the `file://` rule, `docs/LEARNINGS.md`). Files load in the order listed in `index.html`; a new file must be added there. Every file is wrapped in `(function (KQ) { "use strict"; ... })((window.KQ = window.KQ || {}))`.
+- **Layers (load order):** `js/data` (prayer times, azan captions) → `js/sim` (pure logic, **no THREE, no DOM**, unit-tested: `npm run test:kq`) → `js/figures` (toy cast, poses) → `js/world` (the neighbourhood) → `js/game` (controller, HUD, prayer flow). The game layer may call the others; they never call it.
+- **three.js r147 is vendored** (`three.min.js`, UMD). Do not upgrade (no UMD after r160, `file://` rule). `renderer.outputEncoding = sRGBEncoding`, ACES 0.95, PCF-soft shadows.
+- **Graceful degradation is mandatory.** `KQ.CAN_FETCH = location.protocol !== "file:"` gates every fetched asset (the photo textures); each has a procedural stand-in. The azan plays from an `<audio>` element (works on `file://`); if it fails to load, a synth chime plus captions replace it. WebGL missing → a friendly card, no crash. Blocked `localStorage` → play without saving, with a notice.
+- **Text enters the DOM only through `textContent`** (`KQ.Game.U.el`). `innerHTML` is used only for our own SVG constants (`U.svgFrom`, `pictures.js`). The save is untrusted input (`KQ.Sim.Save` clamps and schema-checks it).
+- **Lint:** functions ≤ 40 lines, depth ≤ 3, no empty `catch`, no `console.log`. Split into small functions; do not add files to the lint baseline.
+- **Payload < 12 MB** (three.js, ~50 small scripts, 11 photo textures, the azan).
+
+## Child-friendly and religious-accuracy rules (never break these)
+
+- No violence, no fail state, no punishment, no scolding: a wrong tile gives a gentle hint ("Nearly! Next comes…"), never red or a cross. Every food is halal. Vehicles never hurt the player.
+- **Prayer times** are the fixed MUIS values for 26 Nov 2026 in `js/data/prayer-times.js` (source cited there and in `assets/CREDITS.md`). Raka'at: Subuh 2, Zohor 4, Asar 4, Maghrib 3, Isyak 4. Wudu order and the posture sequence come from `KQ.Sim.Prayer` (Shafi'i, as in Singapore): do not re-implement them in the UI.
+- **The azan is a real recording** (CC BY-SA 4.0, see `assets/audio/azan_license.txt`). It plays once per prayer, only when the tab is visible, the game is unmuted and unpaused; otherwise captions only. **No music, ever, during the azan** (there is no music in the game at all).
+- The hero must keep the colour family (royal blue, tan arms, white gloves, red shoes) with **no quills, no joined eye-patch, no green eyes, no peach muzzle, no belly oval**.
+
+## Module map (`js/game`)
+
+| Area          | Files                                                                                                                                                                      |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Boot / loop   | `boot.js`, `boot-ui.js`, `loop.js`, `sim-setup.js`, `settings.js`, `hooks.js` (`__kq`)                                                                                     |
+| Hero / camera | `player.js`, `input.js`, `camera.js`, `collide.js`                                                                                                                         |
+| NPCs          | `npc-manager.js` (routines, reveal, separation), `npc-agent.js` (walk, poses), `npc-goals.js` (seats, prayer rows), `pathing.js`, `seats.js`                               |
+| World extras  | `collectibles.js` (cans, litter, Mimi), `markers.js` (beacons, footprints, giver stars)                                                                                    |
+| HUD / UI      | `hud.js`, `hud-view.js`, `minimap.js`, `ui-core.js` (sheets, focus trap, toasts), `ui-dialogue.js`, `ui-menus.js`, `ui-screens.js`, `pictures.js`, `names.js`, `speech.js` |
+| Prayer        | `prayer-flow.js` (controller), `prayer-ui.js` (screens), `prayer-text.js` (dhikr, captions)                                                                                |
+| Play          | `interact.js`, `mission-flow.js`, `services.js`, `actions.js`                                                                                                              |
+| Sound         | `audio.js` (synth UI sounds, azan element, lifecycle gates)                                                                                                                |
+
+State lives in one object, `KQ.Game.S` (created in `boot.js`). The pure sim objects are `S.sim.{clock, prayer, needs, economy, missions}`.
+
+## Rules that are easy to break
+
+- **The pause / hidden gate sits where time and sound are produced** (`Loop.frame`, `Audio.voice`), not in callers (`docs/LEARNINGS.md`, 2026-11-21 audio rows). `Audio.debug()` counts every trigger and every refusal so a probe can assert the lifecycle.
+- **Sun times.** The world's sky is authored for 07:05 / 19:05; `Loop.skyMinute()` remaps the game clock so sunrise = Syuruk and sunset = Maghrib. Do not edit the sky keys for this.
+- **Prayer flow slows the clock to 25 %** (`FLOW_RATE`) while a flow is active or a prayer screen is open, so a 50-tap Zohor does not run into Asar. A prayer that falls due during a menu is queued (`PrayerFlow.maybeShowCard`) and shown after the menu closes.
+- **Indoor NPCs** (`routine.indoors`) are hidden, but stand at their block's door when the hero is within 15 m (so the first mission giver is always reachable at 07:00).
+- **Time of day for tests:** `__kq.setMinute(m)`, `__kq.forcePrayer("zohor")`, `__kq.step(ms)` advance deterministically even when headless rAF is throttled.
+- **Hair / hat outfit:** `hat: "none"` + `hair: "classic"` is the hero's own blue cap (the save default); other combinations come from `Player.HEAD_STYLES`.
+
+## Test hooks (`window.__kq`)
+
+`ready` (game running), `loaded` (assets ready, Start enabled), `state()`, `step(ms)`, `setMinute(m)`, `teleport(poiId)`, `place(x, z, yaw)`, `interact()`, `action(name)`, `input(action, on)`, `forcePrayer(name)`, `freeze(bool)`, `stats()` (`fps`, `frames`, `calls`, `tris`), `npc(id)`, `start(fresh)`. URL flags: `?q=low|med|high`, `?autoq=0` (no auto-downgrade), `?still` (no rAF loop; drive with `step`).
+
+## How to run and test
+
+- Run: `node tools/serve.mjs 5599` then open `/games/kampung-quest/`, or open `index.html` from disk (`file://`: photo textures are drawn in code).
+- `npm run test:kq` (sim unit tests), `npm run smoke` (opens the game, starts it), `npx eslint games/kampung-quest tests`.
+- Screenshots / probes use headless Chromium with `--use-gl=angle --enable-unsafe-swiftshader`; boot takes ~10-15 s in software GL.

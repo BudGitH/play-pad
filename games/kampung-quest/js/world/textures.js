@@ -25,6 +25,15 @@
     rubber: { n: true, fb: { base: [210, 210, 210], amp: 30, speck: 0.7 } },
     carpet: { colour: false, n: true, fb: null },
     bark: { n: true, fb: { base: [104, 92, 70], amp: 40, streaks: true } },
+    terrazzo: {
+      n: true,
+      r: true,
+      fb: { base: [178, 172, 162], amp: 26, speck: 0.35, grid: [2, 2], grout: [96, 92, 86] },
+    },
+    hedge: { fb: { base: [52, 84, 38], amp: 50, speck: 0.5, blades: true } },
+    leaves: { a: true, fb: null }, // alpha leaf-cluster atlas (2 cells); canvas cards on file://
+    tuft: { a: true, fb: null }, // alpha grass tuft card
+    carpet_d: { linear: true, fb: null }, // carpet fibre detail, multiplied ×2 over the pattern
   };
 
   /** Cheap 2D value noise (seeded), used to draw the fallback textures. */
@@ -106,11 +115,13 @@
   function set(name) {
     if (cache.has(name)) return cache.get(name);
     const s = SETS[name];
-    const out = { map: null, normalMap: null, roughnessMap: null, photo: KQ.CAN_FETCH };
+    const out = { map: null, normalMap: null, roughnessMap: null, alphaMap: null };
+    out.photo = KQ.CAN_FETCH;
     if (KQ.CAN_FETCH) {
-      if (s.colour !== false) out.map = loadPhoto(name + ".jpg", true);
+      if (s.colour !== false) out.map = loadPhoto(name + ".jpg", !s.linear);
       if (s.n) out.normalMap = loadPhoto(name + "_n.jpg", false);
       if (s.r) out.roughnessMap = loadPhoto(name + "_r.jpg", false);
+      if (s.a) out.alphaMap = loadPhoto(name + "_a.jpg", false);
     } else if (s.fb) {
       out.map = prep(new THREE.CanvasTexture(drawFallback(name, s.fb)), true);
     }

@@ -2,9 +2,12 @@
    wires up lighting and returns the contract object:
    { pois, colliders, walkGraph, interactables, lights, update(dt, clock), setQuality(tier),
      setShadowTarget(v), heightAt(x, z), group, qualityHints(tier), dispose() }.
-   Script order: geo, textures, canvas, patterns, patterns2, materials, layout, sky, lighting,
-   roads, hdb, hawker, mosque, mosque-shell, mosque-yard, mosque-inside, shops, services, trees,
-   props, town, detail, clutter, nav, world, world-runtime, world-build. */
+   Script order (js/data/prayer-times.js first, so the sun follows Syuruk / Maghrib): geo,
+   textures, canvas, patterns, patterns2, patterns3, materials, layout, sky, lighting, roads,
+   hdb, hawker, mosque, mosque-shell, mosque-yard, mosque-inside, ornament, shops, services,
+   foliage, trees, props, town, detail, clutter, life, nav, grunge, aofield, surface, world,
+   world-runtime, world-build. The realism-pass files (patterns3, ornament, foliage, life,
+   grunge, aofield, surface) are optional: without them the world builds the earlier look. */
 (function (KQ) {
   "use strict";
   const P = KQ.WorldParts;
@@ -17,12 +20,17 @@
     const pat = {
       windows: P.Patterns.windows(),
       railing: P.Patterns.railing(),
-      carpet: P.Patterns.carpet(),
+      carpet: P.Patterns3 ? P.Patterns3.carpet() : P.Patterns.carpet(),
       leaves: P.Patterns.leaves(),
       tilework: P.Patterns.tilework(),
       books: P.Patterns.books(),
       wallTiles: P.Patterns.wallTiles(),
     };
+    if (P.Patterns3) {
+      pat.lattice = P.Patterns3.lattice();
+      pat.frieze = P.Patterns3.frieze();
+      pat.far = P.Patterns3.farFacade();
+    }
     const mats = P.Materials.create(pat, atlas);
     return { atlas, pat, mats };
   }
@@ -65,6 +73,10 @@
     P.Clutter.vehicles(group, kit.mats, ctx.colliders);
     P.Detail.skyline(group, kit.mats);
     P.Trees.tables(group, kit.mats, ctx.tables, ctx.colliders);
+    if (P.Life) {
+      P.Life.tableTops(group, kit.mats, ctx.tables);
+      P.Life.pigeons(group, kit.mats, ctx.L);
+    }
     P.Town.cars(group, kit.mats, ctx.colliders);
     return { trees, shrubs };
   }

@@ -13,7 +13,7 @@ Licence:   Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4
            LicenseShortName "CC BY-SA 4.0", AttributionRequired "true",
            LicenseUrl https://creativecommons.org/licenses/by-sa/4.0) on 2026-11-26.
 Original:  MP3, 44.1 kHz stereo, 86.5 s, 1,448,294 bytes
-           (kept as azan_source_original.mp3; sha256
+           (not shipped with the game; fetch it from the Direct URL above; sha256
            0faa59e2028bbb2f60a670b53ec89ffcf628f3c195b43fb41d9bdbc99000c1b3)
 
 CHANGES MADE (adaptation, per CC BY-SA 4.0 section 3(a)(1)(B))

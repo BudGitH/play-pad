@@ -11,13 +11,17 @@
     asphalt: 6,
     paving: 2.4,
     plaster: 3.2,
+    whitePlaster: 3.2,
     concrete: 2.6,
     grass: 4,
     tiles: 1.3,
+    wetTiles: 1.3,
     marble: 1.8,
     roof: 1.6,
     rubber: 2.2,
     bark: 1.2,
+    terrazzo: 1.2,
+    hedge: 0.9,
     tilework: 0.7,
     wallTile: 0.9,
     books: 1.0,
@@ -58,6 +62,8 @@
       roof: photo("roof", 0.72, 0.9),
       rubber: photo("rubber", 0.95, 0.6),
       bark: photo("bark", 0.95, 1.0),
+      terrazzo: photo("terrazzo", 0.4, 0.35, { envMapIntensity: 0.9 }),
+      hedge: photo("hedge", 0.85, 0.6),
     };
   }
 
@@ -134,6 +140,56 @@
     };
   }
 
+  /** Alpha leaf-cluster cards: the CC0 photo atlas over http(s), the canvas card on file://. */
+  function leafCard(P2) {
+    const t = P.Tex.set("leaves");
+    const photo = !!t.alphaMap;
+    const m = std({
+      map: photo ? t.map : P2.leafCard(),
+      alphaMap: t.alphaMap,
+      alphaTest: 0.5,
+      side: THREE.DoubleSide,
+      roughness: 0.7,
+      envMapIntensity: 0.4,
+    });
+    m.userData.atlas = photo; // two cells side by side (rain-tree | broadleaf)
+    m.userData.kqSkip = true;
+    return m;
+  }
+  /** Grass tuft cards (alpha), or null without the photo (file://). */
+  function tuftMat() {
+    const t = P.Tex.set("tuft");
+    if (!t.alphaMap) return null;
+    const m = std({
+      map: t.map,
+      alphaMap: t.alphaMap,
+      alphaTest: 0.45,
+      side: THREE.DoubleSide,
+      roughness: 0.85,
+    });
+    m.userData.kqSkip = true;
+    return m;
+  }
+
+  /** Mosque ornament materials (lattice screens, frieze band, warm-glowing hall glass). */
+  function ornaments(pat) {
+    const out = {};
+    if (pat.lattice) {
+      const o = { map: pat.lattice, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.5 };
+      out.lattice = std(o);
+    }
+    if (pat.frieze) out.frieze = std({ map: pat.frieze, roughness: 0.45, metalness: 0.25 });
+    const glass = std(
+      { color: 0xcfe3dc, roughness: 0.08, metalness: 0.1, emissive: 0xffc98a },
+      { cast: false },
+    );
+    Object.assign(glass, { transparent: true, opacity: 0.55, depthWrite: false });
+    glass.side = THREE.DoubleSide;
+    glass.emissiveIntensity = 0;
+    out.hallGlass = glass;
+    return out;
+  }
+
   /** Detail-layer materials: grime/streak decals, leaf cards, distant skyline. */
   function details() {
     const P2 = P.Patterns2;
@@ -155,12 +211,7 @@
     return {
       grime: decal(P2.grime()),
       streak: decal(P2.streaks()),
-      leafCard: std({
-        map: P2.leafCard(),
-        alphaTest: 0.45,
-        side: THREE.DoubleSide,
-        roughness: 0.75,
-      }),
+      leafCard: leafCard(P2),
       skyline: std(
         {
           map: sky.col,
@@ -176,7 +227,43 @@
   }
 
   /** Night-glow levels per material key (multiplied by the night factor). */
-  const GLOW = { windowLit: 1.25, sign: 0.75, lamp: 3.2, beacon: 2.0, dome: 0.55, skyline: 0.55 };
+  const GLOW = {
+    windowLit: 1.25,
+    sign: 0.75,
+    lamp: 3.2,
+    beacon: 2.0,
+    dome: 0.55,
+    skyline: 0.55,
+    hallGlass: 0.9,
+  };
+
+  /** Surface-patch strengths per key: [macro variation, rain streaks, wet patches, dirt]. */
+  const GRIME = {
+    asphalt: [0.55, 0, 1.0, 0.5],
+    paving: [0.6, 0, 0.45, 0.45],
+    plaster: [0.6, 0.6, 0, 0.75],
+    concrete: [0.4, 0.5, 0.2, 0.6],
+    grass: [0.8, 0, 0, 0],
+    tiles: [0.45, 0.15, 0.35, 0.45],
+    terrazzo: [0.45, 0, 0.12, 0.55],
+    marble: [0.25, 0.2, 0.25, 0.25],
+    roof: [0.7, 0.4, 0, 0.3],
+    rubber: [0.5, 0, 0.2, 0.2],
+    bark: [0.4, 0, 0, 0.2],
+    paint: [0.35, 0.35, 0, 0.45],
+    wood: [0.35, 0, 0, 0.3],
+    metal: [0.35, 0.15, 0, 0.2],
+    wallTile: [0.3, 0.3, 0, 0.55],
+    marking: [0.7, 0, 0.6, 1.0],
+    window: [0.2, 0.3, 0, 0],
+    windowLit: [0.2, 0.3, 0, 0],
+    gold: [0.15, 0, 0, 0],
+    dome: [0.12, 0.08, 0, 0],
+    frieze: [0.2, 0.2, 0, 0],
+    plastic: [0.2, 0, 0, 0.2],
+    carpet: [0.3, 0, 0, 0.15],
+    dark: [0.3, 0, 0, 0.2],
+  };
 
   /** Build the whole catalogue once. */
   function create(pat, atlas) {
@@ -189,11 +276,25 @@
       roughness: 0.95,
     });
     m.carpet.userData.cast = false;
+    const fibre = P.Tex.set("carpet_d").map;
+    if (fibre) m.carpet.userData.kqDetail = { map: fibre, scale: 5 };
+    m.tuft = tuftMat();
+    m.whitePlaster = m.plaster.clone(); // mosque walls: kept clean and bright
+    m.whitePlaster.userData = { kq: [0.22, 0.25, 0, 0.3] };
+    m.streak.opacity = 0.55; // softer rain streaks under ledges
+    m.wetTiles = m.tiles.clone(); // wudu floor: always wet, even under the shelter roof
+    m.wetTiles.userData = { kq: [0.45, 0.1, 1.5, 0.4] };
+    Object.assign(m, ornaments(pat));
+    if (pat.far) {
+      Object.assign(m.skyline, { map: pat.far.col, emissiveMap: pat.far.glow });
+      m.skyline.userData.far = true;
+    }
     m.grass.userData.cast = false;
     m.asphalt.userData.cast = false;
     m.glowKeys = GLOW;
+    Object.keys(GRIME).forEach((k) => m[k] && (m[k].userData.kq = GRIME[k]));
     return m;
   }
 
-  P.Materials = { create, UV_SCALES, GLOW };
+  P.Materials = { create, UV_SCALES, GLOW, GRIME };
 })((window.KQ = window.KQ || {}));

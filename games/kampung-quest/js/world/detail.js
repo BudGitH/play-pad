@@ -91,34 +91,73 @@
       B.box("metal", x - 0.38 + k * 0.15, 0.02, z, 0.04, 0.01, 0.38, 0x55585b);
   }
 
-  /** A ring of distant towers to fill the horizon (fogged to silhouettes). */
+  /** Haze uniforms shared by the skyline (fog colour copied in by the runtime each update). */
+  const HAZE = { kqHazeCol: { value: new THREE.Color(0xcfe0ee) }, kqHaze: { value: 0.5 } };
+  function hazeMaterial(base) {
+    const m = base.clone();
+    m.fog = false;
+    m.onBeforeCompile = (sh) => {
+      Object.assign(sh.uniforms, HAZE);
+      sh.fragmentShader = sh.fragmentShader
+        .replace(
+          "#include <common>",
+          "#include <common>\nuniform vec3 kqHazeCol;\nuniform float kqHaze;",
+        )
+        .replace(
+          "#include <dithering_fragment>",
+          "gl_FragColor.rgb = mix( gl_FragColor.rgb, kqHazeCol, kqHaze );\n#include <dithering_fragment>",
+        );
+    };
+    m.customProgramCacheKey = () => "kqHaze";
+    m.userData.kqSkip = true; // keep the Surface patch from replacing the haze hook
+    return m;
+  }
+  /** Set the haze colour (linear fog colour) and strength. */
+  function setHaze(col, night) {
+    HAZE.kqHazeCol.value.copy(col);
+    HAZE.kqHaze.value = 0.7 - 0.35 * night;
+  }
+
+  const PASTEL = [0xffffff, 0xf2ece2, 0xe6eef2, 0xeef2e6, 0xf6e6dc, 0xe2e6ee];
+
+  /** Two rings of distant HDB slabs and point blocks, hazed towards the fog colour. */
   function skyline(group, mats) {
     const r = P.rng(2024);
     const list = [];
-    for (let i = 0; i < 46; i++) {
-      const a = (i / 46) * Math.PI * 2 + r() * 0.08;
-      const d = 240 + r() * 100;
-      const hgt = 24 + r() * 40;
-      list.push({
-        x: Math.cos(a) * d,
-        y: hgt / 2,
-        z: Math.sin(a) * d,
-        ry: r() * 3,
-        sx: 14 + r() * 18,
-        sy: hgt,
-        sz: 10 + r() * 8,
-        color: r() < 0.5 ? 0xaebbc6 : 0xc2c8cc,
-      });
-    }
+    const ring = (n, d0, d1, tone) => {
+      for (let i = 0; i < n; i++) {
+        const a = (i / n) * Math.PI * 2 + r() * 0.1;
+        const d = d0 + r() * (d1 - d0);
+        const point = r() < 0.25;
+        const hgt = (point ? 38 : 26) + r() * 24;
+        const c = 0.72 + r() * 0.28;
+        list.push({
+          x: Math.cos(a) * d,
+          y: hgt / 2,
+          z: Math.sin(a) * d,
+          ry: -a + Math.PI / 2 + (r() - 0.5) * 0.9,
+          sx: point ? 16 + r() * 6 : 34 + r() * 26,
+          sy: hgt,
+          sz: point ? 16 + r() * 6 : 10 + r() * 3,
+          color: new THREE.Color(PASTEL[Math.floor(r() * PASTEL.length)])
+            .multiplyScalar(c * tone)
+            .getHex(),
+        });
+      }
+    };
+    ring(24, 200, 250, 0.95);
+    ring(36, 270, 340, 0.88);
+    const mat = mats.skyline.userData.far ? hazeMaterial(mats.skyline) : mats.skyline;
     const im = P.instanced(
       P.cached("skyBox", () => new THREE.BoxGeometry(1, 1, 1)),
-      mats.skyline,
+      mat,
       list,
       { cast: false, receive: false },
     );
     im.name = "skyline";
     group.add(im);
+    mats.skyline = mat; // the night-glow fader drives the hazed clone
   }
 
-  P.Detail = { contactShadows, roadWear, skyline, decalMat, flat };
+  P.Detail = { contactShadows, roadWear, skyline, decalMat, flat, setHaze, HAZE };
 })((window.KQ = window.KQ || {}));

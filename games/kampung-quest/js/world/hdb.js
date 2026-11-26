@@ -78,6 +78,11 @@
     );
     const bz = f.s > 0 ? z0 - 0.03 : z1 + 0.03;
     B.plane("decal", f.xc, 1.45, bz, 3.6, 1.8, f.faceBack, ctx.letterUV);
+    if (P.Life) {
+      const uv = (ctx.noticeUV = ctx.noticeUV || P.Life.noticeUV(ctx.atlas));
+      B.plane("decal", f.xc - 2.668, 1.55, (z0 + z1) / 2, 1.6, 1.07, -Math.PI / 2, uv);
+      B.box("metal", f.xc - 2.64, 1.55, (z0 + z1) / 2, 0.04, 1.13, 1.66, 0x4a5562);
+    }
     return { x: f.xc, z: fz + f.s * 0.9, facing: f.s > 0 ? 0 : Math.PI };
   }
 
@@ -105,7 +110,21 @@
     const key = rnd() < 0.38 ? "windowLit" : "window";
     B.plane(key, x + 0.75, y + 1.45, zf, 1.1, 0.8, out, f.win.uv(Math.floor(rnd() * 8)));
     const pot = rnd() < 0.5 ? 0x3c8a3a : 0xb0603a;
-    if (rnd() < 0.35) B.box("plastic", x - 0.1, y + 0.2, f.zw + s * 0.3, 0.3, 0.4, 0.3, pot);
+    if (rnd() < 0.45) {
+      B.box("plastic", x - 0.1, y + 0.2, f.zw + s * 0.3, 0.3, 0.4, 0.3, pot);
+      B.box("hedge", x - 0.1, y + 0.55, f.zw + s * 0.3, 0.42, 0.4, 0.4, 0xd8e8c8);
+    }
+    if (rnd() < 0.4) shoeRack(B, x - 1.55, y, f.zw + s * 0.22, rnd);
+  }
+
+  /** Low shoe rack by a flat door with a few pairs of slippers and shoes on it. */
+  function shoeRack(B, x, y, z, rnd) {
+    B.box("metal", x, y + 0.25, z, 0.6, 0.5, 0.26, 0x9aa3ab);
+    for (let k = 0; k < 3; k++) {
+      const c = [0x2a2a2a, 0x3f6fb0, 0xd9663a, 0xe8e8e8][Math.floor(rnd() * 4)];
+      B.box("paint", x - 0.18 + k * 0.18, y + 0.53, z, 0.12, 0.05, 0.22, c);
+      if (rnd() < 0.5) B.box("paint", x - 0.18 + k * 0.18, y + 0.03, z + 0.2, 0.12, 0.04, 0.24, c);
+    }
   }
 
   /** Back facade: window bays, floor bands, AC ledges, drying poles + laundry. */
@@ -129,26 +148,28 @@
         B.plane("streak", x, y - 0.15, f.zb - s * 0.025, 1.3, 1.6, f.faceBack, null, 0xffffff);
       B.box("concrete", x, y + 0.6, f.zb - s * 0.35, 1.2, 0.08, 0.7, 0xd8d5ce);
       if (rnd() < 0.6) B.box("paint", x, y + 0.88, f.zb - s * 0.38, 0.8, 0.5, 0.45, 0xe9eaea);
-      if (rnd() < 0.45) laundry(B, x + 0.95, y + 1.95, f.zb - s * 0.55, rnd);
+      if (rnd() < 0.5) laundry(B, x + 0.95, y + 2.0, f.zb, -s, rnd);
       if (i % 2 === 0)
         B.box("plaster", x - BAY / 2, y + FLOOR_H / 2, f.zb - s * 0.2, 0.3, FLOOR_H, 0.4, b.wall);
     }
   }
-  const CLOTHES = [0xd94f4f, 0x3f7fd0, 0xf2d24b, 0xffffff, 0x6fbf73, 0xf29ac0, 0x8a6bd1];
-  function laundry(B, x, y, z, rnd) {
-    B.box("metal", x, y, z, 1.6, 0.04, 0.04, 0xbfc4c8);
-    for (let k = 0; k < 3; k++) {
-      const w = 0.25 + rnd() * 0.2;
-      B.box(
-        "paint",
-        x - 0.55 + k * 0.5,
-        y - 0.25,
-        z,
-        w,
-        0.45 + rnd() * 0.2,
-        0.02,
-        CLOTHES[Math.floor(rnd() * CLOTHES.length)],
-      );
+  const CLOTHES = [0xd94f4f, 0x3f7fd0, 0xf2d24b, 0xffffff, 0x6fbf73, 0xf29ac0, 0x8a6bd1, 0x2b3a55];
+  /** Bamboo drying poles pushed out of the window holders (dir = outward Z) with garments. */
+  function laundry(B, x, y, zf, dir, rnd) {
+    const n = 2 + Math.floor(rnd() * 2);
+    for (let p = 0; p < n; p++) {
+      const px = x - 0.35 + p * 0.35;
+      const len = 1.3 + rnd() * 0.3;
+      B.box("metal", px, y - 0.12, zf + dir * 0.08, 0.05, 0.05, 0.16, 0x8a9096);
+      B.box("wood", px, y, zf + dir * (len / 2), 0.035, 0.035, len, 0xc9b37a);
+      let z = 0.25;
+      while (z < len - 0.2 && rnd() < 0.85) {
+        const w = 0.22 + rnd() * 0.3;
+        const h = 0.35 + rnd() * 0.45;
+        const c = CLOTHES[Math.floor(rnd() * CLOTHES.length)];
+        B.box("paint", px, y - h / 2 - 0.02, zf + dir * (z + w / 2), 0.015, h, w, c);
+        z += w + 0.05;
+      }
     }
   }
 

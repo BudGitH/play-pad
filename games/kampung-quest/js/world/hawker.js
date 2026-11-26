@@ -29,7 +29,7 @@
   /** Columns, floor, roof tiers and the front name board. */
   function shell(B, H, ctx) {
     const h = H.h;
-    B.aabb("tiles", H.x0 - 1.5, 0, H.z0 - 1.5, H.x1 + 1.5, 0.14, H.z1 + 1.5, 0xc98a62);
+    B.aabb("terrazzo", H.x0 - 1.5, 0, H.z0 - 1.5, H.x1 + 1.5, 0.14, H.z1 + 1.5, 0xd6d1c8);
     for (let x = H.x0; x <= H.x1; x += 6) {
       [H.z0, (H.z0 + H.z1) / 2, H.z1].forEach((z, i) => {
         if (x === 26 || (i === 1 && (x === H.x0 || x === H.x1))) return;

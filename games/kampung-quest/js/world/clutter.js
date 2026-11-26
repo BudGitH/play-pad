@@ -165,7 +165,8 @@
       [-33, 13.4, -24, 13.9],
     ];
     runs.forEach(([x0, z0, x1, z1]) => {
-      B.aabb("leaf", x0, 0, z0, x1, 0.75, z1, 0xd8e8c0);
+      B.aabb("hedge", x0, 0, z0, x1, 0.66, z1, 0xc8d4b8);
+      B.aabb("hedge", x0 + 0.06, 0.66, z0 + 0.06, x1 - 0.06, 0.8, z1 - 0.06, 0xe4ecd8);
       P.collide(colliders, x0, x1, z0, z1, "hedge");
     });
   }

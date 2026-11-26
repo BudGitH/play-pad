@@ -138,7 +138,7 @@
   /** Men's wudu shelter: tiled back wall, taps, drain trough, low seat ledge, roof. */
   function wudu(B, m, ctx) {
     const w = m.wudu;
-    B.aabb("tiles", w.x0, 0, w.z0, w.x1, 0.14, w.z1 + 0.6, 0xeef2f2);
+    B.aabb("wetTiles", w.x0, 0, w.z0, w.x1, 0.14, w.z1 + 0.6, 0xeef2f2);
     B.aabb("wallTile", w.x0, 0.14, w.z0, w.x1, 2.6, w.z0 + 0.25, 0xffffff);
     for (let x = w.x0 + 1.5; x < w.x1; x += 4) {
       B.box("lamp", x, 2.97, (w.z0 + w.z1) / 2, 1.2, 0.05, 0.12, 0xffffff);
@@ -161,15 +161,22 @@
     B.plane("sign", (w.x0 + w.x1) / 2, 2.75, w.z1 + 0.82, 3.4, 0.5, 0, sign);
     return taps(B, w);
   }
+  /** Swan-neck chrome taps over a steel trough, each with a cross handle and a soap ledge. */
   function taps(B, w) {
     const out = [];
     const step = (w.x1 - w.x0) / TAPS;
+    const neck = P.cached("tapNeck", () => new THREE.TorusGeometry(0.09, 0.018, 6, 10, Math.PI));
+    B.aabb("metal", w.x0 + 0.2, 0.55, w.z0 + 0.25, w.x1 - 0.2, 0.6, w.z0 + 0.62, 0xb9bec2);
     for (let i = 0; i < TAPS; i++) {
       const x = w.x0 + step * (i + 0.5);
-      B.box("chrome", x, 0.98, w.z0 + 0.36, 0.08, 0.08, 0.26, 0xffffff);
-      B.box("chrome", x, 0.9, w.z0 + 0.47, 0.07, 0.18, 0.07, 0xffffff);
-      B.cyl("chrome", x, 1.1, w.z0 + 0.32, 0.06, 0.12, 10, 0xffffff);
-      B.box("chrome", x, 1.17, w.z0 + 0.32, 0.22, 0.03, 0.04, 0xffffff);
+      const z = w.z0 + 0.3;
+      B.cyl("chrome", x, 1.0, w.z0 + 0.27, 0.035, 0.06, 12, 0xffffff);
+      B.box("chrome", x, 1.0, z, 0.03, 0.03, 0.1, 0xffffff);
+      B.cyl("chrome", x, 1.06, z + 0.05, 0.018, 0.12, 8, 0xffffff);
+      B.geo("chrome", neck, P.compose(x, 1.12, z + 0.14, [0, Math.PI / 2, 0], 1, 1, 1), 0xffffff);
+      B.cyl("chrome", x, 1.08, z + 0.23, 0.016, 0.07, 8, 0xffffff);
+      B.box("chrome", x, 1.16, z + 0.05, 0.14, 0.02, 0.02, 0xffffff);
+      B.cyl("chrome", x, 1.18, z + 0.05, 0.015, 0.05, 8, 0xffffff);
       out.push({ x, z: w.z0 + 1.0 + 0.25, tapZ: w.z0 + 0.42 });
     }
     return out;

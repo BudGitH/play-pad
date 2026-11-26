@@ -4,6 +4,8 @@
 // A live game with no entry still gets the generic "opens without errors" check.
 //
 //   start        accessible name of the button that starts a round (exact match)
+//   prepare      optional async (page) => void — runs before the Start button is checked, for a game
+//                whose Start stays disabled while it loads (Kampung Quest builds a 3D world first)
 //   players      party games only: the player-count chip that must already be selected, so
 //                Start works with no setup (a fresh visitor can just hit Start)
 //   signal       one line naming what "in round" means (shown in the test annotations)
@@ -112,5 +114,24 @@ export const ROUND_DRIVERS = {
         .toBe("playing");
     },
     heartbeat: (page) => page.evaluate(() => window.__buddies.frame),
+  },
+
+  "kampung-quest": {
+    start: "Start",
+    // Start is disabled until the world, the figures and the azan have loaded (design D, loading
+    // state), which takes ~10-15 s in software GL, so wait for the game's `loaded` flag first.
+    async prepare(page) {
+      await expect
+        .poll(() => page.evaluate(() => window.__kq?.loaded), { timeout: 40_000 })
+        .toBe(true);
+    },
+    // The hook flips `ready` once the game loop is running.
+    signal: "__kq.ready, frame counter advancing",
+    async waitForRound(page) {
+      await expect
+        .poll(() => page.evaluate(() => window.__kq?.ready), { timeout: ROUND_TIMEOUT_MS })
+        .toBe(true);
+    },
+    heartbeat: (page) => page.evaluate(() => window.__kq.stats().frames),
   },
 };

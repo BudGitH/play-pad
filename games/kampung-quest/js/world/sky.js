@@ -1,13 +1,44 @@
 /* Kampung Quest — sky, sun/moon, hemisphere light, fog and PMREM reflections driven by the
-   game clock (KQ.WorldParts.Sky). Singapore, 26 Nov: sunrise ≈ 07:05, sunset ≈ 19:05; the sun
-   rises in the east (+X), crosses the southern sky (+Z) at ≈ 68° and sets in the west (−X).
+   game clock (KQ.WorldParts.Sky). Sunrise / sunset come from KQ.PRAYER_TIMES (Syuruk 06:51,
+   Maghrib 18:54 on 26 Nov) when loaded, else 07:05 / 19:05; `setSunTimes` overrides them. The
+   colour keys are authored for a 425 / 1145 day and warped onto the real times. The sun rises
+   in the east (+X), crosses the southern sky (+Z) at ≈ 68° and sets in the west (−X).
    The sky shader writes display (sRGB) colours, matching fog (docs/LEARNINGS.md 2026-11-21);
    for the PMREM bake it linearises instead. */
 (function (KQ) {
   "use strict";
   const P = (KQ.WorldParts = KQ.WorldParts || {});
-  const SUNRISE = 425;
+  const SUNRISE = 425; // the minutes the KEYS below were authored for
   const SUNSET = 1145;
+  const sun = { rise: SUNRISE, set: SUNSET };
+
+  /** "HH:MM" → minutes, or NaN. */
+  function toMin(hhmm) {
+    const m = /^(\d{1,2}):(\d{2})$/.exec(String(hhmm || ""));
+    return m ? Number(m[1]) * 60 + Number(m[2]) : NaN;
+  }
+  /** Set the real sunrise / sunset minutes (ignored unless 180 < rise < 720 < set < 1320). */
+  function setSunTimes(rise, set) {
+    if (rise > 180 && rise < 720 && set > 720 && set < 1320) {
+      sun.rise = rise;
+      sun.set = set;
+    }
+    return { rise: sun.rise, set: sun.set };
+  }
+  /** Default from the MUIS times (Syuruk = sunrise, Maghrib = sunset) when present. */
+  function fromPrayerTimes() {
+    const t = KQ.PRAYER_TIMES;
+    if (t) setSunTimes(toMin(t.syuruk), toMin(t.maghrib));
+    return { rise: sun.rise, set: sun.set };
+  }
+  /** Map a real minute onto the authored key timeline (piecewise linear, noon fixed). */
+  function warp(m) {
+    const seg = (a, b, A, B) => A + ((m - a) / (b - a)) * (B - A);
+    if (m < sun.rise) return seg(0, sun.rise, 0, SUNRISE);
+    if (m < 720) return seg(sun.rise, 720, SUNRISE, 720);
+    if (m < sun.set) return seg(720, sun.set, 720, SUNSET);
+    return seg(sun.set, 1440, SUNSET, 1440);
+  }
 
   /* minute → [zenith, horizon, sun colour, sun intensity, hemi sky, hemi ground, hemi intensity] */
   const KEYS = [
@@ -19,8 +50,8 @@
     [720, "#3576cf", "#c4dcf0", "#fffaf0", 3.6, "#ced9e6", "#a89d86", 0.62],
     [1020, "#3e7ccc", "#cfe0ee", "#fff0d6", 3.3, "#cad6e4", "#a39880", 0.58],
     [1110, "#5a78b4", "#f3c38f", "#ffb46a", 2.2, "#b2b9d0", "#7a5e48", 0.5],
-    [1150, "#3c4c86", "#f08a5a", "#ff8a4a", 0.12, "#6f7598", "#3e3532", 0.36],
-    [1185, "#1b2552", "#6a4f74", "#a7b6ff", 0.2, "#4a5578", "#22222a", 0.3],
+    [1150, "#41598f", "#e3b07a", "#ffb468", 0.12, "#7f8aa4", "#403d39", 0.36],
+    [1185, "#1b2552", "#4c5778", "#a7b6ff", 0.2, "#4a5578", "#24252b", 0.3],
     [1250, "#0b1330", "#1d2a4a", "#9fb4ff", 0.22, "#4a5778", "#1e1f24", 0.26],
     [1440, "#0b1330", "#1d2a4a", "#9fb4ff", 0.22, "#4a5778", "#1e1f24", 0.26],
   ];
@@ -65,7 +96,7 @@
     }`;
 
   function lerpKeys(minute) {
-    const m = ((minute % 1440) + 1440) % 1440;
+    const m = warp(((minute % 1440) + 1440) % 1440);
     let i = 0;
     while (i < KEYS.length - 2 && KEYS[i + 1][0] <= m) i++;
     const a = KEYS[i];
@@ -88,9 +119,9 @@
 
   /** Unit vector towards the sun (or the moon at night, with `isMoon`). */
   function sunDirection(minute, out) {
-    const day = minute >= SUNRISE - 20 && minute <= SUNSET + 20;
+    const day = minute >= sun.rise - 20 && minute <= sun.set + 20;
     if (!day) return { dir: out.set(-0.35, 0.85, 0.4).normalize(), isMoon: true, elev: -1 };
-    const th = (Math.PI * (minute - SUNRISE)) / (SUNSET - SUNRISE);
+    const th = (Math.PI * (minute - sun.rise)) / (sun.set - sun.rise);
     out.set(Math.cos(th), Math.sin(th) * 0.93, 0.08 + Math.sin(th) * 0.37);
     if (out.y < 0.06) out.y = 0.06; // keep the shadow camera sensible in twilight
     return { dir: out.normalize(), isMoon: false, elev: Math.sin(th) };
@@ -99,10 +130,12 @@
   /** Night factor 0 (day) .. 1 (full night) from minute. */
   function nightFactor(minute) {
     const m = ((minute % 1440) + 1440) % 1440;
-    const dawn = THREE.MathUtils.smoothstep(m, SUNRISE - 40, SUNRISE + 25);
-    const dusk = 1 - THREE.MathUtils.smoothstep(m, SUNSET - 20, SUNSET + 35);
+    const dawn = THREE.MathUtils.smoothstep(m, sun.rise - 40, sun.rise + 25);
+    const dusk = 1 - THREE.MathUtils.smoothstep(m, sun.set - 20, sun.set + 35);
     return 1 - Math.min(dawn, dusk);
   }
 
+  fromPrayerTimes();
   P.Sky = { KEYS, VERT, FRAG, lerpKeys, sunDirection, nightFactor, SUNRISE, SUNSET };
+  Object.assign(P.Sky, { setSunTimes, fromPrayerTimes, toMin, warp, sun });
 })((window.KQ = window.KQ || {}));

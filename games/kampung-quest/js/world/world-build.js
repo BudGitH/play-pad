@@ -49,8 +49,39 @@
       L.hawker.h - 0.6,
       (L.hawker.z0 + L.hawker.z1) / 2,
     );
-    group.add(hall, hawker);
-    return { hall, hawker };
+    const w = L.mosque.wudu;
+    const wudu = new THREE.PointLight(0xf2f6ff, 0, 11, 1.6);
+    wudu.position.set((w.x0 + w.x1) / 2, 2.7, (w.z0 + w.z1) / 2 + 0.6);
+    group.add(hall, hawker, wudu);
+    return { hall, hawker, wudu };
+  }
+
+  /** Additive glow halos around every lamp head (one Points draw call, faded in at night). */
+  function lampHalos(ctx) {
+    if (!P.Patterns3) return null;
+    const pts = ctx.lamps.map((p) => [p.x, p.y - 0.05, p.z, 2.2]);
+    ctx.pools.forEach((p) => pts.push([p.x, (p.y || 3) + 0.1, p.z, p.warm ? 1.3 : 1.0]));
+    const g = new THREE.BufferGeometry();
+    g.setAttribute(
+      "position",
+      new THREE.Float32BufferAttribute(
+        pts.flatMap((p) => p.slice(0, 3)),
+        3,
+      ),
+    );
+    const mat = new THREE.PointsMaterial({
+      map: P.Patterns3.halo(),
+      size: 1.6,
+      sizeAttenuation: true,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    });
+    const halos = new THREE.Points(g, mat);
+    halos.name = "lampHalos";
+    halos.renderOrder = 3;
+    return halos;
   }
 
   /** Invisible map-edge walls. */
@@ -88,6 +119,7 @@
     const group = new THREE.Group();
     group.name = "kampungWorld";
     const ctx = { L, colliders: [], lamps: [], pools: [], tables: [], atlas: kit.atlas };
+    ctx.mats = kit.mats;
     ctx.win = kit.pat.windows;
     ctx.letterUV = kit.atlas.letterboxes();
     const B = new P.Batch(P.Materials.UV_SCALES);
@@ -97,7 +129,9 @@
     kit.atlas.texture.needsUpdate = true;
     B.build(kit.mats, group);
     finishDetail(group, ctx, W.parts.makeHeightAt(B.floors));
+    if (P.AOField && P.Surface) P.Surface.apply(group, P.AOField.build(L, ctx.colliders));
     scene.add(group);
+    P.Sky.fromPrayerTimes();
     const rig = P.Lighting.create(scene, opts.renderer, tier);
     rig.glow = Object.keys(P.Materials.GLOW).map((k) => ({
       mat: kit.mats[k],
@@ -111,8 +145,18 @@
   function finishDetail(group, ctx, heightAt) {
     const spots = ctx.lamps.map((p) => ({ x: p.x, z: p.z, s: 1 })).concat(ctx.pools);
     group.add(lampPools(spots, heightAt));
+    const halos = lampHalos(ctx);
+    if (halos) group.add(halos);
     P.Detail.contactShadows(group, ctx.colliders, heightAt, []);
     ctx.steamSprites = P.Clutter.steam(group, ctx.steam || []);
+    if (P.Life) ctx.smokeSprites = P.Life.smoke(group, (ctx.steam || [])[3]);
+    if (P.Foliage) {
+      const C = ctx.colliders;
+      const blocked = (x, z) =>
+        C.some((c) => x > c.minX - 0.1 && x < c.maxX + 0.1 && z > c.minZ - 0.1 && z < c.maxZ + 0.1);
+      const spots = P.Foliage.tuftSpots(P.Town.treeList(), ctx.L);
+      P.Foliage.tufts(group, ctx.mats.tuft, spots, heightAt, blocked);
+    }
     boundary(ctx.L, ctx.colliders);
   }
 

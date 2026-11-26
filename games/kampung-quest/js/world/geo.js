@@ -83,6 +83,8 @@
   const FLOOR_KEYS = new Set([
     "paving",
     "tiles",
+    "terrazzo",
+    "wetTiles",
     "marble",
     "asphalt",
     "grass",

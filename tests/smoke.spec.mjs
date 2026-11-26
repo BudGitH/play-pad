@@ -231,6 +231,7 @@ async function startRoundInGame(page, game, vp) {
   if (driver.players) {
     await expect(page.locator(PLAYER_COUNT_CHIP)).toHaveText(driver.players);
   }
+  if (driver.prepare) await driver.prepare(page);
   await expect(start).toBeEnabled();
   await (vp.touch ? start.tap() : start.click());
 

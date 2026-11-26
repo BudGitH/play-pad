@@ -22,6 +22,7 @@
     fans.mesh.instanceMatrix.needsUpdate = true;
     s.time = (s.time || 0) + dt;
     P.Clutter.animateSteam(s.ctx.steamSprites, s.time);
+    if (P.Life) P.Life.animateSmoke(s.ctx.smokeSprites, s.time);
     const pole = s.areas.barber.pole.material.map;
     pole.offset.y = (pole.offset.y + dt * 0.35) % 1;
   }
@@ -75,8 +76,12 @@
     P.Lighting.maybeBakeEnv(s.rig, minute, false);
     const n = s.rig.night;
     s.pools.material.opacity = 0.8 * n;
-    s.pl.hawker.intensity = 1.6 * n;
+    s.pl.hawker.intensity = 1.0 * n;
     s.pl.hall.intensity = 0.9 + 0.9 * n;
+    if (s.pl.wudu) s.pl.wudu.intensity = 0.7 * n;
+    if (s.halos) s.halos.material.opacity = 0.85 * n;
+    if (P.Surface) P.Surface.setTime(n, s.rig.sun.intensity);
+    if (P.Detail.setHaze) P.Detail.setHaze(s.scene.fog.color, n);
     updateRoam(s);
   }
 
@@ -85,18 +90,35 @@
     s.rig.tier = s.tier;
     P.Lighting.applyShadowTier(s.rig.sun, s.tier);
     P.Lighting.placeSun(s.rig);
-    [s.inst.shrubs, s.inst.trees.leafCards].forEach((im) => {
-      im.count = Math.round(im.userData.fullCount * HINTS[s.tier].propDensity);
-      im.castShadow = s.tier !== "low";
+    s.group.children.forEach((im) => {
+      if (!im.isInstancedMesh || !im.userData.density) return;
+      const d = HINTS[s.tier].propDensity;
+      const k = im.name.startsWith("treeLeaf") ? Math.max(0.65, d) : d; // keep canopies full
+      im.count = Math.round(im.userData.fullCount * k);
+      im.castShadow = s.tier !== "low" && im.name !== "grassTufts";
     });
+    if (P.Surface) P.Surface.setLite(s.tier === "low");
     P.Lighting.maybeBakeEnv(s.rig, s.minute, true);
     return HINTS[s.tier];
+  }
+
+  /** Sunrise / sunset in clock minutes (defaults: Syuruk / Maghrib from KQ.PRAYER_TIMES). */
+  function sunApi(s) {
+    return {
+      setSunTimes(rise, set) {
+        const r = P.Sky.setSunTimes(rise, set);
+        applyTime(s, s.minute);
+        P.Lighting.maybeBakeEnv(s.rig, s.minute, true);
+        return r;
+      },
+      sunTimes: () => ({ rise: P.Sky.sun.rise, set: P.Sky.sun.set }),
+    };
   }
 
   /** Build the public object from the internal state. */
   function runtime(st) {
     const s = Object.assign(st, { fanAngle: 0, minute: 420 });
-    s.pools = s.group.getObjectByName("lampPools");
+    [s.pools, s.halos] = ["lampPools", "lampHalos"].map((n) => s.group.getObjectByName(n));
     s.roam = makeRoam(s.group, s.ctx);
     const pois = W.helpers.finishPois(st.nav.pois);
     const api = {
@@ -111,6 +133,7 @@
         street: s.ctx.lamps.map((p) => ({ pos: p })),
         hall: s.pl.hall,
         hawker: s.pl.hawker,
+        wudu: s.pl.wudu,
         roaming: s.roam.lights,
       },
       heightAt: W.parts.makeHeightAt(s.B.floors),
@@ -128,6 +151,7 @@
       },
       night: () => s.rig.night,
     };
+    Object.assign(api, sunApi(s));
     applyTime(s, s.minute);
     setQuality(s, s.tier);
     return api;

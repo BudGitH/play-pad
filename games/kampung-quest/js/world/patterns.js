@@ -51,12 +51,32 @@
     ctx.fillStyle = "rgba(255,255,255,0.18)";
     ctx.fillRect(x + w * 0.15, y + 2, w * 0.12, h - 4);
   }
+  /* Night glow per variant: warm bulbs, neutral LED, cool fluorescent, TV-blue; some curtained
+     (curtain colour tints and dims the glow), some with blinds (bright slats). */
+  const GLOWS = [
+    "#ffd49a",
+    "#fff0d6",
+    "#d2e4ff",
+    "#ffc37a",
+    "#ffe2b4",
+    "#c9dcff",
+    "#ffb98a",
+    "#f6e9cc",
+  ];
   function paneGlow(ctx, x, y, w, h, v, cover) {
-    const warm = v % 4 === 3 ? "#bcd6ff" : "#ffd9a0";
-    ctx.fillStyle = warm;
+    ctx.fillStyle = GLOWS[v % GLOWS.length];
     ctx.fillRect(x, y, w, h);
-    ctx.fillStyle = "rgba(0,0,0,0.35)";
+    if (v % 3 === 0) {
+      ctx.fillStyle = "rgba(120,60,40,0.45)"; // drawn curtain: dimmer, tinted
+      ctx.fillRect(x, y, w, h);
+    }
+    if (v % 4 === 1) {
+      ctx.fillStyle = "rgba(0,0,0,0.5)"; // blinds
+      for (let k = y; k < y + h; k += 7) ctx.fillRect(x, k, w, 3);
+    }
+    ctx.fillStyle = "rgba(0,0,0,0.4)";
     if (v % 3 !== 2) ctx.fillRect(x, y, w, h * cover * 0.5);
+    else ctx.fillRect(x + w * 0.55, y, w * 0.45, h);
   }
 
   /** A flat main door + metal gate (cell variant 8..11). */

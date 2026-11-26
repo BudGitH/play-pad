@@ -5,6 +5,7 @@
   "use strict";
   const P = (KQ.WorldParts = KQ.WorldParts || {});
   const S = () => P.Sky;
+  const tmpGrey = new THREE.Color();
 
   /** Shadow/env settings per quality tier. */
   const TIERS = {
@@ -117,7 +118,9 @@
     rig.hemi.color.copy(k.hemiSky).convertSRGBToLinear();
     rig.hemi.groundColor.copy(k.hemiGround).convertSRGBToLinear();
     rig.hemi.intensity = k.hemiI;
-    rig.scene.fog.color.copy(k.horizon).lerp(k.zenith, 0.15);
+    const fog = rig.scene.fog.color.copy(k.horizon).lerp(k.zenith, 0.15);
+    const grey = fog.r * 0.3 + fog.g * 0.55 + fog.b * 0.15;
+    fog.lerp(tmpGrey.setRGB(grey, grey, grey), 0.3); // keep dusk fog from tinting the town pink
     rig.scene.fog.far = 340 - rig.night * 80;
     rig.glow.forEach((g) => (g.mat.emissiveIntensity = g.base * rig.night));
     placeSun(rig);

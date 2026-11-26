@@ -67,7 +67,7 @@
         ry: r() * 6,
         color: 0x8f8274,
         sx: s,
-        sy: s * (t.kind === "rain" ? 1 : 1.25),
+        sy: s * (t.kind === "rain" || P.Foliage ? 1 : 1.25),
         sz: s,
       });
       const spread = (t.kind === "rain" ? 4.2 : 2.2) * s;
@@ -121,21 +121,11 @@
     return out;
   }
 
-  /** Build tree meshes and trunk colliders. */
+  /** Build tree meshes and trunk colliders (photo leaf cards + branching trunks via Foliage). */
   function build(group, mats, trees, colliders) {
+    const F = P.Foliage;
     const lists = layout(trees);
-    const trunk = P.instanced(trunkGeo(), mats.bark, lists.trunks);
-    trunk.name = "treeTrunks";
-    const canopy = P.instanced(blobGeo(), mats.leaf, lists.blobs);
-    canopy.name = "treeCanopy";
-    const leafCards = P.instanced(
-      P.cached("card", () => new THREE.PlaneGeometry(1, 1)),
-      mats.leafCard,
-      lists.cards,
-    );
-    leafCards.name = "treeLeafCards";
-    leafCards.userData.density = true;
-    group.add(trunk, canopy, leafCards);
+    const out = F ? foliageTrees(group, mats, trees, lists) : blobTrees(group, mats, lists);
     trees.forEach((t) =>
       P.collide(
         colliders,
@@ -146,7 +136,33 @@
         "tree",
       ),
     );
+    return out;
+  }
+  /** Original look: trunk + noise blobs + canvas leaf cards (kept as the fallback). */
+  function blobTrees(group, mats, lists) {
+    const trunk = P.instanced(trunkGeo(), mats.bark, lists.trunks);
+    trunk.name = "treeTrunks";
+    const canopy = P.instanced(blobGeo(), mats.leaf, lists.blobs);
+    canopy.name = "treeCanopy";
+    const card = P.cached("card", () => new THREE.PlaneGeometry(1, 1));
+    const leafCards = P.instanced(card, mats.leafCard, lists.cards);
+    leafCards.name = "treeLeafCards";
+    leafCards.userData.density = true;
+    group.add(trunk, canopy, leafCards);
     return { trunk, canopy, leafCards };
+  }
+  /** Realistic look: forked trunks per kind, a dark inner canopy volume, dense photo cards. */
+  function foliageTrees(group, mats, trees, lists) {
+    const F = P.Foliage;
+    const byKind = (rain) => lists.trunks.filter((_, i) => (trees[i].kind === "rain") === rain);
+    const trunks = [true, false].map((rain) => {
+      const im = P.instanced(F.trunkGeo(rain ? "rain" : "street"), mats.bark, byKind(rain));
+      im.name = rain ? "treeTrunks" : "treeTrunksStreet";
+      return im;
+    });
+    const cards = F.canopies(group, mats, trees);
+    group.add(trunks[0], trunks[1]);
+    return { trunk: trunks[0], leafCards: cards[0], leafCardsStreet: cards[1] };
   }
 
   /** Shrub blobs (decoration, density-scaled on lower tiers, no colliders). */
@@ -165,7 +181,7 @@
         color: r() < 0.5 ? 0xd8eac0 : 0xffffff,
       };
     });
-    const im = P.instanced(blobGeo(), mats.leaf, list);
+    const im = P.instanced(blobGeo(), mats.hedge || mats.leaf, list);
     im.name = "shrubs";
     im.userData.density = true;
     group.add(im);

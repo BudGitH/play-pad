@@ -132,6 +132,7 @@
     qibla(B, h, ctx);
     dado(B, h);
     const lightPos = furnish(B, h, m, ctx);
+    if (P.Ornament) P.Ornament.build(B, m, ctx);
     return { taps, lightPos, hallSpot: { x: -45, z: -33, facing: -Math.PI / 2 } };
   }
 

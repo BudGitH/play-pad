@@ -32,7 +32,11 @@
         s.lineTo(-w / 2, h);
         s.lineTo(-w / 2, 0);
       } else {
-        s.moveTo(-w / 2, 0).lineTo(w / 2, 0).lineTo(w / 2, h).lineTo(-w / 2, h).lineTo(-w / 2, 0);
+        s.moveTo(-w / 2, 0)
+          .lineTo(w / 2, 0)
+          .lineTo(w / 2, h)
+          .lineTo(-w / 2, h)
+          .lineTo(-w / 2, 0);
         if (type === "win") {
           const hole = new THREE.Path();
           archPath(hole, 0.8, 1.1, 3.6);
@@ -59,16 +63,22 @@
       const t = (i + 0.5) / n;
       const x = o.x0 + (o.x1 - o.x0) * t;
       const z = o.z0 + (o.z1 - o.z0) * t;
-      B.geo(o.key || "plaster", panel(o.types[i], w, o.h), P.compose(x, o.y || 0, z, rot, 1, 1, 1), o.color);
+      B.geo(
+        o.key || "plaster",
+        panel(o.types[i], w, o.h),
+        P.compose(x, o.y || 0, z, rot, 1, 1, 1),
+        o.color,
+      );
       if (o.types[i] === "win") B.plane("glass", x, (o.y || 0) + 2.4, z, 1.6, 2.6, rot);
-      if (o.types[i] === "door" || o.types[i] === "arcade") jambs(ctx, x, z, rot, w, o.types[i] === "door" ? 1.15 : w / 2 - 0.35);
+      if (o.types[i] === "door" || o.types[i] === "arcade")
+        jambs(ctx, x, z, rot, w, o.types[i] === "door" ? 1.15 : w / 2 - 0.35);
       else pushWall(ctx, x, z, rot, w / 2);
     }
   }
   function pushWall(ctx, x, z, rot, half) {
     const hx = Math.abs(Math.cos(rot)) * half + 0.25;
     const hz = Math.abs(Math.sin(rot)) * half + 0.25;
-    ctx.colliders.push({ minX: x - hx, maxX: x + hx, minZ: z - hz, maxZ: z + hz, kind: "mosque-wall" });
+    P.collide(ctx.colliders, x - hx, x + hx, z - hz, z + hz, "mosque-wall");
   }
   /** Colliders for the solid pieces either side of an opening of half-width hw. */
   function jambs(ctx, x, z, rot, w, hw) {
@@ -98,9 +108,19 @@
   function finial(B, x, y, z, r) {
     const s = Math.max(0.35, r * 0.1);
     B.cyl("gold", x, y + s * 0.8, z, s * 0.12, s * 1.6, 8, 0xe2bd62);
-    B.geo("gold", P.cached("fsph", () => new THREE.SphereGeometry(1, 14, 10)), P.compose(x, y + s * 0.6, z, 0, s * 0.3, s * 0.3, s * 0.3), 0xe2bd62);
+    B.geo(
+      "gold",
+      P.cached("fsph", () => new THREE.SphereGeometry(1, 14, 10)),
+      P.compose(x, y + s * 0.6, z, 0, s * 0.3, s * 0.3, s * 0.3),
+      0xe2bd62,
+    );
     const cres = P.cached("cres", () => new THREE.TorusGeometry(1, 0.16, 8, 20, Math.PI * 1.4));
-    B.geo("gold", cres, P.compose(x, y + s * 1.9, z, [0, Math.PI / 2, Math.PI * 0.8], s * 0.45, s * 0.45, s * 0.45), 0xe2bd62);
+    B.geo(
+      "gold",
+      cres,
+      P.compose(x, y + s * 1.9, z, [0, Math.PI / 2, Math.PI * 0.8], s * 0.45, s * 0.45, s * 0.45),
+      0xe2bd62,
+    );
   }
 
   P.Mosque = { panel, wallRun, dome, finial, T };

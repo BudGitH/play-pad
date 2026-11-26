@@ -34,7 +34,19 @@
       for (let k = 0; k < 4; k++) {
         const a = (k / 4) * Math.PI * 2 + 0.4;
         const tilt = 0.75 + (k % 2) * 0.2;
-        B.geo("t", c, P.compose(Math.sin(a) * 1.0, 3.9, Math.cos(a) * 1.0, [tilt * Math.cos(a), 0, -tilt * Math.sin(a)], 0.55, 3.0, 0.55));
+        B.geo(
+          "t",
+          c,
+          P.compose(
+            Math.sin(a) * 1.0,
+            3.9,
+            Math.cos(a) * 1.0,
+            [tilt * Math.cos(a), 0, -tilt * Math.sin(a)],
+            0.55,
+            3.0,
+            0.55,
+          ),
+        );
       }
       return B.build({ t: new THREE.MeshBasicMaterial() })[0].geometry;
     });
@@ -48,14 +60,32 @@
     trees.forEach((t, i) => {
       const r = P.rng(i * 17 + 3);
       const s = t.s;
-      trunks.push({ x: t.x, y: 0, z: t.z, ry: r() * 6, color: 0x8f8274, sx: s, sy: s * (t.kind === "rain" ? 1 : 1.25), sz: s });
+      trunks.push({
+        x: t.x,
+        y: 0,
+        z: t.z,
+        ry: r() * 6,
+        color: 0x8f8274,
+        sx: s,
+        sy: s * (t.kind === "rain" ? 1 : 1.25),
+        sz: s,
+      });
       const spread = (t.kind === "rain" ? 4.2 : 2.2) * s;
       const top = (t.kind === "rain" ? 5.6 : 5.0) * s;
       for (let k = 0; k < BLOBS; k++) {
         const a = (k / BLOBS) * Math.PI * 2 + r();
         const d = k === 0 ? 0 : spread * (0.45 + r() * 0.5);
         const bs = (t.kind === "rain" ? 2.3 : 1.5) * s * (0.8 + r() * 0.4);
-        blobs.push({ x: t.x + Math.cos(a) * d, y: top + r() * 1.2 * s - d * 0.15, z: t.z + Math.sin(a) * d, ry: r() * 6, sx: bs * 1.2, sy: bs * 0.75, sz: bs * 1.2, color: greens[Math.floor(r() * greens.length)] });
+        blobs.push({
+          x: t.x + Math.cos(a) * d,
+          y: top + r() * 1.2 * s - d * 0.15,
+          z: t.z + Math.sin(a) * d,
+          ry: r() * 6,
+          sx: bs * 1.2,
+          sy: bs * 0.75,
+          sz: bs * 1.2,
+          color: greens[Math.floor(r() * greens.length)],
+        });
       }
     });
     return { trunks, blobs, cards: cards(trees) };
@@ -76,7 +106,16 @@
         const d = (0.35 + 0.65 * Math.sqrt(r())) * spread;
         const y = top + (r() - 0.35) * (rain ? 2.4 : 2.6) * t.s - (d / spread) * 0.9 * t.s;
         const sz = (rain ? 2.0 : 1.5) * t.s * (0.7 + r() * 0.6);
-        out.push({ x: t.x + Math.cos(a) * d, y, z: t.z + Math.sin(a) * d, rot: [r() * 3, r() * 3, r() * 3], sx: sz, sy: sz, sz: 1, color: tints[Math.floor(r() * 4)] });
+        out.push({
+          x: t.x + Math.cos(a) * d,
+          y,
+          z: t.z + Math.sin(a) * d,
+          rot: [r() * 3, r() * 3, r() * 3],
+          sx: sz,
+          sy: sz,
+          sz: 1,
+          color: tints[Math.floor(r() * 4)],
+        });
       }
     });
     return out;
@@ -89,11 +128,25 @@
     trunk.name = "treeTrunks";
     const canopy = P.instanced(blobGeo(), mats.leaf, lists.blobs);
     canopy.name = "treeCanopy";
-    const leafCards = P.instanced(P.cached("card", () => new THREE.PlaneGeometry(1, 1)), mats.leafCard, lists.cards);
+    const leafCards = P.instanced(
+      P.cached("card", () => new THREE.PlaneGeometry(1, 1)),
+      mats.leafCard,
+      lists.cards,
+    );
     leafCards.name = "treeLeafCards";
+    leafCards.userData.density = true;
     group.add(trunk, canopy, leafCards);
-    trees.forEach((t) => colliders.push({ minX: t.x - 0.45 * t.s, maxX: t.x + 0.45 * t.s, minZ: t.z - 0.45 * t.s, maxZ: t.z + 0.45 * t.s, kind: "tree" }));
-    return { trunk, canopy };
+    trees.forEach((t) =>
+      P.collide(
+        colliders,
+        t.x - 0.45 * t.s,
+        t.x + 0.45 * t.s,
+        t.z - 0.45 * t.s,
+        t.z + 0.45 * t.s,
+        "tree",
+      ),
+    );
+    return { trunk, canopy, leafCards };
   }
 
   /** Shrub blobs (decoration, density-scaled on lower tiers, no colliders). */
@@ -101,7 +154,16 @@
     const list = spots.map((p, i) => {
       const r = P.rng(i * 7 + 1);
       const k = p.s || 1;
-      return { x: p.x, y: p.y || 0.35, z: p.z, ry: r() * 6, sx: (0.7 + r() * 0.4) * k, sy: (0.55 + r() * 0.2) * k, sz: (0.7 + r() * 0.4) * k, color: r() < 0.5 ? 0xd8eac0 : 0xffffff };
+      return {
+        x: p.x,
+        y: p.y || 0.35,
+        z: p.z,
+        ry: r() * 6,
+        sx: (0.7 + r() * 0.4) * k,
+        sy: (0.55 + r() * 0.2) * k,
+        sz: (0.7 + r() * 0.4) * k,
+        color: r() < 0.5 ? 0xd8eac0 : 0xffffff,
+      };
     });
     const im = P.instanced(blobGeo(), mats.leaf, list);
     im.name = "shrubs";
@@ -121,15 +183,24 @@
       legs.push({ x: t.x, y: 0.5, z: t.z, color: t.stone ? 0x8d9396 : 0x6f757a });
       for (let k = 0; k < 4; k++) {
         const a = (k / 4) * Math.PI * 2 + Math.PI / 4;
-        stools.push({ x: t.x + Math.cos(a) * 0.95, y: 0.37, z: t.z + Math.sin(a) * 0.95, color: t.stone ? 0x9da3a6 : 0xd9663a });
+        stools.push({
+          x: t.x + Math.cos(a) * 0.95,
+          y: 0.37,
+          z: t.z + Math.sin(a) * 0.95,
+          color: t.stone ? 0x9da3a6 : 0xd9663a,
+        });
       }
-      colliders.push({ minX: t.x - 0.75, maxX: t.x + 0.75, minZ: t.z - 0.75, maxZ: t.z + 0.75, kind: "table" });
+      P.collide(colliders, t.x - 0.75, t.x + 0.75, t.z - 0.75, t.z + 0.75, "table");
     });
     const mat = mats.paint;
     const g1 = P.cached("ttop", () => new THREE.CylinderGeometry(0.62, 0.62, 0.07, 24));
     const g2 = P.cached("tleg", () => new THREE.CylinderGeometry(0.12, 0.2, 0.72, 12));
     const g3 = P.cached("tstool", () => new THREE.CylinderGeometry(0.2, 0.16, 0.46, 14));
-    const meshes = [P.instanced(g1, mat, tops), P.instanced(g2, mat, legs), P.instanced(g3, mat, stools)];
+    const meshes = [
+      P.instanced(g1, mat, tops),
+      P.instanced(g2, mat, legs),
+      P.instanced(g3, mat, stools),
+    ];
     meshes.forEach((m, i) => (m.name = ["tableTops", "tableLegs", "stools"][i]));
     group.add(...meshes);
   }

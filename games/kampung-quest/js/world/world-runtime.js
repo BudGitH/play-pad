@@ -41,7 +41,9 @@
       lights.push(l);
     }
     const cands = ctx.lamps.map((p) => ({ x: p.x, y: p.y - 0.3, z: p.z, warm: true, r: 13 }));
-    ctx.pools.forEach((p) => cands.push({ x: p.x, y: (p.y || 3) - 0.15, z: p.z, warm: !!p.warm, r: 9 }));
+    ctx.pools.forEach((p) =>
+      cands.push({ x: p.x, y: (p.y || 3) - 0.15, z: p.z, warm: !!p.warm, r: 9 }),
+    );
     return { lights, cands, at: new THREE.Vector3(1e9, 0, 0) };
   }
   function updateRoam(s) {
@@ -52,7 +54,10 @@
     if (r.at.distanceToSquared(t) > 0.5) {
       r.at.copy(t);
       r.cands.forEach((c) => (c.d = (c.x - t.x) ** 2 + (c.z - t.z) ** 2));
-      r.pick = r.cands.slice().sort((a, b) => a.d - b.d).slice(0, ROAM);
+      r.pick = r.cands
+        .slice()
+        .sort((a, b) => a.d - b.d)
+        .slice(0, ROAM);
     }
     const active = s.tier === "low" ? 2 : ROAM;
     r.lights.forEach((l, i) => {
@@ -80,8 +85,10 @@
     s.rig.tier = s.tier;
     P.Lighting.applyShadowTier(s.rig.sun, s.tier);
     P.Lighting.placeSun(s.rig);
-    const shrubs = s.inst.shrubs;
-    shrubs.count = Math.round(shrubs.userData.fullCount * HINTS[s.tier].propDensity);
+    [s.inst.shrubs, s.inst.trees.leafCards].forEach((im) => {
+      im.count = Math.round(im.userData.fullCount * HINTS[s.tier].propDensity);
+      im.castShadow = s.tier !== "low";
+    });
     P.Lighting.maybeBakeEnv(s.rig, s.minute, true);
     return HINTS[s.tier];
   }
@@ -98,7 +105,14 @@
       colliders: s.ctx.colliders,
       walkGraph: s.nav.graph,
       interactables: W.parts.interactables(s.areas),
-      lights: { sun: s.rig.sun, hemi: s.rig.hemi, street: s.ctx.lamps.map((p) => ({ pos: p })), hall: s.pl.hall, hawker: s.pl.hawker, roaming: s.roam.lights },
+      lights: {
+        sun: s.rig.sun,
+        hemi: s.rig.hemi,
+        street: s.ctx.lamps.map((p) => ({ pos: p })),
+        hall: s.pl.hall,
+        hawker: s.pl.hawker,
+        roaming: s.roam.lights,
+      },
       heightAt: W.parts.makeHeightAt(s.B.floors),
       qualityHints: (tier) => HINTS[tier || s.tier],
       update(dt, clock) {

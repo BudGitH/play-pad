@@ -26,7 +26,9 @@
   };
 
   function std(o, flags) {
-    const m = new THREE.MeshStandardMaterial(Object.assign({ vertexColors: true, envMapIntensity: 0.65 }, o));
+    const m = new THREE.MeshStandardMaterial(
+      Object.assign({ vertexColors: true, envMapIntensity: 0.65 }, o),
+    );
     Object.assign(m.userData, flags || {});
     return m;
   }
@@ -34,7 +36,12 @@
   /** Photo-backed material with roughness/normal defaults. */
   function photo(name, rough, normalScale, extra) {
     const s = P.Tex.set(name);
-    const o = { map: s.map, normalMap: s.normalMap, roughnessMap: s.roughnessMap, roughness: rough };
+    const o = {
+      map: s.map,
+      normalMap: s.normalMap,
+      roughnessMap: s.roughnessMap,
+      roughness: rough,
+    };
     if (s.normalMap) o.normalScale = new THREE.Vector2(normalScale, normalScale);
     return std(Object.assign(o, extra || {}));
   }
@@ -63,10 +70,25 @@
       metal: std({ roughness: 0.32, metalness: 0.85 }),
       chrome: std({ roughness: 0.12, metalness: 1.0, envMapIntensity: 1.2 }),
       gold: std({ roughness: 0.28, metalness: 1.0, envMapIntensity: 1.1 }),
-      dome: std({ roughness: 0.25, metalness: 1.0, envMapIntensity: 1.1, emissive: 0x8a6a2a, emissiveIntensity: 0 }),
+      dome: std({
+        roughness: 0.25,
+        metalness: 1.0,
+        envMapIntensity: 1.1,
+        emissive: 0x8a6a2a,
+        emissiveIntensity: 0,
+      }),
       wallTile: std({ map: pat.wallTiles, roughness: 0.18 }),
-      railing: std({ map: railing, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.45, metalness: 0.5 }),
-      marking: std({ roughness: 0.7, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }, { cast: false }),
+      railing: std({
+        map: railing,
+        alphaTest: 0.5,
+        side: THREE.DoubleSide,
+        roughness: 0.45,
+        metalness: 0.5,
+      }),
+      marking: std(
+        { roughness: 0.7, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 },
+        { cast: false },
+      ),
       leaf: std({ map: pat.leaves, roughness: 0.8 }),
       tilework: std({ map: pat.tilework, roughness: 0.3 }),
       books: std({ map: pat.books, roughness: 0.8 }),
@@ -78,16 +100,36 @@
   function glowing(pat, atlas) {
     const win = pat.windows;
     const glass = new THREE.MeshStandardMaterial({
-      color: 0x9fb8c8, roughness: 0.05, metalness: 0.2, transparent: true, opacity: 0.32, depthWrite: false, side: THREE.DoubleSide,
+      color: 0x9fb8c8,
+      roughness: 0.05,
+      metalness: 0.2,
+    });
+    Object.assign(glass, {
+      transparent: true,
+      opacity: 0.32,
+      depthWrite: false,
+      side: THREE.DoubleSide,
     });
     glass.userData.cast = false;
+    const winBase = { map: win.col, roughnessMap: win.rough, roughness: 1, metalness: 0.15 };
+    const glow = { emissive: 0xffffff, emissiveIntensity: 0 };
+    const offset = { polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 };
+    const noCast = { cast: false };
     return {
-      window: std({ map: win.col, roughnessMap: win.rough, roughness: 1, metalness: 0.15 }),
-      windowLit: std({ map: win.col, roughnessMap: win.rough, roughness: 1, metalness: 0.15, emissiveMap: win.glow, emissive: 0xffffff, emissiveIntensity: 0 }),
-      sign: std({ map: atlas.texture, emissiveMap: atlas.texture, emissive: 0xffffff, emissiveIntensity: 0, roughness: 0.45 }),
-      decal: std({ map: atlas.texture, roughness: 0.7, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }),
-      lamp: std({ color: 0xfff4dc, emissive: 0xffe2a8, emissiveIntensity: 0, roughness: 0.3 }, { cast: false }),
-      beacon: std({ color: 0xffa21a, emissive: 0xff8a00, emissiveIntensity: 0, roughness: 0.25 }, { cast: false }),
+      window: std(winBase),
+      windowLit: std(Object.assign({ emissiveMap: win.glow }, winBase, glow)),
+      sign: std(
+        Object.assign({ map: atlas.texture, emissiveMap: atlas.texture, roughness: 0.45 }, glow),
+      ),
+      decal: std(Object.assign({ map: atlas.texture, roughness: 0.7 }, offset)),
+      lamp: std(
+        { color: 0xfff4dc, emissive: 0xffe2a8, emissiveIntensity: 0, roughness: 0.3 },
+        noCast,
+      ),
+      beacon: std(
+        { color: 0xffa21a, emissive: 0xff8a00, emissiveIntensity: 0, roughness: 0.25 },
+        noCast,
+      ),
       glass,
     };
   }
@@ -95,26 +137,57 @@
   /** Detail-layer materials: grime/streak decals, leaf cards, distant skyline. */
   function details() {
     const P2 = P.Patterns2;
-    const decal = (map) => std({ map, transparent: true, depthWrite: false, roughness: 1, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 }, { cast: false });
+    const decal = (map) =>
+      std(
+        {
+          map,
+          transparent: true,
+          depthWrite: false,
+          roughness: 1,
+          polygonOffset: true,
+          polygonOffsetFactor: -3,
+          polygonOffsetUnits: -3,
+        },
+        { cast: false },
+      );
     const sky = P2.skyline();
     sky.col.repeat.set(2, 3);
     return {
       grime: decal(P2.grime()),
       streak: decal(P2.streaks()),
-      leafCard: std({ map: P2.leafCard(), alphaTest: 0.45, side: THREE.DoubleSide, roughness: 0.75 }),
-      skyline: std({ map: sky.col, emissiveMap: sky.glow, emissive: 0xffffff, emissiveIntensity: 0, roughness: 0.9 }, { cast: false }),
+      leafCard: std({
+        map: P2.leafCard(),
+        alphaTest: 0.45,
+        side: THREE.DoubleSide,
+        roughness: 0.75,
+      }),
+      skyline: std(
+        {
+          map: sky.col,
+          emissiveMap: sky.glow,
+          emissive: 0xffffff,
+          emissiveIntensity: 0,
+          roughness: 0.9,
+          fog: false,
+        },
+        { cast: false },
+      ),
     };
   }
 
   /** Night-glow levels per material key (multiplied by the night factor). */
-  const GLOW = { windowLit: 1.25, sign: 0.75, lamp: 3.2, beacon: 2.0, dome: 0.55, skyline: 0.9 };
+  const GLOW = { windowLit: 1.25, sign: 0.75, lamp: 3.2, beacon: 2.0, dome: 0.55, skyline: 0.55 };
 
   /** Build the whole catalogue once. */
   function create(pat, atlas) {
     const m = Object.assign(surfaces(), painted(pat), glowing(pat, atlas));
     Object.assign(m, details());
     const carpetN = P.Tex.set("carpet").normalMap;
-    m.carpet = new THREE.MeshStandardMaterial({ map: pat.carpet, normalMap: carpetN, roughness: 0.95 });
+    m.carpet = new THREE.MeshStandardMaterial({
+      map: pat.carpet,
+      normalMap: carpetN,
+      roughness: 0.95,
+    });
     m.carpet.userData.cast = false;
     m.grass.userData.cast = false;
     m.asphalt.userData.cast = false;

@@ -1,0 +1,32 @@
+AZAN RECORDING - LICENCE AND PROVENANCE
+=======================================
+
+Title:     The Adhan - Muslim Call to Prayer - Aaqib Azeez.mp3
+Source:    https://commons.wikimedia.org/wiki/File:The_Adhan_-_Muslim_Call_to_Prayer_-_Aaqib_Azeez.mp3
+Direct:    https://upload.wikimedia.org/wikipedia/commons/7/7d/The_Adhan_-_Muslim_Call_to_Prayer_-_Aaqib_Azeez.mp3
+Author:    Atcovi (Wikimedia Commons user), "Own work" per the file page
+           https://commons.wikimedia.org/wiki/User:Atcovi
+Reciter:   Aaqib Azeez (named in the file title)
+Licence:   Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0)
+           https://creativecommons.org/licenses/by-sa/4.0/
+           Licence metadata read from the Commons API (imageinfo extmetadata:
+           LicenseShortName "CC BY-SA 4.0", AttributionRequired "true",
+           LicenseUrl https://creativecommons.org/licenses/by-sa/4.0) on 2026-11-26.
+Original:  MP3, 44.1 kHz stereo, 86.5 s, 1,448,294 bytes
+           (kept as azan_source_original.mp3; sha256
+           0faa59e2028bbb2f60a670b53ec89ffcf628f3c195b43fb41d9bdbc99000c1b3)
+
+CHANGES MADE (adaptation, per CC BY-SA 4.0 section 3(a)(1)(B))
+--------------------------------------------------------------
+- Reduced volume by 4.4 dB with ffmpeg (loudness from about -13.6 LUFS to
+  about -18 LUFS, a plain gain change, no compression) and added a 20 ms fade-in.
+- Re-encoded to Ogg Vorbis (azan.ogg, 96 kbps) and MP3 (azan.mp3, 96 kbps).
+- Metadata tags removed. No other editing: nothing cut, mixed or re-pitched.
+
+ShareAlike: azan.ogg and azan.mp3 are adaptations and are offered under the same
+licence, CC BY-SA 4.0. The rest of Kampung Quest (code, art, other audio) is a
+separate work and is not covered by this licence.
+
+Attribution line used in-game / in credits:
+  "Azan: 'The Adhan - Muslim Call to Prayer - Aaqib Azeez' by Atcovi,
+   CC BY-SA 4.0, via Wikimedia Commons; volume-adjusted and re-encoded."

@@ -90,8 +90,13 @@
   }
   /** Singapore-style Belisha beacon: black/white striped pole, amber globe. */
   function beacon(B, x, z) {
-    for (let i = 0; i < 6; i++) B.cyl("paint", x, 0.3 + i * 0.4, z, 0.06, 0.4, 10, i % 2 ? 0x1b1b1b : 0xf4f4f0);
-    B.geo("beacon", P.cached("sph", () => new THREE.SphereGeometry(0.22, 16, 10)), P.compose(x, 2.75, z, 0, 1, 1, 1));
+    for (let i = 0; i < 6; i++)
+      B.cyl("paint", x, 0.3 + i * 0.4, z, 0.06, 0.4, 10, i % 2 ? 0x1b1b1b : 0xf4f4f0);
+    B.geo(
+      "beacon",
+      P.cached("sph", () => new THREE.SphereGeometry(0.22, 16, 10)),
+      P.compose(x, 2.75, z, 0, 1, 1, 1),
+    );
   }
 
   /** A street lamp: pole + arm + head; returns the head position. */
@@ -111,7 +116,7 @@
     const e = L.road.walk - 0.35;
     const add = (x, z, ry) => {
       out.push(lamp(B, x, z, ry));
-      colliders.push({ minX: x - 0.2, maxX: x + 0.2, minZ: z - 0.2, maxZ: z + 0.2, kind: "lamp" });
+      P.collide(colliders, x - 0.2, x + 0.2, z - 0.2, z + 0.2, "lamp");
     };
     for (let t = -L.half + 6; t <= L.half - 4; t += 16) {
       if (Math.abs(t) < 9) continue;

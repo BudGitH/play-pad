@@ -15,8 +15,12 @@
 
   function makeSkyMesh(uniforms) {
     const mat = new THREE.ShaderMaterial({
-      uniforms, vertexShader: S().VERT, fragmentShader: S().FRAG,
-      side: THREE.BackSide, depthWrite: false, fog: false,
+      uniforms,
+      vertexShader: S().VERT,
+      fragmentShader: S().FRAG,
+      side: THREE.BackSide,
+      depthWrite: false,
+      fog: false,
     });
     const mesh = new THREE.Mesh(new THREE.SphereGeometry(40, 32, 16), mat);
     mesh.renderOrder = -10;
@@ -56,17 +60,28 @@
   /** Create the rig and add it to `scene`. */
   function create(scene, renderer, tier) {
     const uniforms = {
-      uZenith: { value: new THREE.Color() }, uHorizon: { value: new THREE.Color() },
+      uZenith: { value: new THREE.Color() },
+      uHorizon: { value: new THREE.Color() },
       uSunCol: { value: new THREE.Color() },
-      uSunDir: { value: new THREE.Vector3(0, 1, 0) }, uNight: { value: 0 },
-      uLinear: { value: 0 }, uSunVis: { value: 1 },
+      uSunDir: { value: new THREE.Vector3(0, 1, 0) },
+      uNight: { value: 0 },
+      uLinear: { value: 0 },
+      uSunVis: { value: 1 },
     };
     const rig = {
-      tier, uniforms, renderer, scene,
-      sky: makeSkyMesh(uniforms), sun: makeSun(tier),
+      tier,
+      uniforms,
+      renderer,
+      scene,
+      sky: makeSkyMesh(uniforms),
+      sun: makeSun(tier),
       hemi: new THREE.HemisphereLight(0xffffff, 0x444444, 0.8),
-      target: new THREE.Vector3(0, 0, 0), dir: new THREE.Vector3(0, 1, 0),
-      night: 0, envMinute: -999, envRT: null, glow: [],
+      target: new THREE.Vector3(0, 0, 0),
+      dir: new THREE.Vector3(0, 1, 0),
+      night: 0,
+      envMinute: -999,
+      envRT: null,
+      glow: [],
     };
     scene.add(rig.sky, rig.sun, rig.sun.target, rig.hemi);
     scene.fog = new THREE.Fog(0xcfe0ee, 70, 340);
@@ -112,7 +127,8 @@
   function maybeBakeEnv(rig, minute, force) {
     if (!rig.pmrem) return;
     const every = (TIERS[rig.tier] || TIERS.med).envEvery;
-    const due = force || rig.envMinute < -100 || (every > 0 && Math.abs(minute - rig.envMinute) >= every);
+    const due =
+      force || rig.envMinute < -100 || (every > 0 && Math.abs(minute - rig.envMinute) >= every);
     if (!due) return;
     const envScene = new THREE.Scene();
     const sky = makeSkyMesh(rig.uniforms);

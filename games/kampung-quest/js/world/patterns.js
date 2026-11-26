@@ -6,7 +6,16 @@
   const P = (KQ.WorldParts = KQ.WorldParts || {});
   const C = () => P.Canvas;
 
-  const CURTAINS = ["#e9dcc0", "#c7d9e6", "#f0c9b8", "#d8e7c9", "#efe6d4", "#bfc8e0", "#f4f0e6", "#e4c7d8"];
+  const CURTAINS = [
+    "#e9dcc0",
+    "#c7d9e6",
+    "#f0c9b8",
+    "#d8e7c9",
+    "#efe6d4",
+    "#bfc8e0",
+    "#f4f0e6",
+    "#e4c7d8",
+  ];
   const CELL = 128;
 
   /** One window cell (variant v) drawn for a given pass: 'col' | 'rough' | 'glow'. */
@@ -20,7 +29,8 @@
     for (let i = 0; i < panes; i++) {
       const px = x + 6 + i * pw;
       if (pass === "col") paneColour(ctx, px, y + 8, pw - 4, CELL - 16, v, cover, i);
-      else if (pass === "rough") (ctx.fillStyle = "#262626"), ctx.fillRect(px, y + 8, pw - 4, CELL - 16);
+      else if (pass === "rough")
+        (ctx.fillStyle = "#262626"), ctx.fillRect(px, y + 8, pw - 4, CELL - 16);
       else paneGlow(ctx, px, y + 8, pw - 4, CELL - 16, v, cover);
     }
     ctx.fillStyle = frame;
@@ -73,7 +83,8 @@
     ["col", "rough", "glow"].forEach((pass) => {
       const c = C().canvas(CELL * 4, CELL * 4);
       const ctx = c.getContext("2d");
-      for (let v = 0; v < 8; v++) windowCell(ctx, (v % 4) * CELL, Math.floor(v / 4) * CELL, v, pass);
+      for (let v = 0; v < 8; v++)
+        windowCell(ctx, (v % 4) * CELL, Math.floor(v / 4) * CELL, v, pass);
       for (let v = 0; v < 4; v++) doorCell(ctx, v * CELL, 2 * CELL, v, pass);
       out[pass] = C().tex(c, pass !== "rough");
     });
@@ -187,7 +198,16 @@
     ctx.fillStyle = "#6b4a2e";
     ctx.fillRect(0, 0, 256, 256);
     const r = P.rng(7);
-    const cols = ["#b23a3a", "#2f5d8a", "#e0b84a", "#3f7f4f", "#efe6d0", "#7d4f9a", "#d9773a", "#26323f"];
+    const cols = [
+      "#b23a3a",
+      "#2f5d8a",
+      "#e0b84a",
+      "#3f7f4f",
+      "#efe6d0",
+      "#7d4f9a",
+      "#d9773a",
+      "#26323f",
+    ];
     for (let row = 0; row < 4; row++) {
       let x = 4;
       while (x < 250) {

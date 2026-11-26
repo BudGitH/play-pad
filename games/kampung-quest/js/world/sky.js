@@ -73,10 +73,16 @@
     const t = (m - a[0]) / Math.max(1, b[0] - a[0]);
     const ca = new THREE.Color();
     const cb = new THREE.Color();
-    const col = (k) => ca.setStyle(a[k], "srgb-linear").clone().lerp(cb.setStyle(b[k], "srgb-linear"), t);
+    const col = (k) =>
+      ca.setStyle(a[k], "srgb-linear").clone().lerp(cb.setStyle(b[k], "srgb-linear"), t);
     return {
-      zenith: col(1), horizon: col(2), sun: col(3), sunI: a[4] + (b[4] - a[4]) * t,
-      hemiSky: col(5), hemiGround: col(6), hemiI: a[7] + (b[7] - a[7]) * t,
+      zenith: col(1),
+      horizon: col(2),
+      sun: col(3),
+      sunI: a[4] + (b[4] - a[4]) * t,
+      hemiSky: col(5),
+      hemiGround: col(6),
+      hemiI: a[7] + (b[7] - a[7]) * t,
     };
   }
 

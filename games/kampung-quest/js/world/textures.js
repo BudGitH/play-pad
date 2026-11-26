@@ -9,11 +9,17 @@
   /** Photo sets: file stem → which extra maps exist, plus the fallback recipe. */
   const SETS = {
     asphalt: { n: true, r: true, fb: { base: [74, 74, 76], amp: 34, speck: 0.5 } },
-    paving: { n: true, fb: { base: [196, 188, 172], amp: 22, grid: [4, 4], grout: [130, 124, 112] } },
+    paving: {
+      n: true,
+      fb: { base: [196, 188, 172], amp: 22, grid: [4, 4], grout: [130, 124, 112] },
+    },
     plaster: { n: true, fb: { base: [236, 234, 228], amp: 10, speck: 0.05 } },
     grass: { n: true, fb: { base: [86, 120, 48], amp: 46, speck: 0.6, blades: true } },
     concrete: { n: true, fb: { base: [176, 174, 168], amp: 20, speck: 0.2 } },
-    tiles: { n: true, fb: { base: [214, 196, 168], amp: 18, grid: [2, 2], grout: [160, 150, 136] } },
+    tiles: {
+      n: true,
+      fb: { base: [214, 196, 168], amp: 18, grid: [2, 2], grout: [160, 150, 136] },
+    },
     marble: { n: true, fb: { base: [222, 224, 228], amp: 12, veins: true } },
     roof: { n: true, fb: { base: [178, 92, 58], amp: 26, grid: [8, 8], grout: [120, 60, 40] } },
     rubber: { n: true, fb: { base: [210, 210, 210], amp: 30, speck: 0.7 } },
@@ -43,7 +49,8 @@
     if (fb.speck && rnd() < fb.speck) v += (rnd() - 0.5) * fb.amp;
     if (fb.blades) v += (noise(x / 1.5, y / 6) - 0.5) * fb.amp;
     if (fb.streaks) v += (noise(x / 2, y / 24) - 0.5) * fb.amp * 1.4;
-    if (fb.veins) v -= Math.max(0, 1 - Math.abs(Math.sin(x / 20 + noise(x / 30, y / 30) * 9)) * 18) * 40;
+    if (fb.veins)
+      v -= Math.max(0, 1 - Math.abs(Math.sin(x / 20 + noise(x / 30, y / 30) * 9)) * 18) * 40;
     if (fb.grid) {
       const cx = (x / size) * fb.grid[0];
       const cy = (y / size) * fb.grid[1];

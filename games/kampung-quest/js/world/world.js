@@ -15,8 +15,12 @@
     if (opts.renderer) P.Tex.setAnisotropy(opts.renderer.capabilities.getMaxAnisotropy());
     const atlas = new P.Canvas.Atlas(2048);
     const pat = {
-      windows: P.Patterns.windows(), railing: P.Patterns.railing(), carpet: P.Patterns.carpet(),
-      leaves: P.Patterns.leaves(), tilework: P.Patterns.tilework(), books: P.Patterns.books(),
+      windows: P.Patterns.windows(),
+      railing: P.Patterns.railing(),
+      carpet: P.Patterns.carpet(),
+      leaves: P.Patterns.leaves(),
+      tilework: P.Patterns.tilework(),
+      books: P.Patterns.books(),
       wallTiles: P.Patterns.wallTiles(),
     };
     const mats = P.Materials.create(pat, atlas);
@@ -67,25 +71,28 @@
 
   /** Interactables from the area results (ids are stable; see the report). */
   function interactables(a) {
-    const v = (x, z) => new THREE.Vector3(x, 0, z);
     const list = [];
+    const add = (id, poi, x, z, label) =>
+      list.push({ id, poi, pos: new THREE.Vector3(x, 0, z), label });
     Object.keys(a.hawker.spots).forEach((id) => {
       const s = a.hawker.spots[id];
-      list.push({ id: "counter_" + id.replace("stall_", ""), poi: id, pos: v(s.x, s.counterZ + 0.4), label: "Order food" });
+      add("counter_" + id.replace("stall_", ""), id, s.x, s.counterZ + 0.4, "Order food");
     });
-    a.mosque.taps.forEach((t, i) => list.push({ id: "wudu_tap_" + (i + 1), poi: "mosque_wudu", pos: v(t.x, t.z), label: "Take wudu" }));
-    list.push(
-      { id: "prayer_spot", poi: "mosque_hall", pos: v(a.mosque.hallSpot.x, a.mosque.hallSpot.z), label: "Pray" },
-      { id: "prayer_spot_women", poi: "mosque_hall", pos: v(-38, -22.5), label: "Pray" },
-      { id: "minimart_till", poi: "minimart", pos: v(a.mart.till.x, a.mart.till.z - 0.4), label: "Pay at the till" },
-      { id: "barber_chair", poi: "barber", pos: v(a.barber.chair.x, a.barber.chair.z - 0.7), label: "Sit for a haircut" },
-      { id: "clinic_desk", poi: "clinic", pos: v(a.clinic.desk.x, a.clinic.desk.z - 0.5), label: "Clinic check-up" },
-      { id: "library_desk", poi: "library", pos: v(a.library.desk.x, a.library.desk.z - 0.5), label: "Borrow a story" },
-      { id: "home_door", poi: "home", pos: v(a.blocks[0].lift.x, a.blocks[0].lift.z - 0.6), label: "Go home and rest" },
-      { id: "recycling_bins", poi: "recycling", pos: v(a.bins.x, a.bins.z - 0.5), label: "Recycle" },
-      { id: "playground", poi: "playground", pos: v(21.5, 21.5), label: "Play" },
-      { id: "bus_stop_bench", poi: "bus_stop", pos: v(20, 7.4), label: "Sit and wait" },
+    a.mosque.taps.forEach((t, i) =>
+      add("wudu_tap_" + (i + 1), "mosque_wudu", t.x, t.z, "Take wudu"),
     );
+    const m = a.mosque.hallSpot;
+    add("prayer_spot", "mosque_hall", m.x, m.z, "Pray");
+    add("prayer_spot_women", "mosque_hall", -38, -22.5, "Pray");
+    add("minimart_till", "minimart", a.mart.till.x, a.mart.till.z - 0.4, "Pay at the till");
+    add("barber_chair", "barber", a.barber.chair.x, a.barber.chair.z - 0.7, "Sit for a haircut");
+    add("clinic_desk", "clinic", a.clinic.desk.x, a.clinic.desk.z - 0.5, "Clinic check-up");
+    add("library_desk", "library", a.library.desk.x, a.library.desk.z - 0.5, "Borrow a story");
+    const lift = a.blocks[0].lift;
+    add("home_door", "home", lift.x, lift.z - 0.6, "Go home and rest");
+    add("recycling_bins", "recycling", a.bins.x, a.bins.z - 0.5, "Recycle");
+    add("playground", "playground", 21.5, 21.5, "Play");
+    add("bus_stop_bench", "bus_stop", 20, 7.4, "Sit and wait");
     return list;
   }
 

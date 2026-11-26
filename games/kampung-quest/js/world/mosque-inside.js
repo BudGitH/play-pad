@@ -37,17 +37,29 @@
     B.aabb("plaster", h.x0 - 1.4, y + 4.0, -34.3, h.x0 - 0.18, y + 4.6, -31.7, S().WALL);
     B.aabb("gold", xi, y + 4.0, -34.7, xi + 0.05, y + 4.15, -31.3, 0xd9b25c);
     B.aabb("marble", h.x0 - 1.2, y, -34.1, h.x0 - 0.18, y + 0.08, -31.9, 0xffffff);
-    ctx.colliders.push({ minX: h.x0 - 1.7, maxX: h.x0 - 0.1, minZ: -34.7, maxZ: -31.3, kind: "mihrab" });
+    P.collide(ctx.colliders, h.x0 - 1.7, h.x0 - 0.1, -34.7, -31.3, "mihrab");
     minbar(B, h.x0 + 0.25, -30.2, ctx);
   }
   function minbar(B, x, z, ctx) {
     const y = S().PLINTH;
-    for (let i = 0; i < 5; i++) B.aabb("wood", x + 2.4 - i * 0.45, y, z - 0.45, x + 2.4 - i * 0.45 + 0.45, y + 0.28 * (i + 1), z + 0.45, 0x7a4a26);
+    for (let i = 0; i < 5; i++)
+      B.aabb(
+        "wood",
+        x + 2.4 - i * 0.45,
+        y,
+        z - 0.45,
+        x + 2.4 - i * 0.45 + 0.45,
+        y + 0.28 * (i + 1),
+        z + 0.45,
+        0x7a4a26,
+      );
     B.aabb("wood", x, y, z - 0.5, x + 0.5, y + 1.6, z + 0.5, 0x6a3e1f);
-    [-0.5, 0.5].forEach((dz) => B.aabb("wood", x, y + 1.6, z + dz - 0.04, x + 0.5, y + 3.2, z + dz + 0.04, 0x6a3e1f));
+    [-0.5, 0.5].forEach((dz) =>
+      B.aabb("wood", x, y + 1.6, z + dz - 0.04, x + 0.5, y + 3.2, z + dz + 0.04, 0x6a3e1f),
+    );
     B.aabb("wood", x - 0.1, y + 3.2, z - 0.6, x + 0.6, y + 3.35, z + 0.6, 0x6a3e1f);
     P.Mosque.dome(B, x + 0.25, z, y + 3.35, 0.32);
-    ctx.colliders.push({ minX: x - 0.1, maxX: x + 2.9, minZ: z - 0.55, maxZ: z + 0.55, kind: "minbar" });
+    P.collide(ctx.colliders, x - 0.1, x + 2.9, z - 0.55, z + 0.55, "minbar");
   }
 
   /** Warm timber dado on the three non-qibla walls, leaving the door openings clear. */
@@ -61,29 +73,43 @@
     run(h.x0 + 0.2, h.x1 - 0.2, (a, b) => seg(a, b, h.z0 + t, h.z0 + t + 0.04));
     run(h.x0 + 0.2, -39.2, (a, b) => seg(a, b, h.z1 - t - 0.04, h.z1 - t));
     run(-36.8, h.x1 - 0.2, (a, b) => seg(a, b, h.z1 - t - 0.04, h.z1 - t));
-    [[h.z0 + 0.2, -36.4], [-34.0, -32.0], [-29.6, h.z1 - 0.2]].forEach(([a, b]) => seg(h.x1 - t - 0.04, h.x1 - t, a, b));
+    [
+      [h.z0 + 0.2, -36.4],
+      [-34.0, -32.0],
+      [-29.6, h.z1 - 0.2],
+    ].forEach(([a, b]) => seg(h.x1 - t - 0.04, h.x1 - t, a, b));
   }
 
   /** Columns, women's lattice screen, shelves and the chandelier; returns the lamp spot. */
+  const COLUMNS = [-46, -40, -38, -40, -46, -26, -38, -26];
   function furnish(B, h, m, ctx) {
     const y = S().PLINTH;
-    [[-46, -40], [-38, -40], [-46, -26], [-38, -26]].forEach(([x, z]) => {
+    for (let i = 0; i < COLUMNS.length; i += 2) {
+      const x = COLUMNS[i];
+      const z = COLUMNS[i + 1];
       B.cyl("marble", x, y + 3.5, z, 0.32, 7, 16, 0xffffff);
       B.cyl("gold", x, y + 6.8, z, 0.4, 0.3, 16, 0xd9b25c);
-      ctx.colliders.push({ minX: x - 0.4, maxX: x + 0.4, minZ: z - 0.4, maxZ: z + 0.4, kind: "column" });
-    });
+      P.collide(ctx.colliders, x - 0.4, x + 0.4, z - 0.4, z + 0.4, "column");
+    }
     const zs = m.womenScreenZ;
     B.plane("railing", -38, y + 0.9, zs, 12, 1.8, 0, null, 0x7a4a26);
     B.aabb("wood", -44.1, y, zs - 0.05, -32, y + 0.08, zs + 0.05, 0x6a3e1f);
-    ctx.colliders.push({ minX: -44.1, maxX: -32.2, minZ: zs - 0.15, maxZ: zs + 0.15, kind: "screen" });
-    B.aabb("wood", h.x1 - 0.75, y, h.z0 + 1, h.x1 - 0.2, y + 1.8, h.z0 + 4, 0x6a3e1f);
-    B.aabb("books", h.x1 - 0.77, y + 0.1, h.z0 + 1.05, h.x1 - 0.74, y + 1.75, h.z0 + 3.95, 0xffffff);
-    ctx.colliders.push({ minX: h.x1 - 0.8, maxX: h.x1 - 0.1, minZ: h.z0 + 0.9, maxZ: h.z0 + 4.1, kind: "shelf" });
-    const c = new THREE.Vector3((h.x0 + h.x1) / 2, y + 5.2, (h.z0 + h.z1) / 2);
-    B.geo("gold", P.cached("ring", () => new THREE.TorusGeometry(1.2, 0.06, 8, 32)), P.compose(c.x, c.y, c.z, [Math.PI / 2, 0, 0], 1, 1, 1), 0xd9b25c);
+    P.collide(ctx.colliders, -44.1, -32.2, zs - 0.15, zs + 0.15, "screen");
+    const x1 = h.x1;
+    const z0 = h.z0;
+    B.aabb("wood", x1 - 0.75, y, z0 + 1, x1 - 0.2, y + 1.8, z0 + 4, 0x6a3e1f);
+    B.aabb("books", x1 - 0.77, y + 0.1, z0 + 1.05, x1 - 0.74, y + 1.75, z0 + 3.95, 0xffffff);
+    P.collide(ctx.colliders, x1 - 0.8, x1 - 0.1, z0 + 0.9, z0 + 4.1, "shelf");
+    return chandelier(B, new THREE.Vector3((h.x0 + h.x1) / 2, y + 5.2, (h.z0 + h.z1) / 2));
+  }
+  /** Brass ring chandelier with eight lamps; returns its centre (the hall light). */
+  function chandelier(B, c) {
+    const ring = P.cached("ring", () => new THREE.TorusGeometry(1.2, 0.06, 8, 32));
+    B.geo("gold", ring, P.compose(c.x, c.y, c.z, [Math.PI / 2, 0, 0], 1, 1, 1), 0xd9b25c);
     for (let i = 0; i < 8; i++) {
       const a = (i / 8) * Math.PI * 2;
-      B.cyl("lamp", c.x + Math.cos(a) * 1.2, c.y + 0.15, c.z + Math.sin(a) * 1.2, 0.08, 0.25, 8, 0xffffff);
+      const x = c.x + Math.cos(a) * 1.2;
+      B.cyl("lamp", x, c.y + 0.15, c.z + Math.sin(a) * 1.2, 0.08, 0.25, 8, 0xffffff);
     }
     B.cyl("metal", c.x, c.y + 1.0, c.z, 0.02, 2.0, 6, 0xd9b25c);
     return c;

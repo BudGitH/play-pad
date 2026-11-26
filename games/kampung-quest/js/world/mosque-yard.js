@@ -23,7 +23,13 @@
       const t = i / n;
       B.box("plaster", x0 + (x1 - x0) * t, 0.8, z0 + (z1 - z0) * t, 0.5, 1.6, 0.5, S().WALL);
     }
-    ctx.colliders.push({ minX: Math.min(x0, x1) - 0.25, maxX: Math.max(x0, x1) + 0.25, minZ: Math.min(z0, z1) - 0.25, maxZ: Math.max(z0, z1) + 0.25, kind: "fence" });
+    ctx.colliders.push({
+      minX: Math.min(x0, x1) - 0.25,
+      maxX: Math.max(x0, x1) + 0.25,
+      minZ: Math.min(z0, z1) - 0.25,
+      maxZ: Math.max(z0, z1) + 0.25,
+      kind: "fence",
+    });
   }
 
   /** Gate posts with small domes and a name board. */
@@ -32,13 +38,38 @@
       B.box("plaster", x, 1.5, z, 0.9, 3.0, 0.9, S().WALL);
       B.box("paint", x, 3.05, z, 1.0, 0.12, 1.0, S().TEAL);
       P.Mosque.dome(B, x, z, 3.1, 0.42);
-      ctx.colliders.push({ minX: x - 0.5, maxX: x + 0.5, minZ: z - 0.5, maxZ: z + 0.5, kind: "gate" });
+      P.collide(ctx.colliders, x - 0.5, x + 0.5, z - 0.5, z + 0.5, "gate");
     });
     if (!label) return;
     const rot = a[0] === b[0] ? Math.PI / 2 : 0;
-    B.box("plaster", (a[0] + b[0]) / 2, 3.4, (a[1] + b[1]) / 2, rot ? 0.4 : Math.abs(b[0] - a[0]), 0.7, rot ? Math.abs(b[1] - a[1]) : 0.4, S().WALL);
-    const uv = ctx.atlas.sign({ w: 5, h: 0.7, text: label, sub: "Assalamualaikum · Welcome", bg: "#1f7a74", bg2: "#17615c" });
-    B.plane("sign", (a[0] + b[0]) / 2 + (rot ? 0.22 : 0), 3.4, (a[1] + b[1]) / 2 + (rot ? 0 : 0.22), 4.6, 0.64, rot, uv);
+    B.box(
+      "plaster",
+      (a[0] + b[0]) / 2,
+      3.4,
+      (a[1] + b[1]) / 2,
+      rot ? 0.4 : Math.abs(b[0] - a[0]),
+      0.7,
+      rot ? Math.abs(b[1] - a[1]) : 0.4,
+      S().WALL,
+    );
+    const uv = ctx.atlas.sign({
+      w: 5,
+      h: 0.7,
+      text: label,
+      sub: "Assalamualaikum · Welcome",
+      bg: "#1f7a74",
+      bg2: "#17615c",
+    });
+    B.plane(
+      "sign",
+      (a[0] + b[0]) / 2 + (rot ? 0.22 : 0),
+      3.4,
+      (a[1] + b[1]) / 2 + (rot ? 0 : 0.22),
+      4.6,
+      0.64,
+      rot,
+      uv,
+    );
   }
 
   /** Compound fence around the mosque with the two gate gaps. */
@@ -57,11 +88,21 @@
 
   /** Garden bollard lamps around the courtyard. */
   function courtLamps(B, ctx) {
-    [[-24, -40], [-16, -40], [-24, -22], [-16, -26], [-22, -14]].forEach(([x, z]) => {
+    [
+      [-24, -40],
+      [-16, -40],
+      [-24, -22],
+      [-16, -26],
+      [-22, -14],
+    ].forEach(([x, z]) => {
       B.cyl("paint", x, 1.1, z, 0.07, 2.2, 8, 0x2c5f5a);
-      B.geo("lamp", P.cached("globe", () => new THREE.SphereGeometry(0.22, 14, 10)), P.compose(x, 2.35, z, 0, 1, 1, 1));
+      B.geo(
+        "lamp",
+        P.cached("globe", () => new THREE.SphereGeometry(0.22, 14, 10)),
+        P.compose(x, 2.35, z, 0, 1, 1, 1),
+      );
       ctx.pools.push({ x, z, s: 0.65, y: 2.3, warm: true });
-      ctx.colliders.push({ minX: x - 0.15, maxX: x + 0.15, minZ: z - 0.15, maxZ: z + 0.15, kind: "bollard" });
+      P.collide(ctx.colliders, x - 0.15, x + 0.15, z - 0.15, z + 0.15, "bollard");
     });
   }
 
@@ -73,7 +114,12 @@
     B.cyl("plaster", x, 9.6, z, 1.15, 13.2, 8, S().WALL);
     [6, 10].forEach((y) => B.cyl("paint", x, y, z, 1.2, 0.18, 8, S().TEAL));
     B.cyl("plaster", x, 16.3, z, 1.75, 0.3, 16, 0xefe9dc);
-    B.geo("railing", P.cached("balc", () => new THREE.CylinderGeometry(1.7, 1.7, 0.9, 24, 1, true)), P.compose(x, 16.9, z, 0, 1, 1, 1), 0x2c5f5a);
+    B.geo(
+      "railing",
+      P.cached("balc", () => new THREE.CylinderGeometry(1.7, 1.7, 0.9, 24, 1, true)),
+      P.compose(x, 16.9, z, 0, 1, 1, 1),
+      0x2c5f5a,
+    );
     B.cyl("plaster", x, 18.0, z, 0.95, 3.2, 8, S().WALL);
     B.cyl("lamp", x, 18.2, z, 0.97, 0.5, 8, 0xffffff);
     B.cyl("paint", x, 19.65, z, 1.15, 0.16, 16, S().TEAL);
@@ -81,10 +127,12 @@
     for (let k = 0; k < 8; k++) {
       const a = Math.PI / 8 + (k * Math.PI) / 4;
       const r = 1.15 * Math.cos(Math.PI / 8) + 0.01;
-      [8.2, 12.4].forEach((y) => B.box("dark", x + Math.sin(a) * r, y, z + Math.cos(a) * r, 0.32, 1.0, 0.04, 0x2b3a40, a));
+      [8.2, 12.4].forEach((y) =>
+        B.box("dark", x + Math.sin(a) * r, y, z + Math.cos(a) * r, 0.32, 1.0, 0.04, 0x2b3a40, a),
+      );
       B.box("paint", x + Math.sin(a) * r, 15.2, z + Math.cos(a) * r, 0.86, 0.5, 0.03, S().TEAL, a);
     }
-    ctx.colliders.push({ minX: x - 1.7, maxX: x + 1.7, minZ: z - 1.7, maxZ: z + 1.7, kind: "minaret" });
+    P.collide(ctx.colliders, x - 1.7, x + 1.7, z - 1.7, z + 1.7, "minaret");
   }
 
   /** Men's wudu shelter: tiled back wall, taps, drain trough, low seat ledge, roof. */
@@ -100,9 +148,16 @@
     B.aabb("dark", w.x0 + 0.2, 0.14, w.z0 + 0.25, w.x1 - 0.2, 0.17, w.z0 + 0.6, 0x5d6466);
     B.aabb("marble", w.x0 + 0.2, 0.14, w.z0 + 1.0, w.x1 - 0.2, 0.42, w.z0 + 1.45, 0xf0f0ea);
     B.aabb("concrete", w.x0 - 0.3, 3.0, w.z0 - 0.3, w.x1 + 0.3, 3.25, w.z1 + 0.8, 0xe9e4d8);
-    for (let x = w.x0; x <= w.x1 + 0.01; x += (w.x1 - w.x0) / 4) B.box("plaster", x, 1.57, w.z1 + 0.4, 0.3, 2.86, 0.3, S().WALL);
-    ctx.colliders.push({ minX: w.x0, maxX: w.x1, minZ: w.z0 - 0.3, maxZ: w.z0 + 0.4, kind: "wudu-wall" });
-    const sign = ctx.atlas.sign({ w: 4, h: 0.6, text: "TEMPAT WUDUK", sub: "Ablution · Lelaki (men)", bg: "#1f7a74" });
+    for (let x = w.x0; x <= w.x1 + 0.01; x += (w.x1 - w.x0) / 4)
+      B.box("plaster", x, 1.57, w.z1 + 0.4, 0.3, 2.86, 0.3, S().WALL);
+    P.collide(ctx.colliders, w.x0, w.x1, w.z0 - 0.3, w.z0 + 0.4, "wudu-wall");
+    const sign = ctx.atlas.sign({
+      w: 4,
+      h: 0.6,
+      text: "TEMPAT WUDUK",
+      sub: "Ablution · Lelaki (men)",
+      bg: "#1f7a74",
+    });
     B.plane("sign", (w.x0 + w.x1) / 2, 2.75, w.z1 + 0.82, 3.4, 0.5, 0, sign);
     return taps(B, w);
   }
@@ -127,9 +182,15 @@
     B.aabb("plaster", x0, 0.1, z0, x0 + 5, 3.0, z0 + 3, S().WALL);
     B.aabb("paint", x0 - 0.05, 2.7, z0 - 0.05, x0 + 5.05, 3.1, z0 + 3.05, S().TEAL);
     B.box("wood", x0 + 4.2, 1.15, z0 + 3.02, 0.9, 2.0, 0.06, 0x7a5232);
-    const sign = ctx.atlas.sign({ w: 2.4, h: 0.5, text: "WUDUK WANITA", sub: "Women's ablution", bg: "#7a3f74" });
+    const sign = ctx.atlas.sign({
+      w: 2.4,
+      h: 0.5,
+      text: "WUDUK WANITA",
+      sub: "Women's ablution",
+      bg: "#7a3f74",
+    });
     B.plane("sign", x0 + 2, 2.35, z0 + 3.03, 2.2, 0.46, 0, sign);
-    ctx.colliders.push({ minX: x0, maxX: x0 + 5, minZ: z0, maxZ: z0 + 3, kind: "wudu-women" });
+    P.collide(ctx.colliders, x0, x0 + 5, z0, z0 + 3, "wudu-women");
   }
 
   P.MosqueYard = { compound, minaret, wudu, womenWudu, courtLamps, TAPS };

@@ -80,7 +80,15 @@
   const cyl = (seg) => cached("cyl" + seg, () => new THREE.CylinderGeometry(0.5, 0.5, 1, seg));
 
   /** Walkable surface materials: low wide boxes of these keys are recorded as floors. */
-  const FLOOR_KEYS = new Set(["paving", "tiles", "marble", "asphalt", "grass", "rubber", "concrete"]);
+  const FLOOR_KEYS = new Set([
+    "paving",
+    "tiles",
+    "marble",
+    "asphalt",
+    "grass",
+    "rubber",
+    "concrete",
+  ]);
 
   /**
    * A merge builder. `uvScales[key]` (metres per texture repeat) switches a material to world
@@ -118,6 +126,21 @@
     const g = uvRect ? rectPlane(uvRect) : unitPlane();
     this.geo(key, g, compose(x, y, z, rot, w, h, 1), color);
     if (uvRect) g.dispose();
+  };
+
+  /** A flat ground decal (w along X before `yaw`, d along Z) lying at height y. */
+  Batch.prototype.decal = function (key, x, y, z, w, d, yaw, color) {
+    this.plane(
+      key,
+      x,
+      y,
+      z,
+      w,
+      d,
+      [-Math.PI / 2, 0, yaw || 0],
+      null,
+      color === undefined ? 0xffffff : color,
+    );
   };
 
   /** A unit plane whose UVs cover only `r` = [u0, v0, u1, v1] of an atlas. */
@@ -170,11 +193,25 @@
   function instanced(geo, mat, list, opts) {
     if (mat.vertexColors && !geo.attributes.color) {
       const n = geo.attributes.position.count;
-      geo.setAttribute("color", new THREE.Float32BufferAttribute(new Float32Array(n * 3).fill(1), 3));
+      geo.setAttribute(
+        "color",
+        new THREE.Float32BufferAttribute(new Float32Array(n * 3).fill(1), 3),
+      );
     }
     const im = new THREE.InstancedMesh(geo, mat, Math.max(1, list.length));
     list.forEach((t, i) => {
-      im.setMatrixAt(i, compose(t.x, t.y, t.z, t.rot !== undefined ? t.rot : t.ry || 0, t.sx || 1, t.sy || 1, t.sz || 1));
+      im.setMatrixAt(
+        i,
+        compose(
+          t.x,
+          t.y,
+          t.z,
+          t.rot !== undefined ? t.rot : t.ry || 0,
+          t.sx || 1,
+          t.sy || 1,
+          t.sz || 1,
+        ),
+      );
       if (t.color !== undefined) im.setColorAt(i, tmpC.set(t.color));
     });
     im.count = list.length;
@@ -185,6 +222,9 @@
     if (im.instanceColor) im.instanceColor.needsUpdate = true;
     return im;
   }
+
+  /** Push an XZ collider box. */
+  P.collide = (list, minX, maxX, minZ, maxZ, kind) => list.push({ minX, maxX, minZ, maxZ, kind });
 
   P.worldUV = worldUV;
   P.compose = compose;

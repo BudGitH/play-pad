@@ -11,7 +11,9 @@
         height: 100%;
         background: #111;
         color: #eee;
-        font: 13px system-ui, sans-serif;
+        font:
+          13px system-ui,
+          sans-serif;
         overflow: hidden;
       }
       #c {
@@ -37,7 +39,9 @@
   <body>
     <canvas id="c"></canvas>
     <div id="ui">
-      <label>Time <input id="time" type="range" min="0" max="1439" value="540" /> <span id="hhmm"></span></label>
+      <label
+        >Time <input id="time" type="range" min="0" max="1439" value="540" /> <span id="hhmm"></span
+      ></label>
       <label
         >Quality
         <select id="q">
@@ -46,7 +50,10 @@
           <option selected>high</option>
         </select></label
       >
-      <label>POI <select id="poi"></select></label>
+      <label
+        >POI
+        <select id="poi"></select
+      ></label>
       <div id="stats"></div>
       <small>Drag: look · WASD/QE: fly · Shift: fast · H: hide panel</small>
     </div>
@@ -88,7 +95,11 @@
         const canvas = document.getElementById("c");
         const params = new URLSearchParams(location.search);
         const tier = params.get("q") || "high";
-        const renderer = new THREE.WebGLRenderer({ canvas, antialias: tier !== "low", preserveDrawingBuffer: true });
+        const renderer = new THREE.WebGLRenderer({
+          canvas,
+          antialias: tier !== "low",
+          preserveDrawingBuffer: true,
+        });
         renderer.outputEncoding = THREE.sRGBEncoding;
         renderer.toneMapping = THREE.ACESFilmicToneMapping;
         renderer.toneMappingExposure = 0.95;
@@ -112,7 +123,11 @@
         const keys = new Set();
         function aim() {
           camera.position.copy(cam.pos);
-          const d = new THREE.Vector3(Math.sin(cam.yaw) * Math.cos(cam.pitch), Math.sin(cam.pitch), Math.cos(cam.yaw) * Math.cos(cam.pitch));
+          const d = new THREE.Vector3(
+            Math.sin(cam.yaw) * Math.cos(cam.pitch),
+            Math.sin(cam.pitch),
+            Math.cos(cam.yaw) * Math.cos(cam.pitch),
+          );
           camera.lookAt(cam.pos.clone().add(d));
           world.setShadowTarget(cam.pos.clone().addScaledVector(d, 12));
         }
@@ -161,7 +176,11 @@
           const yaw = p.facing + (o.turn || 0);
           const fx = Math.sin(yaw);
           const fz = Math.cos(yaw);
-          cam.pos.set(p.pos.x - fx * back + (o.side || 0) * fz, o.h || 1.6, p.pos.z - fz * back - (o.side || 0) * fx);
+          cam.pos.set(
+            p.pos.x - fx * back + (o.side || 0) * fz,
+            o.h || 1.6,
+            p.pos.z - fz * back - (o.side || 0) * fx,
+          );
           cam.yaw = yaw;
           cam.pitch = o.pitch !== undefined ? o.pitch : 0.04;
           aim();
@@ -178,7 +197,9 @@
           world.update(0, clock);
         }
         timeEl.addEventListener("input", () => setMinute(Number(timeEl.value)));
-        document.getElementById("q").addEventListener("change", (e) => world.setQuality(e.target.value));
+        document
+          .getElementById("q")
+          .addEventListener("change", (e) => world.setQuality(e.target.value));
         const sel = document.getElementById("poi");
         Object.keys(world.pois).forEach((id) => sel.add(new Option(id, id)));
         sel.addEventListener("change", () => goto(sel.value));
@@ -187,18 +208,26 @@
           aim();
           renderer.render(scene, camera);
           const i = renderer.info.render;
-          document.getElementById("stats").textContent = "calls " + i.calls + " · tris " + i.triangles;
+          document.getElementById("stats").textContent =
+            "calls " + i.calls + " · tris " + i.triangles;
         }
         function stats() {
           render();
           const i = renderer.info;
-          return { calls: i.render.calls, triangles: i.render.triangles, geometries: i.memory.geometries, textures: i.memory.textures, programs: i.programs.length };
+          return {
+            calls: i.render.calls,
+            triangles: i.render.triangles,
+            geometries: i.memory.geometries,
+            textures: i.memory.textures,
+            programs: i.programs.length,
+          };
         }
         /** Dev check: walk-graph edges / POIs clear of colliders (NPC radius r), graph connected. */
         function validate(r) {
           r = r || 0.28;
           const C = world.colliders;
-          const hit = (x, z) => C.find((c) => x > c.minX - r && x < c.maxX + r && z > c.minZ - r && z < c.maxZ + r);
+          const hit = (x, z) =>
+            C.find((c) => x > c.minX - r && x < c.maxX + r && z > c.minZ - r && z < c.maxZ + r);
           const g = world.walkGraph;
           const bad = [];
           g.edges.forEach(([a, b]) => {
@@ -209,7 +238,12 @@
               const x = A.x + ((B.x - A.x) * i) / n;
               const z = A.z + ((B.z - A.z) * i) / n;
               const c = hit(x, z);
-              if (c) return bad.push({ edge: [A.x, A.z, B.x, B.z], at: [x.toFixed(2), z.toFixed(2)], kind: c.kind });
+              if (c)
+                return bad.push({
+                  edge: [A.x, A.z, B.x, B.z],
+                  at: [x.toFixed(2), z.toFixed(2)],
+                  kind: c.kind,
+                });
             }
           });
           const seen = new Set([0]);
@@ -218,7 +252,14 @@
           const q = [0];
           while (q.length) adj[q.pop()].forEach((m) => !seen.has(m) && (seen.add(m), q.push(m)));
           const pois = Object.keys(world.pois).filter((id) => !seen.has(world.pois[id].node));
-          return { nodes: g.nodes.length, edges: g.edges.length, colliders: C.length, badEdges: bad, unreachablePois: pois, disconnected: g.nodes.length - seen.size };
+          return {
+            nodes: g.nodes.length,
+            edges: g.edges.length,
+            colliders: C.length,
+            badEdges: bad,
+            unreachablePois: pois,
+            disconnected: g.nodes.length - seen.size,
+          };
         }
         let last = performance.now();
         function loop(t) {

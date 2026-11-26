@@ -3,7 +3,8 @@
 (function (KQ) {
   "use strict";
   const P = (KQ.WorldParts = KQ.WorldParts || {});
-  const col = (c, x, z, hx, hz, kind) => c.push({ minX: x - hx, maxX: x + hx, minZ: z - hz, maxZ: z + hz, kind });
+  const col = (c, x, z, hx, hz, kind) =>
+    c.push({ minX: x - hx, maxX: x + hx, minZ: z - hz, maxZ: z + hz, kind });
 
   /** Bicycle frame + wheel geometries (built once, merged). */
   function bikeGeos() {
@@ -11,7 +12,11 @@
       const B = new P.Batch();
       const bar = (x0, y0, x1, y1) => {
         const len = Math.hypot(x1 - x0, y1 - y0);
-        B.box("f", (x0 + x1) / 2, (y0 + y1) / 2, 0, len, 0.04, 0.04, 0xffffff, [0, 0, Math.atan2(y1 - y0, x1 - x0)]);
+        B.box("f", (x0 + x1) / 2, (y0 + y1) / 2, 0, len, 0.04, 0.04, 0xffffff, [
+          0,
+          0,
+          Math.atan2(y1 - y0, x1 - x0),
+        ]);
       };
       bar(-0.48, 0.32, 0, 0.32);
       bar(0, 0.32, 0.38, 0.66);
@@ -47,19 +52,46 @@
     });
   }
 
-  const BIKES = [[-30.5, 17.6, 0], [-29.7, 17.6, 0], [-28.9, 17.6, 0], [13.2, -8.4, 1.57], [13.2, -7.6, 1.57], [36.5, 47.4, 0], [37.3, 47.4, 0], [25.4, 7.6, 0]];
-  const MOTOS = [[-19.2, 41.2, 1.57], [-19.2, 42.2, 1.57], [-19.2, 43.2, 1.57], [61, -7.3, 0], [63, -7.3, 0], [-25.4, 48.2, 0]];
-  const BIKE_COLS = [0x2f6fb0, 0xd94f4f, 0x2b2b2b, 0xf2c230, 0x3f9a5a, 0xe8e8e8, 0x8a4fbf, 0xd9773a];
+  const BIKES = [
+    [-30.5, 17.6, 0],
+    [-29.7, 17.6, 0],
+    [-28.9, 17.6, 0],
+    [13.2, -8.4, 1.57],
+    [13.2, -7.6, 1.57],
+    [36.5, 47.4, 0],
+    [37.3, 47.4, 0],
+    [25.4, 7.6, 0],
+  ];
+  const MOTOS = [
+    [-19.2, 41.2, 1.57],
+    [-19.2, 42.2, 1.57],
+    [-19.2, 43.2, 1.57],
+    [61, -7.3, 0],
+    [63, -7.3, 0],
+    [-25.4, 48.2, 0],
+  ];
+  const BIKE_COLS = [
+    0x2f6fb0, 0xd94f4f, 0x2b2b2b, 0xf2c230, 0x3f9a5a, 0xe8e8e8, 0x8a4fbf, 0xd9773a,
+  ];
 
   /** Bicycles + motorbikes as four instanced meshes. */
   function vehicles(group, mats, colliders) {
     const bg = bikeGeos();
     const mg = motoGeos();
-    const one = (list, extra) => list.map(([x, z, ry], i) => Object.assign({ x, y: 0.13, z, ry, color: BIKE_COLS[i % BIKE_COLS.length] }, extra));
-    const paint = new THREE.MeshPhysicalMaterial({ roughness: 0.35, metalness: 0.3, clearcoat: 0.8 });
+    const one = (list, extra) =>
+      list.map(([x, z, ry], i) =>
+        Object.assign({ x, y: 0.13, z, ry, color: BIKE_COLS[i % BIKE_COLS.length] }, extra),
+      );
+    const paint = new THREE.MeshPhysicalMaterial({
+      roughness: 0.35,
+      metalness: 0.3,
+      clearcoat: 0.8,
+    });
     const ims = [
-      P.instanced(bg.frame, paint, one(BIKES)), P.instanced(bg.wheels, mats.dark, one(BIKES, { color: 0x1c1c1c })),
-      P.instanced(mg.body, paint, one(MOTOS)), P.instanced(mg.wheels, mats.dark, one(MOTOS, { color: 0x1c1c1c })),
+      P.instanced(bg.frame, paint, one(BIKES)),
+      P.instanced(bg.wheels, mats.dark, one(BIKES, { color: 0x1c1c1c })),
+      P.instanced(mg.body, paint, one(MOTOS)),
+      P.instanced(mg.wheels, mats.dark, one(MOTOS, { color: 0x1c1c1c })),
     ];
     ims.forEach((m, i) => (m.name = ["bikes", "bikeWheels", "motos", "motoWheels"][i]));
     group.add(...ims);
@@ -68,15 +100,34 @@
   }
 
   const POTS = [
-    [-27, 21.5], [-53, 21.5], [-45, 50.5], [-27, 50.5], [37, 50.5], [61, 50.5], [13.5, -11], [38.8, -11], [-26.8, -20.5], [-26.8, -44],
-    [45, -12.9], [67.2, -12.9], [45.5, -39], [65.5, -39], [-14, -12], [-14, -55],
+    [-27, 21.5],
+    [-53, 21.5],
+    [-45, 50.5],
+    [-27, 50.5],
+    [37, 50.5],
+    [61, 50.5],
+    [13.5, -11],
+    [38.8, -11],
+    [-26.8, -20.5],
+    [-26.8, -44],
+    [45, -12.9],
+    [67.2, -12.9],
+    [45.5, -39],
+    [65.5, -39],
+    [-14, -12],
+    [-14, -55],
   ];
 
   /** Glazed pots with leafy plants (pots batched, foliage as blobs). */
   function pots(B, colliders, out) {
     POTS.forEach(([x, z], i) => {
       const c = [0x8a4a2a, 0x2f5f7a, 0xd9cbb0, 0x3a3a3a][i % 4];
-      B.geo("plastic", P.cached("pot", () => new THREE.CylinderGeometry(0.34, 0.24, 0.6, 16)), P.compose(x, 0.42, z, 0, 1, 1, 1), c);
+      B.geo(
+        "plastic",
+        P.cached("pot", () => new THREE.CylinderGeometry(0.34, 0.24, 0.6, 16)),
+        P.compose(x, 0.42, z, 0, 1, 1, 1),
+        c,
+      );
       out.push({ x, z });
       col(colliders, x, z, 0.35, 0.35, "pot");
     });
@@ -85,7 +136,16 @@
   /** Bollards along the hawker / shops forecourt edge and the carpark. */
   function bollards(B, colliders) {
     const spots = [];
-    for (let x = 13; x <= 68; x += 3) if (Math.abs(x - 19) > 1.5 && Math.abs(x - 26) > 1.5 && Math.abs(x - 46.5) > 1.5 && Math.abs(x - 55) > 1.5 && Math.abs(x - 66.5) > 1.5 && Math.abs(x - 41.7) > 1.5) spots.push([x, -6.35]);
+    for (let x = 13; x <= 68; x += 3)
+      if (
+        Math.abs(x - 19) > 1.5 &&
+        Math.abs(x - 26) > 1.5 &&
+        Math.abs(x - 46.5) > 1.5 &&
+        Math.abs(x - 55) > 1.5 &&
+        Math.abs(x - 66.5) > 1.5 &&
+        Math.abs(x - 41.7) > 1.5
+      )
+        spots.push([x, -6.35]);
     for (let z = 29; z <= 43; z += 2.5) spots.push([-7.6, z]);
     spots.forEach(([x, z]) => {
       B.cyl("paint", x, 0.55, z, 0.09, 0.9, 12, 0x3d4247);
@@ -96,16 +156,28 @@
 
   /** Clipped hedges (leaf material boxes) along the carpark and park paths. */
   function hedges(B, colliders) {
-    const runs = [[-20.6, 28, -20.2, 44], [-7.4, 44, -7.0, 47], [28, 17.4, 43, 17.8], [28, 20.2, 46.6, 20.6], [-56, 13.4, -42, 13.9], [-33, 13.4, -24, 13.9]];
+    const runs = [
+      [-20.6, 28, -20.2, 44],
+      [-7.4, 44, -7.0, 47],
+      [28, 17.4, 43, 17.8],
+      [28, 20.2, 46.6, 20.6],
+      [-56, 13.4, -42, 13.9],
+      [-33, 13.4, -24, 13.9],
+    ];
     runs.forEach(([x0, z0, x1, z1]) => {
       B.aabb("leaf", x0, 0, z0, x1, 0.75, z1, 0xd8e8c0);
-      colliders.push({ minX: x0, maxX: x1, minZ: z0, maxZ: z1, kind: "hedge" });
+      P.collide(colliders, x0, x1, z0, z1, "hedge");
     });
   }
 
   /** Steam sprites over the soup pots, kettles and satay grill (animated by the runtime). */
   function steam(group, spots) {
-    const mat = new THREE.SpriteMaterial({ map: P.Patterns2.puff(), transparent: true, depthWrite: false, opacity: 0.5 });
+    const mat = new THREE.SpriteMaterial({
+      map: P.Patterns2.puff(),
+      transparent: true,
+      depthWrite: false,
+      opacity: 0.5,
+    });
     const list = [];
     spots.forEach((p, i) => {
       for (let k = 0; k < 3; k++) {

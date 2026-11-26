@@ -18,7 +18,7 @@
       thigh: kid ? 0.08 : 0.13,
       shin: kid ? 0.125 : 0.175,
       footH: 0.048,
-      legW: 0.12,
+      legW: 0.113,
       legD: 0.12,
       legX: 0.0625,
       hipBlockH: 0.055,
@@ -29,7 +29,7 @@
       neckH: 0.022,
       headR: 0.105,
       headH: 0.19,
-      headScale: 1.12,
+      headScale: 1.38,
       shoulderX: 0.131,
       shoulderY: 0.212,
       upperArm: 0.112,
@@ -49,6 +49,10 @@
     var list = [G.place(box(d.torsoWB, d.hipBlockH, d.torsoD, 0.012, 2, top), [0, d.hipBlockH / 2, 0])];
     var bar = new THREE.CylinderGeometry(0.03, 0.03, d.torsoWB - 0.03, 16, 1);
     list.push(G.place(G.paint(bar, spec.legs), [0, 0.002, -0.004], [0, 0, Math.PI / 2]));
+    // crotch notch: a little wedge under the hip block between the legs, like the toy's moulded hip piece
+    var notch = G.roundedBox(0.03, 0.03, d.legD - 0.01, 0.008, 1);
+    G.taper(notch, 0.35, 1, 1, 1, 0.03);
+    list.push(G.place(G.paint(notch, spec.skirt ? top : spec.legs), [0, -0.012, 0]));
     if (spec.belt) list.push(G.place(box(d.torsoWB + 0.004, 0.016, d.torsoD + 0.004, 0.006, 1, spec.belt), [0, 0.012, 0]));
     if (spec.bag) {
       list.push(G.place(box(0.05, 0.1, 0.12, 0.014, 1, spec.bag), [d.torsoWB / 2 + 0.03, -0.02, 0.01]));
@@ -57,29 +61,40 @@
     return G.merge(list);
   };
 
-  /** A tapered skirt half (one per leg): wb/wt = bottom/top width, db/dt = depth. Centred on the leg. */
-  function skirtHalf(h, wt, wb, dt, db, hex, y0) {
-    var g = G.roundedBox(wb, h, db, 0.014, 2);
+  /**
+   * A sloped skirt half (one per leg), like a toy dress piece. The inner edge stays straight on the
+   * figure's centre line and only the outer side flares, so the two halves never overlap.
+   * @param {number} side +1 left leg (+x), -1 right leg
+   */
+  var SKIRT_INNER = 0.0625; // = dims.legX: the inner edge sits exactly on the centre line
+  function skirtHalf(side, h, wt, wb, dt, db, hex, y0) {
+    var g = G.roundedBox(wb, h, db, 0.014, 1);
     G.taper(g, 1, wt / wb, 1, dt / db, h);
+    var pos = g.attributes.position;
+    for (var i = 0; i < pos.count; i++) {
+      var t = (pos.getY(i) + h / 2) / h;
+      var hw = (wb + (wt - wb) * t) / 2;
+      pos.setX(i, pos.getX(i) + side * (hw - SKIRT_INNER));
+    }
     return G.place(G.paint(g, hex), [0, y0 - h / 2, 0.004]);
   }
 
   /** Thigh (hip pivot -> knee). Skirted figures get the upper skirt half instead of a bare leg. */
-  F.partThigh = function (spec, d) {
+  F.partThigh = function (spec, d, side) {
     var sk = spec.skirt;
-    if (sk && sk.upper) return G.merge([skirtHalf(d.thigh + 0.012, 0.125, 0.14, 0.13, 0.15, sk.upper, 0.01)]);
+    if (sk && sk.upper) return G.merge([skirtHalf(side, d.thigh + 0.012, 0.125, 0.142, 0.13, 0.148, sk.upper, 0.01)]);
     var g = G.place(box(d.legW, d.thigh + 0.004, d.legD, 0.014, 1, spec.legs), [0, -d.thigh / 2 + 0.002, 0]);
     return G.merge([g]);
   };
 
   /** Shin + shoe + band + separate rectangular foot (knee pivot -> sole). */
-  F.partShin = function (spec, d) {
+  F.partShin = function (spec, d, side) {
     var sk = spec.skirt;
     var footY = -d.shin + d.footH / 2;
-    var list = [G.place(box(d.legW, d.footH, d.legD + 0.03, 0.012, 1, spec.shoes), [0, footY, 0.015])];
+    var list = [G.place(box(d.legW, d.footH, d.legD + 0.03, 0.02, 2, spec.shoes), [0, footY, 0.015])]; // bevelled toe
     if (sk && sk.lower) {
       var len = d.shin - d.footH + 0.006;
-      list.push(skirtHalf(len, 0.14, 0.152, 0.15, 0.165, sk.lower, 0.0));
+      list.push(skirtHalf(side, len, 0.142, 0.172, 0.148, 0.176, sk.lower, 0.0));
       return G.merge(list);
     }
     var shoeH = spec.band ? 0.032 : 0.0;
@@ -134,11 +149,10 @@
   F.partUpperArm = function (spec, d) {
     var sleeve = spec.sleeves === "bare" ? spec.skin : spec.arms;
     var skin = spec.sleeves === "bare";
-    var ball = G.place(G.paint(new THREE.SphereGeometry(0.04, 14, 8), sleeve, skin), [0, -0.004, 0], null, [0.95, 1, 1]);
-    var g = G.roundedBox(0.07, d.upperArm + 0.01, 0.076, 0.022, 1);
-    G.taper(g, 0.92, 1, 0.92, 1, d.upperArm + 0.01);
-    var arm = G.place(G.paint(g, sleeve, skin), [0, -d.upperArm / 2 + 0.002, 0]);
-    return G.merge([ball, arm]);
+    var h = d.upperArm + 0.046;
+    var g = G.roundedBox(0.074, h, 0.078, 0.033, 2); // the big top radius is the rounded shoulder
+    G.taper(g, 0.9, 1, 0.9, 1, h);
+    return G.merge([G.place(G.paint(g, sleeve, skin), [0, 0.036 - h / 2, 0])]);
   };
 
   /** Forearm (+ sleeve cuff for long sleeves). Origin = elbow pivot. */
@@ -148,7 +162,7 @@
     var g = G.roundedBox(0.064, d.forearm + 0.012, 0.07, 0.02, 1);
     G.taper(g, 0.9, 1, 0.9, 1, d.forearm);
     var list = [G.place(G.paint(g, hex, !long), [0, -d.forearm / 2, 0])];
-    var joint = G.paint(new THREE.SphereGeometry(0.034, 12, 6), hex, !long);
+    var joint = G.paint(new THREE.SphereGeometry(0.03, 10, 6), hex, !long);
     list.push(G.place(joint, [0, 0, 0]));
     if (long && spec.cuff) list.push(G.place(box(0.068, 0.018, 0.074, 0.007, 1, spec.cuff), [0, -d.forearm + 0.006, 0]));
     return G.merge(list);
@@ -172,7 +186,7 @@
     var skin = !spec.hands;
     var peg = G.place(G.paint(new THREE.CylinderGeometry(0.02, 0.023, 0.03, 12, 1), hex, skin), [0, -0.01, 0]);
     var opts = { depth: 0.032, bevelEnabled: true, bevelThickness: 0.007, bevelSize: 0.006, bevelSegments: 1, curveSegments: 10 };
-    var clip = new THREE.ExtrudeGeometry(clipShape(), opts);
+    var clip = G.smoothNormals(new THREE.ExtrudeGeometry(clipShape(), opts));
     G.place(clip, [0, -0.052, -0.016]);
     return G.merge([peg, G.paint(clip, hex, skin)]);
   };

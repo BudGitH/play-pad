@@ -50,6 +50,20 @@
     ctx.colliders.push({ minX: x - 0.1, maxX: x + 2.9, minZ: z - 0.55, maxZ: z + 0.55, kind: "minbar" });
   }
 
+  /** Warm timber dado on the three non-qibla walls, leaving the door openings clear. */
+  function dado(B, h) {
+    const y = P.MosqueShell.PLINTH;
+    const t = 0.18;
+    const run = (a, b, fn) => {
+      if (b - a > 0.1) fn(a, b);
+    };
+    const seg = (x0, x1, z0, z1) => B.aabb("wood", x0, y, z0, x1, y + 1.0, z1, 0x8a5a32);
+    run(h.x0 + 0.2, h.x1 - 0.2, (a, b) => seg(a, b, h.z0 + t, h.z0 + t + 0.04));
+    run(h.x0 + 0.2, -39.2, (a, b) => seg(a, b, h.z1 - t - 0.04, h.z1 - t));
+    run(-36.8, h.x1 - 0.2, (a, b) => seg(a, b, h.z1 - t - 0.04, h.z1 - t));
+    [[h.z0 + 0.2, -36.4], [-34.0, -32.0], [-29.6, h.z1 - 0.2]].forEach(([a, b]) => seg(h.x1 - t - 0.04, h.x1 - t, a, b));
+  }
+
   /** Columns, women's lattice screen, shelves and the chandelier; returns the lamp spot. */
   function furnish(B, h, m, ctx) {
     const y = S().PLINTH;
@@ -86,9 +100,11 @@
     P.MosqueYard.compound(B, m, ctx);
     P.MosqueYard.minaret(B, m, ctx);
     P.MosqueYard.womenWudu(B, m, ctx);
+    P.MosqueYard.courtLamps(B, ctx);
     const taps = P.MosqueYard.wudu(B, m, ctx);
     carpet(group, mats, h);
     qibla(B, h, ctx);
+    dado(B, h);
     const lightPos = furnish(B, h, m, ctx);
     return { taps, lightPos, hallSpot: { x: -45, z: -33, facing: -Math.PI / 2 } };
   }

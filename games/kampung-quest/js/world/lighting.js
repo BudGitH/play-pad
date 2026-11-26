@@ -57,7 +57,7 @@
   function create(scene, renderer, tier) {
     const uniforms = {
       uZenith: { value: new THREE.Color() }, uHorizon: { value: new THREE.Color() },
-      uGround: { value: new THREE.Color(0x3a3c3a) }, uSunCol: { value: new THREE.Color() },
+      uSunCol: { value: new THREE.Color() },
       uSunDir: { value: new THREE.Vector3(0, 1, 0) }, uNight: { value: 0 },
       uLinear: { value: 0 }, uSunVis: { value: 1 },
     };

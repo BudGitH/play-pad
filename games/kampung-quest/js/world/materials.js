@@ -19,13 +19,14 @@
     rubber: 2.2,
     bark: 1.2,
     tilework: 0.7,
+    wallTile: 0.9,
     books: 1.0,
     railing: 0.9,
     leaf: 2.2,
   };
 
   function std(o, flags) {
-    const m = new THREE.MeshStandardMaterial(Object.assign({ vertexColors: true }, o));
+    const m = new THREE.MeshStandardMaterial(Object.assign({ vertexColors: true, envMapIntensity: 0.65 }, o));
     Object.assign(m.userData, flags || {});
     return m;
   }
@@ -60,8 +61,10 @@
       plastic: std({ roughness: 0.32, metalness: 0.0 }),
       wood: std({ roughness: 0.6, metalness: 0.0 }),
       metal: std({ roughness: 0.32, metalness: 0.85 }),
-      chrome: std({ roughness: 0.12, metalness: 1.0 }),
-      gold: std({ roughness: 0.28, metalness: 1.0, color: 0xffffff }),
+      chrome: std({ roughness: 0.12, metalness: 1.0, envMapIntensity: 1.2 }),
+      gold: std({ roughness: 0.28, metalness: 1.0, envMapIntensity: 1.1 }),
+      dome: std({ roughness: 0.25, metalness: 1.0, envMapIntensity: 1.1, emissive: 0x8a6a2a, emissiveIntensity: 0 }),
+      wallTile: std({ map: pat.wallTiles, roughness: 0.18 }),
       railing: std({ map: railing, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.45, metalness: 0.5 }),
       marking: std({ roughness: 0.7, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }, { cast: false }),
       leaf: std({ map: pat.leaves, roughness: 0.8 }),
@@ -90,7 +93,7 @@
   }
 
   /** Night-glow levels per material key (multiplied by the night factor). */
-  const GLOW = { windowLit: 1.25, sign: 0.75, lamp: 3.2, beacon: 2.0 };
+  const GLOW = { windowLit: 1.25, sign: 0.75, lamp: 3.2, beacon: 2.0, dome: 0.55 };
 
   /** Build the whole catalogue once. */
   function create(pat, atlas) {

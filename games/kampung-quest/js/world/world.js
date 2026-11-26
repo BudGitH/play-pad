@@ -17,6 +17,7 @@
     const pat = {
       windows: P.Patterns.windows(), railing: P.Patterns.railing(), carpet: P.Patterns.carpet(),
       leaves: P.Patterns.leaves(), tilework: P.Patterns.tilework(), books: P.Patterns.books(),
+      wallTiles: P.Patterns.wallTiles(),
     };
     const mats = P.Materials.create(pat, atlas);
     return { atlas, pat, mats };

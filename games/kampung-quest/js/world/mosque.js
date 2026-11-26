@@ -92,7 +92,7 @@
     const g = P.cached(`dome${r}`, () => new THREE.LatheGeometry(pts, 40));
     B.cyl("plaster", cx, y + r * 0.16, cz, r * 1.02, r * 0.32, 8, 0xf6f2e8);
     B.cyl("paint", cx, y + r * 0.33, cz, r * 1.06, r * 0.04, 32, 0x1f7a74);
-    B.geo("gold", g, P.compose(cx, y + r * 0.34, cz, 0, 1, 1, 1), 0xd9b25c);
+    B.geo("dome", g, P.compose(cx, y + r * 0.34, cz, 0, 1, 1, 1), 0xd9b25c);
     finial(B, cx, y + r * 0.34 + r * 1.35, cz, r);
   }
   function finial(B, x, y, z, r) {

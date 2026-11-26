@@ -27,7 +27,7 @@
     s.absarc(0, 0, R, a, TAU - a, false);
     s.absarc(dx, 0, r, TAU - b, b, true);
     var opts = { depth: 0.004, bevelEnabled: true, bevelThickness: 0.0015, bevelSize: 0.0015, bevelSegments: 1, curveSegments: 8 };
-    return G.paint(new THREE.ExtrudeGeometry(s, opts), hex);
+    return G.paint(G.smoothNormals(new THREE.ExtrudeGeometry(s, opts)), hex);
   }
 
   /** Baseball-style cap: crown, band, peak, button and a small crescent badge on the front. */
@@ -101,7 +101,7 @@
     var hem = kid ? -0.072 : -0.095;
     var prof = [0.13, hem, 0.15, hem + 0.012, 0.146, hem * 0.5, 0.128, -0.012, 0.119, 0.015, 0.121, 0.06];
     prof.push(0.124, 0.12, 0.122, 0.165, 0.112, 0.205, 0.088, 0.228, 0.045, 0.24, 0, 0.243);
-    var g = carve(G.lathe(densify(prof, 0.014), 36), 0.98, 0.002, 0.174, 0.088);
+    var g = carve(G.lathe(densify(prof, 0.019), 32), 0.98, 0.002, 0.174, 0.088);
     var pos = g.attributes.position;
     for (var i = 0; i < pos.count; i++) {
       var y = pos.getY(i);
@@ -119,12 +119,12 @@
   /** Short sculpted hair: a carved cap with a hairline; options add a side-part fringe, a bun or a quiff. */
   function hair(hd) {
     var prof = [0.104, 0.05, 0.113, 0.07, 0.116, 0.12, 0.115, 0.16, 0.106, 0.2, 0.082, 0.226, 0.04, 0.238, 0, 0.24];
-    var g = carve(G.lathe(densify(prof, 0.015), 32), 1.3, -0.12, 0.146, 0.092);
+    var g = carve(G.lathe(densify(prof, 0.018), 30), 1.3, -0.12, 0.146, 0.092);
     g.computeVertexNormals();
     var list = [G.paint(g, hd.colour)];
     list.push(blob([0.085, 0.024, 0.045], [0.018, 0.152, 0.078], [0.2, 0, -0.16], hd.colour)); // side-part fringe
     if (hd.type === "hair_bun") list.push(blob([0.052, 0.048, 0.05], [0, 0.2, -0.088], null, hd.colour));
-    if (hd.type === "hair_quiff") list.push(blob([0.07, 0.042, 0.068], [0, 0.208, 0.05], [-0.45, 0, 0], hd.colour));
+    if (hd.type === "hair_quiff") list.push(blob([0.075, 0.03, 0.062], [0.012, 0.214, 0.058], [-0.32, 0, -0.18], hd.colour));
     if (hd.accent) list.push(blob([0.01, 0.01, 0.03], [0, 0.205, -0.104], null, hd.accent)); // hair pin
     return list;
   }

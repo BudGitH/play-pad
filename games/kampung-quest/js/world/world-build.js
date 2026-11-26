@@ -7,7 +7,7 @@
   const W = KQ.World;
 
   /** Soft additive light pools under the street lamps (one instanced draw call). */
-  function lampPools(lamps) {
+  function lampPools(spots, heightAt) {
     const c = P.Canvas.canvas(128, 128);
     const ctx = c.getContext("2d");
     const g = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
@@ -21,7 +21,8 @@
       blending: THREE.AdditiveBlending, fog: false,
     });
     const geo = new THREE.PlaneGeometry(7, 7).rotateX(-Math.PI / 2);
-    const im = P.instanced(geo, mat, lamps.map((p) => ({ x: p.x, y: 0.16, z: p.z })), { cast: false, receive: false });
+    const list = spots.map((p) => ({ x: p.x, y: heightAt(p.x, p.z) + 0.03, z: p.z, sx: p.s, sy: 1, sz: p.s }));
+    const im = P.instanced(geo, mat, list, { cast: false, receive: false });
     im.name = "lampPools";
     im.renderOrder = 2;
     return im;
@@ -62,7 +63,7 @@
     const L = P.LAYOUT;
     const group = new THREE.Group();
     group.name = "kampungWorld";
-    const ctx = { L, colliders: [], lamps: [], tables: [], atlas: kit.atlas, win: kit.pat.windows };
+    const ctx = { L, colliders: [], lamps: [], pools: [], tables: [], atlas: kit.atlas, win: kit.pat.windows };
     ctx.letterUV = kit.atlas.letterboxes();
     const B = new P.Batch(P.Materials.UV_SCALES);
     B.floors = [];
@@ -70,7 +71,8 @@
     const inst = W.parts.buildInstanced(group, kit, ctx);
     kit.atlas.texture.needsUpdate = true;
     B.build(kit.mats, group);
-    group.add(lampPools(ctx.lamps));
+    const spots = ctx.lamps.map((p) => ({ x: p.x, z: p.z, s: 1 })).concat(ctx.pools);
+    group.add(lampPools(spots, W.parts.makeHeightAt(B.floors)));
     boundary(L, ctx.colliders);
     scene.add(group);
     const rig = P.Lighting.create(scene, opts.renderer, tier);

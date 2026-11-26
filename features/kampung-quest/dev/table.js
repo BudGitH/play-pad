@@ -50,8 +50,8 @@
     for (var y = 0; y < 1024; y++) {
       for (var x = 0; x < 1024; x++) {
         var band = (x + y) % 128;
-        var gold = band > 44;
-        var spark = gold && r() > 0.86;
+        var gold = band > 58;
+        var spark = gold && r() > 0.8;
         var v = stripeTexel(kind, gold, spark, band, r);
         var i = (y * 1024 + x) * 4;
         d[i] = v[0];
@@ -64,16 +64,16 @@
   }
 
   function stripeTexel(kind, gold, spark, band, r) {
-    var edge = gold && (band < 50 || band > 122);
+    var edge = gold && (band < 64 || band > 122);
     if (kind === "color") {
       if (!gold) return [8, 8, 9];
-      var k = spark ? 1.25 + r() * 0.6 : 0.55 + r() * 0.35;
-      return [Math.min(255, 196 * k), Math.min(255, 160 * k), Math.min(255, 78 * k)];
+      var k = spark ? 1.15 + r() * 0.45 : 0.6 + r() * 0.4;
+      return [Math.min(255, 222 * k), Math.min(255, 184 * k), Math.min(255, 96 * k)];
     }
-    if (kind === "rough") return gold ? [0, spark ? 60 : 150, 0] : [0, 28, 0];
+    if (kind === "rough") return gold ? [0, spark ? 30 : 120, 0] : [0, 24, 0];
     if (kind === "metal") return gold ? [0, 0, 255] : [0, 0, 0];
     if (!gold) return [128, 128, 255];
-    if (edge) return band < 50 ? [128 - 70, 128, 220] : [128 + 70, 128, 220]; // raised ridge edges (along x+y)
+    if (edge) return band < 64 ? [128 - 70, 128, 220] : [128 + 70, 128, 220]; // raised ridge edges (along x+y)
     return spark ? [40 + r() * 175, 40 + r() * 175, 200] : [118 + r() * 20, 118 + r() * 20, 250];
   }
 

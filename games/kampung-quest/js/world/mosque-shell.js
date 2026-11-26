@@ -45,7 +45,12 @@
     const h = m.hall;
     const top = PLINTH + h.h;
     B.aabb("plaster", h.x0 - 0.3, top - 0.1, h.z0 - 0.3, h.x1 + 0.3, top + 0.35, h.z1 + 0.3, 0xefe9dc);
-    B.aabb("paint", h.x0 - 0.42, top - 0.35, h.z0 - 0.42, h.x1 + 0.42, top - 0.1, h.z1 + 0.42, TEAL);
+    B.aabb("paint", h.x0 - 0.42, top - 0.35, h.z0 - 0.42, h.x1 + 0.42, top - 0.1, h.z0 + 0.2, TEAL);
+    B.aabb("paint", h.x0 - 0.42, top - 0.35, h.z1 - 0.2, h.x1 + 0.42, top - 0.1, h.z1 + 0.42, TEAL);
+    B.aabb("paint", h.x0 - 0.42, top - 0.35, h.z0, h.x0 + 0.2, top - 0.1, h.z1, TEAL);
+    B.aabb("paint", h.x1 - 0.2, top - 0.35, h.z0, h.x1 + 0.42, top - 0.1, h.z1, TEAL);
+    B.aabb("paint", h.x0 + 0.2, top - 0.14, h.z0 + 0.2, h.x1 - 0.2, top - 0.1, h.z1 - 0.2, 0xfbf7ee);
+    B.geo("tilework", P.cached("rosette", () => new THREE.CircleGeometry(3.2, 40).rotateX(Math.PI / 2)), P.compose((h.x0 + h.x1) / 2, top - 0.145, (h.z0 + h.z1) / 2, 0, 1, 1, 1), 0xffffff);
     const merlon = (x, z) => B.box("plaster", x, top + 0.6, z, 0.45, 0.5, 0.45, WALL);
     for (let x = h.x0; x <= h.x1 + 0.01; x += 1) merlon(x, h.z0 - 0.2), merlon(x, h.z1 + 0.2);
     for (let z = h.z0 + 1; z < h.z1; z += 1) merlon(h.x0 - 0.2, z), merlon(h.x1 + 0.2, z);
@@ -65,6 +70,10 @@
     M().wallRun(B, ctx, { x0: v.x1, z0: h.z0, x1: v.x1, z1: h.z1, y: PLINTH, h: 4.4, color: WALL, types: Array(6).fill("arcade") });
     B.aabb("plaster", v.x0, PLINTH + 4.4, h.z0 - 0.2, v.x1 + 0.3, PLINTH + 4.75, h.z1 + 0.2, 0xefe9dc);
     B.aabb("paint", v.x1 - 0.05, PLINTH + 4.2, h.z0 - 0.2, v.x1 + 0.35, PLINTH + 4.4, h.z1 + 0.2, TEAL);
+    for (let z = h.z0 + 3; z < h.z1; z += 5) {
+      B.box("lamp", (v.x0 + v.x1) / 2, PLINTH + 4.36, z, 0.5, 0.06, 0.5, 0xffffff);
+      ctx.pools.push({ x: (v.x0 + v.x1) / 2, z, s: 0.6, y: PLINTH + 4.1 });
+    }
     [-39.4, -26.6].forEach((z) => {
       B.aabb("wood", v.x0 + 0.3, PLINTH, z - 0.9, v.x0 + 0.75, PLINTH + 1.0, z + 0.9, 0x7a5232);
       for (let i = 0; i < 6; i++) B.box("paint", v.x0 + 0.52, PLINTH + 0.3 + (i % 3) * 0.33, z - 0.6 + Math.floor(i / 3) * 0.7, 0.3, 0.08, 0.22, [0x2a2a2a, 0x6b4a2a, 0x3f6fb0][i % 3]);

@@ -24,7 +24,7 @@
   const bayX = (f, i) => f.b.x0 + (f.b.x1 - f.b.x0 - f.bays * BAY) / 2 + (i + 0.5) * BAY;
 
   /** Ground floor: tiled void deck, pillars (colliders), slab overhead. */
-  function voidDeck(B, f, col) {
+  function voidDeck(B, f, col, ctx) {
     const b = f.b;
     B.aabb("tiles", b.x0 - 1, 0, b.z0 - 1, b.x1 + 1, 0.14, b.z1 + 1);
     const rows = [b.z0 + 0.5, (b.z0 + b.z1) / 2, b.z1 - 0.5];
@@ -37,6 +37,12 @@
       });
     }
     B.aabb("concrete", b.x0, VOID_H - 0.35, b.z0, b.x1, VOID_H, b.z1, 0xe8e6e0);
+    for (let x = b.x0 + 2.5; x < b.x1 - 1; x += 6) {
+      [b.z0 + 2.2, b.z1 - 2.2].forEach((z) => {
+        B.box("lamp", x, VOID_H - 0.38, z, 1.2, 0.05, 0.12, 0xffffff);
+        ctx.pools.push({ x, z, s: 0.75, y: VOID_H - 0.5 });
+      });
+    }
   }
 
   /** Lift core rising through the block; lift doors + letterboxes on the void deck. */
@@ -138,7 +144,7 @@
     const f = frame(spec);
     f.win = ctx.win;
     const rnd = P.rng(spec.num * 7);
-    voidDeck(B, f, ctx.colliders);
+    voidDeck(B, f, ctx.colliders, ctx);
     const lift = liftCore(B, f, ctx.colliders, ctx);
     B.aabb("plaster", spec.x0, VOID_H, Math.min(f.zw, f.zb), spec.x1, f.top, Math.max(f.zw, f.zb), spec.wall);
     for (let i = 0; i < spec.floors; i++) {

@@ -115,10 +115,11 @@
   }
 
   var VIEWS = {
-    lineup: { pos: [0, 1.55, 4.3], at: [0, 0.42, -0.35], fov: 36 },
+    lineup: { pos: [0, 1.95, 4.4], at: [0, 0.36, -0.4], fov: 36 },
     hero: { pos: [0.8, 0.9, 2.25], at: [0, 0.5, 0.3], fov: 30 },
     side: { pos: [-2.5, 0.72, 0.45], at: [0, 0.4, 0.3], fov: 30 },
     turntable: { pos: [0, 0.75, 2.3], at: [0, 0.47, 0.3], fov: 30 },
+    macro: { pos: [0.36, 0.4, 2.3], at: [0, 0.46, 0.3], fov: 27 },
   };
 
   function applyView() {

@@ -11,8 +11,10 @@
     if (partCache[spec.id]) return partCache[spec.id];
     partCache[spec.id] = {
       hips: F.partHips(spec, d),
-      thigh: F.partThigh(spec, d),
-      shin: F.partShin(spec, d),
+      thighL: F.partThigh(spec, d, 1),
+      thighR: F.partThigh(spec, d, -1),
+      shinL: F.partShin(spec, d, 1),
+      shinR: F.partShin(spec, d, -1),
       torso: F.partTorso(spec, d),
       head: F.partHead(spec, d),
       upper: F.partUpperArm(spec, d),
@@ -36,9 +38,9 @@
 
   function buildLeg(rig, side, p, mat, d) {
     var s = side === "L" ? 1 : -1;
-    var leg = node("leg" + side, rig.hips, s * d.legX, 0, 0, p.thigh, mat);
+    var leg = node("leg" + side, rig.hips, s * d.legX, 0, 0, p["thigh" + side], mat);
     rig["leg" + side] = leg;
-    rig["knee" + side] = node("knee" + side, leg, 0, -d.thigh, 0, p.shin, mat);
+    rig["knee" + side] = node("knee" + side, leg, 0, -d.thigh, 0, p["shin" + side], mat);
   }
 
   function buildArm(rig, side, p, mat, d) {

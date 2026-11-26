@@ -29,13 +29,13 @@
     [[-36.6, 22.4], [-37, 25.5], [-37, 45.5], [-37, 47.2], [-40, 48.7, "block_b", 0]],
     [[20, SW], [20, 6.9, "bus_stop", N]],
     [[10, SW], [11, 12], [21.5, 13], [21.5, 21.5, "playground", 0]],
-    [[21.5, 21.5], [29, 19], [40, 19, "park", 0], [48.8, 19]],
-    [[48.8, SW], [48.8, 19], [48.8, 45], [48.5, 48.6, "block_c", N]],
+    [[21.5, 21.5], [29, 19], [40, 19, "park", 0], [48.8, 17]],
+    [[48.8, SW], [48.8, 17], [48.8, 45], [48.5, 48.6, "block_c", N]],
   ];
 
   /** Straight sidewalk centre lines (each split at every node that lies on it). */
   function sidewalkLines(L) {
-    const h = L.half;
+    const h = L.half - 1.5;
     const lines = [];
     [-SW, SW].forEach((c) => {
       lines.push({ axis: "x", c, from: -h, to: h });
@@ -79,7 +79,7 @@
       g.link(a, b);
     });
     [-SW, SW].forEach((a) => [-SW, SW].forEach((b) => g.node(a, b)));
-    [-L.half, L.half].forEach((e) => [-SW, SW].forEach((c) => (g.node(e, c), g.node(c, e))));
+    [-L.half + 1.5, L.half - 1.5].forEach((e) => [-SW, SW].forEach((c) => (g.node(e, c), g.node(c, e))));
     SPURS.forEach((spur) => {
       let prev = -1;
       spur.forEach(([x, z, id, facing]) => {

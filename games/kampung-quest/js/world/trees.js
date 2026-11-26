@@ -14,12 +14,13 @@
       const n = P.Tex.valueNoise(5);
       const p = g.attributes.position;
       const v = new THREE.Vector3();
+      const nor = g.attributes.normal;
       for (let i = 0; i < p.count; i++) {
-        v.fromBufferAttribute(p, i);
-        const k = 0.78 + n(v.x * 3 + 9, v.z * 3 + v.y * 2 + 9) * 0.45;
+        v.fromBufferAttribute(p, i).normalize();
+        nor.setXYZ(i, v.x, v.y, v.z); // smooth, sphere-like normals (the polyhedron is non-indexed)
+        const k = 0.8 + n(v.x * 2.2 + 9, v.z * 2.2 + v.y * 1.6 + 9) * 0.38;
         p.setXYZ(i, v.x * k, v.y * k * 0.8, v.z * k);
       }
-      g.computeVertexNormals();
       return g;
     });
   }

@@ -18,14 +18,14 @@
     B.box("roof", (x0 + x1) / 2, cy, cz, x1 - x0, 0.14, len, 0xffffff, [th, 0, 0]);
     const nz = Math.sin(th) * 0.13;
     const ny = Math.cos(th) * 0.13;
-    B.box("paint", (x0 + x1) / 2, cy - ny, cz - nz, x1 - x0 - 0.2, 0.06, len - 0.2, 0xfaf6ea, [th, 0, 0]);
+    B.box("paint", (x0 + x1) / 2, cy - ny, cz - nz, x1 - x0 - 0.2, 0.06, len - 0.2, 0xcdbfa4, [th, 0, 0]);
     B.box("paint", (x0 + x1) / 2, yEave - 0.12, zEave, x1 - x0, 0.32, 0.08, 0x2f6b4a);
   }
 
   /** Columns, floor, roof tiers and the front name board. */
   function shell(B, H, ctx) {
     const h = H.h;
-    B.aabb("tiles", H.x0 - 1.5, 0, H.z0 - 1.5, H.x1 + 1.5, 0.14, H.z1 + 1.5, 0xf3dcc0);
+    B.aabb("tiles", H.x0 - 1.5, 0, H.z0 - 1.5, H.x1 + 1.5, 0.14, H.z1 + 1.5, 0xc98a62);
     for (let x = H.x0; x <= H.x1; x += 6) {
       [H.z0, (H.z0 + H.z1) / 2, H.z1].forEach((z, i) => {
         if (x === 26 || (i === 1 && (x === H.x0 || x === H.x1))) return;
@@ -50,7 +50,7 @@
   }
 
   /** Ceiling fans (static rods/hubs in the batch, blades instanced) and tube lights. */
-  function fans(B, H, out) {
+  function fans(B, H, out, ctx) {
     const list = [];
     for (let x = H.x0 + 3; x < H.x1; x += 6) {
       [H.z1 - 4.5, H.z1 - 10.5].forEach((z) => {
@@ -58,6 +58,7 @@
         B.cyl("paint", x, H.h - 0.55, z, 0.16, 0.18, 12, 0xf2f2f2);
         list.push({ x, y: H.h - 0.6, z, ry: (x * 13) % 6 });
         B.box("lamp", x + 3, H.h - 0.35, z, 1.2, 0.06, 0.1, 0xffffff);
+        ctx.pools.push({ x: x + 3, z, s: 0.9, y: H.h - 0.5 });
       });
     }
     const blade = new THREE.BoxGeometry(0.95, 0.02, 0.13);
@@ -78,7 +79,7 @@
   function stall(B, x0, x1, z0, st, idx, ctx) {
     const z1 = z0 + STALL_D;
     const xc = (x0 + x1) / 2;
-    B.aabb("tiles", x0, 0.14, z0, x1, 3.0, z0 + 0.2, 0xf4f4f4);
+    B.aabb("wallTile", x0, 0.14, z0, x1, 3.0, z0 + 0.2, 0xffffff);
     B.aabb("plaster", x0, 0.14, z0, x0 + 0.15, 3.0, z1, 0xf1ead8);
     B.aabb("plaster", x1 - 0.15, 0.14, z0, x1, 3.0, z1, 0xf1ead8);
     B.aabb("paint", x0, 2.9, z0, x1, 3.0, z1, 0xf4f1e8);
@@ -152,7 +153,7 @@
     const H = ctx.L.hawker;
     const out = {};
     shell(B, H, ctx);
-    fans(B, H, out);
+    fans(B, H, out, ctx);
     out.spots = stalls(B, H, ctx.L, ctx);
     tables(H, ctx);
     return out;

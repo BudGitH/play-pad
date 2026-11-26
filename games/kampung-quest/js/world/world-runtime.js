@@ -24,14 +24,53 @@
     pole.offset.y = (pole.offset.y + dt * 0.35) % 1;
   }
 
+  /**
+   * Roaming lights: a fixed handful of real point lights that sit on the night lamps nearest
+   * the shadow target (the player), so walls and figures near you are truly lit at night while
+   * the rest of the town relies on emissive lamps + additive pools.
+   */
+  const ROAM = 4;
+  function makeRoam(group, ctx) {
+    const lights = [];
+    for (let i = 0; i < ROAM; i++) {
+      const l = new THREE.PointLight(0xffffff, 0, 10, 1.6);
+      l.name = "roamLight" + i;
+      group.add(l);
+      lights.push(l);
+    }
+    const cands = ctx.lamps.map((p) => ({ x: p.x, y: p.y - 0.3, z: p.z, warm: true, r: 13 }));
+    ctx.pools.forEach((p) => cands.push({ x: p.x, y: (p.y || 3) - 0.15, z: p.z, warm: !!p.warm, r: 9 }));
+    return { lights, cands, at: new THREE.Vector3(1e9, 0, 0) };
+  }
+  function updateRoam(s) {
+    const r = s.roam;
+    const n = s.rig.night;
+    const t = s.rig.target;
+    if (n < 0.02) return r.lights.forEach((l) => (l.intensity = 0));
+    if (r.at.distanceToSquared(t) > 0.5) {
+      r.at.copy(t);
+      r.cands.forEach((c) => (c.d = (c.x - t.x) ** 2 + (c.z - t.z) ** 2));
+      r.pick = r.cands.slice().sort((a, b) => a.d - b.d).slice(0, ROAM);
+    }
+    const active = s.tier === "low" ? 2 : ROAM;
+    r.lights.forEach((l, i) => {
+      const c = r.pick[i];
+      l.position.set(c.x, c.y, c.z);
+      l.distance = c.r;
+      l.color.setHex(c.warm ? 0xffd9a8 : 0xeef3ff);
+      l.intensity = i < active ? 1.5 * n : 0;
+    });
+  }
+
   /** Apply sky + lights for a clock minute (also used by setMinute in the dev page). */
   function applyTime(s, minute) {
     P.Lighting.apply(s.rig, minute);
     P.Lighting.maybeBakeEnv(s.rig, minute, false);
     const n = s.rig.night;
-    s.pools.material.opacity = 0.55 * n;
+    s.pools.material.opacity = 0.8 * n;
     s.pl.hawker.intensity = 1.6 * n;
     s.pl.hall.intensity = 0.9 + 0.9 * n;
+    updateRoam(s);
   }
 
   function setQuality(s, tier) {
@@ -49,6 +88,7 @@
   function runtime(st) {
     const s = Object.assign(st, { fanAngle: 0, minute: 420 });
     s.pools = s.group.getObjectByName("lampPools");
+    s.roam = makeRoam(s.group, s.ctx);
     const pois = W.helpers.finishPois(st.nav.pois);
     const api = {
       group: s.group,
@@ -56,7 +96,7 @@
       colliders: s.ctx.colliders,
       walkGraph: s.nav.graph,
       interactables: W.parts.interactables(s.areas),
-      lights: { sun: s.rig.sun, hemi: s.rig.hemi, street: s.ctx.lamps.map((p) => ({ pos: p })), hall: s.pl.hall, hawker: s.pl.hawker },
+      lights: { sun: s.rig.sun, hemi: s.rig.hemi, street: s.ctx.lamps.map((p) => ({ pos: p })), hall: s.pl.hall, hawker: s.pl.hawker, roaming: s.roam.lights },
       heightAt: W.parts.makeHeightAt(s.B.floors),
       qualityHints: (tier) => HINTS[tier || s.tier],
       update(dt, clock) {
@@ -68,6 +108,7 @@
       setShadowTarget(v) {
         s.rig.target.set(v.x, 0, v.z);
         P.Lighting.placeSun(s.rig);
+        updateRoam(s);
       },
       night: () => s.rig.night,
     };

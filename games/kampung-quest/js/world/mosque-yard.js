@@ -55,6 +55,16 @@
     gatePosts(B, ctx, [w.x0 - 0.5, m.z1], [w.x1 + 0.5, m.z1], null);
   }
 
+  /** Garden bollard lamps around the courtyard. */
+  function courtLamps(B, ctx) {
+    [[-24, -40], [-16, -40], [-24, -22], [-16, -26], [-22, -14]].forEach(([x, z]) => {
+      B.cyl("paint", x, 1.1, z, 0.07, 2.2, 8, 0x2c5f5a);
+      B.geo("lamp", P.cached("globe", () => new THREE.SphereGeometry(0.22, 14, 10)), P.compose(x, 2.35, z, 0, 1, 1, 1));
+      ctx.pools.push({ x, z, s: 0.65, y: 2.3, warm: true });
+      ctx.colliders.push({ minX: x - 0.15, maxX: x + 0.15, minZ: z - 0.15, maxZ: z + 0.15, kind: "bollard" });
+    });
+  }
+
   /** Octagonal minaret with a balcony, a lantern and a small dome. */
   function minaret(B, m, ctx) {
     const { x, z } = m.minaret;
@@ -68,6 +78,12 @@
     B.cyl("lamp", x, 18.2, z, 0.97, 0.5, 8, 0xffffff);
     B.cyl("paint", x, 19.65, z, 1.15, 0.16, 16, S().TEAL);
     P.Mosque.dome(B, x, z, 19.7, 1.0);
+    for (let k = 0; k < 8; k++) {
+      const a = Math.PI / 8 + (k * Math.PI) / 4;
+      const r = 1.15 * Math.cos(Math.PI / 8) + 0.01;
+      [8.2, 12.4].forEach((y) => B.box("dark", x + Math.sin(a) * r, y, z + Math.cos(a) * r, 0.32, 1.0, 0.04, 0x2b3a40, a));
+      B.box("paint", x + Math.sin(a) * r, 15.2, z + Math.cos(a) * r, 0.86, 0.5, 0.03, S().TEAL, a);
+    }
     ctx.colliders.push({ minX: x - 1.7, maxX: x + 1.7, minZ: z - 1.7, maxZ: z + 1.7, kind: "minaret" });
   }
 
@@ -75,7 +91,11 @@
   function wudu(B, m, ctx) {
     const w = m.wudu;
     B.aabb("tiles", w.x0, 0, w.z0, w.x1, 0.14, w.z1 + 0.6, 0xeef2f2);
-    B.aabb("tiles", w.x0, 0.14, w.z0, w.x1, 2.6, w.z0 + 0.25, 0xe6f0ee);
+    B.aabb("wallTile", w.x0, 0.14, w.z0, w.x1, 2.6, w.z0 + 0.25, 0xffffff);
+    for (let x = w.x0 + 1.5; x < w.x1; x += 4) {
+      B.box("lamp", x, 2.97, (w.z0 + w.z1) / 2, 1.2, 0.05, 0.12, 0xffffff);
+      ctx.pools.push({ x, z: (w.z0 + w.z1) / 2, s: 0.7, y: 2.8 });
+    }
     B.aabb("tilework", w.x0, 1.4, w.z0 + 0.25, w.x1, 1.7, w.z0 + 0.27, 0xffffff);
     B.aabb("dark", w.x0 + 0.2, 0.14, w.z0 + 0.25, w.x1 - 0.2, 0.17, w.z0 + 0.6, 0x5d6466);
     B.aabb("marble", w.x0 + 0.2, 0.14, w.z0 + 1.0, w.x1 - 0.2, 0.42, w.z0 + 1.45, 0xf0f0ea);
@@ -91,9 +111,10 @@
     const step = (w.x1 - w.x0) / TAPS;
     for (let i = 0; i < TAPS; i++) {
       const x = w.x0 + step * (i + 0.5);
-      B.box("chrome", x, 0.95, w.z0 + 0.32, 0.05, 0.05, 0.16, 0xffffff);
-      B.box("chrome", x, 0.9, w.z0 + 0.42, 0.04, 0.1, 0.04, 0xffffff);
-      B.cyl("chrome", x + 0.08, 1.0, w.z0 + 0.3, 0.035, 0.06, 8, 0xffffff);
+      B.box("chrome", x, 0.98, w.z0 + 0.36, 0.08, 0.08, 0.26, 0xffffff);
+      B.box("chrome", x, 0.9, w.z0 + 0.47, 0.07, 0.18, 0.07, 0xffffff);
+      B.cyl("chrome", x, 1.1, w.z0 + 0.32, 0.06, 0.12, 10, 0xffffff);
+      B.box("chrome", x, 1.17, w.z0 + 0.32, 0.22, 0.03, 0.04, 0xffffff);
       out.push({ x, z: w.z0 + 1.0 + 0.25, tapZ: w.z0 + 0.42 });
     }
     return out;
@@ -111,5 +132,5 @@
     ctx.colliders.push({ minX: x0, maxX: x0 + 5, minZ: z0, maxZ: z0 + 3, kind: "wudu-women" });
   }
 
-  P.MosqueYard = { compound, minaret, wudu, womenWudu, TAPS };
+  P.MosqueYard = { compound, minaret, wudu, womenWudu, courtLamps, TAPS };
 })((window.KQ = window.KQ || {}));

@@ -59,6 +59,12 @@
       });
     }
     B.aabb("paint", lw.x0 - 0.3, 2.9, lw.z0, lw.x1 + 0.3, 2.98, lw.z1, 0x4f5a62);
+    for (let t = 3; t < len - 1; t += 8) {
+      const x = alongZ ? (lw.x0 + lw.x1) / 2 : lw.x0 + t;
+      const z = alongZ ? lw.z0 + t : (lw.z0 + lw.z1) / 2;
+      B.box("lamp", x, 2.87, z, alongZ ? 0.12 : 1.0, 0.04, alongZ ? 1.0 : 0.12, 0xffffff);
+      ctx.pools.push({ x, z, s: 0.55, y: 2.7 });
+    }
     B.aabb("concrete", lw.x0 - 0.35, 2.98, lw.z0, lw.x1 + 0.35, 3.1, lw.z1, 0xe8e4dc);
   }
 
@@ -69,6 +75,8 @@
     B.box("paint", (bs.x0 + bs.x1) / 2, 2.98, (bs.z0 + bs.z1) / 2, bs.x1 - bs.x0 + 0.6, 0.12, bs.z1 - bs.z0 + 0.6, 0x3d4a55, [-0.06, 0, 0]);
     B.plane("glass", (bs.x0 + bs.x1) / 2, 1.5, bs.z1 - 0.2, bs.x1 - bs.x0 - 0.8, 2.2, Math.PI);
     B.aabb("wood", bs.x0 + 1, 0.42, bs.z1 - 1.0, bs.x1 - 1, 0.5, bs.z1 - 0.5, 0xa0714a);
+    B.box("lamp", (bs.x0 + bs.x1) / 2, 2.88, (bs.z0 + bs.z1) / 2, 3, 0.04, 0.12, 0xffffff);
+    ctx.pools.push({ x: (bs.x0 + bs.x1) / 2, z: (bs.z0 + bs.z1) / 2, s: 0.7, y: 2.7 });
     B.aabb("metal", bs.x0 + 1, 0.12, bs.z1 - 0.8, bs.x0 + 1.1, 0.42, bs.z1 - 0.7, 0x9aa0a6);
     B.aabb("metal", bs.x1 - 1.1, 0.12, bs.z1 - 0.8, bs.x1 - 1, 0.42, bs.z1 - 0.7, 0x9aa0a6);
     col(ctx.colliders, bs.x0, bs.x1, bs.z1 - 1.05, bs.z1, "bus-bench");

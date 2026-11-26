@@ -11,11 +11,15 @@
   var TAU = PI * 2;
 
   var JOINTS = ["hips", "torso", "head", "armL", "armR", "foreL", "foreR", "handL", "handR", "legL", "legR", "kneeL", "kneeR"];
+  // Toy stance: arms angled out and a little forward at the shoulder, elbows bent so the C-hands sit
+  // forward of the hips (like the reference minifig standing on the table).
   var NEUTRAL = {
-    armL: [0.02, 0, 0.1],
-    armR: [0.02, 0, -0.1],
-    foreL: [-0.32, 0, 0],
-    foreR: [-0.32, 0, 0],
+    armL: [-0.16, 0, 0.2],
+    armR: [-0.16, 0, -0.2],
+    foreL: [-0.62, -0.12, 0],
+    foreR: [-0.62, 0.12, 0],
+    handL: [0, 0, 0.25],
+    handR: [0, 0, -0.25],
   };
   var ZERO = [0, 0, 0];
 
@@ -73,8 +77,8 @@
     return {
       torso: [0.012 * b, 0, 0],
       head: [0.02 * b, 0.14 * Math.sin(p * TAU + 1), 0],
-      armL: [0.02 + 0.02 * b, 0, 0.1],
-      armR: [0.02 - 0.02 * b, 0, -0.1],
+      armL: [-0.16 + 0.02 * b, 0, 0.2],
+      armR: [-0.16 - 0.02 * b, 0, -0.2],
     };
   }
 

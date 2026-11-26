@@ -11,18 +11,18 @@
 
   /* minute → [zenith, horizon, sun colour, sun intensity, hemi sky, hemi ground, hemi intensity] */
   const KEYS = [
-    [0, "#0b1330", "#1d2a4a", "#9fb4ff", 0.22, "#3a4f86", "#1a1c22", 0.32],
-    [330, "#0b1330", "#1d2a4a", "#9fb4ff", 0.22, "#3a4f86", "#1a1c22", 0.32],
+    [0, "#0b1330", "#1d2a4a", "#9fb4ff", 0.22, "#4a5778", "#1e1f24", 0.26],
+    [330, "#0b1330", "#1d2a4a", "#9fb4ff", 0.22, "#4a5778", "#1e1f24", 0.26],
     [395, "#2a3d72", "#d79a7a", "#ffb27a", 0.25, "#6b7fb0", "#3a3430", 0.45],
-    [440, "#4f7fc4", "#f2c49a", "#ffc58a", 1.6, "#9fb7dc", "#6b5a48", 0.7],
-    [540, "#3f7fd0", "#bcd8ee", "#fff1dc", 2.9, "#b9d3f0", "#9c9078", 0.9],
-    [720, "#3576cf", "#c4dcf0", "#fffaf0", 3.3, "#c2daf4", "#a39880", 0.95],
-    [1020, "#3e7ccc", "#cfe0ee", "#fff0d6", 3.0, "#bcd3ec", "#9a8e76", 0.9],
-    [1110, "#5a78b4", "#f3c38f", "#ffb46a", 1.9, "#b2b9d0", "#7a5e48", 0.7],
-    [1150, "#3c4c86", "#f08a5a", "#ff8a4a", 0.55, "#8a86a8", "#4a3a34", 0.5],
-    [1185, "#1b2552", "#6a4f74", "#a7b6ff", 0.2, "#4a5588", "#24222a", 0.38],
-    [1250, "#0b1330", "#1d2a4a", "#9fb4ff", 0.22, "#3a4f86", "#1a1c22", 0.32],
-    [1440, "#0b1330", "#1d2a4a", "#9fb4ff", 0.22, "#3a4f86", "#1a1c22", 0.32],
+    [440, "#4f7fc4", "#f2c49a", "#ffc58a", 1.9, "#9fb7dc", "#7a6a56", 0.5],
+    [540, "#3f7fd0", "#bcd8ee", "#fff1dc", 3.3, "#cbd8e6", "#a59a84", 0.58],
+    [720, "#3576cf", "#c4dcf0", "#fffaf0", 3.6, "#ced9e6", "#a89d86", 0.62],
+    [1020, "#3e7ccc", "#cfe0ee", "#fff0d6", 3.3, "#cad6e4", "#a39880", 0.58],
+    [1110, "#5a78b4", "#f3c38f", "#ffb46a", 2.2, "#b2b9d0", "#7a5e48", 0.5],
+    [1150, "#3c4c86", "#f08a5a", "#ff8a4a", 0.12, "#6f7598", "#3e3532", 0.36],
+    [1185, "#1b2552", "#6a4f74", "#a7b6ff", 0.2, "#4a5578", "#22222a", 0.3],
+    [1250, "#0b1330", "#1d2a4a", "#9fb4ff", 0.22, "#4a5778", "#1e1f24", 0.26],
+    [1440, "#0b1330", "#1d2a4a", "#9fb4ff", 0.22, "#4a5778", "#1e1f24", 0.26],
   ];
 
   const VERT = `
@@ -33,7 +33,7 @@
       gl_Position = p.xyww;
     }`;
   const FRAG = `
-    uniform vec3 uZenith; uniform vec3 uHorizon; uniform vec3 uGround; uniform vec3 uSunCol;
+    uniform vec3 uZenith; uniform vec3 uHorizon; uniform vec3 uSunCol;
     uniform vec3 uSunDir; uniform float uNight; uniform float uLinear; uniform float uSunVis;
     varying vec3 vDir;
     float hash(vec3 p) { return fract(sin(dot(p, vec3(12.9898, 78.233, 45.164))) * 43758.5453); }

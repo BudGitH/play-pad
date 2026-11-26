@@ -106,6 +106,30 @@
     return g;
   };
 
+  /**
+   * Smooth the flat normals of a non-indexed geometry (e.g. ExtrudeGeometry) by averaging the face
+   * normals of every vertex that shares a position. With a bevel this reads as a soft moulded edge.
+   */
+  G.smoothNormals = function (g) {
+    var pos = g.attributes.position;
+    var nrm = g.attributes.normal;
+    var sums = {};
+    var keys = [];
+    for (var i = 0; i < pos.count; i++) {
+      var k = Math.round(pos.getX(i) * 1e4) + "," + Math.round(pos.getY(i) * 1e4) + "," + Math.round(pos.getZ(i) * 1e4);
+      keys.push(k);
+      var s = sums[k] || (sums[k] = new THREE.Vector3());
+      s.x += nrm.getX(i);
+      s.y += nrm.getY(i);
+      s.z += nrm.getZ(i);
+    }
+    for (var j = 0; j < pos.count; j++) {
+      var n = sums[keys[j]].clone().normalize();
+      nrm.setXYZ(j, n.x, n.y, n.z);
+    }
+    return g;
+  };
+
   var ATTRS = [
     ["position", 3],
     ["normal", 3],

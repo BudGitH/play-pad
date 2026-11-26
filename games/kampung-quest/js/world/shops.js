@@ -47,6 +47,8 @@
       B.aabb("paint", u.x0 + 0.15, S.h - 0.55, S.z1 - 0.02, u.x1 - 0.15, S.h - 0.12, S.z1 + 0.01, 0xf6f3ec);
       B.aabb("metal", u.x0 + 0.15, S.h - 0.5, zf - 0.2, u.x1 - 0.15, S.h - 0.12, zf + 0.1, 0xa8adb2);
       B.box("lamp", xc, S.h - 0.16, (S.z0 + zf) / 2, 2.2, 0.05, 0.14, 0xffffff);
+      B.box("lamp", xc, S.h - 0.16, S.z1 - 1.2, 1.4, 0.05, 0.12, 0xffffff);
+      ctx.pools.push({ x: xc, z: S.z1 - 1.2, s: 0.6, y: S.h - 0.4 }, { x: xc, z: (S.z0 + zf) / 2, s: 0.8, y: S.h - 0.4 });
     });
   }
 

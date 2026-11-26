@@ -191,6 +191,32 @@
           const i = renderer.info;
           return { calls: i.render.calls, triangles: i.render.triangles, geometries: i.memory.geometries, textures: i.memory.textures, programs: i.programs.length };
         }
+        /** Dev check: walk-graph edges / POIs clear of colliders (NPC radius r), graph connected. */
+        function validate(r) {
+          r = r || 0.28;
+          const C = world.colliders;
+          const hit = (x, z) => C.find((c) => x > c.minX - r && x < c.maxX + r && z > c.minZ - r && z < c.maxZ + r);
+          const g = world.walkGraph;
+          const bad = [];
+          g.edges.forEach(([a, b]) => {
+            const A = g.nodes[a];
+            const B = g.nodes[b];
+            const n = Math.ceil(Math.hypot(B.x - A.x, B.z - A.z) / 0.2);
+            for (let i = 0; i <= n; i++) {
+              const x = A.x + ((B.x - A.x) * i) / n;
+              const z = A.z + ((B.z - A.z) * i) / n;
+              const c = hit(x, z);
+              if (c) return bad.push({ edge: [A.x, A.z, B.x, B.z], at: [x.toFixed(2), z.toFixed(2)], kind: c.kind });
+            }
+          });
+          const seen = new Set([0]);
+          const adj = g.nodes.map(() => []);
+          g.edges.forEach(([a, b]) => (adj[a].push(b), adj[b].push(a)));
+          const q = [0];
+          while (q.length) adj[q.pop()].forEach((m) => !seen.has(m) && (seen.add(m), q.push(m)));
+          const pois = Object.keys(world.pois).filter((id) => !seen.has(world.pois[id].node));
+          return { nodes: g.nodes.length, edges: g.edges.length, colliders: C.length, badEdges: bad, unreachablePois: pois, disconnected: g.nodes.length - seen.size };
+        }
         let last = performance.now();
         function loop(t) {
           const dt = Math.min(0.1, (t - last) / 1000);
@@ -211,6 +237,7 @@
           setMinute,
           goto,
           stats,
+          validate,
           render,
           view(x, y, z, yaw, pitch) {
             cam.pos.set(x, y, z);

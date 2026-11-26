@@ -203,5 +203,22 @@
     return C().tex(c, true, true);
   }
 
-  P.Patterns = { windows, railing, carpet, leaves, barber, tilework, books, CELL };
+  /** Glossy white wall tiles with grey grout (wudu wall, stall backs). */
+  function wallTiles() {
+    const c = C().canvas(128, 128);
+    const ctx = c.getContext("2d");
+    ctx.fillStyle = "#b9bfc2";
+    ctx.fillRect(0, 0, 128, 128);
+    const r = P.rng(11);
+    for (let y = 0; y < 4; y++) {
+      for (let x = 0; x < 4; x++) {
+        const v = 236 + Math.floor(r() * 14);
+        ctx.fillStyle = `rgb(${v},${v + 2},${v + 3})`;
+        ctx.fillRect(x * 32 + 1, y * 32 + 1, 30, 30);
+      }
+    }
+    return C().tex(c, true, true);
+  }
+
+  P.Patterns = { windows, railing, carpet, leaves, barber, tilework, books, wallTiles, CELL };
 })((window.KQ = window.KQ || {}));

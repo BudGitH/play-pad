@@ -46,6 +46,35 @@ Tracked in the raw panel output and fixed where cheap: ACC-3/4, Q-08..12, COMP-0
 - Raka'at plans, the 12-step wudu order and the Subuh window ending at Syuruk are correct.
 - A full Zohor flow and 3 missions were driven end to end in the real game; 125/125 sim tests pass.
 
-## Round 2
+## Round 2 — result: **FAIL** (2 HIGH)
 
-_Pending — the panel re-runs after the fixes land._
+Re-verification of round 1: all 5 HIGH fixed; Q-01, Q-03, Q-04, Q-07, ACC-1, ACC-3, ACC-4 and A11Y-01, 03, 05-12 fixed. Partial: ACC-2 (test hooks: ACC2-01/02, stale screenshots ACC2-03), RISK-01 (New game edge: RISK2-01), A11Y-02/04 (toasts over sheets, azan card on short phones), PERF-01/03 (hawker CPU frame still 19-24 ms at 4x; chunking helps little at the mosque). Not fixed: Q-05/Q-06 (function doc blocks, 54 % undocumented), Q-09 (dead exports).
+
+| Severity | Count |
+| -------- | ----- |
+| HIGH     | 2     |
+| MEDIUM   | 5     |
+| LOW      | 25    |
+
+### HIGH (blocking)
+
+| ID       | Lens          | Finding                                                                                                  |
+| -------- | ------------- | -------------------------------------------------------------------------------------------------------- |
+| R2-Q-01  | Quality       | The new Kampung Quest browser specs push the required CI `smoke` job past its timeout.                   |
+| A11Y2-01 | Accessibility | On short landscape phones the azan card covers the Talk / "Take wudu" button for the whole azan (~70 s). |
+
+### MEDIUM
+
+- **R2-Q-02** — the AC-14 frame probe runs in no workflow.
+- **R2-Q-03** — 54 % of functions lack a Tier-2 doc block; the ledger row is not escalated.
+- **A11Y2-02** — the stall sheet's Close button is off-screen at 320 px wide.
+- **A11Y2-03** — the wudu tiles are under 48 px at 320 and 360 px wide.
+- **A11Y2-04** — the exploring HUD is still heavy on phones.
+
+### LOW
+
+ACC2-01..04, R2-Q-04..07, COMP-R2-01..03, RISK2-01..03, A11Y2-05..10, R2-PERF-01..04 (raw output kept by the orchestrator).
+
+## Round 3
+
+_Pending — after the round-2 fixes land._

@@ -281,6 +281,60 @@
     ];
   }
 
+  const AZAN_CREDIT = {
+    title: 'Azan: "The Adhan - Muslim Call to Prayer - Aaqib Azeez"',
+    author: "by Atcovi (Wikimedia Commons); reciter named in the title: Aaqib Azeez.",
+    licence: "CC BY-SA 4.0",
+    licenceUrl: "https://creativecommons.org/licenses/by-sa/4.0/",
+    sourceUrl:
+      "https://commons.wikimedia.org/wiki/File:The_Adhan_-_Muslim_Call_to_Prayer_-_Aaqib_Azeez.mp3",
+    changes: "Changes: volume reduced, 20 ms fade-in, re-encoded to Vorbis and MP3.",
+  };
+
+  function link(url, text) {
+    return U.el("a", { href: url, target: "_blank", rel: "noopener noreferrer", text });
+  }
+
+  function creditBlock(title, lines) {
+    const kids = [U.el("h3", { cls: "kq-h3", text: title })];
+    lines.forEach((l) => kids.push(U.el("p", { cls: "kq-credit-line" }, l)));
+    return U.el("section", { cls: "kq-credit-block" }, kids);
+  }
+
+  /** Credits: the azan's CC BY-SA 4.0 attribution, the textures and the prayer times. */
+  function credits(ctx) {
+    const a = AZAN_CREDIT;
+    const box = U.el(
+      "div",
+      { cls: "kq-menu kq-card kq-credits" },
+      G.UI.header("Credits"),
+      creditBlock("Azan (call to prayer)", [
+        a.title + " " + a.author,
+        ["Licence: ", link(a.licenceUrl, a.licence + " (" + a.licenceUrl + ")")],
+        ["Source: ", link(a.sourceUrl, "commons.wikimedia.org, The Adhan - Aaqib Azeez")],
+        a.changes,
+      ]),
+      creditBlock("Photo textures", [
+        ["ambientCG (", link("https://ambientcg.com", "ambientcg.com"), "), CC0 1.0."],
+      ]),
+      creditBlock("Prayer times", [
+        "Singapore, 26 November 2026: MUIS Muslim Prayer Timetable 2026, published on data.gov.sg under the Singapore Open Data Licence.",
+      ]),
+    );
+    return G.UI.openSheet({
+      el: box,
+      label: "Credits",
+      onClose: ctx && ctx.onClose,
+      focus: ".kq-icon-btn",
+    });
+  }
+
+  /** Credits from the pause menu: the game stays paused, and closing returns to the pause menu. */
+  function openCredits(ctx) {
+    credits({ onClose: (why) => why !== "replaced" && (pause(ctx), G.Loop.setPaused(true)) });
+    G.Loop.setPaused(true);
+  }
+
   function pauseButtons(ctx) {
     const resume = G.UI.btn("Resume", {
       cls: "primary kq-big",
@@ -292,6 +346,7 @@
       { cls: "kq-col" },
       resume,
       G.UI.btn("How to play", { icon: "book", onClick: ctx.onHowTo }),
+      G.UI.btn("Credits", { icon: "star", onClick: () => openCredits(ctx) }),
       G.UI.btn("Save and go to PlayPad", { icon: "home", onClick: ctx.onSaveExit }),
       G.UI.btn("Start over", { icon: "refresh", onClick: ctx.onStartOver }),
       U.el("p", { cls: "kq-small", text: ctx.status }),
@@ -310,5 +365,5 @@
     return G.UI.openSheet({ el: box, label: "Paused", onClose: ctx.onClose, focus: ".kq-big" });
   }
 
-  G.Screens = { missions, bag, map, howTo, pause, dayStrip };
+  G.Screens = { missions, bag, map, howTo, pause, credits, dayStrip };
 })((window.KQ = window.KQ || {}));

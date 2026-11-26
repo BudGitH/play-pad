@@ -52,9 +52,22 @@ body {
   --kq-hud: color-mix(in srgb, #15151c 92%, transparent);
   --kq-hud-strong: color-mix(in srgb, #15151c 97%, transparent);
   --kq-pad: max(12px, env(safe-area-inset-left, 0px));
+  --kq-padr: max(12px, env(safe-area-inset-right, 0px));
   --kq-top: max(12px, env(safe-area-inset-top, 0px));
+  --kq-bot: max(12px, env(safe-area-inset-bottom, 0px));
   --kq-map: 150px;
   --kq-dock: 64px;
+  --kq-dock-h: 64px;
+  --kq-tl-w: 254px;
+  --kq-right-w: 150px;
+  --kq-joy: 124px;
+  --kq-run: 64px;
+  --kq-joy-x: calc(max(18px, env(safe-area-inset-left, 0px)) + var(--kq-joy) + 12px);
+  /* measured by hud.js (Hud.measure): where the top HUD ends and where the toast lane starts */
+  --kq-status-h: 98px;
+  --kq-top-end: 240px;
+  --kq-lane-top: var(--kq-top);
+  --kq-lane-h: 96px;
   position: absolute;
   inset: 0;
   overflow: hidden;
@@ -230,7 +243,7 @@ kbd {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  width: 254px;
+  width: var(--kq-tl-w);
   pointer-events: none;
 }
 .kq-tl > * {
@@ -268,11 +281,12 @@ kbd {
 }
 .kq-prayer {
   display: flex;
+  flex: 1 1 0;
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  min-width: 44px;
-  font-size: 11px;
+  min-width: 0;
+  font-size: 12px;
   font-weight: 700;
   color: var(--md-sys-color-on-surface-variant);
 }
@@ -333,10 +347,11 @@ kbd {
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  min-width: 64px;
-  max-width: 76px;
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 84px;
   text-align: center;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.15;
   color: var(--md-sys-color-on-surface-variant);
 }
@@ -399,7 +414,7 @@ kbd {
 .kq-dock {
   position: absolute;
   left: 50%;
-  bottom: max(12px, env(safe-area-inset-bottom, 0px));
+  bottom: var(--kq-bot);
   transform: translateX(-50%);
   display: flex;
   gap: 8px;
@@ -412,7 +427,7 @@ kbd {
   justify-content: center;
   gap: 2px;
   width: var(--kq-dock);
-  height: var(--kq-dock);
+  height: var(--kq-dock-h);
   border: 2px solid transparent;
   border-radius: 18px;
   background: var(--kq-hud);
@@ -448,12 +463,15 @@ kbd {
 /* top right: coins, mute, minimap with the needs ring */
 .kq-topright {
   position: absolute;
-  right: max(12px, env(safe-area-inset-right, 0px));
+  right: var(--kq-padr);
   top: var(--kq-top);
   display: grid;
   justify-items: end;
   gap: 8px;
   pointer-events: none;
+}
+.kq-topright .kq-coins {
+  min-height: 36px;
 }
 .kq-topright > * {
   pointer-events: auto;
@@ -512,7 +530,7 @@ kbd {
   left: 50%;
   transform: translateX(-50%);
   font:
-    700 10px/12px system-ui,
+    700 12px/12px system-ui,
     sans-serif;
   color: #fff;
   text-shadow: 0 0 3px #000;
@@ -522,19 +540,19 @@ kbd {
   bottom: -2px;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   height: 28px;
-  padding: 0 10px;
+  padding: 0 8px;
   border-radius: 999px;
   background: var(--kq-hud-strong);
   font-size: 13px;
 }
 .kq-needchip.kq-food {
-  left: -4px;
+  left: -6px;
   color: var(--kq-gold);
 }
 .kq-needchip.kq-energy {
-  right: -4px;
+  right: -6px;
   color: var(--kq-green);
 }
 .kq-needchip b {
@@ -549,8 +567,8 @@ kbd {
   position: absolute;
   left: max(18px, env(safe-area-inset-left, 0px));
   bottom: max(18px, env(safe-area-inset-bottom, 0px));
-  width: 124px;
-  height: 124px;
+  width: var(--kq-joy);
+  height: var(--kq-joy);
   border-radius: 50%;
   background: color-mix(in srgb, #15151c 55%, transparent);
   border: 2px solid rgba(255, 255, 255, 0.35);
@@ -575,8 +593,8 @@ kbd {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: 64px;
-  height: 64px;
+  width: var(--kq-run);
+  height: var(--kq-run);
   border: 2px solid transparent;
   border-radius: 50%;
   background: var(--kq-hud);
@@ -597,7 +615,7 @@ kbd {
 }
 .kq-keys {
   position: absolute;
-  right: max(12px, env(safe-area-inset-right, 0px));
+  right: var(--kq-padr);
   bottom: 12px;
   display: grid;
   gap: 4px 12px;
@@ -611,7 +629,7 @@ kbd {
 }
 
 /* the floating Talk / action button */
-.kq-talk {
+.kq-root .kq-talk {
   position: absolute;
   left: 50%;
   top: 50%;
@@ -638,7 +656,7 @@ kbd {
   align-items: center;
   gap: 6px;
 }
-.kq-talk.is-far {
+.kq-root .kq-talk.is-far {
   background: var(--kq-hud);
   color: var(--md-sys-color-on-surface-variant);
   border: 2px dashed var(--md-sys-color-outline);
@@ -652,14 +670,21 @@ kbd {
 .kq-azan {
   position: absolute;
   left: 50%;
-  bottom: 84px;
+  bottom: calc(var(--kq-bot) + var(--kq-dock-h) + 8px);
   transform: translateX(-50%);
   width: min(560px, calc(100% - 24px));
   max-height: calc(100% - 140px);
   overflow: auto;
   padding: 12px 16px 14px;
   border: 2px solid var(--kq-green);
+  background: var(--kq-hud-strong);
   z-index: 7;
+}
+@media (pointer: coarse) {
+  /* the azan card stays clear of the joystick and Run */
+  .kq-azan {
+    width: min(560px, calc(100% - 2 * var(--kq-joy-x)));
+  }
 }
 .kq-azan-title {
   margin: 0 0 2px;
@@ -669,11 +694,14 @@ kbd {
   width: 100%;
   margin-top: 8px;
 }
+/* the pill: captions only, in the top lane (beside the status card and the minimap) */
 .kq-azan.is-bar {
   bottom: auto;
-  top: 12px;
-  width: min(520px, calc(100% - 560px));
-  min-width: 300px;
+  top: var(--kq-top);
+  left: calc(var(--kq-pad) + var(--kq-tl-w) + 12px);
+  right: calc(var(--kq-padr) + var(--kq-right-w) + 12px);
+  width: auto;
+  transform: none;
   padding: 6px 12px;
 }
 .kq-azan.is-bar .kq-azan-title,
@@ -711,23 +739,24 @@ kbd {
 }
 
 /* toasts */
+/* The toast lane is reserved: a fixed box in the free band beside the top HUD, so a toast never
+   lands on the prayer strip, the Talk button, the dock or the controls (hud-talk.js keeps Talk out of it). */
 .kq-toasts {
   position: absolute;
-  left: 50%;
-  top: 14px;
-  transform: translateX(-50%);
+  left: calc(var(--kq-pad) + var(--kq-tl-w) + 12px);
+  right: calc(var(--kq-padr) + var(--kq-right-w) + 12px);
+  top: var(--kq-lane-top);
+  height: var(--kq-lane-h);
   z-index: 30;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 6px;
   pointer-events: none;
-  width: min(560px, calc(100% - 24px));
-}
-.kq-azan-bar .kq-toasts {
-  top: 96px;
+  overflow: hidden;
 }
 .kq-toast {
+  max-width: 560px;
   padding: 10px 16px;
   border-radius: 14px;
   background: var(--kq-hud-strong);
@@ -899,7 +928,7 @@ kbd {
   border-radius: 999px;
   background: var(--md-sys-color-primary);
   color: var(--md-sys-color-on-primary);
-  font-size: 11px;
+  font-size: 12px;
   font-style: normal;
   font-weight: 800;
 }
@@ -1046,6 +1075,7 @@ kbd {
 }
 .kq-seg-btn {
   min-height: 48px;
+  min-width: 48px;
   padding: 0 14px;
   border: 0;
   border-radius: 999px;
@@ -1085,7 +1115,7 @@ kbd {
   width: 72px;
   min-height: 92px;
   padding: 4px 2px;
-  font-size: 11px;
+  font-size: 12px;
 }
 .kq-wtile.is-now {
   border-color: var(--md-sys-color-primary);
@@ -1110,7 +1140,7 @@ kbd {
   height: 20px;
   border-radius: 50%;
   background: var(--md-sys-color-surface-container-highest);
-  font-size: 11px;
+  font-size: 12px;
   font-style: normal;
   font-weight: 800;
 }
@@ -1308,7 +1338,7 @@ kbd {
   display: none;
   position: absolute;
   left: 50%;
-  top: 8px;
+  top: calc(var(--kq-top-end) + 8px);
   transform: translateX(-50%);
   z-index: 8;
 }
@@ -1337,44 +1367,90 @@ kbd {
   visibility: visible;
 }
 
-/* ---------- phone landscape: dock moves to the top band ---------- */
+/* ---------- phone landscape: a lighter HUD ----------
+   Status card + a compact mission (top left), coins / mute / minimap (top right), the toast lane and the
+   azan pill between them, joystick + Run at the bottom corners and the dock at the bottom centre. */
 @media (max-height: 520px) {
   .kq-root {
     --kq-map: 112px;
-    --kq-dock: 56px;
-  }
-  .kq-tl {
-    width: 232px;
+    --kq-dock: 60px;
+    --kq-dock-h: 54px;
+    --kq-tl-w: 240px;
+    --kq-right-w: 170px;
+    --kq-joy: 112px;
+    --kq-bot: max(10px, env(safe-area-inset-bottom, 0px));
+    --kq-lane-h: 72px;
   }
   .kq-dock {
-    top: 10px;
-    bottom: auto;
+    gap: 4px;
   }
-  .kq-toasts {
-    top: 78px;
+  .kq-dock-btn .kq-ic-lg {
+    width: 24px;
+    height: 24px;
   }
-  .kq-azan-bar .kq-toasts {
-    top: 150px;
+  .kq-topright {
+    grid-template-columns: auto auto;
+    align-items: center;
+    column-gap: 8px;
   }
+  .kq-topright .kq-mapwrap {
+    grid-column: 1 / -1;
+  }
+  .kq-toast {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+  .kq-status {
+    padding: 6px 8px 4px;
+  }
+  /* compact mission: the title, and only the step to do now beside the read-to-me button */
   .kq-mission {
-    padding: 6px 8px 8px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 6px;
+    align-items: center;
+    padding: 6px 8px 8px 10px;
+  }
+  .kq-mission-head {
+    display: contents;
+  }
+  .kq-mission-head b {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .kq-mission-head .kq-read {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
+  .kq-mission-body {
+    grid-column: 1;
+    grid-row: 2;
+    min-width: 0;
+  }
+  .kq-steps .kq-step:not(.is-now),
+  .kq-steps .kq-step-arrow {
+    display: none;
+  }
+  .kq-step.is-now {
+    flex-direction: row;
+    max-width: none;
+    gap: 8px;
+    text-align: left;
   }
   .kq-step-ic {
-    width: 40px;
-    height: 40px;
+    width: 34px;
+    height: 34px;
+    flex: none;
   }
-  .kq-azan {
-    bottom: 12px;
-    width: min(440px, calc(100% - 290px));
-    padding: 8px 12px 10px;
+  .kq-waiting {
+    margin-top: 4px;
+    padding: 2px 8px;
   }
-  .kq-azan .kq-ar {
-    font-size: 20px;
-  }
-  .kq-azan.is-bar {
-    top: 76px;
-    bottom: auto;
-    width: min(440px, calc(100% - 290px));
+  .kq-azan:not(.is-bar) {
+    left: calc(var(--kq-pad) + var(--kq-tl-w) + 12px);
+    right: calc(var(--kq-padr) + var(--kq-right-w) + 12px);
+    width: auto;
+    transform: none;
   }
   .kq-sheet-title {
     font-size: 16px;
@@ -1420,45 +1496,142 @@ kbd {
     min-height: 112px;
   }
 }
-@media (max-width: 700px) and (min-height: 521px) {
-  .kq-azan.is-bar {
-    width: calc(100% - 24px);
+@media (max-height: 520px) and (max-width: 759px) {
+  .kq-root {
+    --kq-right-w: 126px;
+  }
+  .kq-coins-word {
+    display: none;
+  }
+}
+@media (max-height: 360px) {
+  .kq-root {
+    --kq-joy: 104px;
+    --kq-run: 60px;
+    --kq-map: 104px;
+    --kq-lane-h: 64px;
   }
 }
 
-/* ---------- portrait phone fallback ---------- */
+/* ---------- portrait phone ----------
+   A wide status card (clock, next prayer, coins, the five prayers), then the mission beside the minimap,
+   the toast lane below them, joystick + Run above the dock; the azan card sits above the joystick. */
 @media (orientation: portrait) and (max-width: 700px) {
   .kq-root {
     --kq-map: 104px;
     --kq-dock: 56px;
+    --kq-dock-h: 56px;
+    --kq-joy: 112px;
+    --kq-bot: max(8px, env(safe-area-inset-bottom, 0px));
+    --kq-lane-h: 64px;
+    --kq-turn-h: 56px;
+    --kq-ctl-bot: calc(var(--kq-bot) + var(--kq-dock-h) + 10px);
+  }
+  .kq-root.kq-no-turn {
+    --kq-turn-h: 0px;
   }
   .kq-portrait {
     display: block;
   }
   .kq-tl {
-    width: min(232px, calc(100% - 150px));
+    width: calc(100% - var(--kq-pad) - var(--kq-padr));
+  }
+  .kq-mission {
+    width: calc(100% - var(--kq-map) - 8px);
+  }
+  .kq-clockrow .kq-coins {
+    margin-left: auto;
+  }
+  .kq-topright {
+    top: calc(var(--kq-top) + var(--kq-status-h) + 8px);
   }
   .kq-dock {
-    bottom: max(8px, env(safe-area-inset-bottom, 0px));
     gap: 6px;
   }
   .kq-joy {
-    bottom: 96px;
-    width: 112px;
-    height: 112px;
+    bottom: var(--kq-ctl-bot);
   }
   .kq-runbtn {
-    bottom: 100px;
+    bottom: var(--kq-ctl-bot);
+  }
+  .kq-toasts {
+    left: var(--kq-pad);
+    right: var(--kq-padr);
+    top: calc(var(--kq-top-end) + 8px + var(--kq-turn-h));
+  }
+  .kq-toast {
+    padding: 8px 12px;
+    font-size: 13px;
   }
   .kq-azan,
   .kq-azan.is-bar {
-    bottom: 150px;
     top: auto;
+    bottom: calc(var(--kq-ctl-bot) + var(--kq-joy) + 8px);
+    left: 50%;
+    right: auto;
     width: calc(100% - 24px);
+    transform: translateX(-50%);
+    padding: 8px 12px 10px;
   }
   .kq-mapbody,
   .kq-pause-grid {
     grid-template-columns: 1fr;
+  }
+}
+/* very narrow phones: the coins chip drops its word so the clock row never wraps */
+@media (orientation: portrait) and (max-width: 400px) {
+  .kq-coins-word {
+    display: none;
+  }
+}
+
+/* compact azan card (phones): the title and the button share a row, the captions sit below */
+@media (max-height: 520px), (orientation: portrait) and (max-width: 700px) {
+  .kq-azan {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: 10px;
+    padding: 8px 12px 10px;
+  }
+  .kq-azan .kq-azan-title {
+    grid-column: 1;
+    grid-row: 1;
+    margin: 0;
+    font-size: 16px;
+  }
+  .kq-azan .kq-big {
+    grid-column: 2;
+    grid-row: 1;
+    width: auto;
+    margin: 0;
+    min-height: 48px;
+    padding: 0 16px;
+    font-size: 14px;
+  }
+  .kq-azan .kq-azan-cues {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+  .kq-azan .kq-azan-sub {
+    display: none;
+  }
+  .kq-azan .kq-ar {
+    margin: 0;
+    font-size: 20px;
+    line-height: 1.5;
+  }
+  .kq-azan .kq-tr,
+  .kq-azan .kq-en {
+    font-size: 14px;
+  }
+  .kq-azan.is-bar {
+    display: block;
+  }
+}
+@media (max-height: 360px) and (max-width: 600px) {
+  .kq-root {
+    --kq-lane-h: 84px;
   }
 }
 
@@ -1599,21 +1772,6 @@ kbd {
 .kq-sheet-side .kq-wtile {
   width: auto;
 }
-/* phone landscape: the dock sits right of the status card, not centred over it */
-@media (max-height: 520px) and (orientation: landscape) {
-  .kq-dock {
-    left: calc(var(--kq-pad) + 244px);
-    transform: none;
-  }
-}
-@media (max-height: 520px) and (max-width: 740px) {
-  .kq-root {
-    --kq-dock: 50px;
-  }
-  .kq-dock {
-    gap: 4px;
-  }
-}
 .kq-wudu-row > div {
   display: contents;
 }
@@ -1665,4 +1823,27 @@ kbd {
   .kq-sheet-bottom .kq-wudu-act {
     min-width: 0;
   }
+}
+
+/* credits (pause menu) */
+.kq-credits {
+  max-width: 640px;
+}
+.kq-credit-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.kq-credit-line {
+  margin: 0;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.kq-credit-line a {
+  display: inline-block;
+  min-height: 24px;
+  color: var(--md-sys-color-tertiary);
+}
+.kq-credits {
+  max-height: 100%;
 }

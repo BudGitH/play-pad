@@ -52,6 +52,7 @@
       (R.clockText = U.el("b", { text: "07:00" })),
     );
     R.nextp = U.el("span", { cls: "kq-nextp", text: "" });
+    R.clockrow = U.el("div", { cls: "kq-clockrow" }, R.clock, R.nextp);
     const strip = U.el("div", { cls: "kq-prayers" }, PRAYERS.map(prayerItem));
     R.status = U.el(
       "div",
@@ -62,7 +63,7 @@
         role: "group",
         "aria-label": "Clock and prayers",
       },
-      U.el("div", { cls: "kq-clockrow" }, R.clock, R.nextp),
+      R.clockrow,
       strip,
     );
     return R.status;
@@ -197,7 +198,7 @@
       { cls: "kq-chip kq-coins", id: "kqCoins", role: "status", "aria-label": "10 coins" },
       P().icon("coin"),
       (R.coinNum = U.el("b", { text: "10" })),
-      U.el("span", { text: "coins" }),
+      U.el("span", { cls: "kq-coins-word", text: "coins" }),
     );
     R.mute = U.el(
       "button",
@@ -211,7 +212,8 @@
       },
       P().icon("sound"),
     );
-    return U.el("div", { cls: "kq-topright" }, R.coins, R.mute, buildMap(on));
+    R.topright = U.el("div", { cls: "kq-topright" }, R.coins, R.mute, buildMap(on));
+    return R.topright;
   }
 
   function buildTouch(on) {
@@ -268,24 +270,35 @@
   function build(host, on) {
     const h = {};
     host.appendChild(buildTalk(on));
-    host.appendChild(U.el("div", { cls: "kq-tl" }, buildStatus(), buildMission(h)));
+    R.tl = U.el("div", { cls: "kq-tl" }, buildStatus(), buildMission(h));
+    host.appendChild(R.tl);
     host.appendChild(buildDock(on));
     host.appendChild(buildTopRight(on));
     host.appendChild(buildTouch(on));
     host.appendChild(buildHints());
     host.appendChild((R.portrait = U.el("div", { cls: "kq-portrait" })));
     buildPortraitChip();
+    watchShown(host);
+    G.HudLayout.init(host.parentElement);
     return R;
   }
 
   function buildPortraitChip() {
     const chip = U.el(
       "button",
-      { type: "button", cls: "kq-chip kq-turn", on: { click: () => (R.portrait.hidden = true) } },
+      { type: "button", cls: "kq-chip kq-turn", on: { click: () => G.HudLayout.dismissTurn() } },
       "Turn sideways for a wider view",
       P().icon("close"),
     );
+    R.portraitChip = chip;
     R.portrait.appendChild(chip);
+  }
+
+  /** When the HUD is revealed (the title card is gone) put keyboard focus somewhere sensible. */
+  function watchShown(host) {
+    new MutationObserver(function () {
+      if (!host.hidden) setTimeout(() => G.UI.focusHome(), 0);
+    }).observe(host, { attributes: true, attributeFilter: ["hidden"] });
   }
 
   G.Hud = { build, refs: R, setText, setClass, PRAYERS };

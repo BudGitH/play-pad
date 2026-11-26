@@ -127,14 +127,15 @@
     let dx = e.clientX - (r.left + r.width / 2);
     let dy = e.clientY - (r.top + r.height / 2);
     const len = Math.hypot(dx, dy);
-    if (len > JOY_RADIUS) {
-      dx = (dx / len) * JOY_RADIUS;
-      dy = (dy / len) * JOY_RADIUS;
+    const radius = Math.min(JOY_RADIUS, r.width * 0.36); // a smaller pad (short phones) has a shorter throw
+    if (len > radius) {
+      dx = (dx / len) * radius;
+      dy = (dy / len) * radius;
     }
     knob.style.transform = "translate(" + dx + "px," + dy + "px)";
     const dead = len < 6 ? 0 : 1;
-    state.joyX = (dx / JOY_RADIUS) * dead;
-    state.joyY = (-dy / JOY_RADIUS) * dead;
+    state.joyX = (dx / radius) * dead;
+    state.joyY = (-dy / radius) * dead;
   }
 
   function attachJoystick(el, knob) {

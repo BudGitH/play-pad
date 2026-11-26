@@ -20,6 +20,7 @@
     layer: null,
     toasts: null,
     live: null,
+    liveCaption: null,
     sheet: null,
     handle: null,
   };
@@ -29,15 +30,33 @@
     UI.layer = root.querySelector("#kqSheetLayer");
     UI.toasts = root.querySelector("#kqToasts");
     UI.live = root.querySelector("#kqLive");
+    UI.liveCaption = root.querySelector("#kqLiveCaption");
+  }
+
+  /** Keyboard focus goes to the 3D view (not a control) so the next Tab starts at the HUD's first item. */
+  function focusHome() {
+    const a = document.activeElement;
+    if (a && a !== document.body && a.offsetParent !== null) return false;
+    const stage = UI.root && UI.root.querySelector("#kqStage");
+    if (stage) stage.focus({ preventScroll: true });
+    return true;
   }
 
   function focusables(container) {
     return Array.from(container.querySelectorAll(FOCUSABLE)).filter((n) => n.offsetParent !== null);
   }
 
+  /** The box Tab is kept inside: the open sheet, else the title card while it is up. */
+  function trapScope() {
+    if (UI.sheet) return UI.sheet;
+    const title = UI.root && UI.root.querySelector("#kqTitle");
+    return title && !title.hidden ? title : null;
+  }
+
   function trap(e) {
-    if (e.key !== "Tab" || !UI.sheet) return;
-    const list = focusables(UI.sheet);
+    const scope = trapScope();
+    if (e.key !== "Tab" || !scope) return;
+    const list = focusables(scope);
     if (!list.length) {
       e.preventDefault();
       return;
@@ -45,10 +64,10 @@
     const first = list[0];
     const last = list[list.length - 1];
     const active = document.activeElement;
-    if (e.shiftKey && (active === first || !UI.sheet.contains(active))) {
+    if (e.shiftKey && (active === first || !scope.contains(active))) {
       e.preventDefault();
       last.focus();
-    } else if (!e.shiftKey && (active === last || !UI.sheet.contains(active))) {
+    } else if (!e.shiftKey && (active === last || !scope.contains(active))) {
       e.preventDefault();
       first.focus();
     }
@@ -89,9 +108,9 @@
         wrap.remove();
         G.Speech.cancel();
         if (opts.onClose) opts.onClose(reason || "closed");
-        if (reason !== "replaced" && opener && opener.isConnected && opener.focus) {
-          opener.focus({ preventScroll: true });
-        }
+        if (reason === "replaced") return;
+        if (opener && opener.isConnected && opener.focus) opener.focus({ preventScroll: true });
+        focusHome();
       },
     };
     UI.handle = handle;
@@ -104,21 +123,29 @@
     if (UI.handle) UI.handle.close(reason);
   }
 
-  /** A transient message chip (top centre). kind: "" | "good" | "gold" | "hint". */
+  /** How many toasts the reserved lane holds: one on a phone, two elsewhere. */
+  function toastCap() {
+    return window.innerHeight <= 520 || window.innerWidth <= 700 ? 1 : 2;
+  }
+
+  /** A transient message chip in the reserved toast lane. kind: "" | "good" | "gold" | "hint".
+   *  Screen readers hear it through the polite live region (the chip itself has no role). */
   function toast(text, kind, ms) {
-    const node = U.el("div", { cls: "kq-toast " + (kind || ""), role: "status", text });
+    const node = U.el("div", { cls: "kq-toast " + (kind || ""), text });
     UI.toasts.appendChild(node);
-    while (UI.toasts.children.length > 3) UI.toasts.firstChild.remove();
+    while (UI.toasts.children.length > toastCap()) UI.toasts.firstChild.remove();
     const life = ms || 3600;
     setTimeout(() => node.remove(), life);
     announce(text);
     return node;
   }
 
-  function announce(text) {
-    if (!UI.live) return;
-    UI.live.textContent = "";
-    setTimeout(() => (UI.live.textContent = text), 30);
+  /** Polite screen-reader message. channel "caption" uses its own region (azan and prayer text). */
+  function announce(text, channel) {
+    const region = channel === "caption" ? UI.liveCaption : UI.live;
+    if (!region) return;
+    region.textContent = "";
+    setTimeout(() => (region.textContent = text), 30);
   }
 
   /** A button: btn("Label", { icon, cls, onClick, label, disabled, type }). */
@@ -197,6 +224,7 @@
     readButton,
     header,
     modalOpen,
+    focusHome,
     trap,
     focusables,
     current: () => UI.handle,

@@ -31,10 +31,66 @@
     return [host.ar, host.tr, host.en];
   }
 
+  const SAY_GAP_MS = 4000;
+  const COLLAPSE_MS = 9000;
+
+  /** Tell screen readers (polite, own region so toasts never cut it off). */
+  function say(text) {
+    if (text) G.UI.announce(text, "caption");
+  }
+
+  /** Announce the azan caption phrase, at most once every few seconds (the latest one wins). */
+  function sayCue(host, text) {
+    if (!host.el || host.el.hidden || !text) return;
+    const wait = SAY_GAP_MS - (Date.now() - (host.saidAt || 0));
+    host.pendingSay = text;
+    if (wait <= 0) return flushCue(host);
+    if (!host.sayTimer) host.sayTimer = setTimeout(() => flushCue(host), wait);
+  }
+
+  function flushCue(host) {
+    host.sayTimer = null;
+    if (!host.pendingSay || host.el.hidden) return;
+    host.saidAt = Date.now();
+    say(host.pendingSay);
+    host.pendingSay = "";
+  }
+
   function setCue(host, cue) {
     host.ar.textContent = cue.ar || "";
     host.tr.textContent = cue.translit || cue.tr || "";
     host.en.textContent = cue.en || "";
+    sayCue(host, cue.en);
+  }
+
+  /** On a phone the expanded card shrinks to the caption pill by itself, so it never hides the controls. */
+  function autoCollapse(host) {
+    clearTimeout(host.collapseTimer);
+    const compact = window.matchMedia(
+      "(max-height: 520px), (orientation: portrait) and (max-width: 700px)",
+    );
+    if (!compact.matches) return;
+    host.collapseTimer = setTimeout(function () {
+      if (!host.el.hidden) host.el.classList.add("is-bar");
+    }, COLLAPSE_MS);
+  }
+
+  /** React to the card being shown: announce it once and start the auto-collapse timer. */
+  function watchCard(host) {
+    let wasShown = false;
+    new MutationObserver(function () {
+      const shown = !host.el.hidden;
+      const expanded = shown && !host.el.classList.contains("is-bar");
+      if (shown && !wasShown) {
+        say(host.title.textContent + ". Call to prayer. Your mission waits until you have prayed.");
+        host.saidAt = Date.now();
+      }
+      if (expanded) autoCollapse(host);
+      else clearTimeout(host.collapseTimer);
+      wasShown = shown;
+      G.HudLayout.measure();
+      G.HudLayout.fitTalk();
+    }).observe(host.el, { attributes: true, attributeFilter: ["hidden", "class"] });
   }
 
   /** The azan card (a HUD overlay, not a modal: the player can keep walking). */
@@ -42,7 +98,7 @@
     const host = {};
     host.title = U.el("h3", { cls: "kq-azan-title", text: "" });
     host.sub = U.el("p", {
-      cls: "kq-small",
+      cls: "kq-small kq-azan-sub",
       text: "Your mission waits (paused) until you have prayed.",
     });
     host.go = G.UI.btn("Show me the way", { cls: "primary kq-big", icon: "mosque", onClick: on });
@@ -61,6 +117,7 @@
       host.body,
       host.go,
     );
+    watchCard(host);
     return host;
   }
 
@@ -99,15 +156,21 @@
     return SHORT[step.id] || step.label;
   }
 
+  function wuduRow(onPick) {
+    const row = U.el("div", { cls: "kq-wudu-row", role: "list" });
+    KQ.Sim.Prayer.WUDU_STEPS.forEach((s, i) =>
+      row.appendChild(U.el("div", { role: "listitem" }, wuduTile(s, i, onPick))),
+    );
+    return row;
+  }
+
   /** Wudu screen. h: { onPick(i), onAct(), onClose() } */
   function wudu(h) {
-    const steps = KQ.Sim.Prayer.WUDU_STEPS;
-    const row = U.el("div", { cls: "kq-wudu-row", role: "list" });
-    steps.forEach((s, i) =>
-      row.appendChild(U.el("div", { role: "listitem" }, wuduTile(s, i, h.onPick))),
-    );
+    const row = wuduRow(h.onPick);
     const info = U.el("p", { cls: "kq-wudu-info", text: "" });
     const hint = U.el("p", { cls: "kq-note", role: "status", text: "" });
+    const cue = {};
+    const cueBox = U.el("div", { cls: "kq-pcue kq-wudu-cue" }, captionLines(cue));
     const act = G.UI.btn("Splash!", {
       cls: "primary kq-big kq-wudu-act",
       icon: "star",
@@ -127,6 +190,7 @@
       row,
       U.el("div", { cls: "kq-wudu-foot" }, act, info),
       hint,
+      cueBox,
     );
     const handle = G.UI.openSheet({
       el: box,
@@ -136,7 +200,7 @@
       onClose: h.onClose,
       focus: ".kq-wudu-act",
     });
-    return { handle, row, info, hint, act, title };
+    return { handle, row, info, hint, act, title, cue };
   }
 
   const ACT_WORD = { niat: "Say niat", head: "Wipe", ears: "Wipe", doa: "Say doa" };
@@ -158,6 +222,11 @@
     ui.act.lastChild.textContent = word + count;
     ui.info.textContent = v.step.label + " · " + v.step.labelMs;
     ui.hint.textContent = v.hint || "";
+    setCue(ui.cue, v.step.id === "doa" ? T().DHIKR.doa : {});
+    if (ui.said !== v.index) {
+      ui.said = v.index;
+      say("Step " + Math.min(v.index + 1, v.total) + " of " + v.total + ": " + v.step.label);
+    }
   }
 
   function postureTile(type, i, onPick) {
@@ -229,6 +298,11 @@
     });
     if (v.cue) setCue(ui.cue, v.cue);
     ui.hint.textContent = v.hint || "";
+    const sig = v.rakaat + "|" + (v.cue ? v.cue.en : "");
+    if (ui.said !== sig) {
+      ui.said = sig;
+      say(label + ", raka'at " + v.rakaat + " of " + v.total + ". " + (v.cue ? v.cue.en : ""));
+    }
     const first = ui.row.querySelector(".kq-ptile");
     if (first && !ui.row.contains(document.activeElement)) first.focus({ preventScroll: true });
   }

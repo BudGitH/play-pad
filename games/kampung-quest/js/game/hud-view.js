@@ -133,6 +133,7 @@
     updateNeeds(sim.needs);
     renderMission(sim, ps);
     updateDock(sim, ps);
+    G.HudLayout.measure();
     if (R.mutedState !== muted) {
       R.mutedState = muted;
       U.clear(R.mute).appendChild(G.Pictures.icon(muted ? "mute" : "sound"));

@@ -3,16 +3,16 @@
 // white band) but is a human kid in a blue cap and zip jacket: no quills, no eye patch, brown eyes.
 (function (KQ) {
   "use strict";
-  var F = (KQ.Figures = KQ.Figures || {});
+  const F = (KQ.Figures = KQ.Figures || {});
 
-  var SKIN = {
+  const SKIN = {
     light: "#f0c7a0",
     tan: "#e3a97c",
     warm: "#d49a6c",
     brown: "#b87a52",
     deep: "#8a5537",
   };
-  var BROW_GREY = "#8d8a86";
+  const BROW_GREY = "#8d8a86";
 
   F.CAST = {
     hero: {

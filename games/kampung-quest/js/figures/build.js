@@ -3,8 +3,8 @@
 // armL > foreL > handL > holdL, armR > ... } }. Figure faces +z; its left is +x.
 (function (KQ) {
   "use strict";
-  var F = (KQ.Figures = KQ.Figures || {});
-  var partCache = {};
+  const F = (KQ.Figures = KQ.Figures || {});
+  const partCache = {};
 
   /** All merged part geometries for one spec (shared by every instance of that spec). */
   function partsFor(spec, d) {
@@ -25,7 +25,7 @@
   }
 
   function node(name, parent, x, y, z, geo, mat) {
-    var o = geo ? new THREE.Mesh(geo, mat) : new THREE.Group();
+    const o = geo ? new THREE.Mesh(geo, mat) : new THREE.Group();
     o.name = name;
     o.position.set(x || 0, y || 0, z || 0);
     if (geo) {
@@ -37,18 +37,18 @@
   }
 
   function buildLeg(rig, side, p, mat, d) {
-    var s = side === "L" ? 1 : -1;
-    var leg = node("leg" + side, rig.hips, s * d.legX, 0, 0, p["thigh" + side], mat);
+    const s = side === "L" ? 1 : -1;
+    const leg = node("leg" + side, rig.hips, s * d.legX, 0, 0, p["thigh" + side], mat);
     rig["leg" + side] = leg;
     rig["knee" + side] = node("knee" + side, leg, 0, -d.thigh, 0, p["shin" + side], mat);
   }
 
   function buildArm(rig, side, p, mat, d) {
-    var s = side === "L" ? 1 : -1;
-    var arm = node("arm" + side, rig.torso, s * d.shoulderX, d.shoulderY, 0, p.upper, mat);
-    var fore = node("fore" + side, arm, 0, -d.upperArm, 0, p.fore, mat);
+    const s = side === "L" ? 1 : -1;
+    const arm = node("arm" + side, rig.torso, s * d.shoulderX, d.shoulderY, 0, p.upper, mat);
+    const fore = node("fore" + side, arm, 0, -d.upperArm, 0, p.fore, mat);
     fore.rotation.order = "YXZ";
-    var hand = node("hand" + side, fore, 0, -d.forearm - 0.004, 0, p.hand, mat);
+    const hand = node("hand" + side, fore, 0, -d.forearm - 0.004, 0, p.hand, mat);
     rig["arm" + side] = arm;
     rig["fore" + side] = fore;
     rig["hand" + side] = hand;
@@ -63,12 +63,12 @@
    */
   F.build = function (spec) {
     if (typeof spec === "string") spec = F.CAST[spec];
-    var d = F.dims(spec);
-    var mat = F.plasticMaterial(spec.id, F.makeAtlas(spec));
-    var p = partsFor(spec, d);
-    var group = new THREE.Group();
+    const d = F.dims(spec);
+    const mat = F.plasticMaterial(spec.id, F.makeAtlas(spec));
+    const p = partsFor(spec, d);
+    const group = new THREE.Group();
     group.name = "figure-" + spec.id;
-    var rig = { spec: spec, dims: d, material: mat };
+    const rig = { spec: spec, dims: d, material: mat };
     rig.root = node("root", group);
     rig.root.scale.setScalar(d.scale);
     rig.hips = node("hips", rig.root, 0, d.hipH, 0, p.hips, mat);
@@ -92,8 +92,8 @@
 
   /** Draw calls and triangles of one built figure (for budgets / dev overlays). */
   F.stats = function (group) {
-    var calls = 0;
-    var tris = 0;
+    let calls = 0;
+    let tris = 0;
     group.traverse(function (o) {
       if (!o.isMesh) return;
       calls++;

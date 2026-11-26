@@ -14,6 +14,7 @@
   const BU = () => G.BootUI;
   const nextFrame = () => new Promise((res) => requestAnimationFrame(() => setTimeout(res, 0)));
   const params = new URLSearchParams(location.search);
+  const TIERS = ["low", "med", "high"];
   /** A new game starts in the void deck of Block 118, a few steps from Nenek (and clear of the lift). */
   const START_SPOT = { x: -42.6, z: 22.4 };
 
@@ -32,6 +33,7 @@
     }
   }
 
+  /** Create the single game-state object (KQ.Game.S) with its flags, timers and the after() helper. */
   function makeState(root) {
     return {
       root,
@@ -60,6 +62,7 @@
     };
   }
 
+  /** Create the WebGL renderer, scene and camera with the contract's colour and shadow settings. */
   function createRenderer(s, tier) {
     const renderer = new THREE.WebGLRenderer({
       canvas: s.stage,
@@ -78,6 +81,7 @@
     return renderer;
   }
 
+  /** Choose the quality tier: the ?q= flag, else the save, else low on touch / software GL and high elsewhere. */
   function pickTier(saved) {
     const q = params.get("q");
     if (q === "low" || q === "med" || q === "high") return q;
@@ -85,6 +89,7 @@
     return G.Env.coarse || G.Env.softwareGL ? "low" : "high";
   }
 
+  /** Build the neighbourhood behind the loading screen (step 1). */
   async function buildWorld(s, tier) {
     BU().setStep(0, "now");
     await nextFrame();
@@ -99,6 +104,7 @@
     BU().setProgress(0.4);
   }
 
+  /** Create the hero, NPCs, markers and collectibles (step 2). */
   async function buildActors(s) {
     BU().setStep(1, "now");
     await nextFrame();
@@ -113,23 +119,42 @@
   }
 
   /**
-   * Compile every shader program behind the loading screen (hero, NPCs, markers and the world's
-   * variants), so Start and the first walk to a new area never freeze on a compile (PERF-08).
-   * renderer.compile walks hidden groups too. When the game starts above low, the low-tier light
-   * count is compiled as well, so an auto-downgrade is a program-cache hit, not a stall (PERF-04).
+   * Build one quality tier's shader variants: the world's look and light count, the figures that
+   * cast shadows on that tier, a compile of everything, and one tiny render that also builds the
+   * shadow-depth programs (renderer.compile does not).
+   */
+  function compileTier(s, tier) {
+    s.quality = tier;
+    s.world.setQuality(tier);
+    G.Loop.figureShadows(s);
+    s.world.setShadowTarget(START_SPOT);
+    s.renderer.compile(s.scene, s.camera);
+    s.renderer.render(s.scene, s.camera);
+  }
+
+  /**
+   * Compile every shader program of EVERY tier behind the loading screen (hero, NPCs, markers and
+   * the world's variants, depth programs included), so Start, the first walk to a new area, an
+   * auto-downgrade and a manual upgrade in the settings never freeze on a compile (PERF-08,
+   * R2-PERF-01, R2-PERF-04). The start tier goes last so it is the state the game begins in. The
+   * canvas is shrunk while doing it (programs do not depend on size) and the hero, hidden until
+   * Start, is shown so its meshes are drawn too.
    */
   async function precompile(s) {
     BU().setProgress(0.82, "Getting the shaders ready...");
     await nextFrame();
     const start = s.quality;
-    if (start !== "low") {
-      s.world.setQuality("low");
-      s.renderer.compile(s.scene, s.camera);
-      s.world.setQuality(start);
-    }
-    s.renderer.compile(s.scene, s.camera);
+    const heroShown = s.player.group.visible;
+    s.player.group.visible = true;
+    s.renderer.setSize(2, 2, false);
+    TIERS.filter((t) => t !== start)
+      .concat(start)
+      .forEach((tier) => compileTier(s, tier));
+    s.player.group.visible = heroShown;
+    G.Loop.resize();
   }
 
+  /** Poll a condition every 80 ms until it holds or the time runs out; resolves with the final answer. */
   function waitUntil(test, ms) {
     return new Promise(function (resolve) {
       const t0 = performance.now();
@@ -140,6 +165,7 @@
     });
   }
 
+  /** Wait for the photo textures (over http) or note that they are drawn in code (file://). */
   async function loadTextures() {
     if (!G.Env.canFetch) {
       BU().setStep(2, "skip", "drawn in code");
@@ -156,6 +182,7 @@
     BU().setStep(2, "done");
   }
 
+  /** Check the azan recording loads; if not, the chime and captions stand in. */
   async function loadAzan() {
     BU().setStep(3, "now");
     const ok = await G.Audio.probeAzan();
@@ -164,6 +191,7 @@
     BU().setProgress(0.9);
   }
 
+  /** Draw the posture pictures for the prayer screens; labels only if that fails. */
   function renderPictures(s) {
     BU().setStep(4, "now");
     try {
@@ -224,6 +252,7 @@
     }
   }
 
+  /** Start or continue the game from a title button; New game also clears the save. */
   function begin(s, saved, fresh) {
     G.Audio.unlock();
     G.Audio.loadAzan();
@@ -233,6 +262,7 @@
     launch(s, state);
   }
 
+  /** The "Continue: day N, HH:MM" text for the title screen, empty for a new game. */
   function savedLabel(saved) {
     if (saved.status !== "loaded") return "";
     const c = saved.state.clock;
@@ -246,6 +276,7 @@
     );
   }
 
+  /** The boot sequence: bind the title, read prefs and save, build everything, then wait for Start. */
   async function run(root) {
     BU().bind();
     const storage = G.Settings.getStorage();
@@ -283,6 +314,7 @@
     G.Boot.ready = true;
   }
 
+  /** Clear the save and reload for a brand-new game (pause menu). */
   function startOver() {
     const s = G.S;
     if (s.storage) KQ.Sim.Save.clear(s.storage);
@@ -290,6 +322,7 @@
     location.reload();
   }
 
+  /** Entry point: show the friendly card when WebGL is missing, else run the boot sequence. */
   function init() {
     const root = document.getElementById("kq");
     if (!webglOk()) {

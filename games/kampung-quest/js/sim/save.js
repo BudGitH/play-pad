@@ -29,16 +29,19 @@
    */
   let knownRev = 0;
 
+  /** Parse a number or numeric string and clamp it to a range; anything else gives the fallback (never NaN or Infinity). */
   function clampNumber(value, min, max, fallback) {
     const n = typeof value === "number" || typeof value === "string" ? Number(value) : NaN;
     if (!Number.isFinite(n)) return fallback;
     return Math.min(max, Math.max(min, n));
   }
 
+  /** A plain object (not null, not an array): the only shape the save accepts for a section. */
   function isObject(value) {
     return value !== null && typeof value === "object" && !Array.isArray(value);
   }
 
+  /** Return the value only when it is in the whitelist, else the fallback (enum check for untrusted input). */
   function pick(list, value, fallback) {
     return typeof value === "string" && list.indexOf(value) !== -1 ? value : fallback;
   }
@@ -59,17 +62,20 @@
     };
   }
 
+  /** Sanitise the saved missions section through the missions module; falls back to an empty one. */
   function cleanMissions(raw) {
     const missions = KQ.Sim.Missions;
     if (missions && missions.sanitizeSnapshot) return missions.sanitizeSnapshot(raw);
     return defaultState().missions;
   }
 
+  /** Sanitise the saved prayer snapshot through the prayer module; null means start the tracker fresh. */
   function cleanPrayers(raw) {
     const prayer = KQ.Sim.Prayer;
     return prayer && prayer.sanitizeSnapshot ? prayer.sanitizeSnapshot(raw) : null;
   }
 
+  /** Whitelist the saved hair and hat against the known outfit options. */
   function cleanOutfit(raw) {
     const options = KQ.Sim.OUTFIT_OPTIONS || {
       hair: [DEFAULT_OUTFIT.hair],
@@ -103,6 +109,7 @@
     }
   }
 
+  /** Read the raw save string; null when absent or when storage throws (blocked storage). */
   function readText(storage) {
     try {
       return storage.getItem(KEY);
@@ -146,6 +153,7 @@
     };
   }
 
+  /** The result of a load that found nothing usable: a default new game plus the reason. */
   function fresh(status, error) {
     const result = { state: defaultState(), status };
     if (error) result.error = error;
@@ -173,6 +181,10 @@
     } catch (err) {
       return fresh("corrupt", "not JSON");
     }
+    if (isObject(parsed) && parsed.cleared === true) {
+      knownRev = Math.floor(clampNumber(parsed.rev, 0, MAX_REV, 0));
+      return fresh("new"); // a "New game" marker: nothing to continue, but its revision still counts
+    }
     const clean = sanitize(parsed);
     if (!clean) return fresh("corrupt", "wrong schema");
     knownRev = clean.rev;
@@ -199,14 +211,21 @@
     return { ok: true, rev: clean.rev };
   }
 
-  /** Forget the save (start over). Never throws. */
+  /**
+   * Forget the save (start over). Never throws. It leaves a tiny "cleared" marker with a revision
+   * ABOVE everything seen so far instead of removing the key, so another tab that still holds the
+   * old game is refused as stale and can never bring it back (RISK2-01). load() reads the marker
+   * as a new game.
+   * @returns {boolean} false when storage is unavailable
+   */
   function clear(storage) {
-    knownRev = 0;
+    const next = Math.min(MAX_REV, Math.max(knownRev, revOf(readText(storage))) + 1);
     try {
-      storage.removeItem(KEY);
+      storage.setItem(KEY, JSON.stringify({ v: VERSION, rev: next, cleared: true }));
     } catch (err) {
       return false;
     }
+    knownRev = next;
     return true;
   }
 

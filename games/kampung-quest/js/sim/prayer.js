@@ -115,6 +115,7 @@
     salam_l: ["Salam to the left", "Salam ke kiri", "salam_l", "Assalamu'alaikum wa rahmatullah"],
   };
 
+  /** Build one prayer step from the step table, tagged with its raka'at number and an optional id suffix. */
   function makeStep(type, rakaat, suffix) {
     const info = STEP_INFO[type];
     const id = rakaat ? type + "_" + rakaat + (suffix || "") : type;
@@ -144,6 +145,7 @@
     return steps;
   }
 
+  /** Lower-case a prayer name and accept only the five known ones (else null). */
   function normaliseName(raw) {
     const name = typeof raw === "string" ? raw.trim().toLowerCase() : "";
     return NAMES.indexOf(name) === -1 ? null : name;
@@ -182,6 +184,7 @@
     return parsed;
   }
 
+  /** The start and end of a prayer's window on a day in absolute minutes (Isyak ends at Subuh). */
   function windowFor(name, day, t) {
     const base = (day - 1) * DAY;
     const ends = {
@@ -194,6 +197,7 @@
     return { startAbs: base + t[name], endAbs: base + ends[name] };
   }
 
+  /** One day's record of a prayer: status, window and flags for the strip and for qada. */
   function makeEntry(name, day, status, t) {
     const win = windowFor(name, day, t);
     return {
@@ -228,6 +232,7 @@
     S.lastAbs = abs;
   }
 
+  /** Drop finished entries from past days and cap the pending qada list, so the tracker stays small. */
   function prune(S, day) {
     S.entries = S.entries.filter(function (entry) {
       const finished = entry.status === "done" || entry.status === "qada-done";
@@ -239,6 +244,7 @@
     });
   }
 
+  /** Move one entry upcoming -> due -> qada as the clock passes its start and end, noting each event. */
   function advanceEntry(entry, abs, events) {
     const base = { name: entry.name, day: entry.day };
     if (entry.status === "upcoming" && abs >= entry.startAbs) {
@@ -253,6 +259,7 @@
 
   const EVENT_ORDER = { newday: 0, qada: 1, due: 2 };
 
+  /** Order events by time, then qada before due, so a long jump reads chronologically. */
   function sortEvents(events) {
     return events.sort((a, b) => a.at - b.at || EVENT_ORDER[a.type] - EVENT_ORDER[b.type]);
   }
@@ -267,6 +274,7 @@
     S.lastDay = 0;
     S.flow = null;
     S.wuduClean = false;
+    S.rebuilds += 1;
   }
 
   /**
@@ -303,12 +311,14 @@
     return step ? Object.assign({}, step) : null;
   }
 
+  /** Entries with a status (and optionally a name), earliest first. */
   function sortedEntries(S, status, name) {
     return S.entries
       .filter((entry) => entry.status === status && (!name || entry.name === name))
       .sort((a, b) => a.startAbs - b.startAbs);
   }
 
+  /** Choose which entry a flow works on: one in progress, else due, else qada, earliest first. */
   function pickEntry(S, name) {
     const order = ["in-progress", "due", "qada"];
     for (let i = 0; i < order.length; i += 1) {
@@ -318,6 +328,7 @@
     return null;
   }
 
+  /** The tracker entry the active flow belongs to, or null. */
   function findFlowEntry(S) {
     const flow = S.flow;
     if (!flow) return null;
@@ -331,12 +342,14 @@
     );
   }
 
+  /** Stop the flow and put the prayer back to due; a finished wudu stays clean. */
   function cancelFlow(S) {
     const entry = findFlowEntry(S);
     if (entry && entry.status === "in-progress") entry.status = "due";
     S.flow = null;
   }
 
+  /** Begin or resume a prayer flow for a prayer name; gives a friendly hint when it cannot start. */
   function startFlow(S, rawName) {
     const name = normaliseName(rawName);
     if (!name) return { ok: false, hint: "Hmm, I don't know that prayer. Try the prayer card!" };
@@ -362,6 +375,7 @@
     return flowInfo(S, true);
   }
 
+  /** The UI view of the active flow: phase, step indices and totals, and the next step. */
   function flowInfo(S, ok) {
     const flow = S.flow;
     if (!flow) return { ok: false, hint: "No prayer in progress." };
@@ -380,10 +394,12 @@
     };
   }
 
+  /** The gentle hint for a wrong tap: names the real next step, never scolds. */
   function wrongStepHint(expected) {
     return "Good try! The next step is: " + expected.label + " (" + expected.labelMs + ").";
   }
 
+  /** Check a wudu tap against the fixed Shafi'i order; a right tap advances, a wrong one only hints. */
   function wuduStep(S, id) {
     const flow = S.flow;
     if (!flow)
@@ -404,16 +420,19 @@
     return { ok: true, hint: "", done, step: copyStep(expected) };
   }
 
+  /** Does a tapped id match a step by its exact id or by its type (so any raka'at counts)? */
   function stepMatches(step, id) {
     return Boolean(step) && (step.id === id || step.type === id);
   }
 
+  /** Match a tapped id to the current prayer step, or to the one after it when the current one is optional. */
   function matchPrayStep(plan, index, id) {
     if (stepMatches(plan[index], id)) return index;
     if (plan[index] && plan[index].optional && stepMatches(plan[index + 1], id)) return index + 1;
     return -1;
   }
 
+  /** Mark the prayer done (or qada-done), note whether it was late and clear the flow. */
   function finishFlow(S) {
     const flow = S.flow;
     const entry = findFlowEntry(S);
@@ -432,6 +451,7 @@
     return { name: flow.name, kind: flow.kind, late, praise };
   }
 
+  /** Check a posture tap against the raka'at plan; a right tap advances, finishing the last step completes the prayer. */
   function prayStep(S, id) {
     const flow = S.flow;
     if (!flow)
@@ -455,6 +475,7 @@
     return { ok: true, hint: "", done: true, step: plan[target], result: finishFlow(S) };
   }
 
+  /** A copy of the step the flow expects next in the given phase, or null. */
   function nextStep(S, phase) {
     const flow = S.flow;
     if (!flow || flow.phase !== phase) return null;
@@ -486,6 +507,7 @@
     };
   }
 
+  /** The strip view of an entry: name, HH:MM, status and flags (no internal fields). */
   function publicEntry(S, entry) {
     const clock = KQ.Sim.Clock;
     const hh = Math.floor((entry.startAbs % DAY) / 60);
@@ -501,6 +523,7 @@
     };
   }
 
+  /** The earliest prayer that is due or in progress, or null. */
   function dueName(S) {
     const active = S.entries.filter((e) => e.status === "due" || e.status === "in-progress");
     active.sort((a, b) => a.startAbs - b.startAbs);
@@ -526,6 +549,7 @@
     });
   }
 
+  /** The full public tracker state for the HUD and tests: strip, qada, due, current / next, flow. */
   function stateOf(S) {
     const day = Math.floor(S.now / DAY) + 1;
     const around = surroundings(S);
@@ -542,6 +566,7 @@
     };
   }
 
+  /** Is any prayer due or in progress? Missions pause while this is true (business rule 2). */
   function isBlocking(S) {
     return S.entries.some((entry) => entry.status === "due" || entry.status === "in-progress");
   }
@@ -550,12 +575,14 @@
 
   const PHASES = ["wudu", "pray"];
 
+  /** Parse an integer and clamp it to a range, or give the fallback (untrusted save input). */
   function cleanInt(value, min, max, fallback) {
     const n = Number(value);
     if (!Number.isFinite(n)) return fallback;
     return Math.min(max, Math.max(min, Math.floor(n)));
   }
 
+  /** Validate one saved entry: known name and status, day clamped; null drops it. */
   function cleanEntry(raw) {
     if (!raw || typeof raw !== "object") return null;
     const name = normaliseName(raw.name);
@@ -569,15 +596,19 @@
     };
   }
 
+  /** Validate a saved flow: known prayer and phase, indices clamped (wudu index = step count in the pray phase). */
   function cleanFlow(raw) {
     const name = raw && typeof raw === "object" ? normaliseName(raw.name) : null;
     if (!name || PHASES.indexOf(raw.phase) === -1) return null;
+    // wudu finished means every step is done: the index equals the step count in the pray phase
+    const wuduIdx =
+      raw.phase === "pray" ? WUDU_STEPS.length : cleanInt(raw.wuduIdx, 0, WUDU_STEPS.length - 1, 0);
     return {
       name,
       day: cleanInt(raw.day, 1, 99999, 1),
       kind: raw.kind === "qada" ? "qada" : "due",
       phase: raw.phase,
-      wuduIdx: cleanInt(raw.wuduIdx, 0, WUDU_STEPS.length - 1, 0),
+      wuduIdx,
       prayIdx: cleanInt(raw.prayIdx, 0, rakaatPlan(name).length - 1, 0),
     };
   }
@@ -600,6 +631,7 @@
     };
   }
 
+  /** A plain copy of the tracker for the save file (no live references). */
   function snapshot(S) {
     return {
       entries: S.entries.map((e) => ({
@@ -616,6 +648,7 @@
     };
   }
 
+  /** Load a saved snapshot after cleaning it; false (and no change) when it is unusable. */
   function restore(S, raw) {
     const clean = sanitizeSnapshot(raw);
     if (!clean) return false;
@@ -653,8 +686,10 @@
       now: 0,
       flow: null,
       wuduClean: false,
+      rebuilds: 0,
     };
     return {
+      rebuilds: () => S.rebuilds,
       update: (minute, day) => update(S, minute, day),
       state: () => stateOf(S),
       startFlow: (name) => startFlow(S, name),

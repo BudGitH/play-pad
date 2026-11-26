@@ -20,12 +20,14 @@
   const FULL_LEVEL = 95;
   const SLOW_FACTOR = 0.85;
 
+  /** Keep a hunger / energy meter within 0..100, falling back when the value is not a number. */
   function clampMeter(value, fallback) {
     const n = Number(value);
     if (!Number.isFinite(n)) return fallback;
     return Math.min(100, Math.max(0, n));
   }
 
+  /** Summarise both meters as ok, hungry, tired or hungry-tired for the HUD hint. */
   function statusOf(N) {
     const hungry = N.hunger < LOW_LEVEL;
     const tired = N.energy < LOW_LEVEL;
@@ -34,6 +36,7 @@
     return tired ? "tired" : "ok";
   }
 
+  /** Apply a food item to the meters; refuses with a friendly hint when full or not food. */
   function eat(N, item) {
     if (!item || !Number.isFinite(item.hunger))
       return { ok: false, hint: "That isn't something to eat." };

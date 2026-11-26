@@ -20,23 +20,28 @@
   const PAUSED_HINT = "It's prayer time - let's pray first, then carry on, InsyaAllah!";
   const NPC_STEP_TYPES = ["talk", "deliver"];
 
+  /** Find a mission definition by id, or null for an unknown id. */
   function missionById(id) {
     return MISSIONS.find((m) => m.id === id) || null;
   }
 
+  /** Is this a real sticker id? Unknown ids are never stored (untrusted save input). */
   function stickerKnown(id) {
     return STICKERS.some((s) => s.id === id);
   }
 
+  /** Missions pause while the host flag is set or a prayer is blocking (business rule 2). */
   function isPaused(M) {
     return M.paused || (typeof M.isPaused === "function" && Boolean(M.isPaused()));
   }
 
+  /** The step the active mission is waiting on, or null when none is active. */
   function currentStep(M) {
     const mission = M.active ? missionById(M.active.id) : null;
     return mission ? mission.steps[M.active.step] : null;
   }
 
+  /** Start a mission and hand back its intro; refuses politely while paused, done, unknown or another is active. */
   function accept(M, id) {
     if (isPaused(M)) return { ok: false, hint: PAUSED_HINT };
     const mission = missionById(id);
@@ -48,11 +53,13 @@
     return { ok: true, mission, lines: mission.intro.slice() };
   }
 
+  /** Does a world event satisfy this step (same type and target, and the same item when both name one)? */
   function stepMatches(step, event) {
     if (!step || !event || step.type !== event.type || step.target !== event.target) return false;
     return !step.item || !event.item || step.item === event.item;
   }
 
+  /** Add known stickers the hero does not own yet, returning only the newly added ones. */
   function grantStickers(M, ids) {
     const added = [];
     ids.forEach(function (id) {
@@ -64,6 +71,7 @@
     return added;
   }
 
+  /** Finish the active mission: record it, grant the reward stickers and describe the result for the UI. */
   function complete(M, mission) {
     M.active = null;
     M.completed.push(mission.id);
@@ -78,6 +86,7 @@
     };
   }
 
+  /** Feed a world event to the active mission; advances a step (counting collects) and completes it on the last one. */
   function notify(M, event) {
     const none = { changed: false, stepDone: false, completed: false };
     const step = currentStep(M);
@@ -93,6 +102,7 @@
     return { changed: true, stepDone: true, completed: false, mission, line: step.line || null };
   }
 
+  /** The tracker view of the active mission (title, step index and count, label), or null when idle. */
   function progress(M) {
     const step = currentStep(M);
     if (!step) return null;
@@ -154,6 +164,7 @@
     return { active: cleanActive(src.active, completed), completed, stickers };
   }
 
+  /** Validate a saved active mission: known id, not already done, step and count clamped into range. */
   function cleanActive(raw, completed) {
     const mission =
       raw && typeof raw === "object" && typeof raw.id === "string" ? missionById(raw.id) : null;
@@ -167,6 +178,7 @@
     return { id: mission.id, step: stepIndex, count };
   }
 
+  /** Load a saved mission snapshot into the tracker after cleaning it. */
   function restore(M, raw) {
     const clean = sanitizeSnapshot(raw);
     M.active = clean.active;

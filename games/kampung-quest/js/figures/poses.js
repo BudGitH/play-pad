@@ -6,11 +6,11 @@
 // the knees in ruku and on the floor in sujud for both adult and kid leg lengths.
 (function (KQ) {
   "use strict";
-  var F = (KQ.Figures = KQ.Figures || {});
-  var PI = Math.PI;
-  var TAU = PI * 2;
+  const F = (KQ.Figures = KQ.Figures || {});
+  const PI = Math.PI;
+  const TAU = PI * 2;
 
-  var JOINTS = [
+  const JOINTS = [
     "hips",
     "torso",
     "head",
@@ -27,7 +27,7 @@
   ];
   // Toy stance: arms angled out and a little forward at the shoulder, elbows bent so the C-hands sit
   // forward of the hips (like the reference minifig standing on the table).
-  var NEUTRAL = {
+  const NEUTRAL = {
     armL: [-0.16, 0, 0.2],
     armR: [-0.16, 0, -0.2],
     foreL: [-0.62, -0.12, 0],
@@ -35,7 +35,7 @@
     handL: [0, 0, 0.25],
     handR: [0, 0, -0.25],
   };
-  var ZERO = [0, 0, 0];
+  const ZERO = [0, 0, 0];
 
   // ---------- sagittal-plane solvers ----------
   /** Rotate an (up, forward) offset by angle a about x: returns [y, z]. */
@@ -50,7 +50,7 @@
 
   /** Shoulder [y, z] for a hip at [hy, hz] and a torso bent forward by t. */
   function shoulderAt(d, hy, hz, t) {
-    var s = rot(d.shoulderY, 0, t);
+    const s = rot(d.shoulderY, 0, t);
     return [hy + d.hipBlockH + s[0], hz + s[1]];
   }
 
@@ -59,26 +59,26 @@
    * Returns [armX, foreX] relative rotations (elbow folds forward).
    */
   function reach(d, S, T, t) {
-    var a = d.upperArm;
-    var b = d.forearm + 0.056;
-    var vy = T[0] - S[0];
-    var vz = T[1] - S[1];
-    var L = Math.min(Math.hypot(vy, vz), a + b - 1e-4);
-    var phi = Math.atan2(-vz, -vy); // absolute angle that points the arm straight at T
-    var alpha = Math.acos(Math.max(-1, Math.min(1, (a * a + L * L - b * b) / (2 * a * L))));
-    var gamma = Math.acos(Math.max(-1, Math.min(1, (a * a + b * b - L * L) / (2 * a * b))));
+    const a = d.upperArm;
+    const b = d.forearm + 0.056;
+    const vy = T[0] - S[0];
+    const vz = T[1] - S[1];
+    const L = Math.min(Math.hypot(vy, vz), a + b - 1e-4);
+    const phi = Math.atan2(-vz, -vy); // absolute angle that points the arm straight at T
+    const alpha = Math.acos(Math.max(-1, Math.min(1, (a * a + L * L - b * b) / (2 * a * L))));
+    const gamma = Math.acos(Math.max(-1, Math.min(1, (a * a + b * b - L * L) / (2 * a * b))));
     return [phi + alpha - t, -(PI - gamma)];
   }
 
   /** Torso bend (radians) that brings the forehead down to the floor from a hip at height hy. */
   function sujudBend(d, hy, headX) {
-    var lo = 1.2;
-    var hi = 2.4;
-    for (var i = 0; i < 24; i++) {
-      var t = (lo + hi) / 2;
-      var neck = rot(d.torsoH + d.neckH, 0, t);
-      var brow = rot(0.17 * d.headScale, (d.headR + 0.012) * d.headScale, t + headX);
-      var y = hy + d.hipBlockH + neck[0] + brow[0];
+    let lo = 1.2;
+    let hi = 2.4;
+    for (let i = 0; i < 24; i++) {
+      const t = (lo + hi) / 2;
+      const neck = rot(d.torsoH + d.neckH, 0, t);
+      const brow = rot(0.17 * d.headScale, (d.headR + 0.012) * d.headScale, t + headX);
+      const y = hy + d.hipBlockH + neck[0] + brow[0];
       if (y > 0.012) lo = t;
       else hi = t;
     }
@@ -87,7 +87,7 @@
 
   // ---------- locomotion & daily life ----------
   function idle(p) {
-    var b = Math.sin(p * TAU);
+    const b = Math.sin(p * TAU);
     return {
       torso: [0.012 * b, 0, 0],
       head: [0.02 * b, 0.14 * Math.sin(p * TAU + 1), 0],
@@ -97,8 +97,8 @@
   }
 
   function stride(p, amp, knee, arm, fore, lean, bob) {
-    var s = Math.sin(p * TAU);
-    var c = Math.cos(p * TAU);
+    const s = Math.sin(p * TAU);
+    const c = Math.cos(p * TAU);
     return {
       rootY: bob * Math.abs(c),
       legL: [amp * s, 0, 0],
@@ -129,8 +129,8 @@
     };
   }
   function sit(p) {
-    var P = seated();
-    var b = Math.sin(p * TAU);
+    const P = seated();
+    const b = Math.sin(p * TAU);
     P.armL = [-0.35, 0, 0.12];
     P.armR = [-0.35, 0, -0.12];
     P.foreL = [-0.9, -0.2, 0];
@@ -139,8 +139,8 @@
     return P;
   }
   function eat(p) {
-    var P = seated();
-    var k = 0.5 - 0.5 * Math.cos(p * TAU);
+    const P = seated();
+    const k = 0.5 - 0.5 * Math.cos(p * TAU);
     P.armL = [-0.55, 0, 0.12];
     P.foreL = [-0.8, -0.25, 0];
     P.armR = [-0.45 - 0.55 * k, 0, -0.18];
@@ -150,7 +150,7 @@
     return P;
   }
   function wave(p) {
-    var s = Math.sin(p * TAU * 2);
+    const s = Math.sin(p * TAU * 2);
     return {
       armR: [-0.15, 0, -2.45],
       foreR: [0, 0, -0.35 + 0.42 * s],
@@ -160,8 +160,8 @@
     };
   }
   function talk(p) {
-    var s = Math.sin(p * TAU);
-    var s2 = Math.sin(p * TAU * 2);
+    const s = Math.sin(p * TAU);
+    const s2 = Math.sin(p * TAU * 2);
     return {
       armR: [-0.42 + 0.14 * s, 0, -0.2],
       foreR: [-1.0 + 0.3 * s2, 0.35, 0],
@@ -172,7 +172,7 @@
     };
   }
   function carry(p) {
-    var b = Math.sin(p * TAU);
+    const b = Math.sin(p * TAU);
     return {
       armL: [-0.55, 0, 0.05],
       armR: [-0.55, 0, -0.05],

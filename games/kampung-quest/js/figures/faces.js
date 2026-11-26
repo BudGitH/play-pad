@@ -3,21 +3,21 @@
 // and a mouth, plus optional glasses, beard, moustache, wrinkles, lashes, freckles and blush.
 (function (KQ) {
   "use strict";
-  var F = (KQ.Figures = KQ.Figures || {});
+  const F = (KQ.Figures = KQ.Figures || {});
 
-  var CX = 256; // face centre on the strip
-  var EYE_Y = 86;
-  var MOUTH_Y = 152;
+  const CX = 256; // face centre on the strip
+  const EYE_Y = 86;
+  const MOUTH_Y = 152;
 
   function h() {
     return F.printHelpers;
   }
 
   function eyes(c, f) {
-    var big = f.kid ? 1.22 : 1;
-    var gap = f.kid ? 44 : 46;
-    for (var s = -1; s <= 1; s += 2) {
-      var x = CX + s * gap;
+    const big = f.kid ? 1.22 : 1;
+    const gap = f.kid ? 44 : 46;
+    for (let s = -1; s <= 1; s += 2) {
+      const x = CX + s * gap;
       c.beginPath();
       c.ellipse(x, EYE_Y, 9.5 * big, 13.5 * big, 0, 0, Math.PI * 2);
       c.fillStyle = F.EYE_COLOUR;
@@ -42,11 +42,11 @@
   }
 
   function brows(c, f) {
-    var col = f.browColour || F.INK;
-    var w = f.thickBrows ? 7 : 4.5;
-    var lift = f.kid ? -4 : 0;
-    for (var s = -1; s <= 1; s += 2) {
-      var x = CX + s * 46;
+    const col = f.browColour || F.INK;
+    const w = f.thickBrows ? 7 : 4.5;
+    const lift = f.kid ? -4 : 0;
+    for (let s = -1; s <= 1; s += 2) {
+      const x = CX + s * 46;
       c.beginPath();
       c.moveTo(x - s * 16, EYE_Y - 26 + lift + (f.focused ? -2 : 3));
       c.quadraticCurveTo(x, EYE_Y - 38 + lift, x + s * 16, EYE_Y - 30 + lift + (f.focused ? 3 : 0));
@@ -58,7 +58,7 @@
   }
 
   function mouth(c, f) {
-    var kind = f.mouth || "smile";
+    const kind = f.mouth || "smile";
     c.lineCap = "round";
     if (kind === "grin") {
       c.beginPath();
@@ -74,8 +74,8 @@
       );
       return;
     }
-    var w = kind === "calm" ? 16 : 24;
-    var dip = kind === "calm" ? 6 : 13;
+    const w = kind === "calm" ? 16 : 24;
+    const dip = kind === "calm" ? 6 : 13;
     c.beginPath();
     c.moveTo(CX - w, MOUTH_Y - 4);
     c.quadraticCurveTo(CX, MOUTH_Y + dip, CX + w, MOUTH_Y - 4);
@@ -95,8 +95,8 @@
 
   function cheeks(c, f) {
     if (f.blush) {
-      for (var s = -1; s <= 1; s += 2) {
-        var g = c.createRadialGradient(CX + s * 66, 122, 2, CX + s * 66, 122, 22);
+      for (let s = -1; s <= 1; s += 2) {
+        const g = c.createRadialGradient(CX + s * 66, 122, 2, CX + s * 66, 122, 22);
         g.addColorStop(0, "rgba(232,110,110,0.45)");
         g.addColorStop(1, "rgba(232,110,110,0)");
         c.fillStyle = g;
@@ -104,14 +104,14 @@
       }
     }
     if (!f.freckles) return;
-    var pts = [-70, 112, -60, 120, -76, 124, 62, 114, 72, 120, 58, 124];
-    for (var i = 0; i < pts.length; i += 2)
+    const pts = [-70, 112, -60, 120, -76, 124, 62, 114, 72, 120, 58, 124];
+    for (let i = 0; i < pts.length; i += 2)
       h().dot(c, CX + pts[i], pts[i + 1], 2.2, "rgba(140,80,50,0.55)");
   }
 
   function glasses(c, f) {
-    var col = f.glassesColour || "#3a3a44";
-    for (var s = -1; s <= 1; s += 2) {
+    const col = f.glassesColour || "#3a3a44";
+    for (let s = -1; s <= 1; s += 2) {
       c.beginPath();
       c.roundRect(CX + s * 46 - 21, EYE_Y - 18, 42, 36, 12);
       c.strokeStyle = col;
@@ -147,13 +147,13 @@
     c.fillStyle = f.hairColour || F.INK;
     c.fill();
     // fine print detail: little strands along the edge
-    for (var x = -70; x <= 70; x += 14)
+    for (let x = -70; x <= 70; x += 14)
       h().stroke(c, [CX + x, 176, CX + x * 0.9, 186], "rgba(255,255,255,0.12)", 2);
   }
 
   /** Draw a whole face into the atlas face region. */
   F.drawFace = function (ctx, spec, region) {
-    var f = spec.face || {};
+    const f = spec.face || {};
     ctx.save();
     ctx.translate(region[0], region[1]);
     ctx.fillStyle = spec.skin;

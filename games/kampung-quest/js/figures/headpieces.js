@@ -3,13 +3,13 @@
 // and short / bun / quiff hair. All original sculpts — no spikes, no quills.
 (function (KQ) {
   "use strict";
-  var F = (KQ.Figures = KQ.Figures || {});
-  var G = F.Geo;
-  var TAU = Math.PI * 2;
-  var pieceCache = {};
+  const F = (KQ.Figures = KQ.Figures || {});
+  const G = F.Geo;
+  const TAU = Math.PI * 2;
+  const pieceCache = {};
 
   function dome(r, y, sy, hex, segs) {
-    var g = new THREE.SphereGeometry(r, segs || 26, 9, 0, TAU, 0, Math.PI / 2);
+    const g = new THREE.SphereGeometry(r, segs || 26, 9, 0, TAU, 0, Math.PI / 2);
     return G.place(G.paint(g, hex), [0, y, 0], null, [1, sy, 1]);
   }
   function blob(s, p, r, hex) {
@@ -17,16 +17,16 @@
   }
   /** A crescent outline (outer circle minus an offset inner circle) as an extruded, bevelled badge. */
   function crescentBadge(R, hex) {
-    var r = R * 0.84;
-    var dx = R * 0.42;
-    var ix = (R * R - r * r + dx * dx) / (2 * dx);
-    var iy = Math.sqrt(R * R - ix * ix);
-    var a = Math.atan2(iy, ix);
-    var b = Math.atan2(iy, ix - dx);
-    var s = new THREE.Shape();
+    const r = R * 0.84;
+    const dx = R * 0.42;
+    const ix = (R * R - r * r + dx * dx) / (2 * dx);
+    const iy = Math.sqrt(R * R - ix * ix);
+    const a = Math.atan2(iy, ix);
+    const b = Math.atan2(iy, ix - dx);
+    const s = new THREE.Shape();
     s.absarc(0, 0, R, a, TAU - a, false);
     s.absarc(dx, 0, r, TAU - b, b, true);
-    var opts = {
+    const opts = {
       depth: 0.004,
       bevelEnabled: true,
       bevelThickness: 0.0015,
@@ -39,14 +39,23 @@
 
   /** Baseball-style cap: crown, band, peak, button and a small crescent badge on the front. */
   function cap(hd) {
-    var list = [dome(0.119, 0.165, 0.62, hd.colour)];
+    const list = [dome(0.119, 0.165, 0.62, hd.colour)];
     list.push(
       G.place(
         G.paint(new THREE.CylinderGeometry(0.119, 0.118, 0.024, 26, 1), hd.band || hd.colour),
         [0, 0.155, 0],
       ),
     );
-    var peak = new THREE.CylinderGeometry(0.092, 0.092, 0.011, 20, 1, false, -Math.PI / 2, Math.PI);
+    const peak = new THREE.CylinderGeometry(
+      0.092,
+      0.092,
+      0.011,
+      20,
+      1,
+      false,
+      -Math.PI / 2,
+      Math.PI,
+    );
     list.push(
       G.place(G.paint(peak, hd.peak || hd.colour), [0, 0.148, 0.074], [0.13, 0, 0], [1, 1, 1.28]),
     );
@@ -58,17 +67,17 @@
   }
 
   function songkok(hd) {
-    var prof = [0, 0.146, 0.114, 0.146, 0.114, 0.2, 0.111, 0.214, 0.1, 0.221, 0, 0.221];
-    var list = [G.place(G.paint(G.lathe(prof, 28), hd.colour), null, null, [1, 1, 0.93])];
+    const prof = [0, 0.146, 0.114, 0.146, 0.114, 0.2, 0.111, 0.214, 0.1, 0.221, 0, 0.221];
+    const list = [G.place(G.paint(G.lathe(prof, 28), hd.colour), null, null, [1, 1, 0.93])];
     if (hd.hair) list.push(blob([0.106, 0.05, 0.07], [0, 0.138, -0.048], null, hd.hair));
     return list;
   }
 
   function kopiah(hd) {
-    var prof = [0, 0.146, 0.113, 0.146, 0.113, 0.198, 0.106, 0.214, 0.092, 0.222, 0, 0.222];
-    var list = [G.paint(G.lathe(prof, 28), hd.colour)];
+    const prof = [0, 0.146, 0.113, 0.146, 0.113, 0.198, 0.106, 0.214, 0.092, 0.222, 0, 0.222];
+    const list = [G.paint(G.lathe(prof, 28), hd.colour)];
     [0.163, 0.183, 0.203].forEach(function (y) {
-      var ring = new THREE.TorusGeometry(0.1135, 0.0022, 4, 40);
+      const ring = new THREE.TorusGeometry(0.1135, 0.0022, 4, 40);
       list.push(G.place(G.paint(ring, hd.accent || hd.colour), [0, y, 0], [Math.PI / 2, 0, 0]));
     });
     return list;
@@ -76,12 +85,12 @@
 
   /** Re-sample a [r, y, r, y ...] profile so no step is longer than `step` (smooth carving needs it). */
   function densify(pairs, step) {
-    var out = [pairs[0], pairs[1]];
-    for (var i = 2; i < pairs.length; i += 2) {
-      var dr = pairs[i] - pairs[i - 2];
-      var dy = pairs[i + 1] - pairs[i - 1];
-      var n = Math.max(1, Math.ceil(Math.hypot(dr, dy) / step));
-      for (var k = 1; k <= n; k++)
+    const out = [pairs[0], pairs[1]];
+    for (let i = 2; i < pairs.length; i += 2) {
+      const dr = pairs[i] - pairs[i - 2];
+      const dy = pairs[i + 1] - pairs[i - 1];
+      const n = Math.max(1, Math.ceil(Math.hypot(dr, dy) / step));
+      for (let k = 1; k <= n; k++)
         out.push(pairs[i - 2] + (dr * k) / n, pairs[i - 1] + (dy * k) / n);
     }
     return out;
@@ -92,19 +101,19 @@
    * in towards radius rIn, with a smooth roll so the edge reads as a thick, rounded moulded lip.
    */
   function carve(g, ang, y0, y1, rIn) {
-    var pos = g.attributes.position;
-    var cy = (y0 + y1) / 2;
-    var hy = (y1 - y0) / 2;
-    for (var i = 0; i < pos.count; i++) {
-      var x = pos.getX(i);
-      var z = pos.getZ(i);
-      var th = Math.atan2(x, z) / ang;
-      var ey = (pos.getY(i) - cy) / hy;
-      var t = Math.max(0, Math.min(1, (1.12 - (th * th + ey * ey)) / 0.42));
-      var r = Math.hypot(x, z);
+    const pos = g.attributes.position;
+    const cy = (y0 + y1) / 2;
+    const hy = (y1 - y0) / 2;
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i);
+      const z = pos.getZ(i);
+      const th = Math.atan2(x, z) / ang;
+      const ey = (pos.getY(i) - cy) / hy;
+      const t = Math.max(0, Math.min(1, (1.12 - (th * th + ey * ey)) / 0.42));
+      const r = Math.hypot(x, z);
       if (t <= 0 || r < 1e-5) continue;
-      var k = t * t * (3 - 2 * t);
-      var f = (r + (rIn - r) * k) / r;
+      const k = t * t * (3 - 2 * t);
+      const f = (r + (rIn - r) * k) / r;
       pos.setX(i, x * f);
       pos.setZ(i, z * f);
     }
@@ -113,9 +122,9 @@
 
   /** Tudung: one sculpted hood (crown, face frame, under-chin) flowing into a shoulder drape. */
   function tudung(hd) {
-    var kid = hd.type === "tudung_kid";
-    var hem = kid ? -0.072 : -0.095;
-    var prof = [
+    const kid = hd.type === "tudung_kid";
+    const hem = kid ? -0.072 : -0.095;
+    const prof = [
       0.13,
       hem,
       0.15,
@@ -130,16 +139,16 @@
       0.06,
     ];
     prof.push(0.124, 0.12, 0.122, 0.165, 0.112, 0.205, 0.088, 0.228, 0.045, 0.24, 0, 0.243);
-    var g = carve(G.lathe(densify(prof, 0.024), 32), 0.98, 0.002, 0.174, 0.088);
-    var pos = g.attributes.position;
-    for (var i = 0; i < pos.count; i++) {
-      var y = pos.getY(i);
+    const g = carve(G.lathe(densify(prof, 0.024), 32), 0.98, 0.002, 0.174, 0.088);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      const y = pos.getY(i);
       if (y >= 0) continue;
-      var z = pos.getZ(i) * 0.82;
+      const z = pos.getZ(i) * 0.82;
       pos.setXYZ(i, pos.getX(i), y - Math.max(0, z) * (kid ? 0.3 : 0.5) * (y / hem), z);
     }
     g.computeVertexNormals();
-    var list = [G.paint(g, hd.colour)];
+    const list = [G.paint(g, hd.colour)];
     if (hd.accent) list.push(blob([0.012, 0.012, 0.007], [0, 0.004, 0.1], null, hd.accent));
     if (hd.under)
       list.push(
@@ -154,13 +163,13 @@
 
   /** Short sculpted hair: a carved cap with a hairline; options add a side-part fringe, a bun or a quiff. */
   function hair(hd) {
-    var prof = [
+    const prof = [
       0.104, 0.05, 0.113, 0.07, 0.116, 0.12, 0.115, 0.16, 0.106, 0.2, 0.082, 0.226, 0.04, 0.238, 0,
       0.24,
     ];
-    var g = carve(G.lathe(densify(prof, 0.018), 30), 1.3, -0.12, 0.146, 0.092);
+    const g = carve(G.lathe(densify(prof, 0.018), 30), 1.3, -0.12, 0.146, 0.092);
     g.computeVertexNormals();
-    var list = [G.paint(g, hd.colour)];
+    const list = [G.paint(g, hd.colour)];
     list.push(blob([0.085, 0.024, 0.045], [0.018, 0.152, 0.078], [0.2, 0, -0.16], hd.colour)); // side-part fringe
     if (hd.type === "hair_bun")
       list.push(blob([0.052, 0.048, 0.05], [0, 0.2, -0.088], null, hd.colour));
@@ -170,7 +179,7 @@
     return list;
   }
 
-  var PIECES = {
+  const PIECES = {
     cap: cap,
     songkok: songkok,
     kopiah: kopiah,
@@ -184,9 +193,9 @@
 
   /** Geometry for a head-piece spec { type, colour, ... } (cached by its content). Origin = head origin. */
   F.headPieceGeometry = function (hd) {
-    var key = JSON.stringify(hd);
+    const key = JSON.stringify(hd);
     if (pieceCache[key]) return pieceCache[key];
-    var make = PIECES[hd.type] || hair;
+    const make = PIECES[hd.type] || hair;
     pieceCache[key] = G.merge(make(hd));
     return pieceCache[key];
   };

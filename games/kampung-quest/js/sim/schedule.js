@@ -204,10 +204,12 @@
   /** Hawkers: which prayer's turn each takes while the stalls are open. */
   const HAWKER_TURN = { hawker_ali: "zohor", hawker_aminah: "asar" };
 
+  /** Own-property test that is safe for any key, so a hostile id never walks the prototype chain. */
   function hasOwn(object, key) {
     return Object.prototype.hasOwnProperty.call(object, key);
   }
 
+  /** The routine block an NPC is in at a given minute: the latest block that has started. */
   function baseBlock(npcId, minute) {
     const blocks = ROUTINES[npcId];
     let found = blocks[0];
@@ -217,6 +219,7 @@
     return found;
   }
 
+  /** Shape an NPC's place and activity; resting inside a block means "indoors" (hidden by the world). */
   function describe(poi, activity) {
     const resting = activity === "idle" || activity === "eat";
     return { poi, activity, indoors: resting && poi.indexOf("block_") === 0 };
@@ -243,6 +246,7 @@
     return true;
   }
 
+  /** During a prayer window, send NPCs who join that prayer to the mosque instead of their routine. */
   function prayerOverride(npcId, base, prayerState) {
     const around = readPrayerState(prayerState);
     const current = around.current;

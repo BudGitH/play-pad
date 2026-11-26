@@ -547,9 +547,65 @@ test("sanitizeSnapshot clamps indices and drops unknown names/statuses", () => {
     }),
   );
   assert.equal(clean.entries.length, 1);
-  assert.equal(clean.flow.wuduIdx, Prayer.WUDU_STEPS.length - 1);
+  assert.equal(clean.flow.wuduIdx, Prayer.WUDU_STEPS.length, "pray phase: every wudu step done");
   assert.equal(clean.flow.prayIdx, Prayer.rakaatPlan("isyak").length - 1);
   assert.equal(Prayer.sanitizeSnapshot("nope"), null);
+});
+
+/** A snapshot holding one flow, for the wuduIdx clamp tests. */
+function snapWithFlow(flow) {
+  const base = { entries: [{ name: "zohor", day: 1, status: "in-progress" }], lastAbs: 800 };
+  return Prayer.sanitizeSnapshot(Object.assign({ lastDay: 1 }, base, { flow }));
+}
+
+test("ACC2-04: a flow saved in the pray phase reloads with wuduIdx = the wudu step count", () => {
+  const prayer = started();
+  goTo(prayer, "13:00");
+  prayer.startFlow("zohor");
+  doWudu(prayer);
+  const saved = plain(prayer.snapshot());
+  assert.equal(saved.flow.wuduIdx, Prayer.WUDU_STEPS.length);
+  const reloaded = Prayer.create(FIXTURE_TIMES);
+  reloaded.restore(saved);
+  assert.equal(reloaded.state().flow.wuduIndex, Prayer.WUDU_STEPS.length, "no step lost on reload");
+  assert.equal(reloaded.state().flow.wuduTotal, Prayer.WUDU_STEPS.length);
+});
+
+test("ACC2-04: wuduIdx is clamped into range for both phases, whatever the save says", () => {
+  const flow = (phase, wuduIdx) => ({ name: "zohor", day: 1, phase, wuduIdx, prayIdx: 0 });
+  const len = Prayer.WUDU_STEPS.length;
+  assert.equal(snapWithFlow(flow("pray", 0)).flow.wuduIdx, len, "pray forces the full count");
+  assert.equal(snapWithFlow(flow("wudu", 99)).flow.wuduIdx, len - 1, "wudu keeps one step to do");
+  assert.equal(snapWithFlow(flow("wudu", -5)).flow.wuduIdx, 0);
+  assert.equal(snapWithFlow(flow("wudu", "x")).flow.wuduIdx, 0);
+  assert.equal(snapWithFlow(flow("wudu", 4.7)).flow.wuduIdx, 4);
+});
+
+test("ACC2-01: rebuilds() counts a rewind past the slack, and nothing else", () => {
+  const prayer = started();
+  assert.equal(prayer.rebuilds(), 0);
+  goTo(prayer, "13:00");
+  assert.equal(prayer.rebuilds(), 0, "moving forward is not a rebuild");
+  prayer.update(mins("13:00") - 0.4, 1);
+  assert.equal(prayer.rebuilds(), 0, "a few seconds back is rounding noise (REWIND_SLACK)");
+  goTo(prayer, "07:10");
+  assert.equal(prayer.rebuilds(), 1);
+  assert.equal(prayer.due(), null);
+});
+
+test("ACC2-02: going back to just before a prayer and stepping across makes it due", () => {
+  const prayer = started();
+  goTo(prayer, "20:30");
+  goTo(prayer, "12:59");
+  assert.equal(prayer.rebuilds(), 1);
+  assert.equal(statusOf(prayer, "zohor"), "upcoming");
+  const events = goTo(prayer, "13:00");
+  assert.deepEqual(
+    events.map((e) => [e.type, e.name]),
+    [["due", "zohor"]],
+  );
+  assert.equal(prayer.due(), "zohor");
+  assert.equal(prayer.state().blocking, true);
 });
 
 test("create() with missing or out-of-order times throws a clear RangeError", () => {

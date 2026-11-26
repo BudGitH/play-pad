@@ -297,7 +297,7 @@ test("RISK-01: a stale tab cannot overwrite newer progress from another tab", ()
   assert.equal(b.save(storage, stale).ok, false, "stays refused until the tab reloads");
 });
 
-test("RISK-01: after a reload the second tab may save again; New game resets the revision", () => {
+test("RISK-01: after a reload the second tab may save again; New game keeps the revision rising", () => {
   const storage = memoryStorage();
   const a = newTab();
   a.save(storage, a.defaultState());
@@ -306,7 +306,54 @@ test("RISK-01: after a reload the second tab may save again; New game resets the
   reloaded.load(storage);
   assert.equal(reloaded.save(storage, reloaded.defaultState()).rev, 3);
   reloaded.clear(storage);
-  assert.equal(reloaded.save(storage, reloaded.defaultState()).rev, 1);
+  assert.equal(reloaded.save(storage, reloaded.defaultState()).rev, 5, "clear took rev 4");
+});
+
+test("RISK2-01: New game in one tab cannot be overwritten by an older tab, nor lock the new one out", () => {
+  const storage = memoryStorage();
+  const a = newTab(); // tab A plays on and saves three times (rev 3)
+  const rich = a.defaultState();
+  rich.coins = 500;
+  [1, 2, 3].forEach(() => a.save(storage, rich));
+  const b = newTab(); // tab B opens the same game, then chooses New game
+  b.load(storage);
+  assert.equal(b.clear(storage), true);
+  assert.equal(b.load(storage).status, "new", "the cleared marker reads as a new game");
+  const first = b.save(storage, b.defaultState());
+  assert.equal(first.ok, true, "the new game saves");
+  assert.ok(first.rev > 3, "its revision is above the old tab's");
+  const stale = a.save(storage, rich); // tab A (still rev 3) autosaves
+  assert.deepEqual(plain(stale), { ok: false, reason: "stale" });
+  assert.equal(JSON.parse(storage.data[KEY]).coins, 10, "the new game was not overwritten");
+  assert.equal(b.save(storage, b.defaultState()).ok, true, "tab B keeps saving");
+});
+
+test("RISK2-01: clear() with nothing stored, a hostile value or blocked storage never throws", () => {
+  const tab = newTab();
+  const empty = memoryStorage();
+  assert.equal(tab.clear(empty), true);
+  assert.equal(tab.load(empty).status, "new");
+  const junk = stored("{nope");
+  assert.equal(tab.clear(junk), true);
+  assert.equal(JSON.parse(junk.data[KEY]).cleared, true);
+  const blocked = {
+    getItem: () => {
+      throw new Error("blocked");
+    },
+    setItem: () => {
+      throw new Error("blocked");
+    },
+  };
+  assert.equal(tab.clear(blocked), false);
+});
+
+test("RISK2-01: a hostile cleared marker only ever yields a new game and a bounded revision", () => {
+  const tab = newTab();
+  const result = tab.load(stored({ v: 1, cleared: true, rev: 1e300, coins: 9999 }));
+  assert.equal(result.status, "new");
+  assert.equal(result.state.coins, 10, "nothing is read from a marker but its revision");
+  assert.equal(tab.currentRev(), 1e9);
+  assert.equal(tab.load(stored({ v: 1, cleared: "yes" })).status, "loaded", "only true counts");
 });
 
 test("RISK-01: revOf is total - junk, huge or negative revisions read as safe numbers", () => {

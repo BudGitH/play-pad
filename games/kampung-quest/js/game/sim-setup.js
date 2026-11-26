@@ -39,8 +39,10 @@
   let watching = false;
 
   /**
-   * Another tab saved newer progress: this tab stops saving (Save.save refuses) and says so once.
-   * Called once per page; the `storage` event only fires for OTHER tabs' writes.
+   * Another tab saved newer progress: this tab stops saving (Save.save refuses) and says so once
+   * (the `saveWarned` flag, shared with the blocked-storage notice, keeps it to one toast per
+   * page, not one per autosave of the other tab). Called once per page; the `storage` event only
+   * fires for OTHER tabs' writes.
    */
   function watchStorage() {
     if (watching) return;
@@ -48,6 +50,7 @@
     window.addEventListener("storage", function (e) {
       const Save = KQ.Sim.Save;
       if (e.key !== Save.KEY || Save.revOf(e.newValue) <= Save.currentRev()) return;
+      if (!G.S || G.S.saveWarned) return;
       G.S.saveWarned = true;
       G.UI.toast("Another tab is saving this game. This tab will not overwrite it.", "hint", 7000);
     });

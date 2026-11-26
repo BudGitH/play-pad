@@ -64,4 +64,7 @@ Please report vulnerabilities privately; see [SECURITY.md](SECURITY.md).
 
 ## Licence
 
-Released under the [MIT License](LICENSE). Bundled third-party assets keep their own licences; see [`games/sunset-stride/assets/CREDITS.md`](games/sunset-stride/assets/CREDITS.md).
+Released under the [MIT License](LICENSE). Bundled third-party assets keep their own licences:
+
+- **Sunset Stride** (CC0 models, photo textures and music): [`games/sunset-stride/assets/CREDITS.md`](games/sunset-stride/assets/CREDITS.md).
+- **Kampung Quest**: the photo textures are CC0 (ambientCG), credited in [`games/kampung-quest/assets/CREDITS.md`](games/kampung-quest/assets/CREDITS.md); the **azan recording is CC BY-SA 4.0** (a derivative of a Wikimedia Commons file; author, changes and licence in [`games/kampung-quest/assets/audio/azan_license.txt`](games/kampung-quest/assets/audio/azan_license.txt)), so that one file is **not** MIT: reusing or redistributing it carries the attribution and share-alike terms. The game also credits it in its pause menu. three.js (MIT) is vendored with its licence next to it.

@@ -94,6 +94,21 @@ test("all text is child-friendly: no violence, crime, gambling, alcohol or pork"
   );
 });
 
+test("COMP-R2-03: no neighbour opens with the reply (Waalaikumsalam) and non-Muslim ones use no salam", () => {
+  const opener = (lines) => String(lines[0]);
+  Object.entries(CHAT).forEach(([id, lines]) =>
+    assert.doesNotMatch(opener(lines), /^Waalaikum/i, id),
+  );
+  MISSIONS.forEach((m) => assert.doesNotMatch(opener(m.intro), /^Waalaikum/i, m.id + " intro"));
+  const notMuslim = ["uncle_lim", "aunty_mei", "kid_wei", "barber_raju", "postman_dan"];
+  notMuslim.forEach((id) => {
+    assert.doesNotMatch(JSON.stringify(CHAT[id]), /salam/i, id + " small talk");
+    MISSIONS.filter((m) => m.giver === id).forEach((m) =>
+      assert.doesNotMatch(JSON.stringify(m.intro), /salam/i, m.id),
+    );
+  });
+});
+
 test("dialogue includes Malay greetings: Assalamualaikum / Waalaikumsalam", () => {
   const text = JSON.stringify(MISSIONS);
   assert.match(text, /Assalamualaikum/);

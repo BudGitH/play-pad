@@ -3,7 +3,7 @@
 // KQ.Figures.Animator(rig) -> { play(name, fadeSec, rate), update(dt), setRate(r), current() }.
 (function (KQ) {
   "use strict";
-  var F = (KQ.Figures = KQ.Figures || {});
+  const F = (KQ.Figures = KQ.Figures || {});
 
   /** Every pose name in the contract, in a sensible showcase order. */
   F.POSE_NAMES = [
@@ -30,7 +30,7 @@
   ];
 
   /** Loop speed (phase cycles per second) per pose. */
-  var RATES = {
+  const RATES = {
     idle: 0.22,
     walk: 1.7,
     run: 2.6,
@@ -43,7 +43,7 @@
   };
 
   function blendJoint(node, t, w) {
-    var r = node.rotation;
+    const r = node.rotation;
     r.x += (t[0] - r.x) * w;
     r.y += (t[1] - r.y) * w;
     r.z += (t[2] - r.z) * w;
@@ -57,14 +57,14 @@
    * @param {number} [weight=1] 0..1 blend from the rig's current state toward the pose
    */
   F.pose = function (rig, name, phase01, weight) {
-    var fn = F.POSES[name] || F.POSES.idle;
-    var P = fn(phase01 || 0, rig.dims);
-    var w = weight === undefined ? 1 : Math.max(0, Math.min(1, weight));
-    var parts = F.POSE_PARTS;
+    const fn = F.POSES[name] || F.POSES.idle;
+    const P = fn(phase01 || 0, rig.dims);
+    const w = weight === undefined ? 1 : Math.max(0, Math.min(1, weight));
+    const parts = F.POSE_PARTS;
     parts.JOINTS.forEach(function (k) {
       blendJoint(rig[k], P[k] || parts.NEUTRAL[k] || parts.ZERO, w);
     });
-    var s = rig.dims.scale;
+    const s = rig.dims.scale;
     rig.root.position.y += ((P.rootY || 0) * s - rig.root.position.y) * w;
     rig.root.position.z += ((P.rootZ || 0) * s - rig.root.position.z) * w;
   };
@@ -75,9 +75,9 @@
   };
 
   function snapshot(rig) {
-    var snap = { rootY: rig.root.position.y, rootZ: rig.root.position.z };
+    const snap = { rootY: rig.root.position.y, rootZ: rig.root.position.z };
     F.POSE_PARTS.JOINTS.forEach(function (k) {
-      var r = rig[k].rotation;
+      const r = rig[k].rotation;
       snap[k] = [r.x, r.y, r.z];
     });
     return snap;
@@ -100,11 +100,11 @@
    * @param {object} rig
    */
   F.Animator = function (rig) {
-    var cur = { name: "idle", phase: 0, rate: RATES.idle };
-    var from = null;
-    var fade = 0;
-    var fadeDur = 0;
-    var rateScale = 1;
+    let cur = { name: "idle", phase: 0, rate: RATES.idle };
+    let from = null;
+    let fade = 0;
+    let fadeDur = 0;
+    let rateScale = 1;
     return {
       play: function (name, fadeSec, rate) {
         if (name === cur.name && rate === undefined) return;

@@ -55,6 +55,13 @@ export default [
     rules: { "max-lines-per-function": "warn", "max-depth": "warn" },
   },
   {
+    // R2-Q-07: Kampung Quest and its tests use const / let only. The older single-file games still
+    // use `var` (about 3,000 sites), so the rules are scoped here until each game is converted;
+    // widen the `files` list as they are. Do not remove without a DECISIONS.md entry.
+    files: ["games/kampung-quest/**/*.js", "tests/kampung-quest*.mjs", "tests/kampung-quest/**"],
+    rules: { "no-var": "error", "prefer-const": "error" },
+  },
+  {
     files: ["**/*.mjs", "tools/**"],
     languageOptions: { sourceType: "module", globals: globals.node },
     rules: { "no-console": "off" },

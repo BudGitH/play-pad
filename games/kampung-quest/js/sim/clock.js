@@ -28,15 +28,18 @@
     return hours * 60 + minutes;
   }
 
+  /** Fold any minute value into 0..1439 so day rollover and negative offsets stay valid. */
   function wrapMinute(value) {
     return ((value % MINUTES_PER_DAY) + MINUTES_PER_DAY) % MINUTES_PER_DAY;
   }
 
+  /** Eased 0..1 ramp between two edges, so the sun fades in and out instead of switching. */
   function smoothstep(edge0, edge1, value) {
     const t = Math.min(1, Math.max(0, (value - edge0) / (edge1 - edge0)));
     return t * t * (3 - 2 * t);
   }
 
+  /** Two-digit zero padding for the HH:MM text the HUD and tests show. */
   function pad2(value) {
     return value < 10 ? "0" + value : String(value);
   }
@@ -51,6 +54,7 @@
     };
   }
 
+  /** Name the part of the day (night, dawn, day, dusk) the sun anchors put a minute in. */
   function phaseAt(minute, anchors) {
     const dawnStart = anchors.sunrise - RAMP_MIN - 10;
     if (minute < dawnStart) return "night";
@@ -60,6 +64,7 @@
     return "night";
   }
 
+  /** How much daylight there is, 0 (night) to 1 (full day): the lower of the sunrise and sunset ramps. */
   function sunFactorAt(minute, anchors) {
     const up = smoothstep(anchors.sunrise - RAMP_MIN, anchors.sunrise + RAMP_MIN, minute);
     const down = 1 - smoothstep(anchors.sunset - RAMP_MIN, anchors.sunset + RAMP_MIN, minute);

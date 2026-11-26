@@ -21,6 +21,8 @@
     captionSize: ["normal", "large"],
     lessMotion: ["follow", "on", "off"],
   };
+  /** A real prefs blob is ~100 characters; refuse anything absurd before parsing it. */
+  const MAX_PREF_CHARS = 2000;
   const prefs = Object.assign({}, DEFAULTS);
 
   /** localStorage if it really works (private modes and blocked storage throw), else null. */
@@ -35,6 +37,8 @@
     }
   }
 
+  /** Validate untrusted parsed prefs: enum whitelist and boolean checks, never a raw copy. */
+  // TRUST_BOUNDARY: localStorage "kampung-quest:prefs" -> prefs (untrusted; whitelisted per key)
   function cleanPrefs(raw) {
     const out = Object.assign({}, DEFAULTS);
     if (!raw || typeof raw !== "object") return out;
@@ -46,11 +50,14 @@
     return out;
   }
 
+  /** Read the saved prefs into `prefs` (defaults on any problem). Never throws. */
+  // TRUST_BOUNDARY: localStorage "kampung-quest:prefs" -> parsed JSON (size-capped before parsing)
   function load(storage) {
     if (!storage) return prefs;
     let parsed = null;
     try {
-      parsed = JSON.parse(storage.getItem(PREF_KEY));
+      const text = storage.getItem(PREF_KEY);
+      if (typeof text === "string" && text.length <= MAX_PREF_CHARS) parsed = JSON.parse(text);
     } catch (err) {
       parsed = null;
     }

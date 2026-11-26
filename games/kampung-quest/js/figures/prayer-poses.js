@@ -6,10 +6,10 @@
 // one foot lifted forward.
 (function (KQ) {
   "use strict";
-  var F = (KQ.Figures = KQ.Figures || {});
-  var S = F.PoseSolve;
-  var PI = Math.PI;
-  var TAU = PI * 2;
+  const F = (KQ.Figures = KQ.Figures || {});
+  const S = F.PoseSolve;
+  const PI = Math.PI;
+  const TAU = PI * 2;
 
   function breathe(p) {
     return 0.008 * Math.sin(p * TAU);
@@ -29,8 +29,8 @@
   }
 
   function takbir(p) {
-    var lift = 1.45;
-    var fold = PI + 0.34 - lift;
+    const lift = 1.45;
+    const fold = PI + 0.34 - lift;
     return {
       torso: [breathe(p), 0, 0],
       head: [0.1, 0, 0],
@@ -56,11 +56,11 @@
 
   /** Ruku: level back at 90 deg, legs straight, hands on the knees (solved from the real part sizes). */
   function ruku(p, d) {
-    var t = PI / 2;
-    var hz = -0.035;
-    var sh = S.shoulderAt(d, d.hipH, hz, t);
-    var knee = [d.hipH - d.thigh + 0.012, hz + d.legD / 2 + 0.03];
-    var a = S.reach(d, sh, knee, t);
+    const t = PI / 2;
+    const hz = -0.035;
+    const sh = S.shoulderAt(d, d.hipH, hz, t);
+    const knee = [d.hipH - d.thigh + 0.012, hz + d.legD / 2 + 0.03];
+    const a = S.reach(d, sh, knee, t);
     return {
       rootZ: hz,
       torso: [t + breathe(p), 0, 0],
@@ -85,15 +85,15 @@
 
   /** Sujud: kneeling, torso folded down until the forehead touches the floor, palms flat by the head. */
   function sujud(p, d) {
-    var a = 0.5;
-    var hy = S.kneelHipY(d, a);
-    var hz = -d.thigh * Math.sin(a) - 0.02;
-    var headX = -0.3;
-    var t = S.sujudBend(d, hy, headX);
-    var sh = S.shoulderAt(d, hy, hz, t);
-    var neck = S.rot(d.torsoH + d.neckH, 0, t);
-    var palm = [0.05, hz + neck[1] - 0.02];
-    var r = S.reach(d, sh, palm, t);
+    const a = 0.5;
+    const hy = S.kneelHipY(d, a);
+    const hz = -d.thigh * Math.sin(a) - 0.02;
+    const headX = -0.3;
+    const t = S.sujudBend(d, hy, headX);
+    const sh = S.shoulderAt(d, hy, hz, t);
+    const neck = S.rot(d.torsoH + d.neckH, 0, t);
+    const palm = [0.05, hz + neck[1] - 0.02];
+    const r = S.reach(d, sh, palm, t);
     return kneelingLegs(
       {
         rootY: hy - d.hipH + breathe(p) * 0.3,
@@ -117,11 +117,11 @@
    * the thighs. Salam and doa build on this pose.
    */
   function julus(p, d) {
-    var a = PI / 2 - 0.15;
-    var hy = S.kneelHipY(d, a) + 0.004;
-    var sh = S.shoulderAt(d, hy, 0, 0);
-    var r = S.reach(d, sh, [d.legD + 0.045, d.thigh * 0.78], 0);
-    var P = kneelingLegs(
+    const a = PI / 2 - 0.15;
+    const hy = S.kneelHipY(d, a) + 0.004;
+    const sh = S.shoulderAt(d, hy, 0, 0);
+    const r = S.reach(d, sh, [d.legD + 0.045, d.thigh * 0.78], 0);
+    const P = kneelingLegs(
       {
         rootY: hy - d.hipH - 0.01,
         torso: [breathe(p) - 0.05, 0, 0],
@@ -142,7 +142,7 @@
 
   function salam(dir) {
     return function (p, d) {
-      var P = julus(p, d);
+      const P = julus(p, d);
       P.head = [0.06, dir * 1.12, 0];
       return P;
     };
@@ -150,7 +150,7 @@
 
   /** Doa: seated, both palms open and turned up in front of the chest. */
   function doa(p, d) {
-    var P = julus(p, d);
+    const P = julus(p, d);
     P.armL = [-0.5, 0, 0.1];
     P.armR = [-0.5, 0, -0.1];
     P.foreL = [-1.05 + breathe(p) * 3, -0.32, 0];
@@ -163,7 +163,7 @@
 
   // ---------- wudu ----------
   function wuduHands(p) {
-    var s = Math.sin(p * TAU * 2);
+    const s = Math.sin(p * TAU * 2);
     return {
       torso: [0.18, 0, 0],
       head: [0.32, 0, 0],
@@ -177,7 +177,7 @@
   }
 
   function wuduFace(p) {
-    var s = Math.sin(p * TAU * 1.5);
+    const s = Math.sin(p * TAU * 1.5);
     return {
       torso: [0.12, 0, 0],
       head: [0.14 + 0.05 * s, 0, 0],
@@ -191,7 +191,7 @@
   }
 
   function wuduFeet(p) {
-    var s = Math.sin(p * TAU * 2);
+    const s = Math.sin(p * TAU * 2);
     return {
       rootZ: -0.02,
       legR: [-0.78, 0, 0],
@@ -206,7 +206,7 @@
     };
   }
 
-  var P = F.POSES;
+  const P = F.POSES;
   P.qiyam = qiyam;
   P.takbir = takbir;
   P.ruku = ruku;

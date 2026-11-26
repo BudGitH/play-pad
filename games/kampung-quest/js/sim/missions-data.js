@@ -12,10 +12,12 @@
   "use strict";
   KQ.Sim = KQ.Sim || {};
 
+  /** One mission step: what to do (type), where or to whom (target) and the label the tracker shows. */
   function step(type, target, label, extra) {
     return Object.assign({ type, target, label }, extra || {});
   }
 
+  /** Assemble a mission from its three dialogue pages (intro, reminder, thanks), steps and reward. */
   function mission(id, title, titleMs, giver, lines, steps, reward) {
     return {
       id,
@@ -42,7 +44,7 @@
           "Can you buy one roti prata from the hawker centre for me? Terima kasih!",
         ],
         ["The prata stall is at the hawker centre, sayang."],
-        ["Waalaikumsalam... wah, sedap! Thank you, cucu. Here's a little something for you."],
+        ["Alhamdulillah... wah, sedap! Thank you, cucu. Here's a little something for you."],
       ],
       [
         step("buy", "stall_prata", "Buy roti prata at the prata stall", { item: "roti_prata" }),
@@ -58,7 +60,7 @@
       "atuk",
       [
         [
-          "Waalaikumsalam, young one. Atuk has a favour to ask.",
+          "Assalamualaikum, young one. Atuk has a favour to ask.",
           "Please give my salam to Imam Hakim at the mosque.",
         ],
         ["Imam Hakim is near the mosque gate, nak."],
@@ -146,7 +148,7 @@
           "Please take a box to Cik Farah at the library and one to Dr Nurul.",
         ],
         ["Cik Farah first, then Dr Nurul. Careful with the kuih!"],
-        ["Waalaikumsalam! Everyone loved the kuih. Terima kasih!"],
+        ["Alhamdulillah! Everyone loved the kuih. Terima kasih!"],
       ],
       [
         step("deliver", "librarian_farah", "Give kuih to Cik Farah", {
@@ -212,7 +214,7 @@
       "dr_nurul",
       [
         [
-          "Waalaikumsalam! Atuk has a little cough today.",
+          "Assalamualaikum! Atuk has a little cough today.",
           "A get-well card from the mini-mart would cheer him up.",
         ],
         ["The mini-mart sells get-well cards. Then take it to Atuk."],
@@ -321,15 +323,19 @@
     ["prayer_isyak", "Isyak star"],
   ].map((pair) => ({ id: pair[0], name: pair[1] }));
 
-  /** Friendly small talk (Muslim neighbours use salam; everyone is kind). */
+  /**
+   * Friendly small talk. Muslim neighbours open with "Assalamualaikum" and the hero's reply button
+   * answers "Waalaikumsalam" (a reply never comes first); the neighbours who are not Muslim
+   * (Uncle Lim, Aunty Mei, Wei, Raju, Dan) use a plain friendly greeting. Everyone is kind.
+   */
   const CHAT = {
     nenek: ["Assalamualaikum, cucu! Sudah makan?", "Don't forget to pray on time, ya."],
     atuk: [
-      "Waalaikumsalam, young one. Nice day for a walk.",
+      "Assalamualaikum, young one. Nice day for a walk.",
       "Atuk used to sell kuih at this very market.",
     ],
     imam_hakim: [
-      "Waalaikumsalam, adik. May Allah bless your day.",
+      "Assalamualaikum, adik. May Allah bless your day.",
       "The mosque is always open to you.",
     ],
     makcik_siti: [
@@ -350,7 +356,7 @@
       "Come, come - lapar? Good food here.",
     ],
     hawker_aminah: [
-      "Waalaikumsalam! Nasi lemak, still hot!",
+      "Assalamualaikum! Nasi lemak, still hot!",
       "Try my kuih, adik. Halal and homemade.",
     ],
     barber_raju: [
@@ -358,11 +364,11 @@
       "Come and sit! A neat haircut makes a happy day.",
     ],
     dr_nurul: [
-      "Waalaikumsalam! Drink water and rest well.",
+      "Assalamualaikum! Drink water and rest well.",
       "A healthy kampung is a happy kampung.",
     ],
     librarian_farah: [
-      "Waalaikumsalam! Shh... a story is waiting for you.",
+      "Assalamualaikum! Shh... a story is waiting for you.",
       "Reading takes you everywhere.",
     ],
     kid_irfan: ["Assalamualaikum! Want to play at the playground?", "I can run super fast!"],

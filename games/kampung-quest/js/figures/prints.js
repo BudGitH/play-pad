@@ -3,22 +3,22 @@
 // the 180-degree face wrap below, and a white strip that every plain vertex-coloured part samples.
 (function (KQ) {
   "use strict";
-  var F = (KQ.Figures = KQ.Figures || {});
+  const F = (KQ.Figures = KQ.Figures || {});
 
-  var SIZE = 512;
-  var REGIONS = {
+  const SIZE = 512;
+  const REGIONS = {
     front: [0, 0, 256, 256],
     back: [256, 0, 256, 256],
     face: [0, 256, 512, 192],
     white: [0, 452, 512, 60],
   };
-  var atlasCache = {};
-  var INK = "#1d1410";
-  var EYE = "#3a2418"; // dark brown eyes for every character (never green)
+  const atlasCache = {};
+  const INK = "#1d1410";
+  const EYE = "#3a2418"; // dark brown eyes for every character (never green)
 
   /** UV rectangle of an atlas region: { u0, u1, v0 (bottom), v1 (top) }. */
   F.regionUV = function (name) {
-    var r = REGIONS[name];
+    const r = REGIONS[name];
     return {
       u0: r[0] / SIZE,
       u1: (r[0] + r[2]) / SIZE,
@@ -31,7 +31,7 @@
   function stroke(c, pts, color, width) {
     c.beginPath();
     c.moveTo(pts[0], pts[1]);
-    for (var i = 2; i < pts.length; i += 2) c.lineTo(pts[i], pts[i + 1]);
+    for (let i = 2; i < pts.length; i += 2) c.lineTo(pts[i], pts[i + 1]);
     c.strokeStyle = color;
     c.lineWidth = width;
     c.lineCap = c.lineJoin = "round";
@@ -40,7 +40,7 @@
   function poly(c, pts, color) {
     c.beginPath();
     c.moveTo(pts[0], pts[1]);
-    for (var i = 2; i < pts.length; i += 2) c.lineTo(pts[i], pts[i + 1]);
+    for (let i = 2; i < pts.length; i += 2) c.lineTo(pts[i], pts[i + 1]);
     c.closePath();
     c.fillStyle = color;
     c.fill();
@@ -70,7 +70,7 @@
     stroke(c, [86, 0, 128, 52, 170, 0], edge, 3);
   }
   function buttons(c, x, y0, n, gap, color) {
-    for (var i = 0; i < n; i++) dot(c, x, y0 + i * gap, 5, color);
+    for (let i = 0; i < n; i++) dot(c, x, y0 + i * gap, 5, color);
   }
   function seams(c, color) {
     stroke(c, [20, 250, 20, 120], color, 2);
@@ -78,7 +78,7 @@
   }
 
   function zipJacket(c, s, front) {
-    var p = s.print;
+    const p = s.print;
     if (!front) {
       stroke(c, [30, 70, 128, 92, 226, 70], p.accent, 5);
       crescent(c, 128, 150, 20, p.badge, s.torso);
@@ -86,7 +86,7 @@
     }
     collar(c, p.accent, INK);
     stroke(c, [128, 52, 128, 256], "#f4f4ef", 7);
-    for (var y = 62; y < 250; y += 12) stroke(c, [122, y, 134, y], "#c9ccd6", 2);
+    for (let y = 62; y < 250; y += 12) stroke(c, [122, y, 134, y], "#c9ccd6", 2);
     rect(c, 121, 70, 14, 26, "#e9e9e2", 4);
     stroke(c, [40, 190, 78, 226], p.accent, 4); // welt pockets
     stroke(c, [216, 190, 178, 226], p.accent, 4);
@@ -96,29 +96,29 @@
   }
 
   function flower(c, x, y, r, petal, centre) {
-    for (var i = 0; i < 5; i++) {
-      var a = (i / 5) * Math.PI * 2;
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * Math.PI * 2;
       dot(c, x + Math.cos(a) * r, y + Math.sin(a) * r, r * 0.75, petal);
     }
     dot(c, x, y, r * 0.55, centre);
   }
   function scatterFlowers(c, p, seed) {
-    var spots = [30, 60, 200, 52, 70, 140, 180, 150, 40, 220, 120, 200, 222, 232, 110, 96];
-    for (var i = 0; i < spots.length; i += 2) {
-      var j = (i + seed) % spots.length;
+    const spots = [30, 60, 200, 52, 70, 140, 180, 150, 40, 220, 120, 200, 222, 232, 110, 96];
+    for (let i = 0; i < spots.length; i += 2) {
+      const j = (i + seed) % spots.length;
       flower(c, spots[j], spots[(j + 1) % spots.length], 9, p.accent, p.accent2 || "#f6d365");
     }
   }
   function kurung(c, s, front) {
-    var p = s.print;
+    const p = s.print;
     scatterFlowers(c, p, front ? 0 : 4);
     if (!front) return;
     stroke(c, [96, 0, 106, 34, 150, 34, 160, 0], INK, 3);
-    for (var i = 0; i < 3; i++) dot(c, 128, 54 + i * 26, 7, "#e2b13c"); // kerongsang brooch
+    for (let i = 0; i < 3; i++) dot(c, 128, 54 + i * 26, 7, "#e2b13c"); // kerongsang brooch
   }
 
   function jubah(c, s, front) {
-    var fold = "rgba(120,110,95,0.35)";
+    const fold = "rgba(120,110,95,0.35)";
     stroke(c, [60, 60, 52, 256], fold, 3);
     stroke(c, [196, 60, 204, 256], fold, 3);
     if (!front) return;
@@ -129,7 +129,7 @@
   }
 
   function shirt(c, s, front) {
-    var p = s.print;
+    const p = s.print;
     if (p.batik) batik(c, p);
     if (!front) return seams(c, "rgba(0,0,0,0.18)");
     collar(c, p.collar || p.accent, INK);
@@ -140,9 +140,9 @@
     rect(c, 186, 82, 6, 30, p.pen || "#2b62c4", 2);
   }
   function batik(c, p) {
-    for (var y = 30; y < 256; y += 64) {
-      for (var x = 20; x < 256; x += 64) {
-        var dx = (y / 64) % 2 ? 32 : 0;
+    for (let y = 30; y < 256; y += 64) {
+      for (let x = 20; x < 256; x += 64) {
+        const dx = (y / 64) % 2 ? 32 : 0;
         stroke(
           c,
           [x + dx, y, x + dx + 18, y + 18, x + dx, y + 36, x + dx - 18, y + 18, x + dx, y],
@@ -155,7 +155,7 @@
   }
 
   function apron(c, s, front) {
-    var p = s.print;
+    const p = s.print;
     if (!front) {
       stroke(c, [30, 170, 128, 150, 226, 170], p.apron, 9); // apron ties
       dot(c, 128, 152, 12, p.apron);
@@ -172,7 +172,7 @@
   }
 
   function labcoat(c, s, front) {
-    var p = s.print;
+    const p = s.print;
     if (!front) return stroke(c, [128, 140, 128, 256], "rgba(0,0,0,0.18)", 3);
     poly(c, [76, 0, 180, 0, 128, 150], p.inner);
     stroke(c, [76, 0, 128, 150, 128, 256], "#b9bec6", 4);
@@ -186,7 +186,7 @@
   }
 
   function cardigan(c, s, front) {
-    var p = s.print;
+    const p = s.print;
     if (!front) return stroke(c, [0, 244, 256, 244], "rgba(0,0,0,0.25)", 10);
     poly(c, [90, 0, 166, 0, 140, 256, 116, 256], p.inner);
     stroke(c, [90, 0, 116, 256], "rgba(0,0,0,0.3)", 4);
@@ -198,7 +198,7 @@
   }
 
   function tee(c, s, front) {
-    var p = s.print;
+    const p = s.print;
     stroke(c, [84, 0, 128, 28, 172, 0], p.accent, 8);
     if (!front) return;
     if (p.icon === "rocket") return rocket(c, p);
@@ -216,7 +216,7 @@
   }
 
   function bajuMelayu(c, s, front) {
-    var p = s.print;
+    const p = s.print;
     if (!front) return seams(c, "rgba(0,0,0,0.18)");
     rect(c, 92, 0, 72, 18, p.accent, 6); // cekak musang collar band
     stroke(c, [128, 16, 128, 130], "rgba(0,0,0,0.3)", 4);
@@ -225,18 +225,18 @@
   }
 
   function smock(c, s, front) {
-    var p = s.print;
+    const p = s.print;
     if (!front) return seams(c, "rgba(0,0,0,0.2)");
     rect(c, 96, 0, 64, 16, p.accent, 6);
     stroke(c, [170, 16, 190, 256], "rgba(0,0,0,0.3)", 4);
     buttons(c, 182, 40, 5, 40, p.accent);
     rect(c, 36, 120, 50, 50, "rgba(255,255,255,0.18)", 6);
     rect(c, 46, 104, 30, 8, INK, 2); // comb
-    for (var x = 48; x < 76; x += 5) stroke(c, [x, 110, x, 122], INK, 2);
+    for (let x = 48; x < 76; x += 5) stroke(c, [x, 110, x, 122], INK, 2);
   }
 
   function uniform(c, s, front) {
-    var p = s.print;
+    const p = s.print;
     rect(c, 0, 0, 52, 22, p.accent, 4); // epaulettes
     rect(c, 204, 0, 52, 22, p.accent, 4);
     if (!front) return stroke(c, [236, 10, 24, 236], p.strap, 14);
@@ -248,7 +248,7 @@
     stroke(c, [24, 10, 236, 236], p.strap, 14);
   }
 
-  var TORSO_STYLES = {
+  const TORSO_STYLES = {
     zip: zipJacket,
     kurung: kurung,
     jubah: jubah,
@@ -264,7 +264,7 @@
   F.TORSO_STYLES = TORSO_STYLES;
 
   function drawTorso(ctx, spec, front) {
-    var r = REGIONS[front ? "front" : "back"];
+    const r = REGIONS[front ? "front" : "back"];
     ctx.save();
     ctx.translate(r[0], r[1]);
     ctx.beginPath();
@@ -272,7 +272,7 @@
     ctx.clip();
     ctx.fillStyle = spec.torso;
     ctx.fillRect(0, 0, r[2], r[3]);
-    var style = TORSO_STYLES[spec.print && spec.print.style];
+    const style = TORSO_STYLES[spec.print && spec.print.style];
     if (style) style(ctx, spec, front);
     ctx.restore();
   }
@@ -280,15 +280,15 @@
   /** Build (or reuse) the printed atlas texture for one cast spec. */
   F.makeAtlas = function (spec) {
     if (atlasCache[spec.id]) return atlasCache[spec.id];
-    var canvas = document.createElement("canvas");
+    const canvas = document.createElement("canvas");
     canvas.width = canvas.height = SIZE;
-    var ctx = canvas.getContext("2d");
+    const ctx = canvas.getContext("2d");
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, SIZE, SIZE);
     drawTorso(ctx, spec, true);
     drawTorso(ctx, spec, false);
     F.drawFace(ctx, spec, REGIONS.face);
-    var tex = new THREE.CanvasTexture(canvas);
+    const tex = new THREE.CanvasTexture(canvas);
     tex.encoding = THREE.sRGBEncoding;
     tex.anisotropy = 4;
     atlasCache[spec.id] = tex;

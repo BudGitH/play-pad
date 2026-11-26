@@ -10,11 +10,15 @@
   "use strict";
   const G = (KQ.Game = KQ.Game || {});
   const S = () => G.S;
+  /** Minutes behind the clock that count as "going back" for forcePrayer (above the tracker's 1-min slack). */
+  const REWIND_MARGIN = 1.1;
 
+  /** Has the player pressed Start? Every hook that needs a live game checks this first. */
   function started() {
     return Boolean(S() && S().started);
   }
 
+  /** A plain description of the current Talk / action target for tests. */
   function targetInfo(t) {
     return t
       ? {
@@ -27,6 +31,7 @@
       : null;
   }
 
+  /** Which modal, wudu / prayer screen and azan card state is showing, for tests. */
   function uiInfo() {
     const h = G.UI.current();
     const pf = G.PrayerFlow.state;
@@ -44,6 +49,7 @@
     };
   }
 
+  /** The hero's position, heading, speed, pose and camera, rounded for stable assertions. */
   function heroInfo(s) {
     return {
       pos: {
@@ -62,6 +68,7 @@
     };
   }
 
+  /** Snapshot of the whole game for tests (clock, coins, missions, prayer, UI, audio). */
   function state() {
     if (!started()) return { started: false };
     const s = S();
@@ -91,6 +98,7 @@
     });
   }
 
+  /** Render counters for the performance probes: fps, frames, draw calls (shadow pass included), triangles, shader programs. */
   function stats() {
     const s = S();
     const info = s && s.renderer ? s.renderer.info : null;
@@ -98,12 +106,14 @@
       fps: s ? Math.round(1 / Math.max(0.001, s.avgDt)) : 0,
       frames: s ? s.frames : 0,
       calls: info ? info.render.calls : 0,
+      programs: info ? info.programs.length : 0,
       tris: info ? info.render.triangles : 0,
       quality: s ? s.quality : null,
       downgrades: s ? s.downgrades : 0,
     };
   }
 
+  /** A plain description of one NPC (position, pose, goal) for tests, or null for an unknown id. */
   function npc(id) {
     const A = S() && S().npcs && S().npcs.byId[id];
     if (!A) return null;
@@ -121,6 +131,7 @@
     };
   }
 
+  /** Put the hero 1.2 m in front of a place of interest, clear of walls, and let one step settle. */
   function teleport(poiId) {
     const poi = S().world.pois[poiId];
     if (!poi) return false;
@@ -134,20 +145,31 @@
   }
 
   /**
-   * Jump the clock to `minute` of the current day. Going backwards makes the prayer tracker
+   * Jump the clock to `minute` of the current day. Going far backwards makes the prayer tracker
    * rebuild as a fresh game at that minute (Prayer.update does it), so the HUD and the missions
-   * never show a prayer from "the future"; the azan card state is reset to match.
+   * never show a prayer from "the future"; the azan card state is reset to match. The reset
+   * follows the tracker's own rebuild counter, not a clock comparison: the free-running loop may
+   * already have moved the clock a few seconds past the target, and a jump within the tracker's
+   * one-minute slack is not a rebuild, so the azan card must survive it (ACC2-01).
    */
   function setMinute(minute) {
-    const back = minute < S().sim.clock.minute;
+    const prayer = S().sim.prayer;
+    const rebuilds = prayer.rebuilds();
     G.Loop.setMinute(minute);
-    if (back) G.PrayerFlow.reset();
+    if (prayer.rebuilds() !== rebuilds) G.PrayerFlow.reset();
     G.Loop.step(100);
   }
 
+  /**
+   * Make the named prayer due now (azan card, captions, blocking). When the clock is already past
+   * it, the tracker restarts as a new game and would count it as prayed at home, so go to just
+   * before its start first and step across it (ACC2-02). Going back drops any prayer flow and
+   * qada list, like any rewind.
+   */
   function forcePrayer(name) {
     const mins = KQ.Sim.Clock.parseHHMM(KQ.PRAYER_TIMES[name]);
     if (Number.isNaN(mins)) return false;
+    if (mins < S().sim.clock.minute - REWIND_MARGIN) setMinute(mins - 0.5);
     setMinute(mins + 0.05);
     return true;
   }

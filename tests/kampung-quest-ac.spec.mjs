@@ -4,8 +4,9 @@
 // tests/kampung-quest/*.test.mjs; touch play and phone layouts by kampung-quest-mobile.spec.mjs.
 //
 // Run:    npx playwright test tests/kampung-quest-ac.spec.mjs
-// Slow:   the perf probe (AC-14) is tagged @slow and runs with the rest (about 1 minute of it).
-//         Skip it with --grep-invert @slow, or run only it with --grep @slow.
+// Slow:   the perf probe (AC-14, 4x CPU throttle) is tagged @slow. `npm run smoke` and the CI
+//         "Kampung Quest" job skip it (--grep-invert @slow); `npm run perf:kq` runs only it, and
+//         .github/workflows/probes.yml runs it nightly and on PRs that touch the game.
 //
 // The game is opened with `?still=1` (no rAF loop; time moves only through __kq.step, so every test
 // is deterministic even though headless Chromium renders with software GL) and `?autoq=0` (no
@@ -71,7 +72,7 @@ async function nearNpc(page, id) {
 async function acceptNenek(page) {
   await nearNpc(page, "nenek");
   await kq(page, () => window.__kq.interact());
-  await page.getByRole("button", { name: "Next" }).click();
+  await page.getByRole("button", { name: "Next", exact: true }).click();
   await page.getByRole("button", { name: /Waalaikumsalam/ }).click();
 }
 
@@ -159,7 +160,7 @@ async function checkPrompt(page) {
   const bubble = page.locator(".kq-bubble");
   await expect(bubble).toBeVisible();
   await expect(bubble).toContainText(/Assalamualaikum/);
-  await page.getByRole("button", { name: "Next" }).click();
+  await page.getByRole("button", { name: "Next", exact: true }).click();
   await expect(page.getByRole("button", { name: /Waalaikumsalam/ })).toBeVisible();
   await page.getByRole("button", { name: "Later" }).click();
   expect((await state(page)).ui.modal).toBeNull();
@@ -330,6 +331,179 @@ test.describe.serial("world and play (one shared page, forward in game time)", (
   test("AC-6 night is dark: lighting follows the clock", () => checkNight(shared.page));
   test("no console or page errors in the whole run", () => checkNoErrors(shared.problems));
 });
+
+/* ---------- regressions of the QA fixes: hooks, hawker talk, cross-tab save (one shared page) ---------- */
+
+/** Browser-side: the azan card is showing and the tracker says this prayer is due. */
+function azanFor(name) {
+  const st = window.__kq.state();
+  return st.ui.azanCard && st.prayer.due === name && st.prayer.blocking;
+}
+
+async function checkNoRecompile(page) {
+  await step(page, 1000);
+  const programs = async () => (await kq(page, () => window.__kq.stats())).programs;
+  const p0 = await programs();
+  expect(p0, "the loader compiled shaders").toBeGreaterThan(10);
+  for (const tier of ["med", "high", "low"]) {
+    await kq(page, (t) => window.KQ.Game.Loop.setQuality(t), tier);
+    await step(page, 700);
+    expect((await state(page)).quality).toBe(tier);
+    expect(await programs(), `switching to ${tier} must not compile a shader program`).toBe(p0);
+  }
+}
+
+async function checkSetMinuteKeepsAzan(page) {
+  await kq(page, () => window.__kq.forcePrayer("zohor"));
+  expect(await kq(page, azanFor, "zohor"), "Zohor is due with its azan card").toBe(true);
+  // a hop back of a few seconds is inside the tracker's slack: no rebuild, so the card must stay
+  const rebuildsBefore = await kq(page, () => window.KQ.Game.S.sim.prayer.rebuilds());
+  await kq(page, () => window.__kq.setMinute(window.__kq.state().minute - 0.3));
+  expect(await kq(page, () => window.KQ.Game.S.sim.prayer.rebuilds())).toBe(rebuildsBefore);
+  expect(await kq(page, azanFor, "zohor"), "ACC2-01: the azan card survives a tiny hop back").toBe(
+    true,
+  );
+}
+
+async function checkForcePrayerBackwards(page) {
+  await kq(page, () => window.__kq.setMinute(1230)); // 20:30: Zohor, Asar and Maghrib are over
+  await kq(page, () => window.__kq.forcePrayer("zohor"));
+  const st = await state(page);
+  expect(st.prayer.due, "ACC2-02: the named prayer is due, not 'prayed at home'").toBe("zohor");
+  expect(st.prayer.prayers.find((p) => p.name === "zohor").status).not.toBe("done");
+  expect(st.ui.azanCard, "the azan card shows").toBe(true);
+  expect(st.prayer.qada, "a rewind starts the tracker over").toEqual([]);
+  await kq(page, () => window.__kq.forcePrayer("subuh")); // even further back
+  expect((await state(page)).prayer.due).toBe("subuh");
+}
+
+async function checkHawkerTalkedFallback(page) {
+  await kq(page, () => window.__kq.setMinute(600)); // 10:00: the hawkers are at their stalls
+  await nearNpc(page, "hawker_ali");
+  await kq(page, () => window.__kq.interact());
+  await expect(page.getByRole("dialog", { name: /Talking to/ })).toBeVisible();
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await page.getByRole("button", { name: "Later" }).click();
+  await step(page, 300);
+  const after = (await state(page)).target;
+  expect(after?.kind, "after talking, the counter wins again").toBe("obj");
+  expect(after?.id).toMatch(/^counter_/);
+  await kq(page, () => window.__kq.place(-42.6, 40, 0)); // walk away (more than 4.5 m)
+  await step(page, 300);
+  await nearNpc(page, "hawker_ali"); // back again: Talk is offered again
+}
+
+test.describe.serial("regressions of the QA fixes (one shared page)", () => {
+  /** @type {{page?: import('@playwright/test').Page, problems?: string[]}} */
+  const shared = {};
+  test.describe.configure({ timeout: 150_000 });
+  test.beforeAll(async ({ browser }) => {
+    test.setTimeout(180_000);
+    shared.page = await browser.newPage({ viewport: { width: 720, height: 400 } });
+    shared.problems = watchProblems(shared.page);
+    await open(shared.page);
+  });
+  test.afterAll(async () => {
+    await shared.page?.close();
+  });
+  test("R2-PERF-01/04 low -> med -> high -> low never compiles a shader program", () =>
+    checkNoRecompile(shared.page));
+  test("ACC2-01 setMinute resets the azan card only when the tracker rebuilt", () =>
+    checkSetMinuteKeepsAzan(shared.page));
+  test("ACC2-02 forcePrayer backwards still makes the named prayer due", () =>
+    checkForcePrayerBackwards(shared.page));
+  test("hawker talk falls back to the counter after Later, and returns when the hero walks away", () =>
+    checkHawkerTalkedFallback(shared.page));
+  test("no console or page errors in the regression run", () => checkNoErrors(shared.problems));
+});
+
+/** Browser-side: count "Another tab" toasts and the storage events (and the newest revision) this tab has seen. */
+function spyOnSaveWarnings() {
+  window.__toasts = 0;
+  window.__seenRev = 0;
+  window.__events = 0;
+  const UI = window.KQ.Game.UI;
+  const real = UI.toast;
+  UI.toast = (text, ...rest) => {
+    if (/Another tab/.test(text)) window.__toasts += 1;
+    return real.call(UI, text, ...rest);
+  };
+  // registered after the game's own listener, so it counts events the game has already seen
+  window.addEventListener("storage", (e) => {
+    if (e.key !== "kampung-quest:v1") return;
+    window.__events += 1;
+    window.__seenRev = JSON.parse(e.newValue).rev;
+  });
+}
+
+test("RISK2-02 a newer save from another tab toasts once and this tab never overwrites it", async ({
+  browser,
+}) => {
+  test.setTimeout(240_000);
+  const ctx = await browser.newContext({ viewport: { width: 720, height: 400 } });
+  const a = await ctx.newPage();
+  await open(a);
+  expect(await kq(a, () => window.KQ.Game.Loop.save()), "tab A saves").toBe(true);
+  await kq(a, spyOnSaveWarnings);
+  const b = await ctx.newPage(); // same browser profile: shared localStorage
+  await open(b);
+  for (let i = 0; i < 3; i += 1) {
+    await kq(b, () => window.KQ.Game.S.sim.economy.add(5));
+    expect(await kq(b, () => window.KQ.Game.Loop.save()), "tab B saves").toBe(true);
+  }
+  const lastRev = await kq(b, () => JSON.parse(localStorage.getItem("kampung-quest:v1")).rev);
+  await expect.poll(() => kq(a, () => window.__seenRev), { timeout: 20_000 }).toBe(lastRev);
+  expect(await kq(a, () => window.__events), "several saves arrived").toBeGreaterThanOrEqual(3);
+  expect(await kq(a, () => window.__toasts), "one warning, not one per save of the other tab").toBe(
+    1,
+  );
+  expect(await kq(a, () => window.KQ.Game.Loop.save()), "the stale tab is refused").toBe(false);
+  const coins = await kq(a, () => JSON.parse(localStorage.getItem("kampung-quest:v1")).coins);
+  expect(coins, "tab B's progress is intact").toBe(25);
+  await ctx.close();
+});
+
+test("a texture that fails to load falls back to a stand-in: no black world, no errors", async ({
+  page,
+}) => {
+  test.setTimeout(150_000);
+  let blocked = 0;
+  await page.route("**/assets/textures/**", (route) => {
+    blocked += 1;
+    return route.abort();
+  });
+  const real = [];
+  page.on("console", (m) => {
+    // the browser logs each aborted request itself; only OTHER errors count
+    if (m.type() === "error" && !/Failed to load resource/.test(m.text())) real.push(m.text());
+  });
+  page.on("pageerror", (e) => real.push("pageerror: " + e.message));
+  await open(page);
+  expect(blocked, "the test really blocked the photo textures").toBeGreaterThan(5);
+  const maps = await kq(page, textureReport);
+  expect(maps.broken, "textures with no image left").toEqual([]);
+  expect(maps.withMap, "materials that kept a map").toBeGreaterThan(10);
+  expect(real).toEqual([]);
+});
+
+/** Browser-side: every texture on a scene material has a drawable image (a failed load leaves none). */
+function textureReport() {
+  const seen = new Set();
+  const broken = [];
+  let withMap = 0;
+  window.KQ.Game.S.scene.traverse((o) => {
+    [].concat(o.material || []).forEach((m) => {
+      if (m.map) withMap += 1;
+      ["map", "normalMap", "roughnessMap", "alphaMap"].forEach((key) => {
+        const t = m[key];
+        if (!t || seen.has(t)) return;
+        seen.add(t);
+        if (!t.image || !(t.image.width > 0)) broken.push(`${o.name || o.type}.${key}`);
+      });
+    });
+  });
+  return { broken, withMap };
+}
 
 /* ---------- browser-side helpers (kept as named functions: lint size limits) ---------- */
 
@@ -506,7 +680,7 @@ test.describe("AC-15 accessibility", () => {
     await nearNpc(page, "nenek");
     await kq(page, () => window.__kq.interact());
     await expect(page.locator(".kq-bubble-text")).not.toBeEmpty(); // dialogue captioned
-    await page.getByRole("button", { name: "Next" }).click();
+    await page.getByRole("button", { name: "Next", exact: true }).click();
     await page.getByRole("button", { name: "Later" }).click();
     await kq(page, () => window.__kq.forcePrayer("zohor"));
     await expect(page.locator(".kq-azan .kq-en")).not.toBeEmpty(); // azan captioned
@@ -742,7 +916,12 @@ test("AC-14 / AC-6 slow device: auto-downgrade without a recompile; the game day
   // pace: 1 game minute = 2 real seconds however slow the frames (sub-stepped, not clamped)
   const start = await state(page);
   const t0 = Date.now();
-  await page.waitForTimeout(10_000);
+  await expect
+    .poll(async () => (await state(page)).minute - start.minute, {
+      timeout: 90_000,
+      intervals: [400],
+    })
+    .toBeGreaterThan(4); // about 8 real seconds at the right pace; a slow clock fails the ratio below
   const b = await state(page);
   const ratio = (b.minute - start.minute) / ((Date.now() - t0) / 2000);
   expect(ratio, "game minutes per 2 real seconds").toBeGreaterThan(0.6);

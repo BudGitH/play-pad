@@ -1,6 +1,6 @@
 # Test Plan: Kampung Quest
 
-> **Phase 2 of the workflow.** Tests define "done". The pure-logic systems (`games/kampung-quest/js/sim/`) are covered by 125 unit tests that run in Node with no browser; the browser-only ACs are covered by the Playwright probe `tests/kampung-quest-ac.spec.mjs` (plus `tests/kampung-quest-mobile.spec.mjs` for touch and phone layouts).
+> **Phase 2 of the workflow.** Tests define "done". The pure-logic systems (`games/kampung-quest/js/sim/`) are covered by the unit tests (`npm run test:kq`, 155 at the time of writing) that run in Node with no browser; the browser-only ACs are covered by the Playwright probe `tests/kampung-quest-ac.spec.mjs` (plus `tests/kampung-quest-mobile.spec.mjs` for touch and phone layouts).
 
 **Feature:** Kampung Quest — open-neighbourhood life game
 **Ticket:** PLAY-013
@@ -68,7 +68,7 @@ Unit tests live in `tests/kampung-quest/*.test.mjs` (`node:test` + `node:vm`, lo
 
 ```
 npm install            # once
-npm run test:kq        # node --test "tests/kampung-quest/*.test.mjs"  (125 tests, < 1 s)
+npm run test:kq        # node --test "tests/kampung-quest/*.test.mjs"  (155 tests, < 1 s)
 npx eslint games/kampung-quest/js/sim tests/kampung-quest
 
 # browser probes (Playwright; headless Chromium, software GL)
@@ -78,7 +78,7 @@ PW_CHROMIUM_PATH=<chromium> npx playwright test tests/kampung-quest-ac.spec.mjs 
 
 ## Definition of done
 
-- [x] All sim unit tests above pass (125/125).
+- [x] All sim unit tests above pass (155/155).
 - [x] Integration probes for AC-1–8, 10–16 written (`tests/kampung-quest-ac.spec.mjs`). Still unprobed in the browser: the mini-mart / barber / clinic / library sheets (AC-10), the blocked-storage notice (AC-13), AC-9 late prayer / qada UI. AC-14 fps is a CPU-time proxy (software GL), see the row above.
 - [ ] If a **full design path** ran, the tests encode the **chosen** option from `design-review.md` (HUD/IA) — pending the integration workstream.
 - [ ] `qa-report.md` is clean (no unresolved CRITICAL/HIGH).

@@ -16,6 +16,7 @@
   const MAX_COINS = 99999;
   const START_COINS = 10;
 
+  /** Build one hawker menu entry; every dish is halal by construction (child-friendly rule). */
   function dish(id, name, nameMs, stall, price, hunger, energy) {
     return { id, name, nameMs, stall, price, hunger, energy: energy || 0, halal: true };
   }
@@ -34,6 +35,7 @@
     dish("kuih_lapis", "Kuih lapis", "Kuih lapis", "stall_drinks", 2, 10),
   ];
 
+  /** Build one mini-mart shelf item; halal by construction, hunger / energy only for food. */
   function goods(id, name, nameMs, price, extra) {
     return Object.assign(
       { id, name, nameMs, price, hunger: 0, energy: 0, halal: true },
@@ -60,22 +62,26 @@
     hat: ["none", "songkok", "cap"],
   };
 
+  /** Whole, non-negative coins capped at MAX_COINS, so junk input can never make a negative or huge purse. */
   function cleanCoins(value, fallback) {
     const n = Number(value);
     if (!Number.isFinite(n)) return fallback;
     return Math.min(MAX_COINS, Math.max(0, Math.floor(n)));
   }
 
+  /** Look an item up in the menu and the shop by id (non-string ids find nothing). */
   function findItem(id) {
     const wanted = typeof id === "string" ? id : "";
     return MENU.concat(SHOP).find((item) => item.id === wanted) || null;
   }
 
+  /** The gentle "you need N more coins" hint: points at an errand to earn them, never scolds. */
   function shortMessage(missing) {
     const noun = missing === 1 ? "coin" : "coins";
     return "You need " + missing + " more " + noun + " \u2014 try helping Pakcik Rahman!";
   }
 
+  /** Try to buy an item: refuses (never throws) for an unknown item, a full tummy or too few coins, else pays and eats. */
   function buy(E, id, options) {
     const item = findItem(id);
     if (!item) return { ok: false, hint: "Hmm, we don't have that today.", coins: E.coins };

@@ -27,6 +27,7 @@
   /** Low tier: only the hero and this many nearest neighbours cast a shadow (PERF-02). */
   const NEAR_SHADOWS = 3;
 
+  /** Advance the game timer and run the callbacks (S.after) that have come due. */
   function scheduleTimers(dt) {
     const s = S();
     s.t += dt;
@@ -35,6 +36,7 @@
     due.forEach((x) => x.fn());
   }
 
+  /** One sim step: tick the clock (slowed during a prayer flow), the needs and the prayer tracker, and fire its events. */
   function stepSim(dt) {
     const s = S();
     const sim = s.sim;
@@ -50,6 +52,7 @@
     scheduleTimers(dt);
   }
 
+  /** Move the hero from input (blocked while a menu is open), then the NPCs, Mimi the cat and the camera by dt. */
   function stepActors(dt) {
     const s = S();
     const P = s.player;
@@ -74,6 +77,7 @@
     return move;
   }
 
+  /** Refresh the interaction target, HUD and prayer guide on a slower cadence than the frame. */
   function stepUi(dt) {
     const s = S();
     s.uiT += dt;
@@ -93,6 +97,7 @@
     }
   }
 
+  /** Place the world beacons (mission step, mosque guide) from the current targets. */
   function refreshMarkers() {
     const s = S();
     const pf = G.PrayerFlow.state;
@@ -104,6 +109,7 @@
     };
   }
 
+  /** The minimap markers: the mission target, the mosque while a prayer is due or owed, the hawker centre and home. */
   function mapMarkers() {
     const s = S();
     const out = [];
@@ -120,6 +126,7 @@
     return out;
   }
 
+  /** What the minimap draws for a span in metres: centred on the hero, with heading and markers. */
   function mapView(span) {
     const s = S();
     const P = s.player;
@@ -133,6 +140,7 @@
     };
   }
 
+  /** Draw the minimap onto the HUD canvas. */
   function drawMinimap() {
     const R = G.Hud.refs;
     G.Minimap.draw(R.canvas.getContext("2d"), R.canvas.width, mapView(70), true);
@@ -148,6 +156,7 @@
     });
   }
 
+  /** Scale the figures' studio reflection down at night (to 40 %) so the toy plastic does not glow in the dark. */
   function shineFor(s) {
     const k = 0.9 * (1 - 0.6 * s.world.night());
     s.figureMats.forEach((m) => (m.envMapIntensity = k));
@@ -169,6 +178,7 @@
     return s.shadowRigs;
   }
 
+  /** Turn shadow casting on or off for a whole figure, only touching meshes when it changes. */
   function setCast(rig, on) {
     if (rig.cast === on) return;
     rig.cast = on;
@@ -204,6 +214,7 @@
     renderer.info.reset();
   }
 
+  /** Draw one frame: refresh the shadow casters (every 10th frame), the sun's shadow target, world time and markers, then render. */
   function renderFrame(dt) {
     const s = S();
     const P = s.player;
@@ -268,6 +279,7 @@
     return done;
   }
 
+  /** Jump the clock to a minute (test hook): the prayer tracker follows and NPCs snap to their new places. */
   function setMinute(minute) {
     const sim = S().sim;
     sim.clock.set(minute);
@@ -351,6 +363,7 @@
     return res.ok;
   }
 
+  /** Save every 10 s of game-loop time so a closed tab loses almost nothing. */
   function autosaveTick(dt) {
     const s = S();
     s.saveT += dt;
@@ -371,6 +384,7 @@
     }
   }
 
+  /** Mirror tab visibility into the game: a hidden tab stops sound and time and saves once. */
   function onVisibility() {
     const s = S();
     s.hidden = document.hidden;
@@ -382,6 +396,7 @@
     s.last = performance.now();
   }
 
+  /** The requestAnimationFrame callback: measure real time and run one frame (sub-stepped when slow). */
   function raf(ts) {
     const s = S();
     requestAnimationFrame(raf);
@@ -399,6 +414,7 @@
     if (S().started) G.PrayerFlow.refit();
   }
 
+  /** Hook up resize, orientation, visibility and pagehide, then start the rAF loop. */
   function start() {
     const s = S();
     s.last = performance.now();
@@ -425,6 +441,7 @@
     setMinute,
     resize,
     setQuality,
+    figureShadows,
     save,
     setPaused,
     onVisibility,

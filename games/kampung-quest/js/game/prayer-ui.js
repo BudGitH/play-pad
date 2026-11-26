@@ -15,6 +15,11 @@
   const U = G.U;
   const T = () => G.PrayerText;
 
+  /** A side panel on wide screens (the hero stays centred in the rest), a bottom sheet otherwise. */
+  function panelVariant() {
+    return window.innerWidth >= 900 && window.innerHeight >= 520 ? "side" : "bottom";
+  }
+
   function captionLines(host) {
     host.ar = U.el("p", { cls: "kq-ar", lang: "ar", dir: "rtl", text: "" });
     host.tr = U.el("p", { cls: "kq-tr", lang: "ms-Latn", text: "" });

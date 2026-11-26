@@ -75,7 +75,7 @@
     const q = params.get("q");
     if (q === "low" || q === "med" || q === "high") return q;
     if (saved.status === "loaded") return saved.state.settings.quality;
-    return G.Env.coarse ? "med" : "high";
+    return G.Env.coarse ? "low" : "high";
   }
 
   async function buildWorld(s, tier) {

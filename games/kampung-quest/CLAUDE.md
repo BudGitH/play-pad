@@ -37,7 +37,7 @@ State lives in one object, `KQ.Game.S` (created in `boot.js`). The pure sim obje
 ## Rules that are easy to break
 
 - **The pause / hidden gate sits where time and sound are produced** (`Loop.frame`, `Audio.voice`), not in callers (`docs/LEARNINGS.md`, 2026-11-21 audio rows). `Audio.debug()` counts every trigger and every refusal so a probe can assert the lifecycle.
-- **Sun times.** The world's sky is authored for 07:05 / 19:05; `Loop.skyMinute()` remaps the game clock so sunrise = Syuruk and sunset = Maghrib. Do not edit the sky keys for this.
+- **Sun times.** The world follows `KQ.PRAYER_TIMES` itself (`js/data/prayer-times.js` must load before the world scripts): sunrise = Syuruk, sunset = Maghrib. `world.update` is given the real clock minute; do not remap it.
 - **Prayer flow slows the clock to 25 %** (`FLOW_RATE`) while a flow is active or a prayer screen is open, so a 50-tap Zohor does not run into Asar. A prayer that falls due during a menu is queued (`PrayerFlow.maybeShowCard`) and shown after the menu closes.
 - **Indoor NPCs** (`routine.indoors`) are hidden, but stand at their block's door when the hero is within 15 m (so the first mission giver is always reachable at 07:00).
 - **Time of day for tests:** `__kq.setMinute(m)`, `__kq.forcePrayer("zohor")`, `__kq.step(ms)` advance deterministically even when headless rAF is throttled.

@@ -11,20 +11,22 @@
   "use strict";
   const G = (KQ.Game = KQ.Game || {});
   const U = G.U;
-  const PIVOT_H = 1.05;
-  const MIN_DIST = 2.2;
-  const MAX_DIST = 8.5;
+  const PIVOT_H = 0.7;
+  const MIN_DIST = 1.6;
+  const MAX_DIST = 6.5;
 
   const C = {
     cam: null,
     yaw: 0,
-    pitch: 0.34,
-    dist: 4.8,
-    armDist: 4.8,
+    pitch: 0.26,
+    dist: 2.7,
+    armDist: 2.7,
     pivot: null,
     frame: null,
     shift: 0,
     shiftTarget: 0,
+    shiftX: 0,
+    shiftXTarget: 0,
     idle: 0,
     size: { w: 1, h: 1 },
   };
@@ -65,7 +67,7 @@
     const steps = Math.ceil(len / 0.2);
     for (let i = 1; i <= steps; i += 1) {
       const t = i / steps;
-      if (G.Collide.camBlocked(o.colliders, C.pivot.x + dx * t, C.pivot.z + dz * t, 0.32)) {
+      if (G.Collide.camBlocked(o.colliders, C.pivot.x + dx * t, C.pivot.z + dz * t, 0.45)) {
         return Math.max(0.9, ((i - 1) / steps) * len - 0.2);
       }
     }
@@ -97,11 +99,13 @@
 
   function applyShift(dt, snap) {
     C.shift = snap ? C.shiftTarget : U.damp(C.shift, C.shiftTarget, 5, dt);
-    if (Math.abs(C.shift) < 0.5 && C.shiftTarget === 0) {
+    C.shiftX = snap ? C.shiftXTarget : U.damp(C.shiftX, C.shiftXTarget, 5, dt);
+    const idle = C.shiftTarget === 0 && C.shiftXTarget === 0;
+    if (Math.abs(C.shift) < 0.5 && Math.abs(C.shiftX) < 0.5 && idle) {
       if (C.cam.view && C.cam.view.enabled) C.cam.clearViewOffset();
       return;
     }
-    C.cam.setViewOffset(C.size.w, C.size.h, 0, C.shift, C.size.w, C.size.h);
+    C.cam.setViewOffset(C.size.w, C.size.h, C.shiftX, C.shift, C.size.w, C.size.h);
   }
 
   /**
@@ -136,8 +140,9 @@
       if (!frame) C.idle = 0;
     },
     /** Shift the subject up by `px` (so a bottom sheet does not cover the hero). */
-    setShift(px) {
+    setShift(px, sideways) {
       C.shiftTarget = px || 0;
+      C.shiftXTarget = sideways || 0;
     },
     resize(w, h, aspect) {
       C.size.w = w;

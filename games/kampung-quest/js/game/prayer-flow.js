@@ -211,19 +211,23 @@
   /* ------------------------------ camera / hero ------------------------------ */
 
   function frameHero(spot, yawOff, dist) {
-    const sheetH = G.UI.state.sheet ? G.UI.state.sheet.offsetHeight : 0;
+    const box = G.UI.state.sheet;
+    const side = Boolean(box && box.parentElement.classList.contains("kq-sheet-side"));
     G.Camera.setFrame({
       target: { x: spot.x, y: spot.y, z: spot.z },
       yaw: spot.faceYaw + yawOff,
-      pitch: 0.2,
+      pitch: 0.12,
       dist,
+      lift: 0.5,
     });
-    G.Camera.setShift(sheetH * 0.45);
+    if (!box) return G.Camera.setShift(0, 0);
+    if (side) G.Camera.setShift(0, box.offsetWidth * 0.5);
+    else G.Camera.setShift(box.offsetHeight * 0.5, 0);
   }
 
   function leaveScreen() {
     G.Camera.setFrame(null);
-    G.Camera.setShift(0);
+    G.Camera.setShift(0, 0);
   }
 
   function nearestTap() {
@@ -309,7 +313,7 @@
     F.wudu = { taps: 0, tried: -1, hint: "" };
     F.wui = G.PrayerUI.wudu({ onPick: wuduPick, onAct: wuduAct, onClose: closeWudu });
     refreshWudu();
-    frameHero({ x: spot.x, y: spot.y, z: spot.z, faceYaw: Math.PI }, 0.6, 3.1);
+    frameHero({ x: spot.x, y: spot.y, z: spot.z, faceYaw: Math.PI }, 0.7, 2.0);
   }
 
   function closeWudu() {
@@ -388,7 +392,7 @@
     F.pray = { tried: null, cue: null, hint: "", seed: 0 };
     F.pui = G.PrayerUI.pray({ onPick: prayPick, onClose: closePray });
     refreshPray();
-    frameHero({ x: HALL_SPOT.x, y, z: HALL_SPOT.z, faceYaw: Math.PI }, 0, 3.2);
+    frameHero({ x: HALL_SPOT.x, y, z: HALL_SPOT.z, faceYaw: Math.PI }, 0.55, 2.0);
   }
 
   function closePray() {
@@ -426,7 +430,7 @@
         G.UI.toast("Missions can carry on now.", "good");
       },
     });
-    frameHero({ x: HALL_SPOT.x, y: S().player.pos.y, z: HALL_SPOT.z, faceYaw: Math.PI }, 0, 3.2);
+    frameHero({ x: HALL_SPOT.x, y: S().player.pos.y, z: HALL_SPOT.z, faceYaw: Math.PI }, 0.55, 2.0);
   }
 
   /* ------------------------------ entry points ------------------------------ */

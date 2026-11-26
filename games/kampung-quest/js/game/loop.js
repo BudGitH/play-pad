@@ -17,17 +17,6 @@
   const S = () => G.S;
   const FLOW_RATE = 0.25;
   const TIERS = ["low", "med", "high"];
-  const SKY = { rise: 425, set: 1145 };
-
-  /** Map the game clock onto the sky's 07:05 / 19:05 anchors so the sun follows Syuruk / Maghrib. */
-  function skyMinute(m) {
-    const parse = KQ.Sim.Clock.parseHHMM;
-    const rise = parse(KQ.PRAYER_TIMES.syuruk);
-    const set = parse(KQ.PRAYER_TIMES.maghrib);
-    if (m < rise) return (m * SKY.rise) / rise;
-    if (m < set) return SKY.rise + ((m - rise) * (SKY.set - SKY.rise)) / (set - rise);
-    return SKY.set + ((m - set) * (1440 - SKY.set)) / (1440 - set);
-  }
 
   function scheduleTimers(dt) {
     const s = S();
@@ -160,7 +149,7 @@
     const P = s.player;
     shineFor(s);
     s.world.setShadowTarget(P.pos);
-    s.world.update(dt, { minute: skyMinute(s.sim.clock.minute) });
+    s.world.update(dt, { minute: s.sim.clock.minute });
     G.Markers.update(s.markers, dt, s.markerView || { reduced: false });
     s.renderer.render(s.scene, s.camera);
     s.frames += 1;
@@ -331,7 +320,6 @@
     save,
     setPaused,
     onVisibility,
-    skyMinute,
     mapView,
   };
 })((window.KQ = window.KQ || {}));

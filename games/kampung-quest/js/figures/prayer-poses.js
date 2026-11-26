@@ -111,17 +111,21 @@
     );
   }
 
-  /** Julus: sitting back on folded legs (thighs forward, shins folded under), hands resting on the thighs. */
+  /**
+   * Julus: sitting back on folded legs. Thighs forward, shins folded back with the feet tucked up
+   * a little behind the hips (so the toy visibly sits on its heels, owner note PLAY-013), hands on
+   * the thighs. Salam and doa build on this pose.
+   */
   function julus(p, d) {
-    var a = PI / 2 - 0.1;
+    var a = PI / 2 - 0.15;
     var hy = S.kneelHipY(d, a) + 0.004;
     var sh = S.shoulderAt(d, hy, 0, 0);
     var r = S.reach(d, sh, [d.legD + 0.045, d.thigh * 0.78], 0);
-    return kneelingLegs(
+    var P = kneelingLegs(
       {
-        rootY: hy - d.hipH,
-        torso: [breathe(p), 0, 0],
-        head: [0.12, 0, 0],
+        rootY: hy - d.hipH - 0.01,
+        torso: [breathe(p) - 0.05, 0, 0],
+        head: [0.17, 0, 0],
         armL: [r[0], 0, 0.04],
         armR: [r[0], 0, -0.04],
         foreL: [r[1], -0.12, 0],
@@ -131,6 +135,9 @@
       },
       a,
     );
+    P.kneeL = [PI / 2 + a - 0.4, 0, 0];
+    P.kneeR = [PI / 2 + a - 0.4, 0, 0];
+    return P;
   }
 
   function salam(dir) {

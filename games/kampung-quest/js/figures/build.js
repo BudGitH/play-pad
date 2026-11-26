@@ -97,7 +97,8 @@
     group.traverse(function (o) {
       if (!o.isMesh) return;
       calls++;
-      tris += (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3;
+      tris +=
+        (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3;
     });
     return { drawCalls: calls, triangles: tris };
   };

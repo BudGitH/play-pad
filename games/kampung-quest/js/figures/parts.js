@@ -46,17 +46,33 @@
   /** Hip block, hip bar and (optionally) a satchel on the hip. Origin = hip pivot. */
   F.partHips = function (spec, d) {
     var top = spec.skirt ? spec.skirt.top || spec.skirt.upper : spec.legs;
-    var list = [G.place(box(d.torsoWB, d.hipBlockH, d.torsoD, 0.012, 2, top), [0, d.hipBlockH / 2, 0])];
+    var list = [
+      G.place(box(d.torsoWB, d.hipBlockH, d.torsoD, 0.012, 2, top), [0, d.hipBlockH / 2, 0]),
+    ];
     var bar = new THREE.CylinderGeometry(0.03, 0.03, d.torsoWB - 0.03, 16, 1);
     list.push(G.place(G.paint(bar, spec.legs), [0, 0.002, -0.004], [0, 0, Math.PI / 2]));
     // crotch notch: a little wedge under the hip block between the legs, like the toy's moulded hip piece
     var notch = G.roundedBox(0.03, 0.03, d.legD - 0.01, 0.008, 1);
     G.taper(notch, 0.35, 1, 1, 1, 0.03);
     list.push(G.place(G.paint(notch, spec.skirt ? top : spec.legs), [0, -0.012, 0]));
-    if (spec.belt) list.push(G.place(box(d.torsoWB + 0.004, 0.016, d.torsoD + 0.004, 0.006, 1, spec.belt), [0, 0.012, 0]));
+    if (spec.belt)
+      list.push(
+        G.place(
+          box(d.torsoWB + 0.004, 0.016, d.torsoD + 0.004, 0.006, 1, spec.belt),
+          [0, 0.012, 0],
+        ),
+      );
     if (spec.bag) {
-      list.push(G.place(box(0.05, 0.1, 0.12, 0.014, 1, spec.bag), [d.torsoWB / 2 + 0.03, -0.02, 0.01]));
-      list.push(G.place(box(0.054, 0.035, 0.124, 0.01, 1, spec.bagFlap || spec.bag), [d.torsoWB / 2 + 0.031, 0.02, 0.01]));
+      list.push(
+        G.place(box(0.05, 0.1, 0.12, 0.014, 1, spec.bag), [d.torsoWB / 2 + 0.03, -0.02, 0.01]),
+      );
+      list.push(
+        G.place(box(0.054, 0.035, 0.124, 0.01, 1, spec.bagFlap || spec.bag), [
+          d.torsoWB / 2 + 0.031,
+          0.02,
+          0.01,
+        ]),
+      );
     }
     return G.merge(list);
   };
@@ -82,8 +98,13 @@
   /** Thigh (hip pivot -> knee). Skirted figures get the upper skirt half instead of a bare leg. */
   F.partThigh = function (spec, d, side) {
     var sk = spec.skirt;
-    if (sk && sk.upper) return G.merge([skirtHalf(side, d.thigh + 0.012, 0.125, 0.142, 0.13, 0.148, sk.upper, 0.01)]);
-    var g = G.place(box(d.legW, d.thigh + 0.004, d.legD, 0.014, 1, spec.legs), [0, -d.thigh / 2 + 0.002, 0]);
+    if (sk && sk.upper)
+      return G.merge([skirtHalf(side, d.thigh + 0.012, 0.125, 0.142, 0.13, 0.148, sk.upper, 0.01)]);
+    var g = G.place(box(d.legW, d.thigh + 0.004, d.legD, 0.014, 1, spec.legs), [
+      0,
+      -d.thigh / 2 + 0.002,
+      0,
+    ]);
     return G.merge([g]);
   };
 
@@ -91,7 +112,9 @@
   F.partShin = function (spec, d, side) {
     var sk = spec.skirt;
     var footY = -d.shin + d.footH / 2;
-    var list = [G.place(box(d.legW, d.footH, d.legD + 0.03, 0.02, 2, spec.shoes), [0, footY, 0.015])]; // bevelled toe
+    var list = [
+      G.place(box(d.legW, d.footH, d.legD + 0.03, 0.019, 1, spec.shoes), [0, footY, 0.015]),
+    ]; // bevelled toe
     if (sk && sk.lower) {
       var len = d.shin - d.footH + 0.006;
       list.push(skirtHalf(side, len, 0.142, 0.172, 0.148, 0.176, sk.lower, 0.0));
@@ -102,7 +125,13 @@
     list.push(G.place(box(d.legW, legH + 0.002, d.legD, 0.012, 1, spec.legs), [0, -legH / 2, 0]));
     if (!spec.band) return G.merge(list);
     list.push(G.place(box(d.legW, 0.02, d.legD, 0.004, 1, spec.band), [0, -legH - 0.01, 0]));
-    list.push(G.place(box(d.legW, shoeH + 0.004, d.legD, 0.006, 1, spec.shoes), [0, -legH - 0.02 - shoeH / 2, 0]));
+    list.push(
+      G.place(box(d.legW, shoeH + 0.004, d.legD, 0.006, 1, spec.shoes), [
+        0,
+        -legH - 0.02 - shoeH / 2,
+        0,
+      ]),
+    );
     return G.merge(list);
   };
 
@@ -118,7 +147,11 @@
       pos.setXYZ(i, pos.getX(i) * 2 * (d.torsoWB / 2 - r) * s, y, 0);
     }
     G.paint(g, "#ffffff", false, back ? "back" : "front");
-    return G.place(g, [0, d.torsoH / 2, back ? -d.torsoD / 2 - 0.0009 : d.torsoD / 2 + 0.0009], [0, back ? Math.PI : 0, 0]);
+    return G.place(
+      g,
+      [0, d.torsoH / 2, back ? -d.torsoD / 2 - 0.0009 : d.torsoD / 2 + 0.0009],
+      [0, back ? Math.PI : 0, 0],
+    );
   }
 
   /** Trapezoid torso (wider at the waist, like the toy) + neck stud + printed decals. Origin = waist. */
@@ -137,10 +170,34 @@
   F.partHead = function (spec, d) {
     var R = d.headR;
     var H = d.headH;
-    var prof = [0, 0, 0.078, 0, 0.094, 0.004, 0.102, 0.012, R, 0.026, R, H - 0.026, 0.102, H - 0.012];
+    var prof = [
+      0,
+      0,
+      0.078,
+      0,
+      0.094,
+      0.004,
+      0.102,
+      0.012,
+      R,
+      0.026,
+      R,
+      H - 0.026,
+      0.102,
+      H - 0.012,
+    ];
     prof.push(0.094, H - 0.004, 0.078, H, 0, H);
     var head = G.paint(G.lathe(prof, 32), spec.skin, true);
-    var face = new THREE.CylinderGeometry(R + 0.0011, R + 0.0011, 0.14, 16, 1, true, -Math.PI / 2, Math.PI);
+    var face = new THREE.CylinderGeometry(
+      R + 0.0011,
+      R + 0.0011,
+      0.14,
+      16,
+      1,
+      true,
+      -Math.PI / 2,
+      Math.PI,
+    );
     G.place(G.paint(face, "#ffffff", true, "face"), [0, 0.098, 0]);
     return G.merge([head, face]);
   };
@@ -164,7 +221,8 @@
     var list = [G.place(G.paint(g, hex, !long), [0, -d.forearm / 2, 0])];
     var joint = G.paint(new THREE.SphereGeometry(0.03, 10, 6), hex, !long);
     list.push(G.place(joint, [0, 0, 0]));
-    if (long && spec.cuff) list.push(G.place(box(0.068, 0.018, 0.074, 0.007, 1, spec.cuff), [0, -d.forearm + 0.006, 0]));
+    if (long && spec.cuff)
+      list.push(G.place(box(0.068, 0.018, 0.074, 0.007, 1, spec.cuff), [0, -d.forearm + 0.006, 0]));
     return G.merge(list);
   };
 
@@ -184,8 +242,18 @@
   F.partHand = function (spec) {
     var hex = spec.hands || spec.skin;
     var skin = !spec.hands;
-    var peg = G.place(G.paint(new THREE.CylinderGeometry(0.02, 0.023, 0.03, 12, 1), hex, skin), [0, -0.01, 0]);
-    var opts = { depth: 0.032, bevelEnabled: true, bevelThickness: 0.007, bevelSize: 0.006, bevelSegments: 1, curveSegments: 10 };
+    var peg = G.place(
+      G.paint(new THREE.CylinderGeometry(0.02, 0.023, 0.03, 12, 1), hex, skin),
+      [0, -0.01, 0],
+    );
+    var opts = {
+      depth: 0.032,
+      bevelEnabled: true,
+      bevelThickness: 0.007,
+      bevelSize: 0.006,
+      bevelSegments: 1,
+      curveSegments: 10,
+    };
     var clip = G.smoothNormals(new THREE.ExtrudeGeometry(clipShape(), opts));
     G.place(clip, [0, -0.052, -0.016]);
     return G.merge([peg, G.paint(clip, hex, skin)]);

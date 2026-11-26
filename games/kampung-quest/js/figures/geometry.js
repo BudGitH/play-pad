@@ -76,7 +76,11 @@
     var m = new THREE.Matrix4();
     var e = new THREE.Euler(r ? r[0] : 0, r ? r[1] : 0, r ? r[2] : 0);
     var sc = s ? new THREE.Vector3(s[0], s[1], s[2]) : new THREE.Vector3(1, 1, 1);
-    m.compose(new THREE.Vector3(p ? p[0] : 0, p ? p[1] : 0, p ? p[2] : 0), new THREE.Quaternion().setFromEuler(e), sc);
+    m.compose(
+      new THREE.Vector3(p ? p[0] : 0, p ? p[1] : 0, p ? p[2] : 0),
+      new THREE.Quaternion().setFromEuler(e),
+      sc,
+    );
     g.applyMatrix4(m);
     return g;
   };
@@ -116,7 +120,12 @@
     var sums = {};
     var keys = [];
     for (var i = 0; i < pos.count; i++) {
-      var k = Math.round(pos.getX(i) * 1e4) + "," + Math.round(pos.getY(i) * 1e4) + "," + Math.round(pos.getZ(i) * 1e4);
+      var k =
+        Math.round(pos.getX(i) * 1e4) +
+        "," +
+        Math.round(pos.getY(i) * 1e4) +
+        "," +
+        Math.round(pos.getZ(i) * 1e4);
       keys.push(k);
       var s = sums[k] || (sums[k] = new THREE.Vector3());
       s.x += nrm.getX(i);

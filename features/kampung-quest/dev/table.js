@@ -89,7 +89,11 @@
 
   /** The black-and-gold glitter placemat (metallic glitter bands with sparkly flake normals). */
   Dev.placemat = function (w, h) {
-    var maps = { map: stripeMap("color", 11), roughnessMap: stripeMap("rough", 11), metalnessMap: stripeMap("metal", 11) };
+    var maps = {
+      map: stripeMap("color", 11),
+      roughnessMap: stripeMap("rough", 11),
+      metalnessMap: stripeMap("metal", 11),
+    };
     maps.normalMap = stripeMap("normal", 11);
     var rep = [w / 1.4, h / 1.4];
     Object.keys(maps).forEach(function (k) {

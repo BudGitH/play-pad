@@ -24,8 +24,20 @@
       c.fill();
       h().dot(c, x - 3 * big, EYE_Y - 5 * big, 3.6 * big, "#ffffff");
       h().dot(c, x + 3 * big, EYE_Y + 5 * big, 1.6 * big, "rgba(255,255,255,0.8)");
-      if (f.lashes) h().stroke(c, [x + s * 8 * big, EYE_Y - 10 * big, x + s * 15 * big, EYE_Y - 16 * big], F.INK, 3);
-      if (f.wrinkles) h().stroke(c, [x + s * 20, EYE_Y - 4, x + s * 28, EYE_Y, x + s * 20, EYE_Y + 6], "rgba(90,50,30,0.55)", 2.4);
+      if (f.lashes)
+        h().stroke(
+          c,
+          [x + s * 8 * big, EYE_Y - 10 * big, x + s * 15 * big, EYE_Y - 16 * big],
+          F.INK,
+          3,
+        );
+      if (f.wrinkles)
+        h().stroke(
+          c,
+          [x + s * 20, EYE_Y - 4, x + s * 28, EYE_Y, x + s * 20, EYE_Y + 6],
+          "rgba(90,50,30,0.55)",
+          2.4,
+        );
     }
   }
 
@@ -55,7 +67,11 @@
       c.closePath();
       c.fillStyle = "#5b1f1a";
       c.fill();
-      h().poly(c, [CX - 26, MOUTH_Y - 6, CX + 26, MOUTH_Y - 6, CX + 20, MOUTH_Y + 1, CX - 20, MOUTH_Y + 1], "#fbfaf6");
+      h().poly(
+        c,
+        [CX - 26, MOUTH_Y - 6, CX + 26, MOUTH_Y - 6, CX + 20, MOUTH_Y + 1, CX - 20, MOUTH_Y + 1],
+        "#fbfaf6",
+      );
       return;
     }
     var w = kind === "calm" ? 16 : 24;
@@ -89,7 +105,8 @@
     }
     if (!f.freckles) return;
     var pts = [-70, 112, -60, 120, -76, 124, 62, 114, 72, 120, 58, 124];
-    for (var i = 0; i < pts.length; i += 2) h().dot(c, CX + pts[i], pts[i + 1], 2.2, "rgba(140,80,50,0.55)");
+    for (var i = 0; i < pts.length; i += 2)
+      h().dot(c, CX + pts[i], pts[i + 1], 2.2, "rgba(140,80,50,0.55)");
   }
 
   function glasses(c, f) {
@@ -130,7 +147,8 @@
     c.fillStyle = f.hairColour || F.INK;
     c.fill();
     // fine print detail: little strands along the edge
-    for (var x = -70; x <= 70; x += 14) h().stroke(c, [CX + x, 176, CX + x * 0.9, 186], "rgba(255,255,255,0.12)", 2);
+    for (var x = -70; x <= 70; x += 14)
+      h().stroke(c, [CX + x, 176, CX + x * 0.9, 186], "rgba(255,255,255,0.12)", 2);
   }
 
   /** Draw a whole face into the atlas face region. */

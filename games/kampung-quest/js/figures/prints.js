@@ -19,7 +19,12 @@
   /** UV rectangle of an atlas region: { u0, u1, v0 (bottom), v1 (top) }. */
   F.regionUV = function (name) {
     var r = REGIONS[name];
-    return { u0: r[0] / SIZE, u1: (r[0] + r[2]) / SIZE, v0: 1 - (r[1] + r[3]) / SIZE, v1: 1 - r[1] / SIZE };
+    return {
+      u0: r[0] / SIZE,
+      u1: (r[0] + r[2]) / SIZE,
+      v0: 1 - (r[1] + r[3]) / SIZE,
+      v1: 1 - r[1] / SIZE,
+    };
   };
 
   // ---------- tiny canvas helpers ----------
@@ -138,7 +143,12 @@
     for (var y = 30; y < 256; y += 64) {
       for (var x = 20; x < 256; x += 64) {
         var dx = (y / 64) % 2 ? 32 : 0;
-        stroke(c, [x + dx, y, x + dx + 18, y + 18, x + dx, y + 36, x + dx - 18, y + 18, x + dx, y], p.accent, 5);
+        stroke(
+          c,
+          [x + dx, y, x + dx + 18, y + 18, x + dx, y + 36, x + dx - 18, y + 18, x + dx, y],
+          p.accent,
+          5,
+        );
         dot(c, x + dx, y + 18, 6, p.accent2);
       }
     }

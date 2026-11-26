@@ -5,7 +5,13 @@
   "use strict";
   var F = (KQ.Figures = KQ.Figures || {});
 
-  var SKIN = { light: "#f0c7a0", tan: "#e3a97c", warm: "#d49a6c", brown: "#b87a52", deep: "#8a5537" };
+  var SKIN = {
+    light: "#f0c7a0",
+    tan: "#e3a97c",
+    warm: "#d49a6c",
+    brown: "#b87a52",
+    deep: "#8a5537",
+  };
   var BROW_GREY = "#8d8a86";
 
   F.CAST = {
@@ -36,7 +42,14 @@
       shoes: "#5a4136",
       skirt: { top: "#d27aa6", upper: "#d27aa6", lower: "#5d3a86" },
       head: { type: "tudung", colour: "#7b56a8", accent: "#f0c04a" },
-      face: { mouth: "smile", wrinkles: true, blush: true, glasses: true, glassesColour: "#8a6a3a", browColour: BROW_GREY },
+      face: {
+        mouth: "smile",
+        wrinkles: true,
+        blush: true,
+        glasses: true,
+        glassesColour: "#8a6a3a",
+        browColour: BROW_GREY,
+      },
     },
     atuk: {
       id: "atuk",
@@ -50,7 +63,14 @@
       shoes: "#3b2a22",
       skirt: { upper: "#8a2338" },
       head: { type: "songkok", colour: "#1c1c22", hair: "#c9c6c0" },
-      face: { mouth: "smile", wrinkles: true, glasses: true, moustache: true, hairColour: "#d9d6d0", browColour: BROW_GREY },
+      face: {
+        mouth: "smile",
+        wrinkles: true,
+        glasses: true,
+        moustache: true,
+        hairColour: "#d9d6d0",
+        browColour: BROW_GREY,
+      },
     },
     imam_hakim: {
       id: "imam_hakim",
@@ -85,21 +105,40 @@
       name: "Pakcik Rahman",
       skin: SKIN.brown,
       torso: "#8a5a2b",
-      print: { style: "shirt", batik: true, accent: "#e2b13c", accent2: "#2c8c84", collar: "#7a4c22", button: "#e2b13c" },
+      print: {
+        style: "shirt",
+        batik: true,
+        accent: "#e2b13c",
+        accent2: "#2c8c84",
+        collar: "#7a4c22",
+        button: "#e2b13c",
+      },
       sleeves: "long",
       arms: "#8a5a2b",
       legs: "#3b3f4a",
       shoes: "#2b211c",
       belt: "#2b211c",
       head: { type: "hair_short", colour: "#a8a49d" },
-      face: { mouth: "smile", moustache: true, hairColour: "#a8a49d", browColour: BROW_GREY, thickBrows: true },
+      face: {
+        mouth: "smile",
+        moustache: true,
+        hairColour: "#a8a49d",
+        browColour: BROW_GREY,
+        thickBrows: true,
+      },
     },
     uncle_lim: {
       id: "uncle_lim",
       name: "Uncle Lim",
       skin: SKIN.light,
       torso: "#4f86c6",
-      print: { style: "shirt", polo: true, accent: "#3c6ea8", accent2: "#f2efe6", button: "#f2efe6" },
+      print: {
+        style: "shirt",
+        polo: true,
+        accent: "#3c6ea8",
+        accent2: "#f2efe6",
+        button: "#f2efe6",
+      },
       sleeves: "short",
       arms: "#4f86c6",
       legs: "#b49a6e",

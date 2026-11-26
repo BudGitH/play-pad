@@ -7,13 +7,40 @@
 
   /** Every pose name in the contract, in a sensible showcase order. */
   F.POSE_NAMES = [
-    "idle", "walk", "run", "sit", "eat", "wave", "talk", "carry",
-    "wudu_hands", "wudu_face", "wudu_feet",
-    "takbir", "qiyam", "ruku", "itidal", "sujud", "julus", "salam_r", "salam_l", "doa",
+    "idle",
+    "walk",
+    "run",
+    "sit",
+    "eat",
+    "wave",
+    "talk",
+    "carry",
+    "wudu_hands",
+    "wudu_face",
+    "wudu_feet",
+    "takbir",
+    "qiyam",
+    "ruku",
+    "itidal",
+    "sujud",
+    "julus",
+    "salam_r",
+    "salam_l",
+    "doa",
   ];
 
   /** Loop speed (phase cycles per second) per pose. */
-  var RATES = { idle: 0.22, walk: 1.7, run: 2.6, wave: 0.9, talk: 0.55, eat: 0.4, wudu_hands: 0.7, wudu_face: 0.5, wudu_feet: 0.6 };
+  var RATES = {
+    idle: 0.22,
+    walk: 1.7,
+    run: 2.6,
+    wave: 0.9,
+    talk: 0.55,
+    eat: 0.4,
+    wudu_hands: 0.7,
+    wudu_face: 0.5,
+    wudu_feet: 0.6,
+  };
 
   function blendJoint(node, t, w) {
     var r = node.rotation;
@@ -84,7 +111,11 @@
         from = snapshot(rig);
         fadeDur = fadeSec === undefined ? 0.25 : fadeSec;
         fade = 0;
-        cur = { name: name, phase: name === cur.name ? cur.phase : 0, rate: rate || RATES[name] || 0.3 };
+        cur = {
+          name: name,
+          phase: name === cur.name ? cur.phase : 0,
+          rate: rate || RATES[name] || 0.3,
+        };
       },
       setRate: function (r) {
         rateScale = r;

@@ -10,7 +10,21 @@
   var PI = Math.PI;
   var TAU = PI * 2;
 
-  var JOINTS = ["hips", "torso", "head", "armL", "armR", "foreL", "foreR", "handL", "handR", "legL", "legR", "kneeL", "kneeR"];
+  var JOINTS = [
+    "hips",
+    "torso",
+    "head",
+    "armL",
+    "armR",
+    "foreL",
+    "foreR",
+    "handL",
+    "handR",
+    "legL",
+    "legR",
+    "kneeL",
+    "kneeR",
+  ];
   // Toy stance: arms angled out and a little forward at the shoulder, elbows bent so the C-hands sit
   // forward of the hips (like the reference minifig standing on the table).
   var NEUTRAL = {
@@ -107,7 +121,12 @@
   }
 
   function seated() {
-    return { legL: [-PI / 2, 0, 0], legR: [-PI / 2, 0, 0], kneeL: [PI / 2, 0, 0], kneeR: [PI / 2, 0, 0] };
+    return {
+      legL: [-PI / 2, 0, 0],
+      legR: [-PI / 2, 0, 0],
+      kneeL: [PI / 2, 0, 0],
+      kneeR: [PI / 2, 0, 0],
+    };
   }
   function sit(p) {
     var P = seated();
@@ -165,6 +184,21 @@
   }
 
   F.POSE_PARTS = { JOINTS: JOINTS, NEUTRAL: NEUTRAL, ZERO: ZERO };
-  F.PoseSolve = { rot: rot, kneelHipY: kneelHipY, shoulderAt: shoulderAt, reach: reach, sujudBend: sujudBend };
-  F.POSES = { idle: idle, walk: walk, run: run, sit: sit, eat: eat, wave: wave, talk: talk, carry: carry };
+  F.PoseSolve = {
+    rot: rot,
+    kneelHipY: kneelHipY,
+    shoulderAt: shoulderAt,
+    reach: reach,
+    sujudBend: sujudBend,
+  };
+  F.POSES = {
+    idle: idle,
+    walk: walk,
+    run: run,
+    sit: sit,
+    eat: eat,
+    wave: wave,
+    talk: talk,
+    carry: carry,
+  };
 })((window.KQ = window.KQ || {}));

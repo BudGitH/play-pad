@@ -10,7 +10,16 @@
   var FRONT = ["nenek", "kid_aisyah", "hero", "kid_irfan", "kid_wei", "atuk"];
 
   var MAT_TOP = 0.004; // the placemat sits 4 mm above the lacquer; feet stand on it
-  var state = { solo: "hero", view: "lineup", pose: "idle", phase: 0.25, frozen: false, cycle: false, turn: 0, cycleT: 0 };
+  var state = {
+    solo: "hero",
+    view: "lineup",
+    pose: "idle",
+    phase: 0.25,
+    frozen: false,
+    cycle: false,
+    turn: 0,
+    cycleT: 0,
+  };
   var app = {};
 
   function makeRenderer() {
@@ -67,7 +76,15 @@
       o.castShadow = false;
     });
     app.mirror.add(twin);
-    var entry = { id: id, fig: fig, twinFig: twin, home: x, homeZ: z, rig: fig.userData.rig, twin: twin.userData.rig };
+    var entry = {
+      id: id,
+      fig: fig,
+      twinFig: twin,
+      home: x,
+      homeZ: z,
+      rig: fig.userData.rig,
+      twin: twin.userData.rig,
+    };
     entry.anim = F.Animator(fig.userData.rig);
     addStool(entry);
     addContactShadow(entry);
@@ -100,7 +117,12 @@
     var d = entry.rig.dims;
     var h = (d.shin - d.legD / 2) * d.scale;
     var drop = F.seatDrop(entry.rig);
-    if (!app.stoolMat) app.stoolMat = new THREE.MeshPhysicalMaterial({ color: 0x8a5a36, roughness: 0.45, clearcoat: 0.8 });
+    if (!app.stoolMat)
+      app.stoolMat = new THREE.MeshPhysicalMaterial({
+        color: 0x8a5a36,
+        roughness: 0.45,
+        clearcoat: 0.8,
+      });
     var stool = new THREE.Mesh(new THREE.BoxGeometry(0.26, h, 0.2), app.stoolMat);
     stool.position.set(0, drop - h / 2, -0.02);
     stool.castShadow = stool.receiveShadow = true;
@@ -142,7 +164,7 @@
     hero: { pos: [0.8, 0.9, 2.25], at: [0, 0.5, 0.3], fov: 30 },
     side: { pos: [-2.5, 0.72, 0.45], at: [0, 0.4, 0.3], fov: 30 },
     turntable: { pos: [0, 0.75, 2.3], at: [0, 0.47, 0.3], fov: 30 },
-    macro: { pos: [0.36, 0.4, 2.3], at: [0, 0.46, 0.3], fov: 27 },
+    macro: { pos: [0.4, 0.42, 2.75], at: [0, 0.52, 0.3], fov: 27 },
   };
 
   function applyView() {
@@ -174,7 +196,10 @@
       }
     }
     var solo = soloFig();
-    if (state.view === "turntable") solo.fig.rotation.y = state.frozen ? state.turn : (solo.fig.rotation.y + dt * 0.6) % (Math.PI * 2);
+    if (state.view === "turntable")
+      solo.fig.rotation.y = state.frozen
+        ? state.turn
+        : (solo.fig.rotation.y + dt * 0.6) % (Math.PI * 2);
     var seated = state.pose === "sit" || state.pose === "eat";
     app.figs.forEach(function (f) {
       f.stool.visible = seated;
@@ -216,8 +241,18 @@
     var all = app.figs.map(function (f) {
       return F.stats(f.fig);
     });
-    var maxTris = Math.max.apply(null, all.map(function (a) { return a.triangles; }));
-    var maxCalls = Math.max.apply(null, all.map(function (a) { return a.drawCalls; }));
+    var maxTris = Math.max.apply(
+      null,
+      all.map(function (a) {
+        return a.triangles;
+      }),
+    );
+    var maxCalls = Math.max.apply(
+      null,
+      all.map(function (a) {
+        return a.drawCalls;
+      }),
+    );
     return { hero: s, maxTriangles: maxTris, maxDrawCalls: maxCalls, perFigure: all };
   }
 

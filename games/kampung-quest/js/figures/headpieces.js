@@ -26,18 +26,33 @@
     var s = new THREE.Shape();
     s.absarc(0, 0, R, a, TAU - a, false);
     s.absarc(dx, 0, r, TAU - b, b, true);
-    var opts = { depth: 0.004, bevelEnabled: true, bevelThickness: 0.0015, bevelSize: 0.0015, bevelSegments: 1, curveSegments: 8 };
+    var opts = {
+      depth: 0.004,
+      bevelEnabled: true,
+      bevelThickness: 0.0015,
+      bevelSize: 0.0015,
+      bevelSegments: 1,
+      curveSegments: 8,
+    };
     return G.paint(G.smoothNormals(new THREE.ExtrudeGeometry(s, opts)), hex);
   }
 
   /** Baseball-style cap: crown, band, peak, button and a small crescent badge on the front. */
   function cap(hd) {
     var list = [dome(0.119, 0.165, 0.62, hd.colour)];
-    list.push(G.place(G.paint(new THREE.CylinderGeometry(0.119, 0.118, 0.024, 26, 1), hd.band || hd.colour), [0, 0.155, 0]));
+    list.push(
+      G.place(
+        G.paint(new THREE.CylinderGeometry(0.119, 0.118, 0.024, 26, 1), hd.band || hd.colour),
+        [0, 0.155, 0],
+      ),
+    );
     var peak = new THREE.CylinderGeometry(0.092, 0.092, 0.011, 20, 1, false, -Math.PI / 2, Math.PI);
-    list.push(G.place(G.paint(peak, hd.peak || hd.colour), [0, 0.148, 0.074], [0.13, 0, 0], [1, 1, 1.28]));
+    list.push(
+      G.place(G.paint(peak, hd.peak || hd.colour), [0, 0.148, 0.074], [0.13, 0, 0], [1, 1, 1.28]),
+    );
     list.push(blob([0.014, 0.008, 0.014], [0, 0.238, 0], null, hd.colour));
-    if (hd.badge) list.push(G.place(crescentBadge(0.022, hd.badge), [0.0, 0.196, 0.1], [-0.55, 0, 0]));
+    if (hd.badge)
+      list.push(G.place(crescentBadge(0.022, hd.badge), [0.0, 0.196, 0.1], [-0.55, 0, 0]));
     if (hd.hair) list.push(blob([0.104, 0.062, 0.07], [0, 0.128, -0.052], null, hd.hair));
     return list;
   }
@@ -66,7 +81,8 @@
       var dr = pairs[i] - pairs[i - 2];
       var dy = pairs[i + 1] - pairs[i - 1];
       var n = Math.max(1, Math.ceil(Math.hypot(dr, dy) / step));
-      for (var k = 1; k <= n; k++) out.push(pairs[i - 2] + (dr * k) / n, pairs[i - 1] + (dy * k) / n);
+      for (var k = 1; k <= n; k++)
+        out.push(pairs[i - 2] + (dr * k) / n, pairs[i - 1] + (dy * k) / n);
     }
     return out;
   }
@@ -99,9 +115,22 @@
   function tudung(hd) {
     var kid = hd.type === "tudung_kid";
     var hem = kid ? -0.072 : -0.095;
-    var prof = [0.13, hem, 0.15, hem + 0.012, 0.146, hem * 0.5, 0.128, -0.012, 0.119, 0.015, 0.121, 0.06];
+    var prof = [
+      0.13,
+      hem,
+      0.15,
+      hem + 0.012,
+      0.146,
+      hem * 0.5,
+      0.128,
+      -0.012,
+      0.119,
+      0.015,
+      0.121,
+      0.06,
+    ];
     prof.push(0.124, 0.12, 0.122, 0.165, 0.112, 0.205, 0.088, 0.228, 0.045, 0.24, 0, 0.243);
-    var g = carve(G.lathe(densify(prof, 0.019), 32), 0.98, 0.002, 0.174, 0.088);
+    var g = carve(G.lathe(densify(prof, 0.024), 32), 0.98, 0.002, 0.174, 0.088);
     var pos = g.attributes.position;
     for (var i = 0; i < pos.count; i++) {
       var y = pos.getY(i);
@@ -112,19 +141,31 @@
     g.computeVertexNormals();
     var list = [G.paint(g, hd.colour)];
     if (hd.accent) list.push(blob([0.012, 0.012, 0.007], [0, 0.004, 0.1], null, hd.accent));
-    if (hd.under) list.push(G.place(G.paint(new THREE.TorusGeometry(0.103, 0.007, 5, 36, 2.2), hd.under), [0, 0.166, 0], [Math.PI / 2, 0, 0.47]));
+    if (hd.under)
+      list.push(
+        G.place(
+          G.paint(new THREE.TorusGeometry(0.103, 0.007, 5, 36, 2.2), hd.under),
+          [0, 0.166, 0],
+          [Math.PI / 2, 0, 0.47],
+        ),
+      );
     return list;
   }
 
   /** Short sculpted hair: a carved cap with a hairline; options add a side-part fringe, a bun or a quiff. */
   function hair(hd) {
-    var prof = [0.104, 0.05, 0.113, 0.07, 0.116, 0.12, 0.115, 0.16, 0.106, 0.2, 0.082, 0.226, 0.04, 0.238, 0, 0.24];
+    var prof = [
+      0.104, 0.05, 0.113, 0.07, 0.116, 0.12, 0.115, 0.16, 0.106, 0.2, 0.082, 0.226, 0.04, 0.238, 0,
+      0.24,
+    ];
     var g = carve(G.lathe(densify(prof, 0.018), 30), 1.3, -0.12, 0.146, 0.092);
     g.computeVertexNormals();
     var list = [G.paint(g, hd.colour)];
     list.push(blob([0.085, 0.024, 0.045], [0.018, 0.152, 0.078], [0.2, 0, -0.16], hd.colour)); // side-part fringe
-    if (hd.type === "hair_bun") list.push(blob([0.052, 0.048, 0.05], [0, 0.2, -0.088], null, hd.colour));
-    if (hd.type === "hair_quiff") list.push(blob([0.075, 0.03, 0.062], [0.012, 0.214, 0.058], [-0.32, 0, -0.18], hd.colour));
+    if (hd.type === "hair_bun")
+      list.push(blob([0.052, 0.048, 0.05], [0, 0.2, -0.088], null, hd.colour));
+    if (hd.type === "hair_quiff")
+      list.push(blob([0.075, 0.03, 0.062], [0.012, 0.214, 0.058], [-0.32, 0, -0.18], hd.colour));
     if (hd.accent) list.push(blob([0.01, 0.01, 0.03], [0, 0.205, -0.104], null, hd.accent)); // hair pin
     return list;
   }

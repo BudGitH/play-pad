@@ -49,7 +49,8 @@
     return microTexture;
   }
 
-  var VERT_HEAD = "#include <common>\nattribute float aSkin;\nvarying float vSkin;\nvarying vec3 vKqPos;\nvarying vec3 vKqNrm;";
+  var VERT_HEAD =
+    "#include <common>\nattribute float aSkin;\nvarying float vSkin;\nvarying vec3 vKqPos;\nvarying vec3 vKqNrm;";
   var VERT_BODY = "#include <begin_vertex>\nvSkin = aSkin;\nvKqPos = position;\nvKqNrm = normal;";
   var FRAG_HEAD = [
     "#include <common>",
@@ -79,8 +80,10 @@
   var FRAG_ROUGH =
     "#include <roughnessmap_fragment>\nvec3 kqM = kqTri(vKqPos, vKqNrm);\n" +
     "roughnessFactor = clamp(roughnessFactor * (0.78 + 0.44 * kqM.b) + kqCurv * 0.12 + kqSeam * 0.25, 0.04, 1.0);";
-  var FRAG_NORMAL = "#include <normal_fragment_maps>\nnormal = normalize(normal + (kqM - 0.5) * kqMicroAmt);";
-  var FRAG_EMIT = "#include <emissivemap_fragment>\ntotalEmissiveRadiance += vSkin * kqSkinGlow * diffuseColor.rgb;";
+  var FRAG_NORMAL =
+    "#include <normal_fragment_maps>\nnormal = normalize(normal + (kqM - 0.5) * kqMicroAmt);";
+  var FRAG_EMIT =
+    "#include <emissivemap_fragment>\ntotalEmissiveRadiance += vSkin * kqSkinGlow * diffuseColor.rgb;";
 
   /** Inject the micro-texture + skin warmth into a MeshPhysicalMaterial (same program for every figure). */
   function patchPlastic(mat) {
@@ -144,12 +147,18 @@
       cols.push(c.r, c.g, c.b);
     }
     g.setAttribute("color", new THREE.Float32BufferAttribute(cols, 3));
-    return new THREE.Mesh(g, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide }));
+    return new THREE.Mesh(
+      g,
+      new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide }),
+    );
   }
 
   /** An emissive rectangle used as a softbox / window / ceiling strip in the env scene. */
   function envPanel(w, h, intensity, tint, pos, lookAt) {
-    var m = new THREE.MeshBasicMaterial({ color: new THREE.Color(tint).multiplyScalar(intensity), side: THREE.DoubleSide });
+    var m = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(tint).multiplyScalar(intensity),
+      side: THREE.DoubleSide,
+    });
     var mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, h), m);
     mesh.position.set(pos[0], pos[1], pos[2]);
     mesh.lookAt(lookAt[0], lookAt[1], lookAt[2]);

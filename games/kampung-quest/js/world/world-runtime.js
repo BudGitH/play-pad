@@ -98,8 +98,20 @@
       im.castShadow = s.tier !== "low" && im.name !== "grassTufts";
     });
     if (P.Surface) P.Surface.setLite(s.tier === "low");
-    P.Lighting.maybeBakeEnv(s.rig, s.minute, true);
+    setLightCount(s);
+    P.Lighting.maybeBakeEnv(s.rig, s.minute, false);
     return HINTS[s.tier];
+  }
+
+  /**
+   * Fewer real point lights on low (every light is a loop iteration in every pixel shader, even
+   * at intensity 0): the hall light + 2 roaming lights. The count is part of the shader key, so
+   * the loader pre-compiles the low variant (see boot.js) and a later downgrade is a cache hit.
+   */
+  function setLightCount(s) {
+    const low = s.tier === "low";
+    [s.pl.hawker, s.pl.wudu].forEach((l) => l && (l.visible = !low));
+    s.roam.lights.forEach((l, i) => (l.visible = i < (low ? 2 : ROAM)));
   }
 
   /** Sunrise / sunset in clock minutes (defaults: Syuruk / Maghrib from KQ.PRAYER_TIMES). */

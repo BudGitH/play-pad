@@ -19,6 +19,7 @@
     kqAoO: { value: new THREE.Vector3(-80, -80, 160) },
     kqGrunge: { value: null },
     kqFill: { value: new THREE.Color(0.35, 0.3, 0.24) },
+    kqLite: { value: 0 }, // 1 on the low tier: skip the grunge / wet layers (a uniform, so no recompile)
   };
 
   const VERT_HEAD = `
@@ -42,6 +43,7 @@
     uniform vec3 kqAoO;
     uniform sampler2D kqGrunge;
     uniform vec3 kqFill;
+    uniform float kqLite;
     uniform vec4 kqP;
     #ifdef KQ_DETAIL
       uniform sampler2D kqDetail;
@@ -59,7 +61,7 @@
     float kqOpen = mix( 1.0, smoothstep( 0.5, 0.9, kqA.r ), kqUnder );
     float kqM = 0.5;
     float kqPud = 0.0;
-    #ifndef KQ_LITE
+    if ( kqLite < 0.5 ) {
     vec2 kqUV = mix( vKqW.xz, vec2( kqH, vKqW.y ), kqVert );
     kqM = texture2D( kqGrunge, kqUV / 11.0 ).r;
     float kqF = texture2D( kqGrunge, kqUV / 1.9 + 0.31 ).b;
@@ -76,7 +78,7 @@
     kqT *= 1.0 - min( kqP.z, 1.0 ) * ( 1.0 - kqVert ) * 0.3 * smoothstep( 0.66, 0.85, texture2D( kqGrunge, vKqW.xz / 4.3 ).r );
     kqT *= 1.0 - 0.4 * kqPud;
     diffuseColor.rgb *= kqT;
-    #endif
+    }
     #ifdef KQ_DETAIL
       diffuseColor.rgb *= texture2D( kqDetail, vUv * kqDetailScale ).rgb * 2.0;
     #endif`;
@@ -114,7 +116,6 @@
       .replace("#include <roughnessmap_fragment>", "#include <roughnessmap_fragment>" + FRAG_ROUGH)
       .replace("#include <normal_fragment_maps>", "#include <normal_fragment_maps>" + FRAG_NORMAL)
       .replace("#include <aomap_fragment>", FRAG_AO);
-    if (FLAGS.lite) fs = "#define KQ_LITE\n" + fs;
     if (ud.kqDetail) {
       fs = "#define KQ_DETAIL\n" + fs;
       shader.uniforms.kqDetail = { value: ud.kqDetail.map };
@@ -123,15 +124,12 @@
     shader.fragmentShader = fs;
   }
   function cacheKey() {
-    return "kqSurface" + (this.userData.kqDetail ? "D" : "") + (FLAGS.lite ? "L" : "");
+    return "kqSurface" + (this.userData.kqDetail ? "D" : "");
   }
-  const FLAGS = { lite: false, mats: [] };
 
-  /** Low tier: drop the grunge / wet layers (keeps the baked occlusion). Recompiles once. */
+  /** Low tier: drop the grunge / wet layers (keeps the baked occlusion). Just a uniform: no recompile. */
   function setLite(lite) {
-    if (FLAGS.lite === !!lite) return;
-    FLAGS.lite = !!lite;
-    FLAGS.mats.forEach((m) => (m.needsUpdate = true));
+    SHARED.kqLite.value = lite ? 1 : 0;
   }
 
   /** Patch one material in place (idempotent). `params` = [macro, streaks, wet, dirt]. */
@@ -144,7 +142,6 @@
     mat.onBeforeCompile = onBeforeCompile;
     mat.customProgramCacheKey = cacheKey;
     mat.needsUpdate = true;
-    FLAGS.mats.push(mat);
     return mat;
   }
 

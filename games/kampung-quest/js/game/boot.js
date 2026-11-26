@@ -50,6 +50,7 @@
       size: { w: 1, h: 1 },
       avgDt: 1 / 60,
       slowT: 0,
+      graceT: 0,
       downgrades: 0,
       autoQ: params.get("autoq") !== "0",
       target: null,
@@ -109,6 +110,24 @@
     G.Loop.studioShine(s);
     BU().setStep(1, "done");
     BU().setProgress(0.55);
+  }
+
+  /**
+   * Compile every shader program behind the loading screen (hero, NPCs, markers and the world's
+   * variants), so Start and the first walk to a new area never freeze on a compile (PERF-08).
+   * renderer.compile walks hidden groups too. When the game starts above low, the low-tier light
+   * count is compiled as well, so an auto-downgrade is a program-cache hit, not a stall (PERF-04).
+   */
+  async function precompile(s) {
+    BU().setProgress(0.82, "Getting the shaders ready...");
+    await nextFrame();
+    const start = s.quality;
+    if (start !== "low") {
+      s.world.setQuality("low");
+      s.renderer.compile(s.scene, s.camera);
+      s.world.setQuality(start);
+    }
+    s.renderer.compile(s.scene, s.camera);
   }
 
   function waitUntil(test, ms) {
@@ -251,6 +270,7 @@
     await buildWorld(s, pickTier(saved));
     await buildActors(s);
     await loadTextures();
+    await precompile(s);
     await loadAzan();
     renderPictures(s);
     if (!storage)

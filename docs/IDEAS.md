@@ -7,7 +7,12 @@
 
 - _(Open — pick the next item from "Next". PLAY-007 (Sunset Stride: the Neon Rush rework) just shipped; a real-handset performance check of its quality tiers is the natural first step.)_
 
+- **Kampung Quest (PLAY-013) — finish the workflow:** QA round 2, then the PM + persona panel; real-phone and real-GPU check of AC-14 (the 4x-throttled CPU frame is 19-24 ms at the hawker against a 20 ms budget; SwiftShader cannot measure GPU time); owner to audition the azan on a real phone.
+- **Tech-debt (ledger 3x, TECH_DEBT_PRIORITY):** scan Claw Catch, Super Decoder and Sunset Stride saves for `multi-tab-save-overwrite` and `trust-boundary-tag-missing`; fix with the `rev` + `storage` listener + `TRUST_BOUNDARY` tag pattern.
+
 ## ⏭️ Next (ready, not started)
+
+- **Kampung Quest follow-ups** (QA round 1 LOWs, ledger `kq-review-lows-open`): cut material switches at the hawker (shared atlases) to bring the throttled frame under 20 ms; unit tests for pathing / collision / seats; function-level doc blocks; a Subuh-specific azan recording with the tatswib line; local-only read-to-me voices; browser probes for the mini-mart / barber / clinic / library sheets, the blocked-storage notice and the qada UI; a `probes.yml` leg for AC-14 on a real-GPU runner; owner call on coins for prayer.
 
 - **Brick Buddies — guided blueprint for later rooms** (top follow-up from `features/brick-buddies-onboarding/`): request 1 is now three taps, but requests 2+ (kitchen, library, ...) are still block-by-block. Add a ghost outline of a suggested room that the coach walks through (tap the glow, drag-to-fill walls / roof / back wall), or pre-built shells for the kitchen and library; plus a "jump the aim cursor to the glow" key for keyboard players, an Items reveal pulse after the first move-in, read-aloud prompts for pre-readers, and a playtest with a real 6-10 year old to tune the timings.
 - **PLAY-010 follow-up — burn down the lint baseline** (the ratchet itself shipped with `features/brick-buddies-v2/`): `tools/lint-baseline.json` holds the 41 legacy warnings (Claw Catch 8, Sunset Stride 27 + 3 `max-depth`, the Stride probe 3); split them game by game and run `node tools/lint-ratchet.mjs --update` with each fix (the ratchet also fails when a count FALLS, so the baseline only goes down).

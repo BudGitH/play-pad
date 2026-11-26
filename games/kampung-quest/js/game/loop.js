@@ -17,6 +17,15 @@
   const S = () => G.S;
   const FLOW_RATE = 0.25;
   const TIERS = ["low", "med", "high"];
+  /** One sim step is at most this long (collision / pathing stay stable); longer frames are sub-stepped. */
+  const MAX_STEP = 0.1;
+  /** A frame that took longer than this is caught up by at most this much game time (AC-6 on slow devices). */
+  const MAX_CATCHUP = 3;
+  /** Real seconds under 40 fps before the quality drops a tier; a single frame longer than STALL is ignored. */
+  const SLOW_SECONDS = 3;
+  const STALL = 2.5;
+  /** Low tier: only the hero and this many nearest neighbours cast a shadow (PERF-02). */
+  const NEAR_SHADOWS = 3;
 
   function scheduleTimers(dt) {
     const s = S();
@@ -144,13 +153,66 @@
     s.figureMats.forEach((m) => (m.envMapIntensity = k));
   }
 
+  /** Every mesh under a figure, remembered with its current castShadow state. */
+  function shadowRigs(s) {
+    if (!s.shadowRigs) {
+      const rigOf = (group) => {
+        const meshes = [];
+        group.traverse((o) => o.isMesh && meshes.push(o));
+        return { meshes, cast: true };
+      };
+      s.shadowRigs = {
+        hero: rigOf(s.player.group),
+        npcs: s.npcs.agents.map((a) => rigOf(a.group)),
+      };
+    }
+    return s.shadowRigs;
+  }
+
+  function setCast(rig, on) {
+    if (rig.cast === on) return;
+    rig.cast = on;
+    rig.meshes.forEach((m) => (m.castShadow = on));
+  }
+
+  /**
+   * Low tier: the sun's shadow pass redraws every casting mesh, and a toy figure is 14 meshes, so
+   * only the hero and the NEAR_SHADOWS closest visible neighbours cast one. Other tiers: all do.
+   */
+  function figureShadows(s) {
+    const rigs = shadowRigs(s);
+    const P = s.player.pos;
+    const near = new Set();
+    if (s.quality === "low") {
+      s.npcs.agents
+        .map((a, i) => ({ i, d: a.hidden ? Infinity : (a.x - P.x) ** 2 + (a.z - P.z) ** 2 }))
+        .sort((a, b) => a.d - b.d)
+        .slice(0, NEAR_SHADOWS)
+        .forEach((e) => near.add(e.i));
+    }
+    setCast(rigs.hero, true);
+    rigs.npcs.forEach((r, i) => setCast(r, s.quality !== "low" || near.has(i)));
+  }
+
+  /**
+   * three resets `info` after the shadow pass, so by default `info.render.calls` misses it (PERF-02).
+   * Resetting by hand just before render() makes `stats().calls` / `tris` the whole frame:
+   * shadow pass + main pass.
+   */
+  function countDrawCalls(renderer) {
+    renderer.info.autoReset = false;
+    renderer.info.reset();
+  }
+
   function renderFrame(dt) {
     const s = S();
     const P = s.player;
+    if (s.frames % 10 === 0) figureShadows(s);
     shineFor(s);
     s.world.setShadowTarget(P.pos);
     s.world.update(dt, { minute: s.sim.clock.minute });
     G.Markers.update(s.markers, dt, s.markerView || { reduced: false });
+    countDrawCalls(s.renderer);
     s.renderer.render(s.scene, s.camera);
     s.frames += 1;
   }
@@ -168,6 +230,23 @@
     stepUi(dt);
     autosaveTick(dt);
     if (!skipRender) renderFrame(dt);
+  }
+
+  /**
+   * Advance by `real` seconds of wall time (one rAF). The simulation runs in steps of at most
+   * MAX_STEP and the last step draws, so a slow device keeps real-time pace: a game day stays 48
+   * real minutes (AC-6) instead of stretching when frames take longer than 0.1 s.
+   */
+  function advance(real) {
+    const s = S();
+    let left = Math.min(real, MAX_CATCHUP);
+    while (left > MAX_STEP && s.started && !s.paused && !s.hidden) {
+      stepSim(MAX_STEP);
+      stepActors(MAX_STEP);
+      s.saveT += MAX_STEP;
+      left -= MAX_STEP;
+    }
+    frame(Math.min(left, MAX_STEP), false);
   }
 
   /* ------------------------------ time travel (rest, tests) ------------------------------ */
@@ -214,26 +293,46 @@
     G.Camera.resize(w, h, w / h);
   }
 
-  function setQuality(tier) {
+  /**
+   * Switch tier. `auto` (the frame-rate monitor) does not overwrite the saved choice, so one
+   * transient stall never pins the game to a lower tier for good; a manual pick is saved.
+   */
+  function setQuality(tier, auto) {
     const s = S();
     s.quality = TIERS.indexOf(tier) === -1 ? "med" : tier;
     if (s.world) s.world.setQuality(s.quality);
-    s.sim.settings.quality = s.quality;
+    if (!auto) s.sim.settings.quality = s.quality;
+    s.graceT = 2;
+    if (s.shadowRigs) figureShadows(s);
     resize();
   }
 
-  /** Track real frame time; drop one tier when the frame rate stays under 40 fps. */
-  function monitor(realDt) {
+  /** Smoothed real frame time (always on: the `stats().fps` hook reads it). */
+  function trackFps(real) {
+    const s = S();
+    if (!s.started || s.paused || s.hidden) return;
+    s.avgDt = U.lerp(s.avgDt, Math.min(real, 2), 0.05);
+  }
+
+  /**
+   * Drop one tier when the real frame rate stays under 40 fps for SLOW_SECONDS of wall time.
+   * A lone stall (tab switch, a shader compile) and the 2 s after a tier change are ignored.
+   */
+  function monitor(real) {
     const s = S();
     if (!s.started || s.paused || s.hidden || s.frozen || !G.Settings.prefs.autoQuality || !s.autoQ)
       return;
-    s.avgDt = U.lerp(s.avgDt, Math.min(realDt, 0.25), 0.05);
-    s.slowT = s.avgDt > 1 / 40 ? s.slowT + realDt : 0;
-    if (s.slowT < 3) return;
+    if (s.graceT > 0 || real > STALL) {
+      s.graceT = Math.max(0, s.graceT - real);
+      s.slowT = 0;
+      return;
+    }
+    s.slowT = s.avgDt > 1 / 40 ? s.slowT + real : 0;
+    if (s.slowT < SLOW_SECONDS) return;
     s.slowT = 0;
     const i = TIERS.indexOf(s.quality);
     if (i > 0) {
-      setQuality(TIERS[i - 1]);
+      setQuality(TIERS[i - 1], true);
       s.downgrades += 1;
     }
   }
@@ -245,7 +344,7 @@
     if (!s.started || !s.storage) return false;
     const state = G.Sim.capture(s.sim, { x: s.player.pos.x, z: s.player.pos.z });
     const res = KQ.Sim.Save.save(s.storage, state);
-    if (!res.ok && !s.saveWarned) {
+    if (!res.ok && res.reason === "unavailable" && !s.saveWarned) {
       s.saveWarned = true;
       G.UI.toast("Playing without saving. This browser blocks storage.", "hint", 6000);
     }
@@ -286,11 +385,12 @@
   function raf(ts) {
     const s = S();
     requestAnimationFrame(raf);
-    const real = Math.min(0.1, Math.max(0, (ts - s.last) / 1000));
+    const real = Math.max(0, (ts - s.last) / 1000);
     s.last = ts;
     if (s.frozen) return;
+    trackFps(real);
     monitor(real);
-    frame(real);
+    advance(real);
   }
 
   /** Resize / rotation: re-measure, re-frame an open prayer screen, keep the camera sane. */

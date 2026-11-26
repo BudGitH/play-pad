@@ -41,12 +41,34 @@
     return tmpM.compose(tmpV.set(x, y, z), tmpQ, new THREE.Vector3(sx, sy, sz));
   }
 
-  /** Per-material vertex buckets. */
+  /** Per-material vertex buckets (`prims` remembers each primitive's slice and XZ footprint). */
   function Bucket() {
     this.pos = [];
     this.nor = [];
     this.uv = [];
     this.col = [];
+    this.prims = [];
+  }
+
+  /** Record where a primitive's vertices start and its XZ centre / longest side (for chunking). */
+  function noteFootprint(bucket, p, first) {
+    let x0 = Infinity;
+    let x1 = -Infinity;
+    let z0 = Infinity;
+    let z1 = -Infinity;
+    for (let i = 0; i < p.length; i += 3) {
+      x0 = Math.min(x0, p[i]);
+      x1 = Math.max(x1, p[i]);
+      z0 = Math.min(z0, p[i + 2]);
+      z1 = Math.max(z1, p[i + 2]);
+    }
+    bucket.prims.push({
+      first,
+      count: p.length / 3,
+      cx: (x0 + x1) / 2,
+      cz: (z0 + z1) / 2,
+      ext: Math.max(x1 - x0, z1 - z0),
+    });
   }
 
   /** Append a transformed geometry's triangles into a bucket. */
@@ -58,6 +80,8 @@
     const uv = g.attributes.uv ? g.attributes.uv.array : null;
     const c = tmpC.set(color === undefined ? 0xffffff : color);
     const out = [0, 0];
+    const first = bucket.pos.length / 3;
+    noteFootprint(bucket, p, first);
     for (let i = 0, v = 0; i < p.length; i += 3, v += 2) {
       bucket.pos.push(p[i], p[i + 1], p[i + 2]);
       bucket.nor.push(n[i], n[i + 1], n[i + 2]);
@@ -96,9 +120,10 @@
    * A merge builder. `uvScales[key]` (metres per texture repeat) switches a material to world
    * UVs; keys without a scale keep the primitive's own UVs (signs, windows).
    */
-  function Batch(uvScales) {
+  function Batch(uvScales, chunk) {
     this.buckets = new Map();
     this.uvScales = uvScales || {};
+    this.chunk = chunk || null;
   }
   Batch.prototype.bucket = function (key) {
     if (!this.buckets.has(key)) this.buckets.set(key, new Bucket());
@@ -155,26 +180,68 @@
     return g;
   }
 
-  /** Turn every bucket into a Mesh using `materials[key]`; returns the meshes. */
+  /** Group a heavy bucket's primitives into square ground cells (big slabs share one "L" cell). */
+  function chunkPrims(bucket, chunk) {
+    const cells = new Map();
+    bucket.prims.forEach((pr) => {
+      const key =
+        pr.ext > chunk.cell * 0.9
+          ? "L"
+          : Math.floor(pr.cx / chunk.cell) + "," + Math.floor(pr.cz / chunk.cell);
+      if (!cells.has(key)) cells.set(key, []);
+      cells.get(key).push(pr);
+    });
+    return cells;
+  }
+
+  /** The bucket's vertex arrays restricted to the given primitives. */
+  function slice(bucket, prims) {
+    const out = new Bucket();
+    prims.forEach((pr) => {
+      const a = pr.first;
+      const b = pr.first + pr.count;
+      ["pos", "nor", "col"].forEach((k) => (out[k] = out[k].concat(bucket[k].slice(a * 3, b * 3))));
+      out.uv = out.uv.concat(bucket.uv.slice(a * 2, b * 2));
+    });
+    return out;
+  }
+
+  /** One Mesh from a bucket's arrays. */
+  function meshFrom(b, mat, name) {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.Float32BufferAttribute(b.pos, 3));
+    g.setAttribute("normal", new THREE.Float32BufferAttribute(b.nor, 3));
+    g.setAttribute("uv", new THREE.Float32BufferAttribute(b.uv, 2));
+    g.setAttribute("color", new THREE.Float32BufferAttribute(b.col, 3));
+    g.computeBoundingSphere();
+    const mesh = new THREE.Mesh(g, mat);
+    mesh.name = name;
+    mesh.castShadow = mat.userData.cast !== false;
+    mesh.receiveShadow = mat.userData.receive !== false;
+    mesh.matrixAutoUpdate = false;
+    return mesh;
+  }
+
+  /**
+   * Turn every bucket into a Mesh using `materials[key]`; returns the meshes. With a `chunk`
+   * ({ cell, minTris }) a bucket heavier than `minTris` triangles is split into cell-sized
+   * meshes so frustum and shadow culling can reject the parts that are off screen; light buckets
+   * stay one draw call.
+   */
   Batch.prototype.build = function (materials, group) {
     const meshes = [];
     this.buckets.forEach((b, key) => {
       const mat = materials[key];
       if (!mat || !b.pos.length) return;
-      const g = new THREE.BufferGeometry();
-      g.setAttribute("position", new THREE.Float32BufferAttribute(b.pos, 3));
-      g.setAttribute("normal", new THREE.Float32BufferAttribute(b.nor, 3));
-      g.setAttribute("uv", new THREE.Float32BufferAttribute(b.uv, 2));
-      g.setAttribute("color", new THREE.Float32BufferAttribute(b.col, 3));
-      g.computeBoundingSphere();
-      const mesh = new THREE.Mesh(g, mat);
-      mesh.name = "batch:" + key;
-      mesh.castShadow = mat.userData.cast !== false;
-      mesh.receiveShadow = mat.userData.receive !== false;
-      mesh.matrixAutoUpdate = false;
-      meshes.push(mesh);
-      if (group) group.add(mesh);
+      const heavy = this.chunk && b.pos.length / 9 > this.chunk.minTris;
+      const parts = heavy
+        ? Array.from(chunkPrims(b, this.chunk), ([cell, prims]) => [cell, slice(b, prims)])
+        : [[null, b]];
+      parts.forEach(([cell, part]) => {
+        meshes.push(meshFrom(part, mat, "batch:" + key + (cell === null ? "" : "@" + cell)));
+      });
     });
+    if (group) meshes.forEach((m) => group.add(m));
     this.buckets.clear();
     return meshes;
   };

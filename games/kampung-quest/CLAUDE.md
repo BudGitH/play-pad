@@ -58,5 +58,8 @@ State lives in one object, `KQ.Game.S` (created in `boot.js`). The pure sim obje
 ## How to run and test
 
 - Run: `node tools/serve.mjs 5599` then open `/games/kampung-quest/`, or open `index.html` from disk (`file://`: photo textures are drawn in code).
-- `npm run test:kq` (sim unit tests), `npm run smoke` (opens the game, starts it), `npx eslint games/kampung-quest tests`.
+- `npm run test:kq` (sim unit tests, in CI), `npm run smoke` (all browser specs incl. `tests/kampung-quest-ac.spec.mjs` and `tests/kampung-quest-mobile.spec.mjs`, minus `@slow`), `npm run perf:kq` (the 4x-throttled CPU frame probe), `npx eslint games/kampung-quest tests`.
+- **Interact priority:** an NPC with mission business beats a service counter (`KQ.Sim.Missions.pickTarget`); after talking, the counter wins again until the hero walks 4.5 m away.
+- **Saves** carry a `rev`; a stale tab is refused (`storage` listener toasts it). A tracker ahead of the clock is rebuilt (`Prayer.update`).
+- **Perf:** `stats().calls` includes the shadow pass; static batches are split into 72 m ground cells; the low tier keeps 3 point lights and only the hero + 3 nearest NPCs cast shadows; `boot.js` precompiles every tier's shaders behind the loading screen.
 - Screenshots / probes use headless Chromium with `--use-gl=angle --enable-unsafe-swiftshader`; boot takes ~10-15 s in software GL.

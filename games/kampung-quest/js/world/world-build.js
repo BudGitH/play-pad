@@ -111,6 +111,17 @@
     return pois;
   }
 
+  /** Static meshes never move (steam / smoke are sprites, lights are not meshes): skip their per-frame matrix work. */
+  function freezeStatics(group) {
+    group.updateMatrixWorld(true);
+    group.traverse((o) => {
+      if (o.isMesh && o !== group) o.matrixAutoUpdate = false;
+    });
+  }
+
+  /** Heavy static batches are split into ground cells so culling works (see Batch.build). */
+  const CHUNK = { cell: 72, minTris: 7000 };
+
   function build(scene, opts) {
     opts = opts || {};
     const tier = opts.quality || "high";
@@ -122,7 +133,7 @@
     ctx.mats = kit.mats;
     ctx.win = kit.pat.windows;
     ctx.letterUV = kit.atlas.letterboxes();
-    const B = new P.Batch(P.Materials.UV_SCALES);
+    const B = new P.Batch(P.Materials.UV_SCALES, CHUNK);
     B.floors = [];
     const areas = W.parts.buildAreas(B, group, kit, ctx);
     const inst = W.parts.buildInstanced(group, kit, ctx);
@@ -130,6 +141,7 @@
     B.build(kit.mats, group);
     finishDetail(group, ctx, W.parts.makeHeightAt(B.floors));
     if (P.AOField && P.Surface) P.Surface.apply(group, P.AOField.build(L, ctx.colliders));
+    freezeStatics(group);
     scene.add(group);
     P.Sky.fromPrayerTimes();
     const rig = P.Lighting.create(scene, opts.renderer, tier);

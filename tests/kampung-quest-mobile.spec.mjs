@@ -161,6 +161,35 @@ async function checkPrayer(page) {
   expect(await kq(page, () => window.__kq.state().prayer.flow.prayIndex)).toBe(1);
 }
 
+/** R3-Q-02: on a phone the folded mission card peeks open for a new mission or step, not for every collected can. */
+test.describe("mission card peek (R3-Q-02)", () => {
+  test.use(device("iPhone 13 landscape"));
+  test.describe.configure({ timeout: 120_000 });
+  test("a new mission peeks; a collected can does not; the next step does", async ({ page }) => {
+    await startGame(page);
+    const mission = page.locator("#kqMission");
+    await kq(page, () => {
+      window.KQ.Game.S.sim.missions.accept("recycling_hero");
+      window.__kq.step(300);
+    });
+    await expect(mission, "a new mission peeks").toHaveClass(/is-open/);
+    await mission.click();
+    await expect(mission).not.toHaveClass(/is-open/);
+    await kq(page, () => {
+      window.KQ.Game.MissionFlow.notify({ type: "collect", target: "park", item: "can" });
+      window.__kq.step(300);
+    });
+    await expect(mission, "one more can: same step, no peek").not.toHaveClass(/is-open/);
+    await kq(page, () => {
+      const MF = window.KQ.Game.MissionFlow;
+      MF.notify({ type: "collect", target: "park", item: "can" });
+      MF.notify({ type: "collect", target: "park", item: "can" });
+      window.__kq.step(300);
+    });
+    await expect(mission, "the next step peeks").toHaveClass(/is-open/);
+  });
+});
+
 for (const name of ["iPhone 13 landscape", "Pixel 7"]) {
   test.describe(`touch play on ${name}`, () => {
     test.use(device(name));
@@ -227,6 +256,8 @@ const SIZES = [
   ["small-phone-landscape", 568, 320, true],
   ["short-phone-landscape", 568, 280, true],
   ["short-phone-landscape-wide", 667, 280, true],
+  ["iphone-se-landscape", 667, 375, true],
+  ["short-phone-landscape-640x300", 640, 300, true],
 ];
 
 /** Boxes of every visible HUD piece that must not cover another (the outermost ones). */
@@ -314,6 +345,24 @@ const toast = (page, text) =>
 
 /** The longest toast the game shows (the qada hint): the worst case for a narrow toast lane. */
 const LONG_TOAST = "Zohor time has passed. You can make it up (qada) any time. No rush.";
+
+/** A11Y3-03: every dock label fits inside its button. A11Y3-02: the status card's spoken label names each prayer's state. */
+async function expectDockLabelsAndPrayerStates(page) {
+  const wide = await kq(page, () =>
+    Array.from(document.querySelectorAll(".kq-dock-btn")).flatMap((b) => {
+      const label = b.querySelector("span");
+      const w = label.getBoundingClientRect().width;
+      return w > b.clientWidth + 0.5 ? [label.textContent + " " + w + ">" + b.clientWidth] : [];
+    }),
+  );
+  expect(wide, "dock labels wider than their button").toEqual([]);
+  const spoken = await kq(page, () =>
+    document.querySelector("#kqStatus").getAttribute("aria-label"),
+  );
+  expect(spoken).toMatch(
+    /Prayers: Subuh [\w ]+, Zohor [\w ]+, Asar [\w ]+, Maghrib [\w ]+, Isyak [\w ]+\./,
+  );
+}
 
 /** A11Y-06: the five prayers (icons and labels) sit inside the status card. */
 async function expectPrayerStripInCard(page) {
@@ -538,6 +587,7 @@ for (const [name, width, height, touch] of SIZES) {
       await expectHudClear(page, "exploring");
       await expectPrayerStripInCard(page);
       await expectNoTinyText(page);
+      await expectDockLabelsAndPrayerStates(page);
       await checkFoldingCards(page);
       // needs at 100: the two chips do not touch
       await kq(page, () => {

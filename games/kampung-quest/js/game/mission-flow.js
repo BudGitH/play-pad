@@ -131,7 +131,9 @@
    */
   function stepTalk(A, prog, step) {
     const res = notify({ type: prog.type, target: A.id, item: step.item });
-    const lines = res.completed ? res.lines : [res.line || KQ.Sim.SALAM.reply + " Terima kasih!"];
+    const lines = res.completed
+      ? KQ.Sim.Missions.completionLines(res.mission, A.id)
+      : [KQ.Sim.Missions.stepReply(A.id, res.line)];
     say(A, lines.length ? lines : ["Terima kasih!"]);
   }
 

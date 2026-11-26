@@ -37,6 +37,19 @@
     return base + (isNext ? " is-next" : "");
   }
 
+  /** The spoken state of one prayer for a screen reader (the strip shows it only as an icon and a colour). */
+  function prayerState(entry) {
+    if (entry.status === "done" || entry.status === "qada-done") return "done";
+    if (entry.status === "due" || entry.status === "in-progress") return "now";
+    return entry.status === "qada" ? "make up" : "not yet";
+  }
+
+  /** 'Prayers: Subuh done, Zohor now, Asar not yet, ...' for the status card's spoken label. */
+  function prayerSummary(ps) {
+    const parts = ps.prayers.map((entry) => label(entry.name) + " " + prayerState(entry));
+    return "Prayers: " + parts.join(", ") + ".";
+  }
+
   /**
    * Refresh the five-prayer strip: chip classes, and the mosque icon turning into a tick once a
    * prayer is done.
@@ -145,7 +158,7 @@
     );
   }
 
-  /** Redraw the mission card only when its signature (mission, step, count, paused) changes. */
+  /** Redraw the mission card only when its signature (mission, step, count, paused) changes; peek only when the mission or step changes. */
   function renderMission(sim) {
     const R = H().refs;
     const prog = sim.missions.progress();
@@ -155,13 +168,17 @@
     else if (sim.missions.available().length === 0) sig = "done";
     if (R.missionSig === sig) return;
     const first = R.missionSig === undefined;
+    const stepKey = mission && prog ? mission.id + ":" + prog.stepIndex : "none";
+    const newStep = !first && mission && R.missionStep !== stepKey;
     R.missionSig = sig;
+    R.missionStep = stepKey;
     U.clear(R.missionBody);
     R.mission.classList.toggle("is-paused", Boolean(prog && prog.paused));
     if (mission && prog) renderMissionSteps(mission, prog);
     else renderNoMission(sig);
-    // a new step shows the full card for a few seconds, then it folds back to the chip (phones)
-    if (!first && mission) G.HudLayout.peek("mission");
+    // only a new mission or a new step shows the full card for a few seconds (phones); a collected
+    // can or a prayer pause / resume just updates the chip
+    if (newStep) G.HudLayout.peek("mission");
   }
 
   /**
@@ -190,7 +207,8 @@
     const ps = sim.prayer.state();
     H().setText("clock", R.clockText, sim.clock.hhmm());
     H().setText("nextp", R.nextp, nextNote(ps));
-    R.status.setAttribute("aria-label", "Clock " + sim.clock.hhmm() + ". " + nextNote(ps));
+    const spoken = "Clock " + sim.clock.hhmm() + ". " + nextNote(ps) + " " + prayerSummary(ps);
+    R.status.setAttribute("aria-label", spoken);
     updatePrayers(ps);
     H().setText("coins", R.coinNum, String(sim.economy.coins));
     R.coins.setAttribute("aria-label", sim.economy.coins + " coins");

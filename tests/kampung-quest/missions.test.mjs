@@ -399,3 +399,68 @@ test("ACC-1: the two stall hawkers' missions are offered by wantsTalk until comp
   m.restore({ active: null, completed: [mission.id], stickers: [] });
   assert.equal(m.wantsTalk("hawker_aminah"), false);
 });
+
+test("ACC3-02: the target's authored final-step line is shown first, the giver's thanks follow, attributed", () => {
+  for (const mission of MISSIONS) {
+    const last = mission.steps[mission.steps.length - 1];
+    if (!NPC_STEPS.includes(last.type)) continue;
+    const pages = Missions.completionLines(mission, last.target);
+    assert.ok(pages.length >= 1, mission.id);
+    if (last.line) assert.equal(pages[0], last.line, mission.id + " authored line is reachable");
+    if (mission.giver === last.target) {
+      assert.deepEqual(
+        plain(pages.slice(-mission.thanks.length)),
+        plain(mission.thanks),
+        mission.id,
+      );
+      continue;
+    }
+    const giverName = KQ.Sim.NPC_PROFILE[mission.giver].name;
+    pages.slice(1).forEach((page) => assert.ok(page.startsWith(giverName + " says: "), mission.id));
+    assert.equal(pages.length, 1 + mission.thanks.length, mission.id);
+  }
+});
+
+test("ACC3-02: the real imam line is reachable through a finished salam_to_imam", () => {
+  const missions = Missions.create();
+  missions.accept("salam_to_imam");
+  missions.notify({ type: "goto", target: "mosque_gate" });
+  const res = missions.notify({ type: "talk", target: "imam_hakim" });
+  assert.equal(res.completed, true);
+  const pages = Missions.completionLines(res.mission, "imam_hakim");
+  assert.match(pages[0], /^Waalaikumsalam wa rahmatullah/);
+  assert.match(pages[1], /^Atuk says: /);
+});
+
+test("ACC3-03: the fallback reply follows the neighbour's profile (no Waalaikumsalam for everyone)", () => {
+  assert.equal(Missions.stepReply("aunty_mei", null), "Thank you!");
+  assert.equal(Missions.stepReply("uncle_lim", ""), "Thank you!");
+  assert.equal(Missions.stepReply("makcik_siti", null), "Terima kasih!");
+  assert.equal(Missions.stepReply("nobody", null), "Thank you!");
+  assert.equal(Missions.stepReply("aunty_mei", "Own line"), "Own line");
+  const pages = Missions.completionLines(
+    { giver: "atuk", thanks: ["Thanks."], steps: [{ type: "talk", target: "aunty_mei" }] },
+    "aunty_mei",
+  );
+  assert.equal(pages[0], "Thank you!");
+  for (const mission of MISSIONS) {
+    mission.steps.forEach((s) => assert.doesNotMatch(String(s.line), /^Waalaikumsalam!? Terima/));
+  }
+  const siti = MISSIONS.flatMap((m) => m.steps).find((s) => s.target === "makcik_siti" && s.line);
+  assert.equal(siti.line, "Terima kasih, nak! Jazakallah.");
+});
+
+test("COMP-R3-03: the reply button never answers a Waalaikumsalam with Assalamualaikum", () => {
+  const label = Missions.replyLabel;
+  assert.equal(label("Waalaikumsalam wa rahmatullah, nak.", true), "Thank you!");
+  assert.equal(label("Waalaikumsalam! Terima kasih!", false), "Thank you!");
+  assert.equal(label("Assalamualaikum, nak!", true), "Waalaikumsalam!");
+  assert.equal(label("Terima kasih!", true), "You're welcome!");
+  assert.equal(label("Thank you!", false), "You're welcome!");
+  assert.equal(label("Morning! Weather very nice today, hor?", false), "Hello!");
+  assert.equal(label("Nice day for a walk.", true), "Thank you!");
+  for (const line of ["Waalaikumsalam", "waalaikumsalam wa rahmatullah", "Waalaikumsalam!"]) {
+    assert.notEqual(label(line, true), "Assalamualaikum!");
+    assert.notEqual(label(line, false), "Assalamualaikum!");
+  }
+});

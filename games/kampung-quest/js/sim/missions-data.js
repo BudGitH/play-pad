@@ -247,7 +247,7 @@
         }),
         step("deliver", "makcik_siti", "Deliver a parcel to Makcik Siti", {
           item: "parcel",
-          line: "Terima kasih, nak! Waalaikumsalam.",
+          line: "Terima kasih, nak! Jazakallah.",
         }),
         step("deliver", "pakcik_rahman", "Deliver a parcel to Pakcik Rahman", {
           item: "parcel",

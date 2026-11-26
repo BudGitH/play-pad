@@ -162,7 +162,7 @@ async function checkPrompt(page) {
   await expect(bubble).toContainText(/Assalamualaikum/);
   await page.getByRole("button", { name: "Next", exact: true }).click();
   await expect(page.getByRole("button", { name: /Waalaikumsalam/ })).toBeVisible();
-  await page.getByRole("button", { name: "Later" }).click();
+  await page.getByRole("button", { name: "Later", exact: true }).click();
   expect((await state(page)).ui.modal).toBeNull();
 }
 
@@ -383,7 +383,7 @@ async function checkHawkerTalkedFallback(page) {
   await kq(page, () => window.__kq.interact());
   await expect(page.getByRole("dialog", { name: /Talking to/ })).toBeVisible();
   await page.getByRole("button", { name: "Next", exact: true }).click();
-  await page.getByRole("button", { name: "Later" }).click();
+  await page.getByRole("button", { name: "Later", exact: true }).click();
   await step(page, 300);
   const after = (await state(page)).target;
   expect(after?.kind, "after talking, the counter wins again").toBe("obj");
@@ -391,6 +391,29 @@ async function checkHawkerTalkedFallback(page) {
   await kq(page, () => window.__kq.place(-42.6, 40, 0)); // walk away (more than 4.5 m)
   await step(page, 300);
   await nearNpc(page, "hawker_ali"); // back again: Talk is offered again
+}
+
+/**
+ * ACC3-02 / ACC3-03: the imam answers in his own words first (not Atuk's thanks), the thanks are
+ * labelled as Atuk's, and the child's reply button is never an Assalamualaikum after a Waalaikumsalam.
+ */
+async function checkFinalStepLines(page) {
+  await kq(page, () => {
+    const S = window.KQ.Game.S;
+    S.sim.missions.abandon();
+    S.sim.missions.accept("salam_to_imam");
+    window.KQ.Game.MissionFlow.notify({ type: "goto", target: "mosque_gate" });
+    window.__kq.setMinute(600); // 10:00: no prayer is blocking
+  });
+  await nearNpc(page, "imam_hakim");
+  await kq(page, () => window.__kq.interact());
+  const bubble = page.locator(".kq-bubble-text");
+  await expect(bubble).toHaveText(/^Waalaikumsalam wa rahmatullah, nak\./);
+  await expect(page.getByRole("button", { name: "Assalamualaikum!" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await expect(bubble).toHaveText(/^Atuk says: Alhamdulillah/);
+  await page.getByRole("button", { name: "Thank you!" }).click();
+  await expect(bubble).toHaveCount(0);
 }
 
 test.describe.serial("regressions of the QA fixes (one shared page)", () => {
@@ -414,6 +437,8 @@ test.describe.serial("regressions of the QA fixes (one shared page)", () => {
     checkForcePrayerBackwards(shared.page));
   test("hawker talk falls back to the counter after Later, and returns when the hero walks away", () =>
     checkHawkerTalkedFallback(shared.page));
+  test("ACC3-02/03 the imam's own line comes first, the thanks are Atuk's, the reply is Thank you", () =>
+    checkFinalStepLines(shared.page));
   test("no console or page errors in the regression run", () => checkNoErrors(shared.problems));
 });
 
@@ -681,7 +706,7 @@ test.describe("AC-15 accessibility", () => {
     await kq(page, () => window.__kq.interact());
     await expect(page.locator(".kq-bubble-text")).not.toBeEmpty(); // dialogue captioned
     await page.getByRole("button", { name: "Next", exact: true }).click();
-    await page.getByRole("button", { name: "Later" }).click();
+    await page.getByRole("button", { name: "Later", exact: true }).click();
     await kq(page, () => window.__kq.forcePrayer("zohor"));
     await expect(page.locator(".kq-azan .kq-en")).not.toBeEmpty(); // azan captioned
   });

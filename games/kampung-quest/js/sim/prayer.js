@@ -131,11 +131,18 @@
     return step;
   }
 
+  /** A step that keeps its plain id (takbir, tasyahud, salam) but still carries the raka'at it belongs to, so the counter never guesses. */
+  function plainStep(type, rakaat) {
+    const step = makeStep(type);
+    step.rakaat = rakaat;
+    return step;
+  }
+
   /** Steps of one raka'at, including the sitting that ends it (if any). */
   function rakaatSteps(name, rakaat) {
     const total = RAKAAT[name];
     const steps = [];
-    if (rakaat === 1) steps.push(makeStep("takbir"));
+    if (rakaat === 1) steps.push(plainStep("takbir", 1));
     steps.push(makeStep("qiyam", rakaat), makeStep("ruku", rakaat), makeStep("itidal", rakaat));
     if (name === "subuh" && rakaat === 2) steps.push(makeStep("qunut", rakaat));
     steps.push(
@@ -143,8 +150,8 @@
       makeStep("julus", rakaat),
       makeStep("sujud", rakaat, "b"),
     );
-    if (rakaat === total) steps.push(makeStep("tasyahud_akhir"));
-    else if (rakaat === 2) steps.push(makeStep("tasyahud_awal"));
+    if (rakaat === total) steps.push(plainStep("tasyahud_akhir", rakaat));
+    else if (rakaat === 2) steps.push(plainStep("tasyahud_awal", rakaat));
     return steps;
   }
 
@@ -166,7 +173,7 @@
     for (let rakaat = 1; rakaat <= RAKAAT[name]; rakaat += 1) {
       plan.push(...rakaatSteps(name, rakaat));
     }
-    plan.push(makeStep("salam_r"), makeStep("salam_l"));
+    plan.push(plainStep("salam_r", RAKAAT[name]), plainStep("salam_l", RAKAAT[name]));
     return plan;
   }
 

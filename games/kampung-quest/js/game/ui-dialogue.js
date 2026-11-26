@@ -11,16 +11,9 @@
   const G = (KQ.Game = KQ.Game || {});
   const U = G.U;
 
-  /**
-   * The child's reply button label: 'Waalaikumsalam!' to a salam, 'Assalamualaikum!' to a reply,
-   * else Thank you / Hello.
-   */
+  /** The child's reply button label for a line (the pure rule lives in KQ.Sim.Missions.replyLabel). */
   function replyLabelFor(name, line, muslim) {
-    const first = String(line).toLowerCase();
-    if (first.indexOf("waalaikumsalam") === 0) return "Assalamualaikum!";
-    if (first.indexOf("assalamualaikum") === 0) return "Waalaikumsalam!";
-    // not a greeting (a thank-you, a finished mission): a natural reply, never a second salam
-    return muslim ? "Thank you!" : "Hello!";
+    return KQ.Sim.Missions.replyLabel(line, muslim);
   }
 
   /** Render the current page: a Next button, or the reply choices on the last page. */

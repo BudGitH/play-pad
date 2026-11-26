@@ -1626,6 +1626,10 @@ kbd {
     width: 22px;
     height: 22px;
   }
+  /* the 56 px button: "Missions" at the inherited 14 px was 58 px wide (A11Y3-03) */
+  .kq-root .kq-dock-btn span {
+    font-size: 12px;
+  }
   .kq-topright {
     grid-template-columns: auto auto;
     align-items: center;
@@ -1752,6 +1756,17 @@ kbd {
     min-height: 112px;
   }
 }
+/* 641-700 px wide phone landscape (iPhone SE 667x375): the 375 px azan card would be 197 px tall and
+   cover the folded mission chip, so the captions take the full card width under the title row (A11Y3-01) */
+@media (max-height: 520px) and (min-width: 641px) and (max-width: 700px) {
+  .kq-azan:not(.is-bar) .kq-big {
+    grid-row: 1;
+  }
+  .kq-azan:not(.is-bar) .kq-azan-cues {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+}
 @media (max-height: 520px) and (max-width: 759px) {
   .kq-root {
     --kq-right-w: 116px;
@@ -1860,6 +1875,9 @@ kbd {
   }
   .kq-topright {
     top: calc(var(--kq-top) + var(--kq-status-h) + 8px);
+  }
+  .kq-root .kq-dock-btn span {
+    font-size: 12px;
   }
   .kq-dock {
     gap: 6px;

@@ -241,11 +241,59 @@
     return lines[n % lines.length];
   }
 
+  /** A neighbour's display name ("Atuk"), or their id when unknown. */
+  function npcName(npcId) {
+    const profile = KQ.Sim.NPC_PROFILE && KQ.Sim.NPC_PROFILE[npcId];
+    return profile ? profile.name : npcId;
+  }
+
+  /**
+   * What a neighbour says to a finished talk / deliver step with no authored line: a Malay thank-you
+   * for Muslim neighbours, plain English for the others (never a salam reply the hero did not earn).
+   */
+  function fallbackReply(npcId) {
+    const profile = KQ.Sim.NPC_PROFILE && KQ.Sim.NPC_PROFILE[npcId];
+    return profile && profile.muslim ? "Terima kasih!" : "Thank you!";
+  }
+
+  /** The target neighbour's reply to a talk / deliver step: its authored line, else the profile fallback. */
+  function stepReply(npcId, line) {
+    return line || fallbackReply(npcId);
+  }
+
+  /**
+   * The pages shown when the LAST step of a mission (a talk / deliver to `targetId`) completes it:
+   * the target's own authored reply first, then the giver's thanks, each attributed to the giver
+   * ("Atuk says: ...") when the giver is not the one standing there.
+   */
+  function completionLines(mission, targetId) {
+    const last = mission.steps[mission.steps.length - 1];
+    if (mission.giver === targetId) return (last.line ? [last.line] : []).concat(mission.thanks);
+    const prefix = npcName(mission.giver) + " says: ";
+    return [stepReply(targetId, last.line)].concat(mission.thanks.map((t) => prefix + t));
+  }
+
+  /**
+   * The child's reply button for a line: 'Thank you!' to a Waalaikumsalam (never a second salam),
+   * 'Waalaikumsalam!' to an Assalamualaikum, "You're welcome!" to a thank-you, else a friendly
+   * 'Thank you!' (Muslim neighbour) / 'Hello!'.
+   */
+  function replyLabel(line, muslim) {
+    const text = String(line).toLowerCase();
+    if (text.indexOf("waalaikumsalam") === 0) return "Thank you!";
+    if (text.indexOf("assalamualaikum") === 0) return "Waalaikumsalam!";
+    if (/thank|terima kasih|jazakallah/.test(text)) return "You're welcome!";
+    return muslim ? "Thank you!" : "Hello!";
+  }
+
   KQ.Sim.Missions = {
     create,
     chatLine,
     pickTarget,
     sanitizeSnapshot,
+    stepReply,
+    completionLines,
+    replyLabel,
     prayerSticker: (name) => "prayer_" + name,
   };
 })(

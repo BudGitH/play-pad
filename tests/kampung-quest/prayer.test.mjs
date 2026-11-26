@@ -57,6 +57,23 @@ function doPrayer(prayer, name) {
   return last;
 }
 
+test("ACC3-01: every plan step carries a raka'at, non-decreasing, ending at the prayer's count", () => {
+  for (const name of Object.keys(Prayer.RAKAAT)) {
+    const plan = Prayer.rakaatPlan(name);
+    let previous = 1;
+    for (const step of plan) {
+      assert.ok(Number.isInteger(step.rakaat), name + " " + step.id + " has no raka'at");
+      assert.ok(step.rakaat >= previous, name + " " + step.id + " goes backwards");
+      previous = step.rakaat;
+    }
+    assert.equal(plan[plan.length - 1].rakaat, Prayer.RAKAAT[name], name + " ends at its count");
+    const awal = plan.filter((s) => s.type === "tasyahud_awal");
+    const akhir = plan.filter((s) => s.type === "tasyahud_akhir");
+    awal.forEach((s) => assert.equal(s.rakaat, 2, name + " first tasyahud ends raka'at 2"));
+    akhir.forEach((s) => assert.equal(s.rakaat, Prayer.RAKAAT[name], name + " final tasyahud"));
+  }
+});
+
 test("raka'at counts: Subuh 2, Zohor 4, Asar 4, Maghrib 3, Isyak 4", () => {
   const expected = { subuh: 2, zohor: 4, asar: 4, maghrib: 3, isyak: 4 };
   for (const [name, count] of Object.entries(expected)) {

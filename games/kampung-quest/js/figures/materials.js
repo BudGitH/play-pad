@@ -1,0 +1,177 @@
+// Kampung Quest — figure materials: glossy injection-moulded ABS plastic + a procedural studio env map.
+// One MeshPhysicalMaterial per figure atlas (shared by every instance of the same cast spec). Base colours
+// come from vertex colours; the atlas only carries the printed face / torso. A tiny shader patch adds a
+// triplanar micro-texture (orange-peel normal jitter + roughness variation) and a warm skin glow.
+(function (KQ) {
+  "use strict";
+  var F = (KQ.Figures = KQ.Figures || {});
+
+  var MICRO_SIZE = 128;
+  var microTexture = null;
+  var materialCache = {};
+  var envCache = typeof WeakMap === "function" ? new WeakMap() : null;
+
+  /** A hex colour converted to linear space (vertex colours must match sRGB-decoded textures). */
+  F.lin = function (hex) {
+    return new THREE.Color(hex).convertSRGBToLinear();
+  };
+
+  /** Fill an ImageData buffer with smooth-ish value noise: rgb = normal jitter, b also drives roughness. */
+  function fillMicroNoise(data, size) {
+    var seed = 1337;
+    function rnd() {
+      seed = (seed * 16807) % 2147483647;
+      return seed / 2147483647;
+    }
+    for (var i = 0; i < size * size; i++) {
+      var sink = rnd() > 0.985 ? 40 : 0; // rare sink marks, like real moulded parts
+      data[i * 4] = 110 + rnd() * 36;
+      data[i * 4 + 1] = 110 + rnd() * 36;
+      data[i * 4 + 2] = Math.max(0, 128 + (rnd() - 0.5) * 70 - sink);
+      data[i * 4 + 3] = 255;
+    }
+  }
+
+  /** The shared micro-surface texture (generated once, tiled triplanar in the shader). */
+  function getMicroTexture() {
+    if (microTexture) return microTexture;
+    var c = document.createElement("canvas");
+    c.width = c.height = MICRO_SIZE;
+    var ctx = c.getContext("2d");
+    var img = ctx.createImageData(MICRO_SIZE, MICRO_SIZE);
+    fillMicroNoise(img.data, MICRO_SIZE);
+    ctx.putImageData(img, 0, 0);
+    // soften so the jitter reads as orange-peel, not sand
+    ctx.filter = "blur(1.2px)";
+    ctx.drawImage(c, 0, 0);
+    microTexture = new THREE.CanvasTexture(c);
+    microTexture.wrapS = microTexture.wrapT = THREE.RepeatWrapping;
+    return microTexture;
+  }
+
+  var VERT_HEAD = "#include <common>\nattribute float aSkin;\nvarying float vSkin;\nvarying vec3 vKqPos;\nvarying vec3 vKqNrm;";
+  var VERT_BODY = "#include <begin_vertex>\nvSkin = aSkin;\nvKqPos = position;\nvKqNrm = normal;";
+  var FRAG_HEAD = [
+    "#include <common>",
+    "uniform sampler2D kqMicro;",
+    "uniform float kqMicroAmt;",
+    "uniform vec3 kqSkinGlow;",
+    "varying float vSkin;",
+    "varying vec3 vKqPos;",
+    "varying vec3 vKqNrm;",
+    "vec3 kqTri(vec3 p, vec3 n) {",
+    "  vec3 w = abs(n); w /= (w.x + w.y + w.z + 1e-4);",
+    "  return texture2D(kqMicro, p.yz * 21.0).rgb * w.x + texture2D(kqMicro, p.xz * 21.0).rgb * w.y",
+    "    + texture2D(kqMicro, p.xy * 21.0).rgb * w.z;",
+    "}",
+  ].join("\n");
+  var FRAG_ROUGH =
+    "#include <roughnessmap_fragment>\nvec3 kqM = kqTri(vKqPos, vKqNrm);\n" +
+    "roughnessFactor = clamp(roughnessFactor * (0.78 + 0.44 * kqM.b), 0.04, 1.0);";
+  var FRAG_NORMAL = "#include <normal_fragment_maps>\nnormal = normalize(normal + (kqM - 0.5) * kqMicroAmt);";
+  var FRAG_EMIT = "#include <emissivemap_fragment>\ntotalEmissiveRadiance += vSkin * kqSkinGlow * diffuseColor.rgb;";
+
+  /** Inject the micro-texture + skin warmth into a MeshPhysicalMaterial (same program for every figure). */
+  function patchPlastic(mat) {
+    mat.onBeforeCompile = function (shader) {
+      shader.uniforms.kqMicro = { value: getMicroTexture() };
+      shader.uniforms.kqMicroAmt = { value: 0.11 };
+      shader.uniforms.kqSkinGlow = { value: new THREE.Color(0.2, 0.07, 0.035) };
+      shader.vertexShader = shader.vertexShader
+        .replace("#include <common>", VERT_HEAD)
+        .replace("#include <begin_vertex>", VERT_BODY);
+      shader.fragmentShader = shader.fragmentShader
+        .replace("#include <common>", FRAG_HEAD)
+        .replace("#include <roughnessmap_fragment>", FRAG_ROUGH)
+        .replace("#include <normal_fragment_maps>", FRAG_NORMAL)
+        .replace("#include <emissivemap_fragment>", FRAG_EMIT);
+    };
+    mat.customProgramCacheKey = function () {
+      return "kq-plastic-v1";
+    };
+  }
+
+  /**
+   * The glossy ABS material for one figure atlas. Cached per key so every instance of a spec shares it.
+   * @param {string} key cache key (the cast spec id)
+   * @param {THREE.Texture} atlas printed face/torso atlas (sRGB)
+   */
+  F.plasticMaterial = function (key, atlas) {
+    if (materialCache[key]) return materialCache[key];
+    var mat = new THREE.MeshPhysicalMaterial({
+      color: 0xffffff,
+      map: atlas,
+      vertexColors: true,
+      roughness: 0.27,
+      metalness: 0,
+      clearcoat: 1,
+      clearcoatRoughness: 0.08,
+      ior: 1.54,
+      specularIntensity: 1,
+      envMapIntensity: 1,
+    });
+    mat.name = "kq-plastic-" + key;
+    patchPlastic(mat);
+    materialCache[key] = mat;
+    return mat;
+  };
+
+  /** A big inverted sphere with a warm-ceiling / neutral-wall / dark-floor gradient in vertex colours. */
+  function envDome() {
+    var g = new THREE.SphereGeometry(10, 32, 16);
+    var pos = g.attributes.position;
+    var cols = [];
+    var top = new THREE.Color(0.6, 0.56, 0.5);
+    var mid = new THREE.Color(0.26, 0.22, 0.19);
+    var low = new THREE.Color(0.05, 0.035, 0.025);
+    var c = new THREE.Color();
+    for (var i = 0; i < pos.count; i++) {
+      var t = pos.getY(i) / 10;
+      if (t > 0) c.copy(mid).lerp(top, Math.pow(t, 0.7));
+      else c.copy(mid).lerp(low, Math.min(1, -t * 2.2));
+      cols.push(c.r, c.g, c.b);
+    }
+    g.setAttribute("color", new THREE.Float32BufferAttribute(cols, 3));
+    return new THREE.Mesh(g, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide }));
+  }
+
+  /** An emissive rectangle used as a softbox / window / ceiling strip in the env scene. */
+  function envPanel(w, h, intensity, tint, pos, lookAt) {
+    var m = new THREE.MeshBasicMaterial({ color: new THREE.Color(tint).multiplyScalar(intensity), side: THREE.DoubleSide });
+    var mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, h), m);
+    mesh.position.set(pos[0], pos[1], pos[2]);
+    mesh.lookAt(lookAt[0], lookAt[1], lookAt[2]);
+    return mesh;
+  }
+
+  /** Build the tiny procedural "room" that PMREM turns into the reflection environment. */
+  function envScene() {
+    var s = new THREE.Scene();
+    s.add(envDome());
+    s.add(envPanel(6, 4, 9, 0xdfe9ff, [-9, 2.5, 2], [0, 1, 0])); // big cool window, left
+    s.add(envPanel(1.1, 9, 12, 0xfff1dc, [0, 9.4, -1], [0, 0, -1])); // warm ceiling strip
+    s.add(envPanel(1.4, 9, 6, 0xfff1dc, [3.5, 9.4, 2], [3.5, 0, 2]));
+    s.add(envPanel(2.4, 2.4, 10, 0xffffff, [6, 3.5, 7], [0, 1, 0])); // front-right softbox (catch-light)
+    s.add(envPanel(5, 1.2, 1.2, 0xffd7a8, [3, 0.8, -9], [0, 1, 0])); // warm low bounce, behind
+    return s;
+  }
+
+  /**
+   * A small PMREM studio environment for glossy plastic (cached per renderer). Use as scene.environment.
+   * @param {THREE.WebGLRenderer} renderer
+   * @returns {THREE.Texture}
+   */
+  F.makeEnv = function (renderer) {
+    if (envCache && envCache.has(renderer)) return envCache.get(renderer);
+    var gen = new THREE.PMREMGenerator(renderer);
+    var scene = envScene();
+    var tex = gen.fromScene(scene, 0.01).texture;
+    gen.dispose();
+    scene.traverse(function (o) {
+      if (o.geometry) o.geometry.dispose();
+      if (o.material) o.material.dispose();
+    });
+    if (envCache) envCache.set(renderer, tex);
+    return tex;
+  };
+})((window.KQ = window.KQ || {}));

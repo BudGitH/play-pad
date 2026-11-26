@@ -70,7 +70,7 @@
     if (goal.kind === "hide") return hideOrWalkHome(M, A, goal, instant);
     if (wasHidden) comeOutside(M, A, home || r.poi);
     if (instant) return snapToGoal(M, A, goal);
-    const pts = G.Path.toPoi(M.pathP, A.x, A.z, r.poi);
+    const pts = G.Path.toPoi(M.pathP, A.x, A.z, goal.pathPoi || r.poi);
     if (!pts) return snapToGoal(M, A, goal);
     A.path = [];
     G.NpcAgent.setPath(A, [{ x: A.x, z: A.z }].concat(pts), goal);

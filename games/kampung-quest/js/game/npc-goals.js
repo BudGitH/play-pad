@@ -13,38 +13,51 @@
   const G = (KQ.Game = KQ.Game || {});
   const U = G.U;
   const HERO_SPOT = { x: -45, z: -33 };
-  const IMAM_SPOT = { x: -48.6, z: -33 };
   const SEAT_RANGE = 14;
 
-  /** Prayer-row slots in the men's hall, nearest the hero's own spot first. */
+  const IMAM_SPOT_X = -49.2;
+  const WOMEN = [
+    "nenek",
+    "makcik_siti",
+    "hawker_aminah",
+    "dr_nurul",
+    "librarian_farah",
+    "kid_aisyah",
+  ];
+
+  /**
+   * Prayer slots. Men: straight saf lines across the hall (x = -45 is the hero's own saf, then two
+   * more behind it), imam alone in front, all north of the hero so the camera side stays clear.
+   * Women: columns of three in the women's section behind the screen. Everyone faces the qibla (-X).
+   */
   function buildSlots(world) {
-    const slots = [];
-    [-48.6, -45, -42.2, -39.6].forEach(function (x) {
-      for (let z = -43.6; z <= -27; z += 2) {
-        if (U.dist(x, z, HERO_SPOT.x, HERO_SPOT.z) < 1.5) continue;
-        if (U.dist(x, z, IMAM_SPOT.x, IMAM_SPOT.z) < 1.3) continue;
-        if (G.Collide.blockedAt(world.colliders, x, z, 0.65)) continue;
-        if (Math.abs(x - HERO_SPOT.x) < 1.8 && z > HERO_SPOT.z) continue; // the camera's side of the hero
-        slots.push({ x, z, taken: null });
+    const men = [];
+    [-45, -42.6, -40.2].forEach(function (x) {
+      for (let k = x === HERO_SPOT.x ? 1 : 0; k < 8; k += 1) {
+        const z = HERO_SPOT.z - k * 1.6;
+        if (!G.Collide.blockedAt(world.colliders, x, z, 0.65)) men.push({ x, z, taken: null });
       }
     });
-    slots.sort(
-      (a, b) =>
-        U.dist(a.x, a.z, HERO_SPOT.x, HERO_SPOT.z) - U.dist(b.x, b.z, HERO_SPOT.x, HERO_SPOT.z),
-    );
-    return slots;
+    const women = [];
+    for (let x = -37; x >= -49; x -= 2.4) {
+      [-24, -22.7, -21.4].forEach(function (z) {
+        if (!G.Collide.blockedAt(world.colliders, x, z, 0.6)) women.push({ x, z, taken: null });
+      });
+    }
+    return { men, women };
   }
 
   function claimSlot(M, A) {
-    if (A.id === "imam_hakim") return { x: IMAM_SPOT.x, z: IMAM_SPOT.z };
-    const free = M.slots.find((s) => !s.taken || s.taken === A.id);
+    if (A.id === "imam_hakim") return { x: IMAM_SPOT_X, z: HERO_SPOT.z };
+    const list = WOMEN.indexOf(A.id) !== -1 ? M.slots.women : M.slots.men;
+    const free = list.find((s) => !s.taken || s.taken === A.id);
     if (!free) return null;
     free.taken = A.id;
     return free;
   }
 
   function releaseSlot(M, A) {
-    M.slots.forEach(function (s) {
+    M.slots.men.concat(M.slots.women).forEach(function (s) {
       if (s.taken === A.id) s.taken = null;
     });
   }
@@ -90,7 +103,15 @@
     const slot = claimSlot(M, A);
     if (!slot) return { kind: "stand", x: poi.pos.x, z: poi.pos.z, heading: poi.facing };
     A.slot = slot;
-    return { kind: "pray", x: slot.x, z: slot.z, heading: -Math.PI / 2, ghostLeg: true };
+    const women = WOMEN.indexOf(A.id) !== -1;
+    return {
+      kind: "pray",
+      x: slot.x,
+      z: slot.z,
+      heading: -Math.PI / 2,
+      ghostLeg: true,
+      pathPoi: women ? "mosque_hall_women" : "mosque_hall",
+    };
   }
 
   /** Build the goal for a routine. Releases whatever the agent held before. */

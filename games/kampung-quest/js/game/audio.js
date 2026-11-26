@@ -136,7 +136,23 @@
     return KQ.ASSET_BASE + "audio/" + (ogg ? "azan.ogg" : "azan.mp3");
   }
 
-  /** Create the (not yet playing) azan element. Safe to call twice. */
+  /**
+   * Check the recording is there without opening a media connection (an idle <audio> request stays
+   * pending and would keep the page from ever being "network idle"). On file:// there is no cheap
+   * check, so it is assumed present; a failure at play time falls back to the chime.
+   */
+  async function probeAzan() {
+    if (location.protocol === "file:" || !window.fetch) return true;
+    try {
+      const res = await fetch(pickAzanSource(), { method: "HEAD" });
+      azan.failed = !res.ok;
+    } catch (err) {
+      azan.failed = true;
+    }
+    return !azan.failed;
+  }
+
+  /** Create the azan element and start fetching it (called when the game starts). Safe twice. */
   function loadAzan() {
     if (azan.el) return azan.el;
     const el = new Audio();
@@ -204,6 +220,7 @@
     play,
     footstep: (run) => play(run ? "run" : "step"),
     loadAzan,
+    probeAzan,
     startAzan,
     stopAzan,
     azanTime: () => (azan.el && azan.active && !azan.el.paused ? azan.el.currentTime : null),

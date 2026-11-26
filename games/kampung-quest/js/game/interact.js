@@ -166,13 +166,13 @@
     const behind = tmp.z > 1;
     const rawX = (tmp.x * 0.5 + 0.5) * w;
     const rawY = (-tmp.y * 0.5 + 0.5) * h;
-    const offscreen = rawX < 70 || rawX > w - 70 || rawY < 120 || rawY > h - 150;
+    const offscreen = rawX < 70 || rawX > w - 70 || rawY < 135 || rawY > h - 150;
     if (!t.enabled && (behind || offscreen)) {
       R.talk.hidden = true;
       return;
     }
     const x = U.clamp(rawX, 70, w - 70);
-    const y = U.clamp(rawY, 120, h - 150);
+    const y = U.clamp(rawY, 135, Math.max(136, h - 150));
     R.talk.hidden = false;
     R.talk.classList.toggle("is-far", !t.enabled);
     R.talk.disabled = !t.enabled;

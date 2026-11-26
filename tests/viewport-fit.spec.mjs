@@ -22,6 +22,7 @@ const SETUP_CONTROLS = [
   { path: "games/sunset-stride/", button: "Start running" },
   { path: "games/sparkle-salon/", button: "Start makeover" },
   { path: "games/brick-buddies/", button: "Start building" },
+  { path: "games/kampung-quest/", button: "Start" },
 ];
 
 /** Make visualViewport.height report the window height minus `hidden` (before any page script). */

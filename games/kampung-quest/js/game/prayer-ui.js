@@ -17,7 +17,7 @@
 
   /** A side panel on wide screens (the hero stays centred in the rest), a bottom sheet otherwise. */
   function panelVariant() {
-    return window.innerWidth >= 900 && window.innerHeight >= 520 ? "side" : "bottom";
+    return window.innerWidth >= 700 && window.innerHeight >= 340 ? "side" : "bottom";
   }
 
   function captionLines(host) {
@@ -127,7 +127,7 @@
     const handle = G.UI.openSheet({
       el: box,
       label: "Wudu steps",
-      variant: "bottom",
+      variant: panelVariant(),
       scrim: false,
       onClose: h.onClose,
       focus: ".kq-wudu-act",
@@ -195,7 +195,7 @@
     const handle = G.UI.openSheet({
       el: box,
       label: "Prayer steps",
-      variant: "bottom",
+      variant: panelVariant(),
       scrim: false,
       onClose: h.onClose,
       focus: ".kq-ptile",

@@ -17,10 +17,16 @@
   /** A new game starts in the void deck of Block 118, a few steps from Nenek (and clear of the lift). */
   const START_SPOT = { x: -42.6, z: 22.4 };
 
+  /** True when WebGL works; also notes a software renderer (SwiftShader / llvmpipe) in G.Env. */
   function webglOk() {
     try {
       const c = document.createElement("canvas");
-      return Boolean(c.getContext("webgl2") || c.getContext("webgl"));
+      const gl = c.getContext("webgl2") || c.getContext("webgl");
+      if (!gl) return false;
+      const info = gl.getExtension("WEBGL_debug_renderer_info");
+      const name = info ? String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL)) : "";
+      G.Env.softwareGL = /swiftshader|llvmpipe|software/i.test(name);
+      return true;
     } catch (err) {
       return false;
     }
@@ -75,7 +81,7 @@
     const q = params.get("q");
     if (q === "low" || q === "med" || q === "high") return q;
     if (saved.status === "loaded") return saved.state.settings.quality;
-    return G.Env.coarse ? "low" : "high";
+    return G.Env.coarse || G.Env.softwareGL ? "low" : "high";
   }
 
   async function buildWorld(s, tier) {
@@ -133,10 +139,9 @@
 
   async function loadAzan() {
     BU().setStep(3, "now");
-    const el = G.Audio.loadAzan();
-    const ok = await waitUntil(() => el.readyState >= 3 || el.error, 7000);
-    if (el.error || !ok) BU().setStep(3, "skip", "chime and captions instead");
-    else BU().setStep(3, "done");
+    const ok = await G.Audio.probeAzan();
+    if (ok) BU().setStep(3, "done");
+    else BU().setStep(3, "skip", "chime and captions instead");
     BU().setProgress(0.9);
   }
 
@@ -159,7 +164,9 @@
       if (s.started) return;
       requestAnimationFrame(loop);
       if (s.frozen) return;
-      a += 0.0035;
+      s.orbitSkip = (s.orbitSkip || 0) + 1;
+      if (s.orbitSkip % 3) return;
+      a += 0.01;
       s.camera.position.set(14 + Math.sin(a) * 34, 7.5, -16 + Math.cos(a) * 34);
       s.camera.lookAt(20, 2.2, -20);
       s.world.update(0, { minute: 640 });
@@ -200,6 +207,7 @@
 
   function begin(s, saved, fresh) {
     G.Audio.unlock();
+    G.Audio.loadAzan();
     if (fresh && s.storage) KQ.Sim.Save.clear(s.storage);
     const state = fresh || saved.status !== "loaded" ? KQ.Sim.Save.defaultState() : saved.state;
     if (fresh) state.settings.quality = s.quality;

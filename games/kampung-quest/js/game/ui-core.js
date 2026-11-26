@@ -75,6 +75,7 @@
     UI.layer.appendChild(wrap);
     UI.sheet = box;
     UI.root.classList.add("kq-modal");
+    UI.root.classList.toggle("kq-modal-side", opts.variant === "side");
     if (opts.scrim === false) UI.root.classList.add("kq-modal-clear");
     const handle = {
       opts,
@@ -84,7 +85,7 @@
         if (UI.handle !== handle) return;
         UI.handle = null;
         UI.sheet = null;
-        UI.root.classList.remove("kq-modal", "kq-modal-clear");
+        UI.root.classList.remove("kq-modal", "kq-modal-clear", "kq-modal-side");
         wrap.remove();
         G.Speech.cancel();
         if (opts.onClose) opts.onClose(reason || "closed");

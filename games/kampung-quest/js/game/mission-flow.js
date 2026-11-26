@@ -164,7 +164,8 @@
     const givers = free ? m.available().map((x) => x.giver) : [];
     S().npcs.agents.forEach(function (A) {
       const praying = Boolean(A.goal && A.goal.kind === "pray");
-      G.Markers.starFor(S().markers, A).visible = !A.hidden && !praying && givers.indexOf(A.id) !== -1;
+      G.Markers.starFor(S().markers, A).visible =
+        !A.hidden && !praying && givers.indexOf(A.id) !== -1;
     });
   }
 

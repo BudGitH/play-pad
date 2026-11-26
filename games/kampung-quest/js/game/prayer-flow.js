@@ -106,14 +106,11 @@
     showCardNow();
   }
 
-  /** The flow has started: the big card goes away; a live azan keeps its slim caption bar. */
+  /** The flow has started: the azan stops (we are praying now) and its captions go away. */
   function quietCard() {
     F.pending = false;
     F.expanded = false;
-    if (F.azanLive && F.card) {
-      F.card.el.classList.add("is-bar");
-      return;
-    }
+    if (F.azanLive) endAzan();
     hideCard();
   }
 
@@ -217,7 +214,7 @@
       target: { x: spot.x, y: spot.y, z: spot.z },
       yaw: spot.faceYaw + yawOff,
       pitch: 0.12,
-      dist,
+      dist: side ? dist : dist * 1.45,
       lift: 0.5,
     });
     if (!box) return G.Camera.setShift(0, 0);
@@ -313,7 +310,7 @@
     F.wudu = { taps: 0, tried: -1, hint: "" };
     F.wui = G.PrayerUI.wudu({ onPick: wuduPick, onAct: wuduAct, onClose: closeWudu });
     refreshWudu();
-    frameHero({ x: spot.x, y: spot.y, z: spot.z, faceYaw: Math.PI }, 0.7, 2.0);
+    frameHero({ x: spot.x, y: spot.y, z: spot.z, faceYaw: Math.PI }, 0.7, 2.3);
   }
 
   function closeWudu() {
@@ -380,9 +377,7 @@
 
   function hintFor(prayer) {
     const want = prayer.nextPrayStep();
-    return want
-      ? "Nearly! Next comes: " + want.label + ". Take your time."
-      : "";
+    return want ? "Nearly! Next comes: " + want.label + ". Take your time." : "";
   }
 
   function openPray() {
@@ -392,7 +387,7 @@
     F.pray = { tried: null, cue: null, hint: "", seed: 0 };
     F.pui = G.PrayerUI.pray({ onPick: prayPick, onClose: closePray });
     refreshPray();
-    frameHero({ x: HALL_SPOT.x, y, z: HALL_SPOT.z, faceYaw: Math.PI }, 0.55, 2.0);
+    frameHero({ x: HALL_SPOT.x, y, z: HALL_SPOT.z, faceYaw: Math.PI }, 0.55, 2.3);
   }
 
   function closePray() {
@@ -430,7 +425,7 @@
         G.UI.toast("Missions can carry on now.", "good");
       },
     });
-    frameHero({ x: HALL_SPOT.x, y: S().player.pos.y, z: HALL_SPOT.z, faceYaw: Math.PI }, 0.55, 2.0);
+    frameHero({ x: HALL_SPOT.x, y: S().player.pos.y, z: HALL_SPOT.z, faceYaw: Math.PI }, 0.55, 2.3);
   }
 
   /* ------------------------------ entry points ------------------------------ */

@@ -208,6 +208,8 @@
   /* ------------------------------ camera / hero ------------------------------ */
 
   function frameHero(spot, yawOff, dist) {
+    F.lastYawOff = yawOff;
+    F.lastDist = dist;
     const box = G.UI.state.sheet;
     const side = Boolean(box && box.parentElement.classList.contains("kq-sheet-side"));
     G.Camera.setFrame({
@@ -299,6 +301,7 @@
   }
 
   function openWudu(tap) {
+    F.lastTap = tap;
     const P = S().player;
     const spot = {
       x: tap.pos.x,
@@ -533,6 +536,28 @@
     S().root.classList.toggle("kq-azan-bar", bar);
   }
 
+  /** After a resize or rotation: switch the prayer panel between side and bottom, then re-frame. */
+  function refit() {
+    const open = F.wui ? "wudu" : F.pui ? "pray" : null;
+    if (!open) return;
+    const box = G.UI.state.sheet;
+    const isSide = Boolean(box && box.parentElement.classList.contains("kq-sheet-side"));
+    if (isSide === G.PrayerUI.wantsSide()) return frameAgain();
+    G.UI.closeSheet("refit");
+    if (open === "wudu") openWudu(F.lastTap);
+    else openPray();
+  }
+
+  function frameAgain() {
+    const f = G.Camera.state.frame;
+    if (f)
+      frameHero(
+        { x: f.target.x, y: f.target.y, z: f.target.z, faceYaw: Math.PI },
+        F.lastYawOff,
+        F.lastDist,
+      );
+  }
+
   function update(dt) {
     syncBarClass();
     if (F.azanLive) advanceCaptions(dt);
@@ -568,6 +593,7 @@
     openDayCard,
     showWay,
     resume,
+    refit,
     restoreDue,
     reset,
     state: F,

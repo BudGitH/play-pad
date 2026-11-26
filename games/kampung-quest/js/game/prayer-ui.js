@@ -16,8 +16,12 @@
   const T = () => G.PrayerText;
 
   /** A side panel on wide screens (the hero stays centred in the rest), a bottom sheet otherwise. */
+  function wantsSide() {
+    return window.innerWidth >= 700 && window.innerHeight >= 340;
+  }
+
   function panelVariant() {
-    return window.innerWidth >= 700 && window.innerHeight >= 340 ? "side" : "bottom";
+    return wantsSide() ? "side" : "bottom";
   }
 
   function captionLines(host) {
@@ -206,13 +210,7 @@
   /** Refresh. v: { name, kind, rakaat, total, choices:[type], tried, hint, cue } */
   function prayUpdate(ui, v) {
     const label = KQ.Sim.Prayer.DISPLAY[v.name] + (v.kind === "qada" ? " (make-up)" : "");
-    ui.title.textContent =
-      label +
-      " · raka'at " +
-      v.rakaat +
-      " of " +
-      v.total +
-      " · tap the picture for what comes next";
+    ui.title.textContent = label + " · raka'at " + v.rakaat + " of " + v.total + "";
     ui.dots.setAttribute("aria-label", "Raka'at " + v.rakaat + " of " + v.total);
     U.clear(ui.dots);
     for (let i = 1; i <= v.total; i += 1) {
@@ -291,5 +289,14 @@
     });
   }
 
-  G.PrayerUI = { azanCard, setCue, wudu, wuduUpdate, pray, prayUpdate, dayCard };
+  G.PrayerUI = {
+    wantsSide,
+    azanCard,
+    setCue,
+    wudu,
+    wuduUpdate,
+    pray,
+    prayUpdate,
+    dayCard,
+  };
 })((window.KQ = window.KQ || {}));

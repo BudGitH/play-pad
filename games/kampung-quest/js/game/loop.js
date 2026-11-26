@@ -207,7 +207,8 @@
     const w = Math.max(2, box.clientWidth);
     const h = Math.max(2, box.clientHeight);
     const hints = s.world ? s.world.qualityHints(s.quality) : { pixelRatio: 1 };
-    s.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, hints.pixelRatio));
+    const cap = G.Env.coarse ? Math.min(1.5, hints.pixelRatio) : hints.pixelRatio;
+    s.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, cap));
     s.renderer.setSize(w, h, false);
     s.size = { w, h };
     G.Camera.resize(w, h, w / h);
@@ -292,10 +293,17 @@
     frame(real);
   }
 
+  /** Resize / rotation: re-measure, re-frame an open prayer screen, keep the camera sane. */
+  function onResize() {
+    resize();
+    if (S().started) G.PrayerFlow.refit();
+  }
+
   function start() {
     const s = S();
     s.last = performance.now();
-    window.addEventListener("resize", resize);
+    window.addEventListener("resize", onResize);
+    window.addEventListener("orientationchange", () => setTimeout(onResize, 200));
     document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("pagehide", save);
     requestAnimationFrame(raf);

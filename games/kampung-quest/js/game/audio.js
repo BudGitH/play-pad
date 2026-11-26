@@ -166,7 +166,25 @@
       azan.active = false;
     });
     azan.el = el;
+    primeAzan(el);
     return el;
+  }
+
+  /** iOS only lets an element play later if it was started inside a gesture: do a silent play + pause. */
+  function primeAzan(el) {
+    try {
+      el.muted = true;
+      const p = el.play();
+      const done = () => {
+        el.pause();
+        el.currentTime = 0;
+        el.muted = false;
+      };
+      if (p && p.then) p.then(done).catch(done);
+      else done();
+    } catch (err) {
+      el.muted = false;
+    }
   }
 
   function syncAzan() {

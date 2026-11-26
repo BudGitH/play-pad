@@ -244,6 +244,10 @@
     G.Input.setHandler((name) => G.Actions.handle(name));
     window.addEventListener("keydown", G.UI.trap);
     document.body.classList.toggle("kq-less-motion", G.Settings.reduced());
+    document.addEventListener("contextmenu", (e) => e.preventDefault());
+    ["pointerdown", "touchend", "keydown"].forEach((ev) =>
+      window.addEventListener(ev, () => s.started && G.Audio.unlock(), { passive: true }),
+    );
     await buildWorld(s, pickTier(saved));
     await buildActors(s);
     await loadTextures();

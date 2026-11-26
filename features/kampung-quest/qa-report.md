@@ -77,4 +77,37 @@ ACC2-01..04, R2-Q-04..07, COMP-R2-01..03, RISK2-01..03, A11Y2-05..10, R2-PERF-01
 
 ## Round 3
 
-_Pending — after the round-2 fixes land._
+**Run:** 2026-11-26 on HEAD 68f92c4. Six lenses: accuracy, quality, compliance, risk, accessibility-mobile and performance. **Result: PASS (0 CRITICAL, 0 HIGH).** 4 MEDIUM, 18 LOW.
+
+**Tool runs (lens agents' own output):**
+
+- `npm run test:kq`: 155/155.
+- kq AC + mobile specs: 52 passed (26.3 min, 1 worker).
+- core smoke for Kampung Quest: 2 passed.
+- The MUIS times were checked against the data.gov.sg dataset row for 2026-11-26: exact match.
+
+**Re-verified from round 2:**
+
+- **HIGH, both fixed:** R2-Q-01 (the CI split) and A11Y2-01 (the azan card over Talk).
+- **Also fixed:** ACC2-01..03, R2-Q-02, R2-Q-04..07, A11Y2-05..09 and R2-PERF-04.
+- **Partial:**
+  - R2-PERF-02: the 4× gate still has 1.35 slack;
+  - A11Y2-10: the spec matrix lacked 667x375 and 640x300.
+- **Accepted:** phones narrower than 667 px keep more than 25 % HUD; PERF-07.
+
+| ID                           | Sev    | Lens                | Finding                                                                                                  | Action                                              |
+| ---------------------------- | ------ | ------------------- | -------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| ACC3-01                      | MEDIUM | Accuracy            | The tasyahud steps show "raka'at 1 of N" (display only)                                                  | Fix now                                             |
+| ACC3-02                      | MEDIUM | Accuracy            | The last mission step speaks the giver's thanks through the wrong NPC (the imam never answers the salam) | Fix now                                             |
+| R3-PERF-01                   | MEDIUM | Perf                | Precompiling every tier made the load about 3× slower                                                    | Fix now                                             |
+| R3-Q-01                      | MEDIUM | Quality             | Standing: Tier-2 doc rule has no tool. Ledger row at 3× has no PLAY ticket                               | Backfill done (68f92c4). Ticket is the owner's call |
+| ACC3-03, COMP-R3-03, R3-Q-06 | LOW    | Accuracy/Compliance | Fallback "Waalaikumsalam" used for everyone (incl. non-Muslim neighbour); reply inverted                 | Fix now                                             |
+| R3-Q-02                      | LOW    | Quality             | Phone mission card peeks on every collect / pause                                                        | Fix now                                             |
+| A11Y3-01, A11Y3-03           | LOW    | A11y                | Azan card over the mission chip at 667x375; "Missions" label is 2 px too wide                            | Fix now                                             |
+| A11Y3-02                     | LOW    | A11y                | The prayer strip has no state text for screen readers                                                    | Fix now                                             |
+| ACC3-04                      | LOW    | Accuracy            | No literal-value test of the MUIS times; test-plan line 82 stale                                         | Deferred (ledger)                                   |
+| R3-Q-03, R3-Q-04, R3-Q-05    | LOW    | Quality             | Duplicated media queries; round-2 decisions not captured; `Save.clear` result ignored                    | R3-Q-04 at capture; rest deferred                   |
+| COMP-R3-01, -02, -04         | LOW    | Compliance          | Tier-1 headers missing in 47 world/figure files; raw CREDITS.md link; ledger missing round-2 LOWs        | -04 at capture; rest deferred                       |
+| R3-PERF-02..04               | LOW    | Perf                | Draw-call sweep not deterministic; 4× slack; mosque tris                                                 | Deferred (real-phone run)                           |
+
+Raw output: kept by the orchestrator (session scratchpad).

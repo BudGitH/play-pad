@@ -44,7 +44,7 @@ test("save then load round-trips every field", () => {
   assert.equal(Save.save(storage, state).ok, true);
   const loaded = Save.load(storage);
   assert.equal(loaded.status, "loaded");
-  assert.deepEqual(plain(loaded.state), plain(state));
+  assert.deepEqual(plain(loaded.state), plain({ ...state, rev: loaded.state.rev }));
 });
 
 test("corrupt JSON falls back to a new game without throwing", () => {
@@ -112,7 +112,7 @@ test("numbers are clamped: coins, meters, clock, day, position", () => {
   assert.deepEqual(plain(state.needs), { hunger: 100, energy: 0 });
   assert.equal(state.clock.minute, 1439.99);
   assert.equal(state.clock.day, 1);
-  assert.deepEqual(plain(state.pos), { x: 1000, z: -1000 });
+  assert.equal(state.pos, null);
   assert.equal(Save.load(stored({ v: 1, coins: -5 })).state.coins, 0);
   assert.equal(Save.load(stored({ v: 1, coins: 7.9 })).state.coins, 7);
 });
@@ -265,4 +265,87 @@ test("capture/apply: live modules survive a save and reload, incl. mid-prayer", 
     "resumes at the start of the next wudu step",
   );
   assert.equal(reloaded.prayer.isBlockingMissions(), true);
+});
+
+/** A fresh Save module (its tab-local revision starts at 0) - one per "browser tab". */
+function newTab() {
+  return loadSim().Sim.Save;
+}
+
+test("RISK-01: every save bumps the revision and load reads it back", () => {
+  const tab = newTab();
+  const storage = memoryStorage();
+  assert.deepEqual(plain(tab.save(storage, tab.defaultState())), { ok: true, rev: 1 });
+  assert.equal(tab.save(storage, tab.defaultState()).rev, 2);
+  assert.equal(JSON.parse(storage.data[KEY]).rev, 2);
+  assert.equal(newTab().load(storage).state.rev, 2);
+});
+
+test("RISK-01: a stale tab cannot overwrite newer progress from another tab", () => {
+  const storage = memoryStorage();
+  const a = newTab();
+  a.save(storage, a.defaultState());
+  const b = newTab();
+  b.load(storage); // tab B continues the same game
+  const newer = a.defaultState();
+  newer.coins = 90;
+  assert.equal(a.save(storage, newer).ok, true); // tab A got ahead
+  const stale = b.defaultState();
+  stale.coins = 10;
+  assert.deepEqual(plain(b.save(storage, stale)), { ok: false, reason: "stale" });
+  assert.equal(JSON.parse(storage.data[KEY]).coins, 90);
+  assert.equal(b.save(storage, stale).ok, false, "stays refused until the tab reloads");
+});
+
+test("RISK-01: after a reload the second tab may save again; New game resets the revision", () => {
+  const storage = memoryStorage();
+  const a = newTab();
+  a.save(storage, a.defaultState());
+  a.save(storage, a.defaultState());
+  const reloaded = newTab();
+  reloaded.load(storage);
+  assert.equal(reloaded.save(storage, reloaded.defaultState()).rev, 3);
+  reloaded.clear(storage);
+  assert.equal(reloaded.save(storage, reloaded.defaultState()).rev, 1);
+});
+
+test("RISK-01: revOf is total - junk, huge or negative revisions read as safe numbers", () => {
+  const tab = newTab();
+  assert.equal(tab.revOf(null), 0);
+  assert.equal(tab.revOf("{nope"), 0);
+  assert.equal(tab.revOf('{"rev":"9"}'), 0);
+  assert.equal(tab.revOf('{"rev":-4}'), 0);
+  assert.equal(tab.revOf('{"rev":7}'), 7);
+  assert.equal(tab.revOf('{"rev":1e300}'), 1e9, "huge values clamp to the maximum");
+  assert.equal(tab.sanitize({ v: 1, rev: 1e300 }).rev, 1e9);
+});
+
+test("RISK-03: a saved hero position outside the playable bounds falls back to the start spot", () => {
+  const tab = newTab();
+  const at = (x, z) => tab.load(stored({ v: 1, pos: { x, z } })).state.pos;
+  assert.equal(at(999, 999), null);
+  assert.equal(at(-71, 0), null);
+  assert.equal(at(0, 500), null);
+  assert.deepEqual(plain(at(-42.6, 22.4)), { x: -42.6, z: 22.4 });
+  assert.deepEqual(plain(at(70, -70)), { x: 70, z: -70 });
+});
+
+test("ACC-2: Save.apply with prayers ahead of the clock recovers once the prayer tracker updates", () => {
+  const ahead = Prayer.create(FIXTURE_TIMES);
+  ahead.update(mins("07:00"), 1);
+  ahead.update(mins("20:30"), 1);
+  const state = Save.defaultState();
+  state.clock = { minute: mins("07:10"), day: 1 };
+  state.prayers = plain(ahead.snapshot());
+  const sim = {
+    clock: Clock.create({ times: FIXTURE_TIMES }),
+    economy: Economy.create(),
+    needs: Needs.create(),
+    missions: Missions.create(),
+    prayer: Prayer.create(FIXTURE_TIMES),
+  };
+  Save.apply(state, sim);
+  sim.prayer.update(sim.clock.minute, sim.clock.day);
+  assert.equal(sim.prayer.due(), null);
+  assert.equal(sim.prayer.state().qada.length, 0);
 });

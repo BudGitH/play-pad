@@ -1,4 +1,4 @@
-three.js r0.147.0 (three.min.js, GLTFLoader.js) — https://threejs.org
+three.js r0.147.0 (three.min.js) — https://threejs.org
 
 The MIT License
 

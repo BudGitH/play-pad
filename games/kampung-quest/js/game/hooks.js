@@ -133,11 +133,22 @@
     return true;
   }
 
+  /**
+   * Jump the clock to `minute` of the current day. Going backwards makes the prayer tracker
+   * rebuild as a fresh game at that minute (Prayer.update does it), so the HUD and the missions
+   * never show a prayer from "the future"; the azan card state is reset to match.
+   */
+  function setMinute(minute) {
+    const back = minute < S().sim.clock.minute;
+    G.Loop.setMinute(minute);
+    if (back) G.PrayerFlow.reset();
+    G.Loop.step(100);
+  }
+
   function forcePrayer(name) {
     const mins = KQ.Sim.Clock.parseHHMM(KQ.PRAYER_TIMES[name]);
     if (Number.isNaN(mins)) return false;
-    G.Loop.setMinute(mins + 0.05);
-    G.Loop.step(100);
+    setMinute(mins + 0.05);
     return true;
   }
 
@@ -152,10 +163,7 @@
     stats,
     npc,
     step: (ms) => (started() ? G.Loop.step(ms) : 0),
-    setMinute(m) {
-      G.Loop.setMinute(m);
-      G.Loop.step(100);
-    },
+    setMinute: (m) => (started() ? setMinute(m) : undefined),
     teleport,
     place(x, z, heading) {
       G.Player.place(S().player, x, z, heading || 0, S().world.heightAt);

@@ -4,7 +4,12 @@ import fs from "node:fs";
 import path from "node:path";
 import vm from "node:vm";
 
-const SIM_DIR = path.resolve(import.meta.dirname, "../../games/kampung-quest/js/sim");
+const JS_DIR = path.resolve(import.meta.dirname, "../../games/kampung-quest/js");
+const SIM_DIR = path.join(JS_DIR, "sim");
+const DATA_DIR = path.join(JS_DIR, "data");
+
+/** The shipped data files (real MUIS times, azan captions), loaded only by loadSimWithData(). */
+export const DATA_FILES = ["prayer-times", "azan"];
 
 /** Load order matters: see the header of save.js. */
 export const SIM_FILES = [
@@ -30,14 +35,27 @@ export const FIXTURE_TIMES = {
   isyak: "20:15",
 };
 
+function runAll(sandbox, dir, files) {
+  for (const name of files) {
+    const source = fs.readFileSync(path.join(dir, name + ".js"), "utf8");
+    vm.runInContext(source, sandbox, { filename: name + ".js" });
+  }
+}
+
 /** @returns {object} the KQ namespace populated by the sim scripts */
 export function loadSim(files = SIM_FILES) {
   const sandbox = {};
   vm.createContext(sandbox);
-  for (const name of files) {
-    const source = fs.readFileSync(path.join(SIM_DIR, name + ".js"), "utf8");
-    vm.runInContext(source, sandbox, { filename: name + ".js" });
-  }
+  runAll(sandbox, SIM_DIR, files);
+  return sandbox.KQ;
+}
+
+/** Like loadSim, plus the REAL js/data files (KQ.PRAYER_TIMES, KQ.AZAN_TEXT), data first as in index.html. */
+export function loadSimWithData() {
+  const sandbox = {};
+  vm.createContext(sandbox);
+  runAll(sandbox, DATA_DIR, DATA_FILES);
+  runAll(sandbox, SIM_DIR, SIM_FILES);
   return sandbox.KQ;
 }
 

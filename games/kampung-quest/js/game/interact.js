@@ -92,23 +92,55 @@
     };
   }
 
+  /** Talks the hero has already had (npc id -> mission key), so the counter can win afterwards. */
+  const talked = {};
+
+  /** A key for "what this NPC could talk about right now" (offer, or the current step). */
+  function businessKey() {
+    const prog = S().sim.missions.progress();
+    return prog ? prog.id + ":" + prog.stepIndex : "offer";
+  }
+
+  /**
+   * Does this neighbour have mission business the hero has not just heard? A hawker stands
+   * ~0.15 m behind the counter, so without this the counter would always win. Once the hero has
+   * talked (declined an offer, say) the counter wins again until they walk away.
+   */
+  function wantsNpc(npc) {
+    return Boolean(npc) && S().sim.missions.wantsTalk(npc.id) && talked[npc.id] !== businessKey();
+  }
+
+  /** Forget talks with neighbours the hero has walked away from. */
+  function forgetFar(hero) {
+    Object.keys(talked).forEach(function (id) {
+      const A = S().npcs.byId[id];
+      if (!A || U.dist(hero.x, hero.z, A.x, A.z) > FAR_RANGE) delete talked[id];
+    });
+  }
+
   /** The current best target or null. Disabled "Walk closer" targets are returned for NPCs only. */
   function find() {
     const P = S().player;
     if (P.locked || G.UI.modalOpen() || S().paused) return null;
     const hero = P.pos;
+    forgetFar(hero);
     const obj = objectTarget(hero);
     const npc = npcTarget(hero);
-    if (npc && npc.enabled && (!obj || npc.dist - 0.4 <= obj.dist)) return npc;
-    return obj || npc;
+    const pick = KQ.Sim.Missions.pickTarget(npc, obj, wantsNpc(npc));
+    return pick === "npc" ? npc : pick === "obj" ? obj : null;
   }
 
   function activate(t) {
     if (!t || !t.enabled) return false;
-    if (t.kind === "npc") G.MissionFlow.talk(t.agent);
+    if (t.kind === "npc") talkTo(t);
     else if (t.kind === "item") G.MissionFlow.pickup(t.item);
     else dispatchObject(t.id);
     return true;
+  }
+
+  function talkTo(t) {
+    if (wantsNpc(t)) talked[t.id] = businessKey();
+    G.MissionFlow.talk(t.agent);
   }
 
   function dispatchObject(id) {

@@ -32,6 +32,8 @@ jobs:
         run: npm run secrets
       - name: Lint + format check
         run: npm run check
+      - name: Kampung Quest sim unit tests (no browser needed)
+        run: npm run test:kq
       - name: Dependency audit (CODE_QUALITY.md #24)
         run: npm audit --audit-level=high
 

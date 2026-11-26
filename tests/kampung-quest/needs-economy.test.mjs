@@ -41,7 +41,7 @@ test("eating refills hunger (clamped to 100) and applies a drink's energy bonus"
   needs.eat(MENU.find((d) => d.id === "teh_tarik"));
   assert.equal(needs.energy, 54);
   const small = Needs.create({ hunger: 90, energy: 99 });
-  small.eat(MENU.find((d) => d.id === "milo_ais"));
+  small.eat(MENU.find((d) => d.id === "choc_malt_ais"));
   assert.equal(small.hunger, 98);
   assert.equal(small.energy, 100);
 });
@@ -109,7 +109,7 @@ test("MENU has >= 8 dishes across >= 4 stalls, each with a price and hunger valu
     "satay_ayam",
     "nasi_goreng",
     "teh_tarik",
-    "milo_ais",
+    "choc_malt_ais",
     "kuih_lapis",
   ]) {
     assert.ok(

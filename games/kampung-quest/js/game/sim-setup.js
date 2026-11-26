@@ -10,6 +10,13 @@
   "use strict";
   const G = (KQ.Game = KQ.Game || {});
 
+  /** Keep a loaded hero position out of walls and furniture (a saved spot may predate a layout change). */
+  function safePos(pos) {
+    const world = G.S && G.S.world;
+    if (!pos || !world || !G.Collide) return pos;
+    return G.Collide.freeSpot(world.colliders, pos.x, pos.z, G.Player.RADIUS);
+  }
+
   /** Build the live sim objects, then push a (clean) save state into them. */
   function create(state) {
     const S = KQ.Sim;
@@ -21,11 +28,29 @@
       economy: S.Economy.create(),
       missions: S.Missions.create({ isPaused: () => prayer.isBlockingMissions() }),
       outfit: Object.assign({}, state.outfit),
-      pos: state.pos,
+      pos: safePos(state.pos),
       settings: Object.assign({}, state.settings),
     };
     S.Save.apply(state, sim);
+    watchStorage();
     return sim;
+  }
+
+  let watching = false;
+
+  /**
+   * Another tab saved newer progress: this tab stops saving (Save.save refuses) and says so once.
+   * Called once per page; the `storage` event only fires for OTHER tabs' writes.
+   */
+  function watchStorage() {
+    if (watching) return;
+    watching = true;
+    window.addEventListener("storage", function (e) {
+      const Save = KQ.Sim.Save;
+      if (e.key !== Save.KEY || Save.revOf(e.newValue) <= Save.currentRev()) return;
+      G.S.saveWarned = true;
+      G.UI.toast("Another tab is saving this game. This tab will not overwrite it.", "hint", 7000);
+    });
   }
 
   /** Snapshot the live sim for saving; `heroPos` is {x, z} or null. */

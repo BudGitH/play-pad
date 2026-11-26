@@ -20,6 +20,14 @@
   const MAX_CHARS = 200000;
   const QUALITIES = ["low", "med", "high"];
   const DEFAULT_OUTFIT = { hair: "classic", hat: "none" };
+  /** The walkable world is about +/-72 m (edge colliders); a saved position must sit inside it. */
+  const WORLD_HALF = 70;
+  const MAX_REV = 1e9;
+  /**
+   * The revision this tab last loaded or wrote (tab-local: every page has its own copy of this
+   * script). A save is refused when storage holds a newer one (another tab got ahead).
+   */
+  let knownRev = 0;
 
   function clampNumber(value, min, max, fallback) {
     const n = typeof value === "number" || typeof value === "string" ? Number(value) : NaN;
@@ -39,6 +47,7 @@
   function defaultState() {
     return {
       v: VERSION,
+      rev: 0,
       clock: { minute: 420, day: 1 },
       coins: 10,
       needs: { hunger: 85, energy: 90 },
@@ -73,15 +82,38 @@
     };
   }
 
+  /** A hero position inside the playable bounds, or null (the game then uses the start spot). */
   function cleanPos(raw) {
     if (!isObject(raw)) return null;
-    const x = clampNumber(raw.x, -1000, 1000, NaN);
-    const z = clampNumber(raw.z, -1000, 1000, NaN);
-    return Number.isNaN(x) || Number.isNaN(z) ? null : { x, z };
+    const x = clampNumber(raw.x, -1e6, 1e6, NaN);
+    const z = clampNumber(raw.z, -1e6, 1e6, NaN);
+    const inside = Math.abs(x) <= WORLD_HALF && Math.abs(z) <= WORLD_HALF;
+    return Number.isNaN(x) || Number.isNaN(z) || !inside ? null : { x, z };
+  }
+
+  /** The revision number inside a raw save string (0 when absent or malformed). */
+  // TRUST_BOUNDARY: localStorage / storage event -> number (untrusted text; never throws)
+  function revOf(text) {
+    if (typeof text !== "string" || text.length > MAX_CHARS) return 0;
+    try {
+      const d = JSON.parse(text);
+      return isObject(d) && Number.isInteger(d.rev) ? clampNumber(d.rev, 0, MAX_REV, 0) : 0;
+    } catch (err) {
+      return 0;
+    }
+  }
+
+  function readText(storage) {
+    try {
+      return storage.getItem(KEY);
+    } catch (err) {
+      return null;
+    }
   }
 
   /**
    * Validate and normalise any value into a safe save state.
+   * TRUST_BOUNDARY: localStorage -> game state (untrusted; clamped, schema-checked, ids whitelisted)
    * @param {*} raw parsed JSON (untrusted)
    * @returns {object|null} clean state, or null when the shape/version is unusable
    */
@@ -93,6 +125,7 @@
     const settings = isObject(raw.settings) ? raw.settings : {};
     return {
       v: VERSION,
+      rev: Math.floor(clampNumber(raw.rev, 0, MAX_REV, 0)),
       clock: {
         minute: clampNumber(clock.minute, 0, 1439.99, base.clock.minute),
         day: Math.floor(clampNumber(clock.day, 1, 99999, 1)),
@@ -120,7 +153,7 @@
   }
 
   /**
-   * Load a save. NEVER throws.
+   * Load a save. NEVER throws. TRUST_BOUNDARY: this reads localStorage (untrusted).
    * @param {Storage|null} storage localStorage-like object (may be null or throwing)
    * @returns {{state:object, status:'loaded'|'new'|'corrupt'|'unavailable', error?:string}}
    *   `state` is always a valid, clamped state (a new game unless status is 'loaded').
@@ -141,26 +174,34 @@
       return fresh("corrupt", "not JSON");
     }
     const clean = sanitize(parsed);
-    return clean ? { state: clean, status: "loaded" } : fresh("corrupt", "wrong schema");
+    if (!clean) return fresh("corrupt", "wrong schema");
+    knownRev = clean.rev;
+    return { state: clean, status: "loaded" };
   }
 
   /**
-   * Save a state (sanitised first so junk is never written). NEVER throws.
-   * @returns {{ok:boolean, reason?:'unavailable'|'invalid'}}
+   * Save a state (sanitised first so junk is never written). NEVER throws. Refuses (reason
+   * "stale") when another tab has saved newer progress since this one loaded, so a stale tab can
+   * never overwrite it (ledger: multi-tab-save-overwrite).
+   * @returns {{ok:boolean, reason?:'unavailable'|'invalid'|'stale', rev?:number}}
    */
   function save(storage, state) {
     const clean = isObject(state) ? sanitize(Object.assign({}, state, { v: VERSION })) : null;
     if (!clean) return { ok: false, reason: "invalid" };
+    if (revOf(readText(storage)) > knownRev) return { ok: false, reason: "stale" };
+    clean.rev = Math.min(MAX_REV, knownRev + 1);
     try {
       storage.setItem(KEY, JSON.stringify(clean));
     } catch (err) {
       return { ok: false, reason: "unavailable" };
     }
-    return { ok: true };
+    knownRev = clean.rev;
+    return { ok: true, rev: clean.rev };
   }
 
   /** Forget the save (start over). Never throws. */
   function clear(storage) {
+    knownRev = 0;
     try {
       storage.removeItem(KEY);
     } catch (err) {
@@ -174,6 +215,7 @@
     const base = defaultState();
     return {
       v: VERSION,
+      rev: knownRev,
       clock: { minute: sim.clock.minute, day: sim.clock.day },
       coins: sim.economy.coins,
       needs: sim.needs.snapshot(),
@@ -195,7 +237,23 @@
     if (sim.prayer && state.prayers) sim.prayer.restore(state.prayers);
   }
 
-  KQ.Sim.Save = { KEY, VERSION, load, save, clear, sanitize, defaultState, capture, apply };
+  /** The revision this tab holds (for the cross-tab `storage` listener). */
+  const currentRev = () => knownRev;
+
+  KQ.Sim.Save = {
+    KEY,
+    VERSION,
+    WORLD_HALF,
+    load,
+    save,
+    clear,
+    sanitize,
+    defaultState,
+    capture,
+    apply,
+    revOf,
+    currentRev,
+  };
 })(
   ((typeof window !== "undefined" ? window : globalThis).KQ =
     (typeof window !== "undefined" ? window : globalThis).KQ || {}),

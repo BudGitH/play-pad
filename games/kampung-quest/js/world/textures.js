@@ -101,16 +101,45 @@
     return tex;
   }
 
-  /** Load one photo file (async; the Texture fills in when the image arrives). */
-  function loadPhoto(file, srgb) {
+  /** A 1x1 canvas of one colour: the neutral stand-in for a map that failed to load. */
+  function solid(rgb) {
+    const c = document.createElement("canvas");
+    c.width = c.height = 1;
+    const ctx = c.getContext("2d");
+    ctx.fillStyle = "rgb(" + rgb.join(",") + ")";
+    ctx.fillRect(0, 0, 1, 1);
+    return c;
+  }
+
+  /** Neutral colours for a failed non-colour map (flat normal, rough, invisible alpha). */
+  const NEUTRAL = { n: [128, 128, 255], r: [255, 255, 255], a: [0, 0, 0], colour: [200, 200, 200] };
+
+  /**
+   * Load one photo file (async; the Texture fills in when the image arrives). If the request
+   * fails (404, flaky network, blocked host) the texture is swapped for `standIn()` so the world
+   * never renders black: the procedural texture for colour maps, a neutral 1x1 for the rest.
+   */
+  function loadPhoto(file, srgb, standIn) {
     const loader = (P.Tex.loader = P.Tex.loader || new THREE.TextureLoader());
     const tex = loader.load(P.Tex.base + "textures/" + file, undefined, undefined, () => {
-      console.warn("[KQ.World] texture failed, keeping blank:", file);
+      console.warn("[KQ.World] texture failed, using the procedural stand-in:", file);
+      tex.image = standIn();
+      tex.needsUpdate = true;
     });
     return prep(tex, srgb);
   }
 
   const cache = new Map();
+  /** Stand-in factories for one set's photo files. */
+  function standIns(name, s) {
+    return {
+      colour: () => (s.fb ? drawFallback(name, s.fb) : solid(NEUTRAL.colour)),
+      n: () => solid(NEUTRAL.n),
+      r: () => solid(NEUTRAL.r),
+      a: () => solid(NEUTRAL.a),
+    };
+  }
+
   /** Get the map set for `name`: { map, normalMap, roughnessMap } (missing ones are null). */
   function set(name) {
     if (cache.has(name)) return cache.get(name);
@@ -118,10 +147,11 @@
     const out = { map: null, normalMap: null, roughnessMap: null, alphaMap: null };
     out.photo = KQ.CAN_FETCH;
     if (KQ.CAN_FETCH) {
-      if (s.colour !== false) out.map = loadPhoto(name + ".jpg", !s.linear);
-      if (s.n) out.normalMap = loadPhoto(name + "_n.jpg", false);
-      if (s.r) out.roughnessMap = loadPhoto(name + "_r.jpg", false);
-      if (s.a) out.alphaMap = loadPhoto(name + "_a.jpg", false);
+      const f = standIns(name, s);
+      if (s.colour !== false) out.map = loadPhoto(name + ".jpg", !s.linear, f.colour);
+      if (s.n) out.normalMap = loadPhoto(name + "_n.jpg", false, f.n);
+      if (s.r) out.roughnessMap = loadPhoto(name + "_r.jpg", false, f.r);
+      if (s.a) out.alphaMap = loadPhoto(name + "_a.jpg", false, f.a);
     } else if (s.fb) {
       out.map = prep(new THREE.CanvasTexture(drawFallback(name, s.fb)), true);
     }

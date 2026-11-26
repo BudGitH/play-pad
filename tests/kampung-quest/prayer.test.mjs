@@ -558,12 +558,76 @@ test("create() with missing or out-of-order times throws a clear RangeError", ()
   assert.throws(() => Prayer.create({ ...FIXTURE_TIMES, zohor: "17:00" }), { name: "RangeError" });
 });
 
-test("an update with the clock going backwards or NaN changes nothing", () => {
+test("an update with NaN or a rounding-sized step back changes nothing", () => {
   const prayer = started();
   goTo(prayer, "13:30");
-  assert.deepEqual(goTo(prayer, "10:00"), []);
+  assert.deepEqual(plain(prayer.update(mins("13:30") - 0.5, 1)), []);
   assert.deepEqual(plain(prayer.update(NaN, 1)), []);
   assert.equal(prayer.due(), "zohor");
+});
+
+test("ACC-2: setting the clock well back rebuilds the tracker like a fresh game at that minute", () => {
+  const prayer = started();
+  goTo(prayer, "20:30");
+  assert.equal(prayer.due(), "isyak");
+  assert.deepEqual(goTo(prayer, "07:10"), []);
+  const state = plain(prayer.state());
+  assert.equal(state.due, null);
+  assert.equal(state.blocking, false);
+  assert.equal(state.qada.length, 0);
+  assert.equal(state.next.name, "zohor");
+  const fresh = started();
+  goTo(fresh, "07:10");
+  assert.deepEqual(state.prayers, plain(fresh.state().prayers));
+  goTo(prayer, "13:30");
+  assert.equal(prayer.due(), "zohor");
+});
+
+test("ACC-2: rewinding drops an active flow too", () => {
+  const prayer = started();
+  goTo(prayer, "13:30");
+  prayer.startFlow("zohor");
+  goTo(prayer, "08:00");
+  assert.equal(prayer.state().flow, null);
+  assert.equal(prayer.due(), null);
+});
+
+test("ACC-2: restoring a snapshot whose prayers are ahead of the clock recovers on the next update", () => {
+  const ahead = started();
+  goTo(ahead, "20:30");
+  const snap = plain(ahead.snapshot());
+  const prayer = Prayer.create(FIXTURE_TIMES);
+  prayer.restore(snap);
+  prayer.update(mins("07:00"), 1);
+  assert.equal(prayer.due(), null);
+  assert.equal(prayer.state().qada.length, 0);
+  goTo(prayer, "13:30");
+  assert.equal(prayer.due(), "zohor");
+});
+
+test("ACC-3: between midnight and Subuh a still-due Isyak takes the strip's Isyak slot", () => {
+  const prayer = started();
+  goTo(prayer, "20:30");
+  assert.equal(prayer.due(), "isyak");
+  prayer.update(0.5, 2);
+  const state = plain(prayer.state());
+  assert.equal(state.day, 2);
+  assert.equal(state.prayers.length, 5);
+  const isyak = state.prayers.find((p) => p.name === "isyak");
+  assert.equal(isyak.status, "due");
+  assert.equal(isyak.carried, true);
+  assert.equal(state.due, "isyak");
+  assert.equal(prayer.startFlow("isyak").ok, true);
+  assert.equal(prayer.state().prayers.find((p) => p.name === "isyak").status, "in-progress");
+});
+
+test("ACC-3: once Subuh arrives the strip shows the new day's Isyak again", () => {
+  const prayer = started();
+  goTo(prayer, "20:30");
+  prayer.update(mins("05:30"), 2);
+  const isyak = plain(prayer.state().prayers.find((p) => p.name === "isyak"));
+  assert.equal(isyak.carried, undefined);
+  assert.equal(isyak.status, "upcoming");
 });
 
 test("all child-facing hints avoid scolding language", () => {

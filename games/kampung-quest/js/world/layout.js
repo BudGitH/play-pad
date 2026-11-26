@@ -69,7 +69,7 @@
         bg: "#2f7d4f",
       },
       { id: "stall_mee_soto", text: "MEE SOTO", sub: "Soto ayam · bergedil", bg: "#c43b2f" },
-      { id: "stall_drinks", text: "MINUMAN", sub: "Teh tarik · Milo · air bandung", bg: "#2a63b0" },
+      { id: "stall_drinks", text: "MINUMAN", sub: "Teh tarik · Air coklat · kuih", bg: "#2a63b0" },
       { id: "stall_satay", text: "SATAY", sub: "Ayam · daging · kuah kacang", bg: "#7b3f9e" },
     ],
     shops: { x0: 44, x1: 68, z0: -24, z1: -12, arcade: 2.4, h: 3.6 },

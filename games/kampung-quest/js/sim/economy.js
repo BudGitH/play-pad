@@ -30,7 +30,7 @@
     dish("mee_rebus", "Mee rebus", "Mee rebus", "stall_mee_soto", 3, 30),
     dish("satay_ayam", "Chicken satay", "Satay ayam", "stall_satay", 4, 25),
     dish("teh_tarik", "Teh tarik", "Teh tarik", "stall_drinks", 2, 8, 4),
-    dish("milo_ais", "Iced Milo", "Milo ais", "stall_drinks", 2, 8, 6),
+    dish("choc_malt_ais", "Iced chocolate malt", "Air coklat", "stall_drinks", 2, 8, 6),
     dish("kuih_lapis", "Kuih lapis", "Kuih lapis", "stall_drinks", 2, 10),
   ];
 

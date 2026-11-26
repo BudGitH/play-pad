@@ -257,9 +257,28 @@
     return events.sort((a, b) => a.at - b.at || EVENT_ORDER[a.type] - EVENT_ORDER[b.type]);
   }
 
+  /** Clock readings within this many minutes behind lastAbs are rounding noise, not time travel. */
+  const REWIND_SLACK = 1;
+
+  /** Forget everything and start over, as a brand-new game would (no entries, no flow). */
+  function rebuild(S) {
+    S.entries = [];
+    S.lastAbs = null;
+    S.lastDay = 0;
+    S.flow = null;
+    S.wuduClean = false;
+  }
+
+  /**
+   * Advance the tracker to a clock reading. The clock only moves forward in play, so a reading
+   * more than a minute BEHIND the last one means the clock was set back (the test hook, or a save
+   * whose prayers are ahead of its clock): rebuild as a fresh game at that minute instead of
+   * freezing until the clock catches up. Returns [] for a rebuild (like a new game).
+   */
   function update(S, minute, day) {
     const abs = (day - 1) * DAY + minute;
     if (!Number.isFinite(abs)) return [];
+    if (S.lastAbs !== null && abs < S.lastAbs - REWIND_SLACK) rebuild(S);
     S.now = abs;
     if (S.lastAbs === null) {
       initialise(S, abs, day);
@@ -488,13 +507,31 @@
     return active.length ? active[0].name : null;
   }
 
+  /**
+   * Today's five entries for the strip. Yesterday's Isyak stays due until Subuh (its window runs
+   * past midnight), so while it is still due it takes today's Isyak slot and the strip points at it.
+   */
+  function stripEntries(S, day) {
+    const today = S.entries.filter((e) => e.day === day).sort((a, b) => a.startAbs - b.startAbs);
+    const carried = S.entries.find(
+      (e) =>
+        e.day === day - 1 &&
+        e.name === "isyak" &&
+        (e.status === "due" || e.status === "in-progress"),
+    );
+    if (!carried) return today.map((entry) => publicEntry(S, entry));
+    return today.map(function (entry) {
+      if (entry.name !== "isyak") return publicEntry(S, entry);
+      return Object.assign(publicEntry(S, carried), { carried: true });
+    });
+  }
+
   function stateOf(S) {
     const day = Math.floor(S.now / DAY) + 1;
     const around = surroundings(S);
-    const today = S.entries.filter((e) => e.day === day).sort((a, b) => a.startAbs - b.startAbs);
     return {
       day,
-      prayers: today.map((entry) => publicEntry(S, entry)),
+      prayers: stripEntries(S, day),
       qada: S.entries.filter((e) => e.status === "qada").map((entry) => publicEntry(S, entry)),
       due: dueName(S),
       blocking: isBlocking(S),
@@ -549,6 +586,7 @@
    * Validate a saved prayer snapshot (untrusted input).
    * @returns {object|null} a clean snapshot, or null when unusable
    */
+  // TRUST_BOUNDARY: localStorage -> prayer tracker (untrusted; names, statuses and numbers are checked)
   function sanitizeSnapshot(raw) {
     if (!raw || typeof raw !== "object" || !Array.isArray(raw.entries)) return null;
     const entries = raw.entries.slice(0, MAX_ENTRIES).map(cleanEntry).filter(Boolean);

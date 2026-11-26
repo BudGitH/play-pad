@@ -73,7 +73,7 @@
     rice: '<ellipse cx="18" cy="21" rx="10" ry="7" fill="#f2c94c"/><circle cx="26" cy="17" r="5" fill="#a0522d"/>',
     drink:
       '<rect x="13" y="8" width="14" height="22" rx="3" fill="#c98f5a"/><rect x="13" y="8" width="14" height="6" fill="#f3e3c8"/>',
-    milo: '<rect x="13" y="8" width="14" height="22" rx="3" fill="#6b4226"/><rect x="13" y="8" width="14" height="6" fill="#cfe9f7"/>',
+    malt: '<rect x="13" y="8" width="14" height="22" rx="3" fill="#6b4226"/><rect x="13" y="8" width="14" height="6" fill="#cfe9f7"/>',
     rose: '<rect x="13" y="8" width="14" height="22" rx="3" fill="#f28fb1"/><rect x="13" y="8" width="14" height="5" fill="#fde2ea"/>',
     satay:
       '<path d="M8 28 32 12M8 20 32 20M8 12 32 28" stroke="#c9a06a" stroke-width="2"/><rect x="14" y="10" width="7" height="6" rx="2" fill="#a8582a"/><rect x="14" y="17" width="7" height="6" rx="2" fill="#a8582a"/><rect x="14" y="24" width="7" height="6" rx="2" fill="#a8582a"/>',
@@ -98,7 +98,7 @@
     mee_rebus: "mee",
     satay_ayam: "satay",
     teh_tarik: "drink",
-    milo_ais: "milo",
+    choc_malt_ais: "malt",
     kuih_lapis: "kuih",
     bottled_water: "water",
     biscuits: "biscuit",

@@ -112,6 +112,36 @@
     };
   }
 
+  /**
+   * Does this NPC have something to say about a mission right now? True when they can give a
+   * mission (none is active) or when the active step is to talk to / deliver to them.
+   */
+  function wantsTalk(M, npcId) {
+    if (!M.active) {
+      return MISSIONS.some((m) => m.giver === npcId && M.completed.indexOf(m.id) === -1);
+    }
+    const step = currentStep(M);
+    return Boolean(step && NPC_STEP_TYPES.indexOf(step.type) !== -1 && step.target === npcId);
+  }
+
+  /**
+   * Which of two interaction targets wins when the hero is in range of both. A neighbour with
+   * mission business beats a nearby object (a stall counter is ~0.15 m from its hawker, so
+   * distance alone never picks the hawker); otherwise the nearer one wins, with a small bias
+   * towards the neighbour.
+   * @param {{enabled:boolean, dist:number}|null} npc
+   * @param {{dist:number}|null} obj
+   * @param {boolean} wants whether the neighbour has mission business
+   * @returns {"npc"|"obj"|null} null when neither is a usable choice
+   */
+  function pickTarget(npc, obj, wants) {
+    const npcOk = Boolean(npc && npc.enabled);
+    if (npcOk && (!obj || wants || npc.dist - 0.4 <= obj.dist)) return "npc";
+    if (obj) return "obj";
+    return npc ? "npc" : null;
+  }
+
+  // TRUST_BOUNDARY: localStorage -> mission tracker (untrusted; unknown ids and counts are dropped)
   function sanitizeSnapshot(raw) {
     const src = raw && typeof raw === "object" ? raw : {};
     const unique = (list, known) =>
@@ -176,6 +206,7 @@
         M.paused = Boolean(value);
       },
       isPausedNow: () => isPaused(M),
+      wantsTalk: (npcId) => wantsTalk(M, npcId),
       completed: () => M.completed.slice(),
       stickers: () => M.stickers.slice(),
       grantSticker: (id) => grantStickers(M, [id]).length === 1,
@@ -201,6 +232,7 @@
   KQ.Sim.Missions = {
     create,
     chatLine,
+    pickTarget,
     sanitizeSnapshot,
     prayerSticker: (name) => "prayer_" + name,
   };

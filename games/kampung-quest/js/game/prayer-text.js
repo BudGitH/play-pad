@@ -16,9 +16,9 @@
   const DHIKR = {
     takbir: D("ٱللَّٰهُ أَكْبَرُ", "Allahu akbar", "Allah is the Greatest"),
     qiyam: D(
-      "ٱلْحَمْدُ لِلَّٰهِ رَبِّ ٱلْعَٰلَمِينَ",
-      "Alhamdu lillahi rabbil 'alamin",
-      "All praise is for Allah, Lord of the worlds",
+      "بِسْمِ ٱللَّٰهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ ۝ ٱلْحَمْدُ لِلَّٰهِ رَبِّ ٱلْعَٰلَمِينَ",
+      "Bismillahir-rahmanir-rahim. Alhamdu lillahi rabbil 'alamin",
+      "In the name of Allah, the Most Kind, the Most Merciful. All praise is for Allah, Lord of the worlds",
     ),
     ruku: D(
       "سُبْحَانَ رَبِّيَ ٱلْعَظِيمِ",
@@ -47,10 +47,11 @@
       "Assalamu 'alaikum wa rahmatullah",
       "Peace and Allah's mercy be upon you",
     ),
+    // The doa after wudu (the shahadatayn), said at the end of wudu.
     doa: D(
-      "رَبَّنَا آتِنَا فِي ٱلدُّنْيَا حَسَنَةً",
-      "Rabbana atina fid-dunya hasanah",
-      "Our Lord, give us good in this world",
+      "أَشْهَدُ أَنْ لَا إِلَٰهَ إِلَّا ٱللَّٰهُ وَحْدَهُ لَا شَرِيكَ لَهُ، وَأَشْهَدُ أَنَّ مُحَمَّدًا عَبْدُهُ وَرَسُولُهُ",
+      "Ashhadu an la ilaha illallah wahdahu la syarika lah, wa ashhadu anna Muhammadan 'abduhu wa rasuluh",
+      "I bear witness that there is no god but Allah alone, who has no partner, and I bear witness that Muhammad is His servant and His Messenger",
     ),
   };
 

@@ -122,6 +122,7 @@
     for (let i = 0; i < 4; i++) star8(ctx, 330 + i * 38, 176, 9), ctx.fill();
     return C().tex(c, true, true);
   }
+  /** Draw the prayer carpet's frame and gold border beads. */
   function carpetBorder(ctx) {
     ctx.strokeStyle = "#b8975a";
     ctx.lineWidth = 3;
@@ -153,6 +154,9 @@
     });
     return out;
   }
+  /**
+   * Draw one row of tiny far-away windows for the distant skyline (colour pass or emissive pass).
+   */
   function farFloor(ctx, y, r, pass) {
     if (pass === "col") {
       ctx.fillStyle = "#eeebe4";

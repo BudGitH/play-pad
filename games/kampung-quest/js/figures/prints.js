@@ -28,6 +28,7 @@
   };
 
   // ---------- tiny canvas helpers ----------
+  /** Stroke a rounded polyline from a flat [x, y, x, y ...] list with a colour and width. */
   function stroke(c, pts, color, width) {
     c.beginPath();
     c.moveTo(pts[0], pts[1]);
@@ -37,6 +38,7 @@
     c.lineCap = c.lineJoin = "round";
     c.stroke();
   }
+  /** Fill a closed polygon from a flat [x, y, x, y ...] list. */
   function poly(c, pts, color) {
     c.beginPath();
     c.moveTo(pts[0], pts[1]);
@@ -45,18 +47,21 @@
     c.fillStyle = color;
     c.fill();
   }
+  /** Fill a circle. */
   function dot(c, x, y, r, color) {
     c.beginPath();
     c.arc(x, y, r, 0, Math.PI * 2);
     c.fillStyle = color;
     c.fill();
   }
+  /** Fill a rounded rectangle. */
   function rect(c, x, y, w, h, color, radius) {
     c.beginPath();
     c.roundRect(x, y, w, h, radius || 0);
     c.fillStyle = color;
     c.fill();
   }
+  /** Draw a crescent: a disc with a background-coloured disc cut out of one side. */
   function crescent(c, x, y, r, color, bg) {
     dot(c, x, y, r, color);
     dot(c, x + r * 0.42, y - r * 0.12, r * 0.82, bg);
@@ -64,19 +69,23 @@
   F.printHelpers = { stroke: stroke, poly: poly, dot: dot, rect: rect, crescent: crescent };
 
   // ---------- torso prints (region is 256 x 256, y = 0 at the neck) ----------
+  /** Draw the two collar flaps at the neck of a torso print. */
   function collar(c, color, edge) {
     poly(c, [86, 0, 128, 52, 112, 64, 70, 8], color);
     poly(c, [170, 0, 128, 52, 144, 64, 186, 8], color);
     stroke(c, [86, 0, 128, 52, 170, 0], edge, 3);
   }
+  /** Draw a vertical row of n buttons. */
   function buttons(c, x, y0, n, gap, color) {
     for (let i = 0; i < n; i++) dot(c, x, y0 + i * gap, 5, color);
   }
+  /** Draw the two side seams of a garment. */
   function seams(c, color) {
     stroke(c, [20, 250, 20, 120], color, 2);
     stroke(c, [236, 250, 236, 120], color, 2);
   }
 
+  /** Zip jacket print: zip, pockets and collar at the front, a crescent badge on the back. */
   function zipJacket(c, s, front) {
     const p = s.print;
     if (!front) {
@@ -95,6 +104,7 @@
     stroke(c, [0, 248, 256, 248], p.accent, 8); // knit hem
   }
 
+  /** Draw a five-petal flower. */
   function flower(c, x, y, r, petal, centre) {
     for (let i = 0; i < 5; i++) {
       const a = (i / 5) * Math.PI * 2;
@@ -102,6 +112,10 @@
     }
     dot(c, x, y, r * 0.55, centre);
   }
+  /**
+   * Scatter flowers over the garment from a fixed spot list, rotated by seed so front and back
+   * differ.
+   */
   function scatterFlowers(c, p, seed) {
     const spots = [30, 60, 200, 52, 70, 140, 180, 150, 40, 220, 120, 200, 222, 232, 110, 96];
     for (let i = 0; i < spots.length; i += 2) {
@@ -109,6 +123,7 @@
       flower(c, spots[j], spots[(j + 1) % spots.length], 9, p.accent, p.accent2 || "#f6d365");
     }
   }
+  /** Baju kurung print: scattered flowers, a neckline and a kerongsang brooch. */
   function kurung(c, s, front) {
     const p = s.print;
     scatterFlowers(c, p, front ? 0 : 4);
@@ -117,6 +132,7 @@
     for (let i = 0; i < 3; i++) dot(c, 128, 54 + i * 26, 7, "#e2b13c"); // kerongsang brooch
   }
 
+  /** Jubah (long robe) print: fold lines, a placket, buttons and a pocket. */
   function jubah(c, s, front) {
     const fold = "rgba(120,110,95,0.35)";
     stroke(c, [60, 60, 52, 256], fold, 3);
@@ -128,6 +144,7 @@
     rect(c, 166, 88, 40, 6, "#cfc7b6", 3);
   }
 
+  /** Shirt print: collar, buttons and pocket (or a polo placket), with optional batik. */
   function shirt(c, s, front) {
     const p = s.print;
     if (p.batik) batik(c, p);
@@ -139,6 +156,7 @@
     rect(c, 156, 96, 46, 50, "rgba(0,0,0,0.12)", 6); // pocket
     rect(c, 186, 82, 6, 30, p.pen || "#2b62c4", 2);
   }
+  /** Batik print: a repeating diamond motif with a dot in the middle. */
   function batik(c, p) {
     for (let y = 30; y < 256; y += 64) {
       for (let x = 20; x < 256; x += 64) {
@@ -154,6 +172,7 @@
     }
   }
 
+  /** Apron print: the bib, straps, pocket and trim at the front, ties at the back. */
   function apron(c, s, front) {
     const p = s.print;
     if (!front) {
@@ -171,6 +190,7 @@
     rect(c, 110, 122, 36, 14, p.apron, 0);
   }
 
+  /** Doctor's coat print: lapels, stethoscope, pocket and name badge. */
   function labcoat(c, s, front) {
     const p = s.print;
     if (!front) return stroke(c, [128, 140, 128, 256], "rgba(0,0,0,0.18)", 3);
@@ -185,6 +205,7 @@
     rect(c, 44, 126, 32, 12, p.inner, 2);
   }
 
+  /** Cardigan print: an open front with buttons, a pocket and a small book pin. */
   function cardigan(c, s, front) {
     const p = s.print;
     if (!front) return stroke(c, [0, 244, 256, 244], "rgba(0,0,0,0.25)", 10);
@@ -197,6 +218,7 @@
     rect(c, 40, 120, 26, 34, p.accent || "#c0563b", 3); // little book pin
   }
 
+  /** T-shirt print: a neckline band and either the rocket or a round badge. */
   function tee(c, s, front) {
     const p = s.print;
     stroke(c, [84, 0, 128, 28, 172, 0], p.accent, 8);
@@ -207,6 +229,7 @@
     stroke(c, [86, 150, 170, 150], s.torso, 6);
     stroke(c, [0, 236, 256, 236], p.accent, 10);
   }
+  /** A small rocket picture for a t-shirt. */
   function rocket(c, p) {
     poly(c, [128, 64, 150, 110, 150, 170, 106, 170, 106, 110], p.accent);
     dot(c, 128, 118, 11, p.accent2);
@@ -215,6 +238,7 @@
     poly(c, [114, 172, 128, 204, 142, 172], "#f6b23c");
   }
 
+  /** Baju Melayu print: a cekak musang collar band, placket, gold buttons and a pocket. */
   function bajuMelayu(c, s, front) {
     const p = s.print;
     if (!front) return seams(c, "rgba(0,0,0,0.18)");
@@ -224,6 +248,7 @@
     rect(c, 46, 120, 44, 40, "rgba(0,0,0,0.12)", 5);
   }
 
+  /** Barber's smock print: collar, side buttons, pocket and a comb. */
   function smock(c, s, front) {
     const p = s.print;
     if (!front) return seams(c, "rgba(0,0,0,0.2)");
@@ -235,6 +260,9 @@
     for (let x = 48; x < 76; x += 5) stroke(c, [x, 110, x, 122], INK, 2);
   }
 
+  /**
+   * Postman's uniform print: epaulettes, pockets, an envelope badge and a strap across the body.
+   */
   function uniform(c, s, front) {
     const p = s.print;
     rect(c, 0, 0, 52, 22, p.accent, 4); // epaulettes
@@ -263,6 +291,10 @@
   };
   F.TORSO_STYLES = TORSO_STYLES;
 
+  /**
+   * Paint a torso texture (front or back region of the atlas) in the base colour plus the style's
+   * print, clipped to its region.
+   */
   function drawTorso(ctx, spec, front) {
     const r = REGIONS[front ? "front" : "back"];
     ctx.save();

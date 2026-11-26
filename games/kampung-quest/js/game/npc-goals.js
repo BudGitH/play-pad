@@ -47,6 +47,10 @@
     return { men, women };
   }
 
+  /**
+   * Claim a free prayer-row slot for an NPC (the imam has his own spot, women use the women's
+   * rows); null when full.
+   */
   function claimSlot(M, A) {
     if (A.id === "imam_hakim") return { x: IMAM_SPOT_X, z: HERO_SPOT.z };
     const list = WOMEN.indexOf(A.id) !== -1 ? M.slots.women : M.slots.men;
@@ -56,12 +60,14 @@
     return free;
   }
 
+  /** Free any prayer-row slot held by an NPC. */
   function releaseSlot(M, A) {
     M.slots.men.concat(M.slots.women).forEach(function (s) {
       if (s.taken === A.id) s.taken = null;
     });
   }
 
+  /** Where a stall's cook stands: just behind the counter. */
   function stallCook(poi) {
     return { x: poi.pos.x, z: poi.pos.z - 2.1 };
   }
@@ -78,6 +84,7 @@
     );
   }
 
+  /** A goal to sit at a free seat near a place, or null if every seat is taken. */
   function sitGoal(M, A, poi, r) {
     const seat = G.Seats.claim(
       M.seats,
@@ -99,6 +106,10 @@
     };
   }
 
+  /**
+   * A goal to pray in a free row spot facing the qibla, or simply stand at the mosque when the rows
+   * are full.
+   */
   function prayGoal(M, A, poi) {
     const slot = claimSlot(M, A);
     if (!slot) return { kind: "stand", x: poi.pos.x, z: poi.pos.z, heading: poi.facing };

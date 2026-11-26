@@ -33,6 +33,9 @@
    * the rest of the town relies on emissive lamps + additive pools.
    */
   const ROAM = 4;
+  /**
+   * Create the pool of roaming point lights and the list of lamp / window spots they can sit at.
+   */
   function makeRoam(group, ctx) {
     const lights = [];
     for (let i = 0; i < ROAM; i++) {
@@ -47,6 +50,7 @@
     );
     return { lights, cands, at: new THREE.Vector3(1e9, 0, 0) };
   }
+  /** At night, give the roaming lights to the lamp spots nearest the camera target (off by day). */
   function updateRoam(s) {
     const r = s.roam;
     const n = s.rig.night;
@@ -85,6 +89,10 @@
     updateRoam(s);
   }
 
+  /**
+   * Apply a quality tier: shadow size, prop density and the lite surface, without rebuilding the
+   * world.
+   */
   function setQuality(s, tier) {
     s.tier = HINTS[tier] ? tier : "med";
     s.rig.tier = s.tier;

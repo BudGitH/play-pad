@@ -26,6 +26,10 @@
     queued: null,
   };
 
+  /**
+   * Look up the layer, toast and live-region elements in the game root; call once at boot before
+   * any sheet opens.
+   */
   function init(root) {
     UI.root = root;
     UI.layer = root.querySelector("#kqSheetLayer");
@@ -43,6 +47,7 @@
     return true;
   }
 
+  /** The visible, tabbable elements inside a container (the candidates for the focus trap). */
   function focusables(container) {
     return Array.from(container.querySelectorAll(FOCUSABLE)).filter((n) => n.offsetParent !== null);
   }
@@ -54,6 +59,10 @@
     return title && !title.hidden ? title : null;
   }
 
+  /**
+   * Keep Tab / Shift+Tab inside the open sheet (or the title card), wrapping from last to first and
+   * back.
+   */
   function trap(e) {
     const scope = trapScope();
     if (e.key !== "Tab" || !scope) return;
@@ -112,6 +121,10 @@
     return { wrap, box };
   }
 
+  /**
+   * Tear down a sheet: run its onClose, cancel speech, release held toasts and give focus back to
+   * the opener.
+   */
   function closeHandle(handle, reason) {
     if (UI.handle !== handle) return;
     UI.handle = null;
@@ -127,6 +140,7 @@
     focusHome();
   }
 
+  /** Close the open sheet (if any) with a reason string that is passed to its onClose. */
   function closeSheet(reason) {
     if (UI.handle) UI.handle.close(reason);
   }
@@ -160,6 +174,7 @@
     return UI.toasts.clientWidth >= 480 && window.innerHeight > 520 ? 2 : 1;
   }
 
+  /** Show a short toast (capped in number, removed after ms) of a kind: hint, good or gold. */
   function showToast(text, kind, ms) {
     const node = U.el("div", { cls: "kq-toast " + (kind || ""), text });
     UI.toasts.appendChild(node);
@@ -247,6 +262,7 @@
     return U.el("div", { cls: "kq-sheet-head" }, kids);
   }
 
+  /** Is a modal sheet open? Gameplay input and the azan card wait while one is. */
   function modalOpen() {
     return Boolean(UI.handle);
   }

@@ -51,10 +51,15 @@
       "M12 4a8 8 0 1 0 7.7 10h-2.1A6 6 0 1 1 12 6c1.7 0 3.2.7 4.2 1.8L13 11h7V4l-2.7 2.7A8 8 0 0 0 12 4z",
   };
 
+  /**
+   * A UI icon as inline SVG (unknown names fall back to a star, so a missing icon never breaks a
+   * tile).
+   */
   function icon(name, cls) {
     return U.svgFrom('<path d="' + (ICONS[name] || ICONS.star) + '"/>', cls);
   }
 
+  /** Build a sized inline SVG element from a viewBox and inner markup. */
   function svg(viewBox, inner, size, cls) {
     const el = U.svgFrom(inner, cls);
     el.setAttribute("class", cls || "");
@@ -108,6 +113,7 @@
     cat_treats: "fish",
   };
 
+  /** The picture for a menu item: a plate with the dish's drawing (prata when unknown). */
   function dish(itemId, size) {
     const body = FOOD[DISH_KIND[itemId]] || FOOD.prata;
     return svg(
@@ -159,6 +165,7 @@
     doa: '<path d="M8 30q0-14 16-14t16 14q-8 10-16 10T8 30z" fill="#d9a066"/><path d="M24 16v-8M17 18l-4-7M31 18l4-7" stroke="#f4c26b" stroke-width="3" stroke-linecap="round"/>',
   };
 
+  /** The inline SVG picture for a wudu step (niat when unknown). */
   function wudu(stepId, size) {
     return svg("0 0 48 48", WUDU_ART[stepId] || WUDU_ART.niat, size || 56, "kq-pic");
   }
@@ -181,6 +188,10 @@
   /** Camera azimuth per posture picture: 0 = pure side view, larger = more from the front. */
   const POSTURE_AZ = { standing: 0.9, ruku: 0.3, sujud: 0.3 };
 
+  /**
+   * An <img> for a prayer posture: the pre-rendered picture, or a marked placeholder when none was
+   * rendered.
+   */
   function posture(type, size) {
     const img = document.createElement("img");
     img.className = "kq-posture";
@@ -191,6 +202,9 @@
     return img;
   }
 
+  /**
+   * Read a render target into a 160 px PNG data URL, flipped upright (WebGL reads rows bottom-up).
+   */
   function readPixels(renderer, rt, size) {
     const buf = new Uint8Array(size * size * 4);
     renderer.readRenderTargetPixels(rt, 0, 0, size, size, buf);
@@ -206,11 +220,16 @@
     return out.toDataURL("image/png");
   }
 
+  /**
+   * Point the posture camera at the figure from an azimuth angle so each posture is shown from its
+   * clearest side.
+   */
   function aim(cam, az) {
     cam.position.set(-3 * Math.cos(az), 0, 3 * Math.sin(az));
     cam.lookAt(0, 0, 0);
   }
 
+  /** Build the tiny posture-render stage: lit scene, the hero figure and an orthographic camera. */
   function postureStage(renderer) {
     const scene = new THREE.Scene();
     scene.environment = KQ.Figures.makeEnv(renderer);

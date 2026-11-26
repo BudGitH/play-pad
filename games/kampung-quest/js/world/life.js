@@ -38,6 +38,7 @@
     b.name = "chopePackets";
     group.add(a, b);
   }
+  /** One drink can / glass on the table at t, at a random spot and in a random type and colour. */
   function drink(t, r) {
     const d = DRINKS[Math.floor(r() * DRINKS.length)];
     const a = r() * Math.PI * 2;
@@ -46,6 +47,7 @@
     const z = t.z + Math.sin(a) * rad;
     return { x, y: TOP + d.h / 2, z, sx: d.r, sy: d.h, sz: d.r, color: d.c };
   }
+  /** One tissue packet on the table at t, in a random tint: the 'chope' that reserves a seat. */
   function packet(t, r) {
     const a = r() * Math.PI * 2;
     const tint = [0xffffff, 0xf6d6e2, 0xd6e6f6, 0xfff2c8][Math.floor(r() * 4)];
@@ -138,6 +140,7 @@
     }
     return list;
   }
+  /** Drift and fade each smoke puff upward and sideways in a loop, growing as it rises. */
   function animateSmoke(list, t) {
     (list || []).forEach((s) => {
       const u = (t * 0.22 + s.userData.phase) % 1;

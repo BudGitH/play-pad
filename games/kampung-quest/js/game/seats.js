@@ -14,10 +14,12 @@
   const STOOL_TOP = 0.6;
   const BENCH_TOP = 0.5;
 
+  /** The middle point of a collider box. */
   function centre(c) {
     return { x: (c.minX + c.maxX) / 2, z: (c.minZ + c.maxZ) / 2 };
   }
 
+  /** Four stool seats around a table, each facing the table. */
   function stools(c, base) {
     const m = centre(c);
     const out = [];
@@ -30,6 +32,7 @@
     return out;
   }
 
+  /** Two seats side by side on a bench, facing the given heading. */
   function benchSeats(c, base, heading, top) {
     const m = centre(c);
     return [-0.45, 0.45].map((dx) => ({
@@ -67,6 +70,7 @@
     return best.s;
   }
 
+  /** Free every seat held by someone. */
   function release(seats, who) {
     seats.forEach(function (s) {
       if (s.taken === who) s.taken = null;

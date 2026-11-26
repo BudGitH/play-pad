@@ -63,9 +63,11 @@
   KQ.Sim.POI_IDS = POI_IDS;
   KQ.Sim.NPC_IDS = NPC_IDS;
   KQ.Sim.NPC_PROFILE = NPC_PROFILE;
+  /** Is this a known place id? */
   KQ.Sim.isPoi = function isPoi(id) {
     return typeof id === "string" && POI_IDS.indexOf(id) !== -1;
   };
+  /** Is this a known neighbour id? */
   KQ.Sim.isNpc = function isNpc(id) {
     return typeof id === "string" && Object.prototype.hasOwnProperty.call(NPC_PROFILE, id);
   };

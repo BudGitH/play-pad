@@ -12,6 +12,10 @@
   const G = (KQ.Game = KQ.Game || {});
   const U = G.U;
 
+  /**
+   * Build one mission board tile (icon, title, and a status mark: Done, Doing now, Kept waiting, or
+   * the giver's name).
+   */
   function missionTile(m, status, paused) {
     const mark =
       status === "done"
@@ -69,6 +73,10 @@
     return G.UI.openSheet({ el: box, label: "My missions", onClose: ctx.onClose });
   }
 
+  /**
+   * Build one sticker cell; collected stickers show a star, others a faded placeholder, both
+   * labelled for screen readers.
+   */
   function stickerCell(s, owned) {
     return U.el(
       "span",
@@ -189,6 +197,7 @@
     ],
   ];
 
+  /** Open the How to play sheet: picture list, a read-aloud button and a 'Got it' close. */
   function howTo(ctx) {
     const list = U.el("ul", { cls: "kq-howto" });
     HOWTO.forEach((i) =>
@@ -218,6 +227,10 @@
     });
   }
 
+  /**
+   * Build a segmented control (e.g. Sound, Caption size) from [value, label] options that
+   * re-renders on each pick.
+   */
   function choice(label, options, get, set) {
     const row = U.el("div", { cls: "kq-seg", role: "group", "aria-label": label });
     const fill = () => {
@@ -263,6 +276,10 @@
     ["normal", "Normal"],
   ];
 
+  /**
+   * Build the Pause screen's setting rows (sound, fixed always-on azan captions, caption size, read
+   * to me, quality, ...).
+   */
   function settingRows(ctx) {
     const prefs = G.Settings.prefs;
     const fixed = U.el(
@@ -291,10 +308,12 @@
     changes: "Changes: volume reduced, 20 ms fade-in, re-encoded to Vorbis and MP3.",
   };
 
+  /** An external link that opens in a new tab with noopener noreferrer. */
   function link(url, text) {
     return U.el("a", { href: url, target: "_blank", rel: "noopener noreferrer", text });
   }
 
+  /** Build one titled block of credit lines for the Credits screen. */
   function creditBlock(title, lines) {
     const kids = [U.el("h3", { cls: "kq-h3", text: title })];
     lines.forEach((l) => kids.push(U.el("p", { cls: "kq-credit-line" }, l)));
@@ -335,6 +354,10 @@
     G.Loop.setPaused(true);
   }
 
+  /**
+   * Build the Pause screen's buttons: Resume, How to play, Credits, Save and go to PlayPad, Start
+   * over.
+   */
   function pauseButtons(ctx) {
     const resume = G.UI.btn("Resume", {
       cls: "primary kq-big",

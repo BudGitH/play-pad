@@ -41,6 +41,9 @@
   ];
   let storyIdx = 0;
 
+  /**
+   * Shortcut to the pure sim objects (economy, needs, missions, outfit) on the shared game state.
+   */
   function sim() {
     return S().sim;
   }
@@ -59,11 +62,19 @@
     );
   }
 
+  /**
+   * Play a short happy pose (wave, etc.) on the hero after a purchase or play, then give control
+   * back.
+   */
   function happy(pose, seconds) {
     G.Player.lock(S().player, null, pose);
     S().after(seconds, () => G.Player.release(S().player));
   }
 
+  /**
+   * Turn the economy's buy result into feedback: sound, mission notification, toast and a wave;
+   * returns {ok, hint} for the sheet.
+   */
   function buyResult(res, placeId, item, forMission) {
     if (!res.ok) {
       G.Audio.play("hint");
@@ -78,12 +89,20 @@
     return { ok: true, hint: res.hint };
   }
 
+  /**
+   * Buy an item at a place; a bought item wanted by the active mission is carried (no needs
+   * change), otherwise it is eaten.
+   */
   function buyAt(placeId, item) {
     const forMission = wantedByMission(placeId, item.id);
     const options = forMission ? {} : { needs: sim().needs };
     return buyResult(sim().economy.buy(item.id, options), placeId, item, forMission);
   }
 
+  /**
+   * Build the item-tag function that labels items the active mission wants ('For <giver>') in a
+   * shop sheet.
+   */
   function tagFor(placeId) {
     return function (item) {
       if (!wantedByMission(placeId, item.id)) return "";
@@ -92,6 +111,10 @@
     };
   }
 
+  /**
+   * Open the hawker stall menu for a counter, with an intro that says whether the hero is already
+   * full.
+   */
   function stall(counterId) {
     const poiId = counterId.replace("counter_", "stall_");
     const info = G.Names.STALL[poiId] || ["Hawker stall", null];
@@ -108,6 +131,7 @@
     });
   }
 
+  /** Open the mini-mart (kedai runcit) sheet of halal shop items. */
   function minimart() {
     G.Menus.itemSheet({
       title: "Mini-mart (Kedai runcit)",
@@ -119,6 +143,10 @@
     });
   }
 
+  /**
+   * Open the barber sheet: picking a new look spends the price (or shows the short-by message) and
+   * applies the outfit.
+   */
   function barber() {
     G.Menus.barber({
       price: KQ.Sim.SERVICES.barber.price,
@@ -141,6 +169,7 @@
     });
   }
 
+  /** Open Dr Nurul's friendly clinic card; the Check-up button refills energy. */
   function clinic() {
     G.Menus.card({
       title: "Dr Nurul's clinic",
@@ -164,6 +193,7 @@
     });
   }
 
+  /** Open the library card with the next story, cycling through the stories in turn. */
   function library() {
     const story = STORIES[storyIdx % STORIES.length];
     storyIdx += 1;
@@ -174,6 +204,7 @@
     });
   }
 
+  /** Ask whether to rest at home (fills energy, moves time on about half an hour). */
   function home() {
     G.Menus.card({
       title: "Rest at home?",
@@ -185,6 +216,7 @@
     });
   }
 
+  /** Fade out, skip 30 game minutes, toast how long the hero rested, then fade back in. */
   function rest() {
     const root = S().root;
     root.classList.add("kq-fading");
@@ -195,18 +227,21 @@
     }, 450);
   }
 
+  /** Thank the child at the recycling point and notify missions that this place was visited. */
   function recycle() {
     G.Audio.play("good");
     G.UI.toast("Thank you for looking after the earth!", "good");
     G.MissionFlow.notify({ type: "goto", target: "recycling" });
   }
 
+  /** Playground fun: a cheerful sound, a toast and a wave. */
   function play() {
     G.Audio.play("good");
     G.UI.toast("Wheee! Playing is fun.", "good", 2400);
     happy("wave", 2);
   }
 
+  /** Sit the hero on the nearest bench seat for a few seconds (a toast only if no seat is free). */
   function bench() {
     const seats = S().npcs.seats;
     const hero = S().player.pos;

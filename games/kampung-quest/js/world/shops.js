@@ -35,6 +35,7 @@
     );
     upperWindows(B, S, ctx);
   }
+  /** Add two floors of windows above the shop row, some of them lit, in a fixed random pattern. */
   function upperWindows(B, S, ctx) {
     const rnd = P.rng(4242);
     for (let f = 0; f < 2; f++) {

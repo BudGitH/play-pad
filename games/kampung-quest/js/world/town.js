@@ -22,6 +22,7 @@
     [6, 30, 34, 32], // path from the N–S road into the park
   ];
 
+  /** Lay the paved plazas. */
   function plazas(B) {
     PLAZAS.forEach(([x0, z0, x1, z1]) => B.aabb("paving", x0, 0, z0, x1, 0.12, z1, 0xf2eee8));
   }
@@ -70,6 +71,7 @@
     });
     return L;
   }
+  /** Build the parked cars as instanced meshes (body, cabin, wheels) and add their colliders. */
   function cars(group, mats, colliders) {
     const L = carLists(colliders);
     const paint = new THREE.MeshPhysicalMaterial({ roughness: 0.32, metalness: 0.4, clearcoat: 1 });
@@ -91,6 +93,7 @@
 
   /** Park: benches along the paths, a gazebo, grassy mounds left to the default ground. */
   const BENCHES = [36, 21, 42, 21, 36, 17, 56, 33, 20, 33.6];
+  /** Build the park: benches (with colliders) and the gazebo. */
   function park(B, pk, ctx) {
     for (let i = 0; i < BENCHES.length; i += 2) {
       const x = BENCHES[i];
@@ -166,6 +169,7 @@
       (x === -8 && z === -32);
     return out.filter((t) => !skip(t));
   };
+  /** Every tree to plant (park trees and the street verge) as {x, z, s, kind}. */
   function treeList() {
     return TREES.concat(streetVerge()).map(([x, z, s, kind]) => ({ x, z, s, kind }));
   }

@@ -191,6 +191,10 @@
     });
     return list;
   }
+  /**
+   * Drift each steam sprite upward in a looping rise, growing as it goes (cheap, no per-frame
+   * allocation).
+   */
   function animateSteam(list, t) {
     list.forEach((s) => {
       const u = (t * 0.35 + s.userData.phase) % 1;

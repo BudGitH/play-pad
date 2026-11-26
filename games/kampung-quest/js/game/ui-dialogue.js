@@ -11,6 +11,10 @@
   const G = (KQ.Game = KQ.Game || {});
   const U = G.U;
 
+  /**
+   * The child's reply button label: 'Waalaikumsalam!' to a salam, 'Assalamualaikum!' to a reply,
+   * else Thank you / Hello.
+   */
   function replyLabelFor(name, line, muslim) {
     const first = String(line).toLowerCase();
     if (first.indexOf("waalaikumsalam") === 0) return "Assalamualaikum!";
@@ -36,6 +40,7 @@
     if (first) first.focus({ preventScroll: true });
   }
 
+  /** Build a dialogue choice button that closes the dialogue and then runs the choice's handler. */
   function choiceButton(d, c) {
     return G.UI.btn(c.label, {
       cls: c.primary ? "primary" : "",

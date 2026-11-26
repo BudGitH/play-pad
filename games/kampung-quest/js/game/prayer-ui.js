@@ -20,10 +20,15 @@
     return window.innerWidth >= 700 && window.innerHeight >= 340;
   }
 
+  /** Which prayer panel to build: 'side' on wide screens, 'bottom' sheet otherwise. */
   function panelVariant() {
     return wantsSide() ? "side" : "bottom";
   }
 
+  /**
+   * Create the Arabic, transliteration and English caption paragraphs on a host and return them in
+   * order.
+   */
   function captionLines(host) {
     host.ar = U.el("p", { cls: "kq-ar", lang: "ar", dir: "rtl", text: "" });
     host.tr = U.el("p", { cls: "kq-tr", lang: "ms-Latn", text: "" });
@@ -48,6 +53,7 @@
     if (!host.sayTimer) host.sayTimer = setTimeout(() => flushCue(host), wait);
   }
 
+  /** Speak the pending caption now to screen readers and record when, to pace the next one. */
   function flushCue(host) {
     host.sayTimer = null;
     if (!host.pendingSay || host.el.hidden) return;
@@ -56,6 +62,10 @@
     host.pendingSay = "";
   }
 
+  /**
+   * Show a cue's Arabic, transliteration and English lines on a host and announce its English
+   * phrase.
+   */
   function setCue(host, cue) {
     host.ar.textContent = cue.ar || "";
     host.tr.textContent = cue.translit || cue.tr || "";
@@ -121,6 +131,9 @@
     return host;
   }
 
+  /**
+   * Build one numbered wudu step tile (picture + short label) that reports its index when pressed.
+   */
   function wuduTile(step, i, onPick) {
     const num = U.el("i", { cls: "kq-tile-num", text: String(i + 1) });
     return U.el(
@@ -152,10 +165,12 @@
     foot_l: "Left foot",
     doa: "Doa",
   };
+  /** The short label a wudu tile shows, falling back to the step's full label. */
   function shortWudu(step) {
     return SHORT[step.id] || step.label;
   }
 
+  /** Build the row of all wudu step tiles, in the correct order. */
   function wuduRow(onPick) {
     const row = U.el("div", { cls: "kq-wudu-row", role: "list" });
     KQ.Sim.Prayer.WUDU_STEPS.forEach((s, i) =>
@@ -229,6 +244,10 @@
     }
   }
 
+  /**
+   * Build one prayer posture tile (picture, name, keyboard number) that reports its type when
+   * pressed.
+   */
   function postureTile(type, i, onPick) {
     const t = T().TILE[type];
     return U.el(
@@ -307,6 +326,10 @@
     if (first && !ui.row.contains(document.activeElement)) first.focus({ preventScroll: true });
   }
 
+  /**
+   * The day card's kind, no-pressure sentence for the current prayer state (in flow, due, qada or
+   * all on time).
+   */
   function dayMessage(ps) {
     const D = KQ.Sim.Prayer.DISPLAY;
     if (ps.flow)
@@ -322,6 +345,10 @@
     return "All prayers are on time. Next: " + next + ".";
   }
 
+  /**
+   * Build the day card's buttons: 'Show me the way' or the qada prayer when there is something to
+   * do, else Close.
+   */
   function dayButtons(ps, o) {
     const acts = U.el("div", { cls: "kq-bubble-actions" });
     const go = (fn) => () => (G.UI.closeSheet("choice"), fn());

@@ -36,6 +36,7 @@
     B.box("metal", pg.x0 + 4, 0.3, pg.z1 - 3, 0.3, 0.45, 0.3, 0x8a8f94);
     col(ctx.colliders, pg.x0 + 2.2, pg.x0 + 5.8, pg.z1 - 3.4, pg.z1 - 2.6, "seesaw");
   }
+  /** Playground tower: four posts, a platform and a pyramid roof, with its collider. */
   function tower(B, x, z, ctx) {
     [
       [-1, -1],
@@ -58,6 +59,7 @@
       B.box("metal", x, 0.3 + i * 0.27, z - 1.25, 0.8, 0.05, 0.05, 0xf2c230);
     col(ctx.colliders, x - 1.2, x + 3.6, z - 1.3, z + 1.2, "tower");
   }
+  /** A swing set: two A-frames, a beam, two seats on chains, with its collider. */
   function swings(B, x, z, ctx) {
     [-1.6, 1.6].forEach((dx) => {
       B.box("metal", x + dx, 1.2, z - 0.5, 0.08, 2.5, 0.08, 0xe8432f, [0.2, 0, 0]);

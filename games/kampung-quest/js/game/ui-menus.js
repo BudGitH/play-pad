@@ -12,12 +12,17 @@
   const G = (KQ.Game = KQ.Game || {});
   const U = G.U;
 
+  /** A row of coin icons showing a price at a glance (no reading needed). */
   function pips(n) {
     const row = U.el("span", { cls: "kq-pips", "aria-hidden": "true" });
     for (let i = 0; i < n; i += 1) row.appendChild(G.Pictures.icon("coin"));
     return row;
   }
 
+  /**
+   * Build one shop tile: picture, names, price coins, what it gives (food, energy or errands), and
+   * a mission tag; dim when too dear.
+   */
   function itemTile(item, coins, tag, onPick) {
     const dear = coins < item.price;
     const gain =
@@ -47,6 +52,10 @@
     );
   }
 
+  /**
+   * Build the coins chip for a shop sheet; its update() re-reads the live coin count after a
+   * purchase.
+   */
   function coinChip(o) {
     const num = U.el("b", { text: String(o.coins()) });
     const chip = U.el(
@@ -60,6 +69,7 @@
     return chip;
   }
 
+  /** (Re)draw a shop grid for the current coins and refresh the coin chip. */
   function fillItems(grid, o, chip, pick) {
     U.clear(grid);
     o.items.forEach((it) =>
@@ -108,6 +118,7 @@
     { id: "cap", hair: "classic", hat: "cap", name: "Sunny cap", hairC: "#f2b134" },
   ];
 
+  /** A small face SVG drawn in a look's hair colour, used as the barber's picture for that look. */
   function headPicture(look) {
     const inner =
       '<circle cx="24" cy="26" r="14" fill="#e3a97c"/><circle cx="19" cy="26" r="2" fill="#2a1a10"/><circle cx="29" cy="26" r="2" fill="#2a1a10"/>' +

@@ -33,6 +33,11 @@
     return HEAD_STYLES[outfit.hair] || KQ.Figures.CAST.hero.head;
   }
 
+  /**
+   * Build the hero: the toy figure added to the scene, its animator and the movement state.
+   * @param scene the THREE scene.
+   * @returns the player object P that the other functions here take.
+   */
   function create(scene) {
     const group = KQ.Figures.build("hero");
     group.name = "hero";
@@ -55,10 +60,12 @@
     return P;
   }
 
+  /** Put the hair / hat choice from the barber (or a save) on the hero's head. */
   function applyOutfit(P, outfit) {
     KQ.Figures.setHeadPiece(P.rig, headSpecFor(outfit));
   }
 
+  /** Put the hero on the ground at x,z, stop all motion and optionally set the heading. */
   function place(P, x, z, heading, heightAt) {
     P.pos.set(x, heightAt(x, z), z);
     P.vx = P.vz = P.speed = 0;
@@ -66,6 +73,7 @@
     sync(P);
   }
 
+  /** Copy the hero's position and heading onto the 3D group. */
   function sync(P) {
     P.group.position.copy(P.pos);
     P.group.rotation.y = P.heading;
@@ -81,6 +89,10 @@
     };
   }
 
+  /**
+   * Choose and blend the animation from the forced pose or speed (idle, walk, run), scaling the
+   * rate to the speed.
+   */
   function animate(P, dt, move) {
     if (P.forcedPose) {
       P.anim.play(P.forcedPose, 0.35);
@@ -98,6 +110,10 @@
     P.anim.update(dt);
   }
 
+  /**
+   * Play a footstep each time the hero has walked another step length (a faster sound when
+   * running).
+   */
   function footsteps(P, dist, audio) {
     P.stepAcc += dist;
     if (P.stepAcc < STEP_LEN) return;
@@ -150,6 +166,7 @@
     sync(P);
   }
 
+  /** Give control back to the player after a lock (clears the forced pose). */
   function release(P) {
     P.locked = false;
     P.forcedPose = null;

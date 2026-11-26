@@ -65,6 +65,7 @@
     return prefs;
   }
 
+  /** Store the preferences in storage; returns false when storage is missing or blocked. */
   function save(storage) {
     if (!storage) return false;
     try {
@@ -75,6 +76,7 @@
     }
   }
 
+  /** Does the device ask for reduced motion? */
   function systemReducedMotion() {
     return Boolean(
       window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches,

@@ -46,11 +46,13 @@
     kuih_lapis: "kuih",
   };
 
+  /** A neighbour's display name from their id (the id itself if unknown). */
   function npc(id) {
     const p = KQ.Sim.NPC_PROFILE[id];
     return p ? p.name : id;
   }
 
+  /** A place's display name from its id (the id itself if unknown). */
   function poi(id) {
     return POI[id] || id;
   }
@@ -66,6 +68,7 @@
     return backToGiver ? "Back to " + npc(step.target) : "Give to " + npc(step.target);
   }
 
+  /** A menu / shop item's display name from its id (the id itself if unknown). */
   function itemName(id) {
     const item = KQ.Sim.Economy.findItem(id);
     return item ? item.name : id;

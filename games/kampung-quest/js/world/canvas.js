@@ -6,12 +6,17 @@
   "use strict";
   const P = (KQ.WorldParts = KQ.WorldParts || {});
 
+  /** Create a blank w x h canvas for procedural textures. */
   function canvas(w, h) {
     const c = document.createElement("canvas");
     c.width = w;
     c.height = h;
     return c;
   }
+  /**
+   * Wrap a canvas as a THREE texture (sRGB for colour maps, linear for data maps), optionally
+   * repeating, at the quality's anisotropy.
+   */
   function tex(c, srgb, repeat) {
     const t = new THREE.CanvasTexture(c);
     t.encoding = srgb ? THREE.sRGBEncoding : THREE.LinearEncoding;
@@ -21,6 +26,9 @@
   }
 
   /* ---------- sign atlas (shelf packer) ---------- */
+  /**
+   * A sign atlas: one shared canvas texture with a shelf packer (alloc) that hands out slots for signs and letters.
+   */
   function Atlas(size) {
     this.c = canvas(size, size);
     this.ctx = this.c.getContext("2d");

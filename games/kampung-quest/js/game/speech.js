@@ -15,6 +15,7 @@
   let voices = 0;
   let chosen = null;
 
+  /** The browser's speech synthesiser, or null when it is not supported. */
   function synth() {
     return "speechSynthesis" in window && "SpeechSynthesisUtterance" in window
       ? window.speechSynthesis
@@ -42,6 +43,10 @@
     return voices;
   }
 
+  /**
+   * Start counting voices (they load late in some browsers) so read-to-me knows whether it can
+   * speak.
+   */
   function init() {
     const s = synth();
     if (!s) return;
@@ -54,6 +59,10 @@
     return Boolean(synth()) && voices > 0 && G.Settings.prefs.readToMe;
   }
 
+  /**
+   * Read text aloud in a gentle English voice (stopping what was being said); returns false when it
+   * cannot.
+   */
   function speak(text) {
     const s = synth();
     if (!s || !available()) return false;
@@ -71,6 +80,7 @@
     }
   }
 
+  /** Stop any speech at once; failures are ignored since speech is optional. */
   function cancel() {
     const s = synth();
     if (!s) return;

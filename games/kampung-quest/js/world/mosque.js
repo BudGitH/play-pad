@@ -76,6 +76,7 @@
       else pushWall(ctx, x, z, rot, w / 2);
     }
   }
+  /** Add a collider box for a wall piece of half-length `half` at x,z turned by rot (padded 0.25 m). */
   function pushWall(ctx, x, z, rot, half) {
     const hx = Math.abs(Math.cos(rot)) * half + 0.25;
     const hz = Math.abs(Math.sin(rot)) * half + 0.25;
@@ -106,6 +107,7 @@
     B.geo("dome", g, P.compose(cx, y + r * 0.34, cz, 0, 1, 1, 1), 0xd9b25c);
     finial(B, cx, y + r * 0.34 + r * 1.35, cz, r);
   }
+  /** The gold finial on a dome: a spike, a ball and a crescent, scaled to the dome radius. */
   function finial(B, x, y, z, r) {
     const s = Math.max(0.35, r * 0.1);
     B.cyl("gold", x, y + s * 0.8, z, s * 0.12, s * 1.6, 8, 0xe2bd62);

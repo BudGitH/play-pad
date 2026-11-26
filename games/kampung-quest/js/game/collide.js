@@ -71,6 +71,7 @@
     return moved;
   }
 
+  /** Does a circle of radius r at x,z overlap the collider box c? */
   function hits(c, x, z, r) {
     return x > c.minX - r && x < c.maxX + r && z > c.minZ - r && z < c.maxZ + r;
   }

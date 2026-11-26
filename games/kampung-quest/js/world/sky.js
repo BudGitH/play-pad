@@ -95,6 +95,10 @@
       gl_FragColor = vec4(col, 1.0);
     }`;
 
+  /**
+   * Sky colours and light strengths for a minute of the day, blended between the two surrounding
+   * key frames.
+   */
   function lerpKeys(minute) {
     const m = warp(((minute % 1440) + 1440) % 1440);
     let i = 0;

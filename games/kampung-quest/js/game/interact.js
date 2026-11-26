@@ -29,11 +29,19 @@
     bus_stop_bench: ["Sit", "Sit and wait"],
   };
 
+  /**
+   * The [button label, spoken label] pair for an interactable, found by its id prefix ('Use' by
+   * default).
+   */
   function labelFor(id) {
     const key = Object.keys(LABELS).find((k) => id.indexOf(k) === 0);
     return key ? LABELS[key] : ["Use", "Use"];
   }
 
+  /**
+   * The nearest interactable within reach as a Talk-button target, ignoring the women's prayer
+   * spot.
+   */
   function objectTarget(hero) {
     let best = null;
     S().world.interactables.forEach(function (it) {
@@ -74,6 +82,10 @@
     return best;
   }
 
+  /**
+   * The nearest visible NPC as a target: 'Talk' when close, 'Walk closer' when further; none if
+   * busy or praying.
+   */
   function npcTarget(hero) {
     const hit = G.Npcs.nearest(S().npcs, hero.x, hero.z, FAR_RANGE);
     if (!hit || hit.A.talking || (hit.A.goal && hit.A.goal.kind === "pray")) return null;
@@ -130,6 +142,10 @@
     return pick === "npc" ? npc : pick === "obj" ? obj : null;
   }
 
+  /**
+   * Run the action for a target (talk, pick up, or a service) if it is enabled; returns whether
+   * anything ran.
+   */
   function activate(t) {
     if (!t || !t.enabled) return false;
     if (t.kind === "npc") talkTo(t);
@@ -138,11 +154,19 @@
     return true;
   }
 
+  /**
+   * Talk to an NPC target and remember which mission business was already handled, so the counter
+   * wins afterwards.
+   */
   function talkTo(t) {
     if (wantsNpc(t)) talked[t.id] = businessKey();
     G.MissionFlow.talk(t.agent);
   }
 
+  /**
+   * Open what an interactable id stands for (stall, taps, prayer hall, mini-mart, barber, clinic,
+   * library, home, ...).
+   */
   function dispatchObject(id) {
     const V = G.Services;
     if (id.indexOf("counter_") === 0) return V.stall(id);
@@ -179,6 +203,7 @@
   };
   const tmp = new THREE.Vector3();
 
+  /** Swap the Talk button's icon to match its label, only when the label changed. */
   function setIcon(R, label) {
     if (R.talkIconName === label) return;
     R.talkIconName = label;

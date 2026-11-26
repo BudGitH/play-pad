@@ -43,10 +43,12 @@
   let handler = null;
   let lastKeyboard = false;
 
+  /** Combine two opposing inputs into -1, 0 or 1. */
   function axis(neg, pos) {
     return (pos ? 1 : 0) - (neg ? 1 : 0);
   }
 
+  /** Is a key held, by the real keyboard or by an on-screen virtual button? */
   function held(code) {
     return keys.has(code) || virtual.has(code);
   }
@@ -68,6 +70,9 @@
     return { x: (x / len) * mag, y: (y / len) * mag, mag, run };
   }
 
+  /**
+   * Track a pressed key, switch to keyboard hints, and fire the shortcut callback once per press.
+   */
   function onKeyDown(e) {
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     lastKeyboard = true;
@@ -82,10 +87,12 @@
     if (name && !e.repeat && handler) handler(name, e);
   }
 
+  /** Forget a released key. */
   function onKeyUp(e) {
     keys.delete(e.code);
   }
 
+  /** Start tracking a pointer for camera look (primary or right mouse button, any touch). */
   function onPointerDownLook(e) {
     if (e.pointerType === "mouse" && e.button !== 0 && e.button !== 2) return;
     document.body.classList.remove("kq-kbd");
@@ -93,6 +100,10 @@
     e.target.setPointerCapture && e.target.setPointerCapture(e.pointerId);
   }
 
+  /**
+   * Two-finger gesture: the change in finger distance zooms the camera and the change in angle
+   * rotates it.
+   */
   function pinchStep(a, b, prevA, prevB) {
     const d = Math.hypot(a.x - b.x, a.y - b.y);
     const pd = Math.hypot(prevA.x - prevB.x, prevA.y - prevB.y);
@@ -101,6 +112,10 @@
     state.lookX += ang * 120;
   }
 
+  /**
+   * Drag-to-look with one pointer, or pinch with two, updating the accumulated look and zoom
+   * deltas.
+   */
   function onPointerMoveLook(e) {
     const prev = pointers.get(e.pointerId);
     if (!prev) return;
@@ -118,10 +133,15 @@
     pinchStep(prev, other, was, other);
   }
 
+  /** Stop tracking a lifted pointer. */
   function onPointerUpLook(e) {
     pointers.delete(e.pointerId);
   }
 
+  /**
+   * Move the joystick knob to a pointer, clamped to its radius, and turn it into joyX / joyY
+   * (-1..1) with a small dead zone.
+   */
   function setJoy(el, knob, e) {
     const r = el.getBoundingClientRect();
     let dx = e.clientX - (r.left + r.width / 2);
@@ -138,6 +158,10 @@
     state.joyY = (-dy / radius) * dead;
   }
 
+  /**
+   * Wire a joystick element so pointer drags on it drive the movement vector and releasing
+   * recentres it.
+   */
   function attachJoystick(el, knob) {
     let id = null;
     el.addEventListener("pointerdown", function (e) {

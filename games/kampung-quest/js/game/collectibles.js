@@ -25,6 +25,7 @@
     [24, 22],
   ];
 
+  /** A small drink can lying on its side (silver body, red band). */
   function canMesh() {
     const g = new THREE.Group();
     const body = new THREE.Mesh(
@@ -44,6 +45,7 @@
     return wrap;
   }
 
+  /** A bit of litter: a flat coloured box, colour and turn chosen from its index. */
   function litterMesh(i) {
     const colours = [0xff4f8b, 0xffc83d, 0x44b3ff, 0x8be36a, 0xff8a3d];
     const m = new THREE.Mesh(
@@ -57,6 +59,10 @@
     return wrap;
   }
 
+  /**
+   * Mimi the cat: an orange body, head, ears and tail built from primitives (the tail is kept in
+   * userData to swish).
+   */
   function catMesh() {
     const g = new THREE.Group();
     const fur = new THREE.MeshStandardMaterial({ color: 0xe8963c, roughness: 0.8 });
@@ -83,6 +89,10 @@
     return g;
   }
 
+  /**
+   * Place one hidden mesh per spot on the nearest clear ground and return the list of collectible
+   * records.
+   */
   function spawn(scene, world, spots, make, kind) {
     return spots.map(function (s, i) {
       const spot = G.Collide.freeSpot(world.colliders, s[0], s[1], 0.5);
@@ -94,6 +104,10 @@
     });
   }
 
+  /**
+   * Build the collectibles set (cans in the park, litter at the playground, Mimi) in the scene, all
+   * hidden.
+   */
   function create(scene, world) {
     const C = {
       world,
@@ -122,11 +136,13 @@
     return C.cans.concat(C.litter).filter((c) => c.mesh.visible && !c.taken);
   }
 
+  /** Mark a collectible as picked up and hide it. */
   function take(C, item) {
     item.taken = true;
     item.mesh.visible = false;
   }
 
+  /** Make every can and litter piece collectable again (a new day). */
   function resetAll(C) {
     C.cans.concat(C.litter).forEach((c) => (c.taken = false));
   }

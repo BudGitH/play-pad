@@ -26,6 +26,7 @@
   const azan = { el: null, active: false, ended: false, failed: false, fallback: false };
   let noiseBuf = null;
 
+  /** Can any sound play right now? Needs a context, and not muted, paused or in a hidden tab. */
   function canSound() {
     return Boolean(A.ctx) && !A.muted && !A.paused && !A.hidden && A.ctx.state !== "closed";
   }
@@ -65,6 +66,10 @@
     }
   }
 
+  /**
+   * Schedule one synth tone (an oscillator with a quick attack and exponential fade) at time t on
+   * the master gain.
+   */
   function tone(ctx, t, o) {
     const osc = ctx.createOscillator();
     const g = ctx.createGain();
@@ -80,6 +85,10 @@
     osc.stop(t + o.d + 0.05);
   }
 
+  /**
+   * Schedule a burst of filtered white noise (splashes, footsteps) at time t, reusing one shared
+   * noise buffer.
+   */
   function noise(ctx, t, o) {
     if (!noiseBuf) {
       noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 0.5, ctx.sampleRate);
@@ -126,10 +135,15 @@
     run: (c, t) => noise(c, t, { f: 520, d: 0.07, g: 0.07 }),
   };
 
+  /**
+   * Play a named UI sound (tap, good, coin, ...); returns whether it actually sounded (false when
+   * gated).
+   */
   function play(name) {
     return voice(SOUNDS[name]);
   }
 
+  /** Choose the azan file the browser can play: OGG Vorbis when supported, otherwise MP3. */
   function pickAzanSource() {
     const probe = document.createElement("audio");
     const ogg = probe.canPlayType && probe.canPlayType('audio/ogg; codecs="vorbis"');
@@ -187,6 +201,9 @@
     }
   }
 
+  /**
+   * Make the azan element match the gates: play when allowed, pause when muted, paused or hidden.
+   */
   function syncAzan() {
     const el = azan.el;
     if (!el || !azan.active || azan.ended) return;
@@ -215,17 +232,26 @@
     return "audio";
   }
 
+  /**
+   * Fallback when the recording cannot load: ring the synth bell instead and report 'chime' or
+   * 'silent'.
+   */
   function playChime() {
     azan.fallback = true;
     azan.active = false;
     return voice(SOUNDS.bell) ? "chime" : "silent";
   }
 
+  /** Stop the azan (audio paused, no longer active); captions are handled by the prayer flow. */
   function stopAzan() {
     azan.active = false;
     if (azan.el && !azan.el.paused) azan.el.pause();
   }
 
+  /**
+   * Set a lifecycle gate (paused, hidden, muted): suspend or resume the audio context and re-sync
+   * the azan to it.
+   */
   function setGate(key, value) {
     A[key] = value;
     if (value && A.ctx && A.ctx.state === "running") A.ctx.suspend();

@@ -10,6 +10,9 @@
   const G = (KQ.Game = KQ.Game || {});
   const U = G.U;
 
+  /**
+   * Build the walking graph's adjacency lists (with edge lengths) from the world's nodes and edges.
+   */
   function build(world) {
     const g = world.walkGraph;
     const adj = g.nodes.map(() => []);
@@ -41,6 +44,10 @@
     return best;
   }
 
+  /**
+   * Remove and return the open node with the smallest distance (a simple priority queue for the
+   * small graph).
+   */
   function popMin(open, dist) {
     let bi = -1;
     open.forEach(function (n, i) {

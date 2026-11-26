@@ -38,12 +38,20 @@
       return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
     };
   };
+  /**
+   * Small stable 32-bit string hash (FNV-1a), used to vary choices per prayer step or NPC without
+   * Math.random.
+   */
   U.hash = function hash(text) {
     let h = 2166136261;
     for (let i = 0; i < text.length; i += 1) h = Math.imul(h ^ text.charCodeAt(i), 16777619);
     return h >>> 0;
   };
 
+  /**
+   * Apply element props: cls, text (textContent only), on (events), style, and plain attributes;
+   * falsy values are skipped.
+   */
   function applyProps(node, props) {
     Object.keys(props).forEach(function (key) {
       const val = props[key];
@@ -79,6 +87,7 @@
     return tpl;
   };
 
+  /** Remove all children of a node and return it. */
   U.clear = function clear(node) {
     while (node.firstChild) node.removeChild(node.firstChild);
     return node;

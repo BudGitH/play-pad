@@ -262,6 +262,10 @@
 
   /* ------------------------------ time travel (rest, tests) ------------------------------ */
 
+  /**
+   * Skip forward up to n game minutes, one at a time so needs and prayer events still run (stops
+   * early when a prayer falls due); returns the minutes advanced.
+   */
   function advanceMinutes(n, resting) {
     const sim = S().sim;
     let done = 0;
@@ -291,6 +295,10 @@
 
   /* ------------------------------ resize / quality ------------------------------ */
 
+  /**
+   * Fit the renderer, camera and pixel ratio to the stage size (the ratio is capped by the quality
+   * tier and on touch).
+   */
   function resize() {
     const s = S();
     if (!s.renderer) return;
@@ -351,6 +359,10 @@
 
   /* ------------------------------ save ------------------------------ */
 
+  /**
+   * Write the game to storage (position included) when running; warns once if the browser blocks
+   * storage; returns success.
+   */
   function save() {
     const s = S();
     if (!s.started || !s.storage) return false;
@@ -374,6 +386,7 @@
 
   /* ------------------------------ lifecycle ------------------------------ */
 
+  /** Pause or resume: silences audio, and on pause also stops speech and saves. */
   function setPaused(value) {
     const s = S();
     s.paused = Boolean(value);

@@ -26,6 +26,11 @@
   const PRAY_TOTAL = PRAY_CYCLE.reduce((sum, p) => sum + p[1], 0);
   G.prayClock = 0;
 
+  /**
+   * Build one NPC agent: its toy figure (added to the scene), animator and the walking / goal state
+   * used by the manager.
+   * @param scene the THREE scene; id the cast id; name the display name.
+   */
   function create(scene, id, name) {
     const group = KQ.Figures.build(id);
     group.name = "npc-" + id;
@@ -71,6 +76,10 @@
     return "idle";
   }
 
+  /**
+   * The posture the praying row is in right now, from the shared prayer clock, so every prayer row
+   * moves in step.
+   */
   function prayPose() {
     let t = G.prayClock % PRAY_TOTAL;
     for (let i = 0; i < PRAY_CYCLE.length; i += 1) {
@@ -94,6 +103,10 @@
     return d - s < 0.12;
   }
 
+  /**
+   * Walk toward the current waypoint with collision, and skip ahead when reached or stuck too long
+   * (never block a doorway).
+   */
   function followPath(A, dt, env) {
     const target = A.path[A.wp];
     const bx = A.x;
@@ -137,6 +150,10 @@
     if (goal && goal.ghostLeg) A.path.push({ x: goal.x, z: goal.z, last: true });
   }
 
+  /**
+   * Per-frame agent step: face the hero while talking, else follow a path, wander or settle at the
+   * goal; then pose it.
+   */
   function update(A, dt, env) {
     if (A.hidden) return;
     A.speed = 0;
@@ -156,6 +173,7 @@
     pose(A, dt, env);
   }
 
+  /** Ease a praying agent onto its row spot, facing the qibla. */
   function settlePray(A, dt) {
     const g = A.goal;
     A.x = U.damp(A.x, g.x, 6, dt);
@@ -163,6 +181,7 @@
     A.heading = U.dampAngle(A.heading, -Math.PI / 2, 6, dt);
   }
 
+  /** Snap a stall cook exactly onto its cook spot (heading 0) and mark it cooking. */
   function cookSnap(A) {
     A.x = A.goal.cookSpot.x;
     A.z = A.goal.cookSpot.z;
@@ -170,6 +189,7 @@
     A.cook = true;
   }
 
+  /** Turn an agent smoothly to face the hero. */
   function faceToward(A, hero, dt) {
     const want = Math.atan2(hero.x - A.x, hero.z - A.z);
     A.heading = U.dampAngle(A.heading, want, 8, dt);
@@ -189,6 +209,10 @@
     A.ghost = false;
   }
 
+  /**
+   * Pick walk or the resting pose, play it (walk speed scales the animation rate) and update the
+   * group's position, heading and pop-in scale.
+   */
   function pose(A, dt, env) {
     const moving = A.speed > 0.1 && A.path.length > 0;
     A.pose = moving ? "walk" : restPose(A);
@@ -203,6 +227,10 @@
     A.group.scale.setScalar(Math.max(0.01, A.show));
   }
 
+  /**
+   * Ground height the agent stands at: the seat height (less the figure's seat drop) when seated,
+   * else the terrain.
+   */
   function groundFor(A, env) {
     if (A.goal && A.goal.kind === "sit" && A.path.length === 0) {
       return A.goal.y - KQ.Figures.seatDrop(A.rig);

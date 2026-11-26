@@ -21,6 +21,9 @@
 
   /** The four hall walls, corner pilasters and door signs. */
   const corners = (h) => [h.x0, h.z0, h.x1, h.z0, h.x0, h.z1, h.x1, h.z1];
+  /**
+   * Build the prayer hall's four wall runs (windows, doors, solid sections) with their colliders.
+   */
   function hallWalls(B, m, ctx) {
     const h = m.hall;
     const y = PLINTH;
@@ -78,6 +81,7 @@
     for (let i = 0; i < 8; i += 2) kiosk(B, c[i], c[i + 1], top + 0.35);
   }
 
+  /** A small open pavilion with four posts, a flat roof and a dome. */
   function kiosk(B, x, z, y) {
     [
       [-0.5, -0.5],

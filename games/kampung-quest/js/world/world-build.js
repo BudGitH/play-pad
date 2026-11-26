@@ -122,6 +122,13 @@
   /** Heavy static batches are split into ground cells so culling works (see Batch.build). */
   const CHUNK = { cell: 72, minTris: 7000 };
 
+  /**
+   * Build the whole neighbourhood once: batched geometry, lights, sky, nav graph and the runtime
+   * handle.
+   * @param scene the THREE scene to add the world to.
+   * @param opts { quality, renderer } (quality defaults to 'high').
+   * @returns the world object (update, heightAt, pois, colliders, walkGraph, ...).
+   */
   function build(scene, opts) {
     opts = opts || {};
     const tier = opts.quality || "high";

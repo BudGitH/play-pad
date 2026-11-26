@@ -29,6 +29,10 @@
       kerbLine(B, s, r, k);
     });
   }
+  /**
+   * Lay the 0.2 m kerb strips beside the road on side s (-1 / 1), on all four arms of the
+   * crossroads.
+   */
   function kerbLine(B, s, r, k) {
     const e0 = s < 0 ? -r - 0.2 : r;
     const e1 = e0 + 0.2;
@@ -55,6 +59,7 @@
       B.aabb("marking", e - 0.05, y - 0.005, r, e + 0.05, y + 0.005, FAR, 0xe8b818);
     });
   }
+  /** Is position t along the road within 9 m of a zebra crossing? (no street furniture there) */
   function nearCrossing(L, t) {
     return L.crossings.some((c) => Math.abs(c.at - t) < 9);
   }
@@ -74,6 +79,7 @@
       beacon(B, p[0], p[1]);
     });
   }
+  /** Paint the zig-zag no-parking marks either side of a zebra crossing. */
   function zigzags(B, c, r) {
     [-1, 1].forEach((dir) => {
       for (let i = 0; i < 6; i++) {

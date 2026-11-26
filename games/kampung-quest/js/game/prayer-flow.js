@@ -36,16 +36,24 @@
   };
   const S = () => G.S;
 
+  /**
+   * The sim's live prayer-flow record (phase, wudu / prayer progress), or null when no flow is
+   * running.
+   */
   function flowState() {
     return S().sim.prayer.state().flow;
   }
 
+  /** Is a wudu or prayer screen showing? Cards and guidance hold back while one is. */
   function screenOpen() {
     return Boolean(F.wui || F.pui);
   }
 
   /* ------------------------------ azan card ------------------------------ */
 
+  /**
+   * Build the azan card on first use (lazily, so no DOM exists before it is needed) and return it.
+   */
   function ensureCard() {
     if (F.card) return F.card;
     F.card = G.PrayerUI.azanCard(() => showWay());
@@ -53,6 +61,10 @@
     return F.card;
   }
 
+  /**
+   * Choose the caption cue for azan time t: the cue whose start has passed (Subuh's extra line only
+   * in its own window).
+   */
   function pickCue(cues, t, name) {
     if (name === "subuh" && t >= 70.2 && t <= 72) return cues.find((c) => c.subuhOnly) || null;
     let best = null;
@@ -63,6 +75,10 @@
     return best || cues.find((c) => !c.subuhOnly) || cues[0];
   }
 
+  /**
+   * Per frame while the azan is live: follow the audio clock when there is one, update the caption,
+   * and end the azan after its last cue.
+   */
   function advanceCaptions(dt) {
     F.t += dt;
     const at = G.Audio.azanTime();
@@ -78,12 +94,19 @@
     if (F.t > last + 2.5 || (G.Audio.azanEnded() && F.t > last - 1)) endAzan();
   }
 
+  /**
+   * The azan has finished: stop its audio and leave the bar up for a few seconds before it hides.
+   */
   function endAzan() {
     F.azanLive = false;
     G.Audio.stopAzan();
     F.hideAt = S().t + 6;
   }
 
+  /**
+   * Reveal the azan card with the current caption, as a bar or expanded, and lift the hero clear of
+   * it.
+   */
   function showCardNow() {
     const card = ensureCard();
     card.title.textContent = G.PrayerText.title(F.name);
@@ -100,6 +123,9 @@
     if (!screenOpen()) G.Camera.setShift(px * 0.4);
   }
 
+  /**
+   * Show a queued azan card once nothing else (modal, prayer screen, running flow) is in the way.
+   */
   function maybeShowCard() {
     if (!F.pending) return;
     if (G.UI.modalOpen() || screenOpen() || flowState()) return;
@@ -114,6 +140,7 @@
     hideCard();
   }
 
+  /** Hide the azan card and give the hero's framing back. */
   function hideCard() {
     if (F.card) F.card.el.hidden = true;
     liftHero(0);
@@ -121,6 +148,10 @@
 
   /* ------------------------------ events ------------------------------ */
 
+  /**
+   * A prayer has fallen due: start the azan (unless already praying) and queue its card; toast the
+   * captions hint when sound is off.
+   */
   function onDue(name) {
     F.name = name;
     F.t = 0;
@@ -139,6 +170,7 @@
       G.UI.toast("Sound is off, so you can read the azan here.", "hint");
   }
 
+  /** A prayer window has passed: tell the child, kindly, that it can be made up (qada) any time. */
   function onQada(name) {
     G.UI.toast(
       NAMES()[name] + " time has passed. You can make it up (qada) any time. No rush.",
@@ -147,6 +179,7 @@
     );
   }
 
+  /** Midnight rollover: reset the day's missions and collectibles and announce the fresh day. */
   function onNewDay() {
     const m = S().sim.missions.snapshot();
     S().sim.missions.restore({ active: m.active, completed: [], stickers: m.stickers });
@@ -154,6 +187,7 @@
     G.UI.toast("A new day in the kampung! New missions are ready.", "good", 5200);
   }
 
+  /** Route the sim's prayer events (due, qada, newday) to their handlers. */
   function onEvents(events) {
     events.forEach(function (ev) {
       if (ev.type === "due") onDue(ev.name);
@@ -164,12 +198,20 @@
 
   /* ------------------------------ guidance ------------------------------ */
 
+  /**
+   * The POI the guidance trail should lead to (taps for wudu, hall for prayer), or null when
+   * nothing is pending.
+   */
   function destination() {
     const ps = S().sim.prayer.state();
     if (!ps.flow && !ps.due && !ps.qada.length) return null;
     return ps.flow && ps.flow.phase === "pray" ? "mosque_hall" : "mosque_wudu";
   }
 
+  /**
+   * Recompute the footprint trail from the hero to the destination; clear it once the hero is
+   * within 4 m.
+   */
   function computeGuide() {
     const dest = destination();
     const hero = S().player.pos;
@@ -195,6 +237,9 @@
     liftHero(0);
   }
 
+  /**
+   * The child tapped 'Show me the way': turn the guide on, fold the azan card and draw the trail.
+   */
   function showWay() {
     F.guide = true;
     F.guideT = 0;
@@ -204,6 +249,7 @@
     G.UI.toast("Follow the green footprints to the mosque.", "good");
   }
 
+  /** Turn the guidance trail off and remove its footprints. */
   function clearGuide() {
     F.guide = false;
     F.guideDest = null;
@@ -212,6 +258,10 @@
 
   /* ------------------------------ camera / hero ------------------------------ */
 
+  /**
+   * Frame the camera on the hero at a prayer spot, offset to the side so the open panel does not
+   * cover them.
+   */
   function frameHero(spot, yawOff, dist) {
     F.lastYawOff = yawOff;
     F.lastDist = dist;
@@ -229,11 +279,13 @@
     else G.Camera.setShift(box.offsetHeight * 0.5, 0);
   }
 
+  /** Give the camera back to normal play after a wudu / prayer screen closes. */
   function leaveScreen() {
     G.Camera.setFrame(null);
     G.Camera.setShift(0, 0);
   }
 
+  /** The wudu tap closest to the hero, or null if none is registered. */
   function nearestTap() {
     const hero = S().player.pos;
     let best = null;
@@ -247,6 +299,7 @@
 
   /* ------------------------------ wudu ------------------------------ */
 
+  /** Snapshot of wudu progress (step index, taps so far, hint) for the wudu screen to draw. */
   function wuduView() {
     const info = S().sim.prayer.state().flow;
     const step = S().sim.prayer.nextWuduStep();
@@ -260,6 +313,7 @@
     };
   }
 
+  /** Redraw the wudu screen and put the hero in the current step's pose. */
   function refreshWudu() {
     if (!F.wui) return;
     G.PrayerUI.wuduUpdate(F.wui, wuduView());
@@ -267,6 +321,10 @@
     if (step) S().player.forcedPose = step.pose;
   }
 
+  /**
+   * One tap on the wudu action: count it, play the sound, and complete the step once its count is
+   * reached.
+   */
   function wuduAct() {
     const prayer = S().sim.prayer;
     const step = prayer.nextWuduStep();
@@ -284,6 +342,10 @@
     refreshWudu();
   }
 
+  /**
+   * A wudu tile was picked: the right one acts, a wrong one gives a gentle hint with the next step
+   * named.
+   */
   function wuduPick(i) {
     const info = S().sim.prayer.state().flow;
     if (!info || i === info.wuduIndex) return wuduAct();
@@ -297,6 +359,7 @@
     refreshWudu();
   }
 
+  /** Wudu is complete: close the screen, celebrate, and guide the hero on to the prayer hall. */
   function finishWudu() {
     G.UI.closeSheet("done");
     G.Audio.play("good");
@@ -305,6 +368,7 @@
     computeGuide();
   }
 
+  /** Lock the hero at the tap, open the wudu screen and frame the camera on them. */
   function openWudu(tap) {
     F.lastTap = tap;
     const P = S().player;
@@ -321,6 +385,7 @@
     frameHero({ x: spot.x, y: spot.y, z: spot.z, faceYaw: Math.PI }, 0.7, 2.3);
   }
 
+  /** The wudu screen closed: release the hero and the camera. */
   function closeWudu() {
     F.wui = null;
     G.Player.release(S().player);
@@ -329,6 +394,10 @@
 
   /* ------------------------------ prayer steps ------------------------------ */
 
+  /**
+   * The posture types accepted as the next prayer step (an optional step also accepts the one after
+   * it).
+   */
   function validTypes(prayer) {
     const next = prayer.nextPrayStep();
     if (!next) return [];
@@ -339,6 +408,9 @@
     return out;
   }
 
+  /**
+   * Snapshot of prayer progress (rakaat, choices, hint, dhikr cue) for the prayer screen to draw.
+   */
   function prayView() {
     const prayer = S().sim.prayer;
     const flow = prayer.state().flow;
@@ -360,10 +432,15 @@
     };
   }
 
+  /** Redraw the prayer screen if it is open. */
   function refreshPray() {
     if (F.pui) G.PrayerUI.prayUpdate(F.pui, prayView());
   }
 
+  /**
+   * A posture tile was picked: a wrong one gives a hint, the right one poses the hero and advances
+   * (or completes) the prayer.
+   */
   function prayPick(type) {
     const prayer = S().sim.prayer;
     const res = prayer.prayStep(type);
@@ -383,11 +460,13 @@
     refreshPray();
   }
 
+  /** The gentle 'Nearly! Next comes ...' hint naming the expected posture (empty at the end). */
   function hintFor(prayer) {
     const want = prayer.nextPrayStep();
     return want ? "Nearly! Next comes: " + want.label + ". Take your time." : "";
   }
 
+  /** Lock the hero at the hall's prayer spot, open the prayer screen and frame the camera. */
   function openPray() {
     const P = S().player;
     const y = S().world.heightAt(HALL_SPOT.x, HALL_SPOT.z);
@@ -398,12 +477,19 @@
     frameHero({ x: HALL_SPOT.x, y, z: HALL_SPOT.z, faceYaw: Math.PI }, 0.55, 2.3);
   }
 
+  /**
+   * The prayer screen closed: release the hero unless the completion card is about to take over.
+   */
   function closePray() {
     F.pui = null;
     if (!F.completing) G.Player.release(S().player);
     leaveScreen();
   }
 
+  /**
+   * The prayer is done: pay the coin reward and sticker, then show the praise card and release the
+   * hero when it closes.
+   */
   function completePrayer(result) {
     const sim = S().sim;
     sim.economy.add(KQ.Sim.Economy.PRAYER_REWARD_COINS);
@@ -438,6 +524,10 @@
 
   /* ------------------------------ entry points ------------------------------ */
 
+  /**
+   * Name of the prayer the child can start now (running flow, due prayer, or the oldest qada), or
+   * null.
+   */
   function startable() {
     const ps = S().sim.prayer.state();
     if (ps.flow) return ps.flow.name;
@@ -445,6 +535,7 @@
     return ps.qada.length ? ps.qada[0].name : null;
   }
 
+  /** Nothing to pray right now: say so kindly and name the next prayer and its time. */
   function notNow(extra) {
     const ps = S().sim.prayer.state();
     const next = ps.next
@@ -498,6 +589,7 @@
     openPray();
   }
 
+  /** Open the day card listing today's prayers, with ways to start a guide or a qada prayer. */
   function openDayCard() {
     return G.PrayerUI.dayCard({
       sim: S().sim,
@@ -558,6 +650,7 @@
     else openPray();
   }
 
+  /** Re-apply the last prayer framing after a resize or rotation that kept the same panel layout. */
   function frameAgain() {
     const f = G.Camera.state.frame;
     if (f)
@@ -568,6 +661,10 @@
       );
   }
 
+  /**
+   * Per-frame tick: advance the azan captions, hide a finished bar, show a queued card and refresh
+   * the guidance trail.
+   */
   function update(dt) {
     syncBarClass();
     if (F.azanLive) advanceCaptions(dt);
@@ -588,6 +685,7 @@
     }
   }
 
+  /** Clear all azan and guidance state when the sim's prayer tracker is rebuilt (clock jump or reload). */
   function reset() {
     hideCard();
     F.pending = false;

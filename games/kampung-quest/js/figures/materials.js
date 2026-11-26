@@ -19,6 +19,7 @@
   /** Fill an ImageData buffer with smooth-ish value noise: rgb = normal jitter, b also drives roughness. */
   function fillMicroNoise(data, size) {
     let seed = 1337;
+    /** Tiny seeded random numbers (0..1), so the micro texture is the same on every load. */
     function rnd() {
       seed = (seed * 16807) % 2147483647;
       return seed / 2147483647;
@@ -87,6 +88,10 @@
 
   /** Inject the micro-texture + skin warmth into a MeshPhysicalMaterial (same program for every figure). */
   function patchPlastic(mat) {
+    /**
+     * Patch the toy plastic shader: add the micro-surface texture, the skin glow and the extra
+     * lighting terms.
+     */
     mat.onBeforeCompile = function (shader) {
       shader.uniforms.kqMicro = { value: getMicroTexture() };
       shader.uniforms.kqMicroAmt = { value: 0.11 };
@@ -101,6 +106,7 @@
         .replace("#include <normal_fragment_maps>", FRAG_NORMAL)
         .replace("#include <emissivemap_fragment>", FRAG_EMIT);
     };
+    /** Shader cache key; bump it with the shader text so stale programs are not reused. */
     mat.customProgramCacheKey = function () {
       return "kq-plastic-v2";
     };

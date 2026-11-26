@@ -9,10 +9,12 @@
   const EYE_Y = 86;
   const MOUTH_Y = 152;
 
+  /** The shared 2D drawing helpers (dot, stroke, poly) from the print module. */
   function h() {
     return F.printHelpers;
   }
 
+  /** Draw both eyes with highlights; kids get larger eyes, and optional lashes. */
   function eyes(c, f) {
     const big = f.kid ? 1.22 : 1;
     const gap = f.kid ? 44 : 46;
@@ -41,6 +43,7 @@
     }
   }
 
+  /** Draw both eyebrows, thicker or lifted by the face's settings. */
   function brows(c, f) {
     const col = f.browColour || F.INK;
     const w = f.thickBrows ? 7 : 4.5;
@@ -57,6 +60,7 @@
     }
   }
 
+  /** Draw the mouth in the face's style (smile by default, grin with teeth, and so on). */
   function mouth(c, f) {
     const kind = f.mouth || "smile";
     c.lineCap = "round";
@@ -84,6 +88,7 @@
     c.stroke();
   }
 
+  /** Draw the small nose line. */
   function nose(c) {
     c.beginPath();
     c.moveTo(CX - 6, 124);
@@ -93,6 +98,7 @@
     c.stroke();
   }
 
+  /** Draw blush and freckles when the face asks for them. */
   function cheeks(c, f) {
     if (f.blush) {
       for (let s = -1; s <= 1; s += 2) {
@@ -109,6 +115,7 @@
       h().dot(c, CX + pts[i], pts[i + 1], 2.2, "rgba(140,80,50,0.55)");
   }
 
+  /** Draw round-cornered glasses with arms, in the face's frame colour. */
   function glasses(c, f) {
     const col = f.glassesColour || "#3a3a44";
     for (let s = -1; s <= 1; s += 2) {
@@ -122,6 +129,7 @@
     h().stroke(c, [CX - 25, EYE_Y - 6, CX, EYE_Y - 10, CX + 25, EYE_Y - 6], col, 4);
   }
 
+  /** Draw a moustache in the face's hair colour. */
   function moustache(c, f) {
     c.beginPath();
     c.moveTo(CX, MOUTH_Y - 16);

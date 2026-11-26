@@ -32,6 +32,7 @@
     B.cyl("chrome", pole.position.x, 2.58, pole.position.z, 0.15, 0.06, 12, 0xffffff);
     return { pole, chair: { x: chairs[0], z: z + 2.6, facing: Math.PI } };
   }
+  /** The barber pole's material: the striped texture, a little emissive so it glows. */
   function barberMat() {
     const t = P.Patterns.barber();
     t.repeat.set(1, 2);
@@ -111,6 +112,7 @@
     P.collide(c, door + 1.6, x1, z1 - 0.15, z1 + 0.15, "lib-glass");
   }
 
+  /** Build the library's two banks of bookshelves down both sides, with colliders. */
   function libShelves(B, Lb, ctx) {
     for (let z = Lb.z0 + 2; z < Lb.z1 - 7; z += 3) {
       [

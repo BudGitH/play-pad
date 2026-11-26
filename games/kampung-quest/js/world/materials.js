@@ -29,6 +29,10 @@
     leaf: 2.2,
   };
 
+  /**
+   * A standard vertex-coloured material with the shared env intensity; flags go into userData for
+   * later passes.
+   */
   function std(o, flags) {
     const m = new THREE.MeshStandardMaterial(
       Object.assign({ vertexColors: true, envMapIntensity: 0.65 }, o),
@@ -50,6 +54,10 @@
     return std(Object.assign(o, extra || {}));
   }
 
+  /**
+   * The photo-textured ground and wall materials (asphalt, paving, plaster, grass, tiles, roof,
+   * ...), each with its tuned roughness.
+   */
   function surfaces() {
     return {
       asphalt: photo("asphalt", 1.0, 0.8, { envMapIntensity: 0.35 }),
@@ -67,6 +75,10 @@
     };
   }
 
+  /**
+   * The painted / metal / plastic / glass materials that carry per-instance colour, using the
+   * pattern textures.
+   */
   function painted(pat) {
     const railing = pat.railing;
     return {

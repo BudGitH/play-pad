@@ -205,6 +205,10 @@
 
   /* ------------------------------ title backdrop ------------------------------ */
 
+  /**
+   * Slowly orbit the camera around the town behind the title card until the game starts (frozen in
+   * tests, throttled).
+   */
   function titleOrbit(s) {
     let a = 0;
     (function loop() {
@@ -224,6 +228,10 @@
 
   /* ------------------------------ launch ------------------------------ */
 
+  /**
+   * Start a game from a state: build the sim, place hero and NPCs, hide the title, show the HUD and
+   * start the loop.
+   */
   function launch(s, state) {
     s.sim = G.Sim.create(state);
     G.Audio.setMuted(state.settings.muted);

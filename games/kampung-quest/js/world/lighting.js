@@ -14,6 +14,7 @@
     high: { map: 2048, span: 44, envEvery: 20, pixelRatio: 2 },
   };
 
+  /** The sky dome: a big back-faced sphere with the sky shader, drawn first and never culled. */
   function makeSkyMesh(uniforms) {
     const mat = new THREE.ShaderMaterial({
       uniforms,
@@ -34,6 +35,10 @@
     return mesh;
   }
 
+  /**
+   * The shadow-casting sun light with its bias and range set, at the given quality tier's shadow
+   * settings.
+   */
   function makeSun(tier) {
     const sun = new THREE.DirectionalLight(0xffffff, 3);
     sun.castShadow = true;
@@ -45,6 +50,10 @@
     return sun;
   }
 
+  /**
+   * Resize the sun's shadow camera and map to a quality tier, freeing the old shadow map so it is
+   * rebuilt.
+   */
   function applyShadowTier(sun, tier) {
     const t = TIERS[tier] || TIERS.med;
     const cam = sun.shadow.camera;

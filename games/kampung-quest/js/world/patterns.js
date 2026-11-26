@@ -36,6 +36,10 @@
     ctx.fillStyle = frame;
     ctx.fillRect(x, y + CELL * 0.3, CELL, 4);
   }
+  /**
+   * Draw one daytime window pane: glass gradient, a curtain, or half-drawn curtain, and a
+   * highlight.
+   */
   function paneColour(ctx, x, y, w, h, v, cover, i) {
     const g = ctx.createLinearGradient(x, y, x + w, y + h);
     g.addColorStop(0, "#5f7486");
@@ -63,6 +67,10 @@
     "#ffb98a",
     "#f6e9cc",
   ];
+  /**
+   * Draw one night window pane: a warm or cool glow, sometimes dimmed by a curtain or striped by
+   * blinds.
+   */
   function paneGlow(ctx, x, y, w, h, v, cover) {
     ctx.fillStyle = GLOWS[v % GLOWS.length];
     ctx.fillRect(x, y, w, h);

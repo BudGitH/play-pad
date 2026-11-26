@@ -39,6 +39,10 @@
     return d;
   };
 
+  /**
+   * A painted rounded box: width, height, depth, corner radius and bevel steps, a colour and an
+   * optional skin flag.
+   */
   function box(w, h, d, r, k, hex, skin) {
     return G.paint(G.roundedBox(w, h, d, r, k), hex, skin);
   }
@@ -83,6 +87,10 @@
    * @param {number} side +1 left leg (+x), -1 right leg
    */
   const SKIRT_INNER = 0.0625; // = dims.legX: the inner edge sits exactly on the centre line
+  /**
+   * One half of a split skirt, tapered from top to bottom and shifted toward its side so the legs
+   * can swing.
+   */
   function skirtHalf(side, h, wt, wb, dt, db, hex, y0) {
     const g = G.roundedBox(wb, h, db, 0.014, 1);
     G.taper(g, 1, wt / wb, 1, dt / db, h);

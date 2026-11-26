@@ -95,6 +95,7 @@
 
   /** Geometry cache so repeated primitives are only built once. */
   const geoCache = new Map();
+  /** Build a primitive geometry once per key and reuse it everywhere it is needed. */
   function cached(key, make) {
     if (!geoCache.has(key)) geoCache.set(key, make());
     return geoCache.get(key);
@@ -125,6 +126,7 @@
     this.uvScales = uvScales || {};
     this.chunk = chunk || null;
   }
+  /** Get (or create) the merge bucket for a material key. */
   Batch.prototype.bucket = function (key) {
     if (!this.buckets.has(key)) this.buckets.set(key, new Bucket());
     return this.buckets.get(key);

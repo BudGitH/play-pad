@@ -86,6 +86,7 @@
   }
 
   // ---------- locomotion & daily life ----------
+  /** Idle standing pose at phase p: a slow breath and a gentle look-around, arms relaxed at the sides. */
   function idle(p) {
     const b = Math.sin(p * TAU);
     return {
@@ -96,6 +97,10 @@
     };
   }
 
+  /**
+   * The shared stride cycle for walk and run: leg swing, knee bend, opposite arm swing, lean and a
+   * bounce at phase p (0..1).
+   */
   function stride(p, amp, knee, arm, fore, lean, bob) {
     const s = Math.sin(p * TAU);
     const c = Math.cos(p * TAU);
@@ -113,13 +118,16 @@
       head: [-lean * 0.6, -0.05 * s, 0],
     };
   }
+  /** Walk cycle at phase p: a gentle stride. */
   function walk(p) {
     return stride(p, 0.5, 0.35, 0.45, -0.38, 0.02, 0.008);
   }
+  /** Run cycle at phase p: a longer stride, high arm swing, forward lean and more bounce. */
   function run(p) {
     return stride(p, 0.85, 0.75, 0.9, -1.35, 0.18, 0.022);
   }
 
+  /** The base sitting legs (hips and knees at 90 degrees) that the seated poses build on. */
   function seated() {
     return {
       legL: [-PI / 2, 0, 0],
@@ -128,6 +136,7 @@
       kneeR: [PI / 2, 0, 0],
     };
   }
+  /** Idle sitting: hands in the lap and a slow head look-around. */
   function sit(p) {
     const P = seated();
     const b = Math.sin(p * TAU);
@@ -138,6 +147,7 @@
     P.head = [0.02 * b, 0.1 * Math.sin(p * TAU + 2), 0];
     return P;
   }
+  /** Eating while seated: the right hand lifts to the mouth and back in a loop. */
   function eat(p) {
     const P = seated();
     const k = 0.5 - 0.5 * Math.cos(p * TAU);
@@ -149,6 +159,7 @@
     P.torso = [0.08 * (1 - k), 0, 0];
     return P;
   }
+  /** Wave: right arm raised, forearm and hand swaying. */
   function wave(p) {
     const s = Math.sin(p * TAU * 2);
     return {
@@ -159,6 +170,7 @@
       torso: [0, -0.06, 0.03],
     };
   }
+  /** Talking: a small speaking gesture with the right hand and a nodding head. */
   function talk(p) {
     const s = Math.sin(p * TAU);
     const s2 = Math.sin(p * TAU * 2);
@@ -171,6 +183,7 @@
       torso: [0, 0.05 * s, 0],
     };
   }
+  /** Carrying: both forearms held up in front of the body. */
   function carry(p) {
     const b = Math.sin(p * TAU);
     return {

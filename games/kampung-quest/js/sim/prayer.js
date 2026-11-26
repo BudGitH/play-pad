@@ -46,6 +46,9 @@
 
   /* ------------------------------ wudu data ------------------------------ */
 
+  /**
+   * Build one wudu step record: id, labels (English and Malay), tap count, whether it is fard, and the pose to show.
+   */
   function wudu(id, label, labelMs, count, fard, pose) {
     return { id, label, labelMs, count, fard, pose };
   }
@@ -169,6 +172,9 @@
 
   /* ------------------------------ timing -------------------------------- */
 
+  /**
+   * Turn the 'HH:MM' prayer times into minutes, throwing if one is missing, malformed or out of order.
+   */
   function parseTimes(times) {
     const parse = KQ.Sim.Clock.parseHHMM;
     const parsed = {};
@@ -213,6 +219,7 @@
 
   /* ------------------------------ lifecycle ------------------------------ */
 
+  /** Add the five upcoming prayer entries for a new day and remember it as the last day tracked. */
   function addDay(S, day) {
     NAMES.forEach(function (name) {
       S.entries.push(makeEntry(name, day, "upcoming", S.t));
@@ -307,6 +314,7 @@
 
   /* ------------------------------ flow ----------------------------------- */
 
+  /** A defensive copy of a step (or null), so callers cannot change the sim's own data. */
   function copyStep(step) {
     return step ? Object.assign({}, step) : null;
   }
@@ -485,6 +493,9 @@
 
   /* ------------------------------ state ---------------------------------- */
 
+  /**
+   * Start times of each prayer for yesterday, today and tomorrow, to find the previous and next prayer.
+   */
   function timeline(S) {
     const day = Math.floor(S.now / DAY) + 1;
     const list = [];

@@ -97,6 +97,7 @@
     im.name = "hawkerFans";
     out.fans = { mesh: im, list };
   }
+  /** Merge three crossed grass blades into one geometry so a tuft is a single instance. */
   function mergeBlades(blade) {
     const B = new P.Batch();
     [0, 1, 2].forEach((k) => B.geo("b", blade, P.compose(0, 0, 0, (k * Math.PI * 2) / 3, 1, 1, 1)));

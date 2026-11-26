@@ -31,6 +31,7 @@
     size: { w: 1, h: 1 },
   };
 
+  /** Attach the camera and its pivot and position vectors; returns the shared camera state. */
   function init(camera) {
     C.cam = camera;
     C.pivot = new THREE.Vector3();
@@ -38,6 +39,10 @@
     return C;
   }
 
+  /**
+   * Apply look and zoom input to yaw, pitch and distance (only in free mode), tracking how long the
+   * player has been idle.
+   */
   function applyLook(dt, look, free) {
     if (!free) return;
     if (look.x || look.y) C.idle = 0;
@@ -47,12 +52,14 @@
     C.dist = U.clamp(C.dist + look.zoom, MIN_DIST, MAX_DIST);
   }
 
+  /** After a short idle, swing the camera behind the hero's heading while they walk. */
   function autoFollow(dt, o, free) {
     if (!free || C.idle < 0.8 || !o.move) return;
     const follow = U.clamp(o.move.y + 0.8 * Math.abs(o.move.x), 0, 1);
     C.yaw = U.dampAngle(C.yaw, o.heading, 1.5 * follow, dt);
   }
 
+  /** Ease yaw, pitch and distance toward the fixed prayer / wudu frame. */
   function easeFrame(dt) {
     const f = C.frame;
     C.yaw = U.dampAngle(C.yaw, f.yaw, 2.6, dt);
@@ -74,6 +81,10 @@
     return len;
   }
 
+  /**
+   * Put the camera behind the pivot at the current yaw, pitch and distance, pulling the arm in at
+   * once when a wall is in the way.
+   */
   function place(dt, o) {
     const cp = Math.cos(C.pitch);
     const fx = Math.sin(C.yaw);
@@ -97,6 +108,10 @@
     C.cam.lookAt(C.pivot);
   }
 
+  /**
+   * Slide the picture sideways or down (a view offset) so the hero stays centred beside an open
+   * panel.
+   */
   function applyShift(dt, snap) {
     C.shift = snap ? C.shiftTarget : U.damp(C.shift, C.shiftTarget, 5, dt);
     C.shiftX = snap ? C.shiftXTarget : U.damp(C.shiftX, C.shiftXTarget, 5, dt);

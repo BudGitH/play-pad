@@ -86,6 +86,9 @@
       day: Number.isInteger(opts.day) && opts.day >= 1 ? opts.day : 1,
       realSecPerGameMin: secPerMin,
     };
+    /**
+     * Advance the clock by real seconds (ignored unless positive and finite), rolling the day over at midnight.
+     */
     clock.tick = function tick(dtSec) {
       if (!(dtSec > 0) || !Number.isFinite(dtSec)) return;
       clock.minute += dtSec / secPerMin;
@@ -94,18 +97,22 @@
         clock.day += 1;
       }
     };
+    /** Jump to a minute of the day (wrapped into 0..1439); non-numbers are ignored. */
     clock.set = function set(min) {
       if (Number.isFinite(min)) clock.minute = wrapMinute(min);
     };
+    /** The time as zero-padded 'HH:MM' text for the HUD. */
     clock.hhmm = function hhmm() {
       const whole = Math.floor(clock.minute);
       return pad2(Math.floor(whole / 60)) + ":" + pad2(whole % 60);
     };
+    /** Minutes since the start of day 1, so time comparisons work across midnight. */
     clock.absMinute = function absMinute() {
       return (clock.day - 1) * MINUTES_PER_DAY + clock.minute;
     };
     clock.phase = () => phaseAt(clock.minute, anchors);
     clock.sunFactor = () => sunFactorAt(clock.minute, anchors);
+    /** Replace the sunrise / sunset anchors from a prayer-times object (Syuruk, Maghrib). */
     clock.setTimes = function setTimes(times) {
       anchors = sunAnchors(times);
     };

@@ -40,6 +40,7 @@
     P.collide(ctx.colliders, h.x0 - 1.7, h.x0 - 0.1, -34.7, -31.3, "mihrab");
     minbar(B, h.x0 + 0.25, -30.2, ctx);
   }
+  /** Build the imam's minbar: five steps rising to a pulpit. */
   function minbar(B, x, z, ctx) {
     const y = S().PLINTH;
     for (let i = 0; i < 5; i++)
@@ -82,6 +83,9 @@
 
   /** Columns, women's lattice screen, shelves and the chandelier; returns the lamp spot. */
   const COLUMNS = [-46, -40, -38, -40, -46, -26, -38, -26];
+  /**
+   * Furnish the hall: marble columns with gold capitals, the women's screen, and their colliders.
+   */
   function furnish(B, h, m, ctx) {
     const y = S().PLINTH;
     for (let i = 0; i < COLUMNS.length; i += 2) {

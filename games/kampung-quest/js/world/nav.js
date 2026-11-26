@@ -131,6 +131,7 @@
     return lines;
   }
 
+  /** The walking graph: nodes, edges and an index so a point is only added once. */
   function Graph() {
     this.nodes = [];
     this.edges = [];
@@ -145,6 +146,7 @@
     }
     return this.index.get(key);
   };
+  /** Connect two nodes with an edge (never a node to itself). */
   Graph.prototype.link = function (a, b) {
     if (a !== b) this.edges.push([a, b]);
   };
@@ -182,6 +184,10 @@
     sidewalkLines(L).forEach((ln) => chain(g, ln));
     return { graph: { nodes: g.nodes, edges: dedupe(g.edges) }, pois };
   }
+  /**
+   * Join the nodes along one footpath line in order, but never across the junction (a zebra
+   * crossing handles that).
+   */
   function chain(g, ln) {
     const on = g.nodes.filter((n) => onLine(n, ln));
     on.sort((a, b) => (ln.axis === "x" ? a.x - b.x : a.z - b.z));
@@ -193,6 +199,7 @@
       g.link(a.id, b.id);
     }
   }
+  /** Drop duplicate edges whichever way round they were added. */
   function dedupe(edges) {
     const seen = new Set();
     return edges.filter(([a, b]) => {

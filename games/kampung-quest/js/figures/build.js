@@ -24,6 +24,10 @@
     return partCache[spec.id];
   }
 
+  /**
+   * Create a named mesh (or an empty group when there is no geometry) at a position under a parent;
+   * meshes cast and receive shadows.
+   */
   function node(name, parent, x, y, z, geo, mat) {
     const o = geo ? new THREE.Mesh(geo, mat) : new THREE.Group();
     o.name = name;
@@ -36,6 +40,10 @@
     return o;
   }
 
+  /**
+   * Build a leg (thigh under the hips, shin at the knee) for the L or R side and register both
+   * joints on the rig.
+   */
   function buildLeg(rig, side, p, mat, d) {
     const s = side === "L" ? 1 : -1;
     const leg = node("leg" + side, rig.hips, s * d.legX, 0, 0, p["thigh" + side], mat);
@@ -43,6 +51,10 @@
     rig["knee" + side] = node("knee" + side, leg, 0, -d.thigh, 0, p["shin" + side], mat);
   }
 
+  /**
+   * Build an arm (upper, forearm, hand and a hold point for props) for the L or R side and register
+   * the joints on the rig.
+   */
   function buildArm(rig, side, p, mat, d) {
     const s = side === "L" ? 1 : -1;
     const arm = node("arm" + side, rig.torso, s * d.shoulderX, d.shoulderY, 0, p.upper, mat);

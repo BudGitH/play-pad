@@ -14,6 +14,7 @@
   const U = G.U;
   const TRAIL_MAX = 26;
 
+  /** Unlit, translucent, fog-free material so beacons read clearly at any time of day. */
   function beaconMaterial(color, opacity) {
     return new THREE.MeshBasicMaterial({
       color,
@@ -25,6 +26,9 @@
     });
   }
 
+  /**
+   * Build a beacon: a tall see-through beam, a ground ring and a floating gem, all in one colour.
+   */
   function makeBeacon(color) {
     const g = new THREE.Group();
     const beam = new THREE.Mesh(
@@ -43,6 +47,7 @@
     return g;
   }
 
+  /** Draw the gold star canvas texture used above mission givers. */
   function starTexture() {
     const c = document.createElement("canvas");
     c.width = c.height = 64;
@@ -65,6 +70,10 @@
     return tex;
   }
 
+  /**
+   * Create the instanced footprint mesh (capped at TRAIL_MAX prints) added to the scene, empty at
+   * first.
+   */
   function makeTrail(scene) {
     const geo = new THREE.CircleGeometry(0.2, 12).rotateX(-Math.PI / 2).scale(1, 1, 1.5);
     const mat = new THREE.MeshBasicMaterial({
@@ -83,6 +92,10 @@
     return mesh;
   }
 
+  /**
+   * Build the marker set: mission (pink) and mosque (green) beacons, the footprint trail and the
+   * giver-star store.
+   */
   function create(scene) {
     const M = {
       mission: makeBeacon(0xff6b85),
@@ -116,6 +129,10 @@
     return spr;
   }
 
+  /**
+   * Show a beacon at a position (bobbing and pulsing unless motion is reduced), or hide it when
+   * there is none.
+   */
   function placeBeacon(beacon, pos, y, t, still) {
     if (!pos) {
       beacon.visible = false;
@@ -132,6 +149,10 @@
 
   const DUMMY = new THREE.Object3D();
 
+  /**
+   * Lay footprints along the path points at even spacing, each turned to face the walking
+   * direction.
+   */
   function setTrail(M, pts) {
     M.trailPts = pts || [];
     const out = [];
@@ -162,6 +183,10 @@
     M.trail.instanceMatrix.needsUpdate = true;
   }
 
+  /**
+   * Per-frame: animate beacons, pulse the footprints and bob the giver stars (all still under
+   * reduced motion).
+   */
   function update(M, dt, view) {
     M.time += dt;
     const still = view.reduced;

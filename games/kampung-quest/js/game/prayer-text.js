@@ -104,10 +104,12 @@
     },
   ];
 
+  /** The azan caption cues from the data file, or a short built-in set if the data did not load. */
   function azanCues() {
     return Array.isArray(KQ.AZAN_TEXT) && KQ.AZAN_TEXT.length ? KQ.AZAN_TEXT : FALLBACK_AZAN;
   }
 
+  /** The azan card title for a prayer, e.g. "It's Zohor time! Let's go and pray." */
   function title(name) {
     return "It's " + KQ.Sim.Prayer.DISPLAY[name] + " time! Let's go and pray.";
   }

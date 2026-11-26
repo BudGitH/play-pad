@@ -147,6 +147,10 @@
     ["aSkin", 1],
   ];
 
+  /**
+   * The index array of a geometry, or a sequential one for non-indexed geometry (so any piece can
+   * be merged).
+   */
   function indexOf(g) {
     if (g.index) return g.index.array;
     const n = g.attributes.position.count;
@@ -181,6 +185,10 @@
     return out;
   };
 
+  /**
+   * Concatenate the index arrays of the geometries being merged, offsetting each by the vertices
+   * before it.
+   */
   function mergeIndex(list, totalIdx) {
     const index = new Uint32Array(totalIdx);
     let vOff = 0;

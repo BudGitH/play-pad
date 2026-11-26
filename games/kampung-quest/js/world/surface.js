@@ -123,6 +123,7 @@
     }
     shader.fragmentShader = fs;
   }
+  /** Shader cache key: surfaces with a detail map need their own compiled program. */
   function cacheKey() {
     return "kqSurface" + (this.userData.kqDetail ? "D" : "");
   }
@@ -165,6 +166,7 @@
   /** Warm bounce by day, lamp-white fill at night (called from the runtime each update). */
   const DAY_FILL = new THREE.Color(0.2, 0.165, 0.12);
   const NIGHT_FILL = new THREE.Color(0.17, 0.16, 0.14);
+  /** Set the fill light for the time of day: warm bounce by day, lamp-white at night. */
   function setTime(night, sunI) {
     const day = Math.min(1, (sunI || 0) / 3.3);
     SHARED.kqFill.value.copy(DAY_FILL).multiplyScalar(0.25 + 0.75 * day);

@@ -21,6 +21,7 @@
   ];
   const B = {};
 
+  /** Look up the title screen elements once and clear the placeholder load steps. */
   function bind() {
     const q = (id) => document.getElementById(id);
     Object.assign(B, {
@@ -48,6 +49,7 @@
     return B;
   }
 
+  /** Update the loading bar (0..1), its spoken value and the status text. */
   function setProgress(p, text) {
     const pct = Math.round(U.clamp(p, 0, 1) * 100);
     B.bar.style.width = pct + "%";
@@ -65,6 +67,7 @@
     li.lastChild.textContent = STEPS[i] + (detail ? " · " + detail : "");
   }
 
+  /** Loading finished: enable Start, focus it, and offer Continue / New game when a save exists. */
   function ready(saved) {
     setProgress(1, "Ready.");
     B.start.disabled = false;
@@ -76,14 +79,17 @@
     }
   }
 
+  /** Show a small notice on the title screen (e.g. saving is unavailable). */
   function note(text) {
     B.note.textContent = text;
   }
 
+  /** Hide the title screen once the game starts. */
   function hideTitle() {
     B.title.hidden = true;
   }
 
+  /** Show the friendly WebGL-missing card, with a Retry button wired to onRetry. */
   function showError(onRetry) {
     B.title.hidden = true;
     B.error.hidden = false;

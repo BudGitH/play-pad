@@ -15,10 +15,12 @@
   const S = () => G.S;
   const chat = {};
 
+  /** Shortcut to the pure sim on the shared game state. */
   function sim() {
     return S().sim;
   }
 
+  /** The current step of the active mission, or null when there is no active mission. */
   function activeStep() {
     const prog = sim().missions.progress();
     const mission = sim().missions.active();
@@ -33,6 +35,7 @@
     return step.type === "deliver" ? G.Names.itemName(step.item) : null;
   }
 
+  /** The 'Mission done! +N coins and a sticker' message for a completion result. */
   function rewardText(res) {
     const names = res.reward.stickers
       .map((id) => (KQ.Sim.STICKERS.find((s) => s.id === id) || {}).name)
@@ -65,10 +68,17 @@
     return res;
   }
 
+  /**
+   * Report a world event (talk, goto, buy, collect) to the mission machine and apply its result;
+   * returns the result.
+   */
   function notify(event) {
     return applyResult(sim().missions.notify(event));
   }
 
+  /**
+   * Open the offer dialogue for a mission; accepting starts it, 'Later' leaves it for another time.
+   */
   function offer(A, mission) {
     const m = mission;
     G.Dialogue.open({
@@ -83,6 +93,10 @@
     });
   }
 
+  /**
+   * Accept a mission in the sim, with a toast and sound (or the sim's gentle hint if it refuses,
+   * e.g. during prayer).
+   */
   function accept(m) {
     const res = sim().missions.accept(m.id);
     if (!res.ok) {
@@ -94,6 +108,7 @@
     S().hudDirty = true;
   }
 
+  /** Open a plain dialogue with an NPC and release them from the talk when it closes. */
   function say(A, lines) {
     G.Dialogue.open({
       name: A.name,
@@ -103,6 +118,7 @@
     });
   }
 
+  /** Say the NPC's next small-talk line, cycling through their lines on repeat visits. */
   function smallTalk(A) {
     chat[A.id] = (chat[A.id] || 0) + 1;
     const line = KQ.Sim.Missions.chatLine(A.id, chat[A.id] - 1);
@@ -110,6 +126,9 @@
     say(A, lines);
   }
 
+  /**
+   * Talk to an NPC for the active step: notify the sim, and say its reply or the completion lines.
+   */
   function stepTalk(A, prog, step) {
     const res = notify({ type: prog.type, target: A.id, item: step.item });
     const lines = res.completed ? res.lines : [res.line || KQ.Sim.SALAM.reply + " Terima kasih!"];
@@ -150,6 +169,7 @@
     }
   }
 
+  /** The hero picked up a collectible (can or litter): remove it and notify the collect step. */
   function pickup(item) {
     G.Collectibles.take(S().collect, item);
     const isCan = item.kind === "can";

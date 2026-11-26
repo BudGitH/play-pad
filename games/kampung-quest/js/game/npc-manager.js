@@ -16,6 +16,13 @@
   const PERSONAL_SPACE = 0.78;
   const HERO_SPACE = 0.95;
 
+  /**
+   * Build the NPC manager: the shared path graph, seats and goal slots, plus one hidden agent per
+   * cast member.
+   * @param scene the THREE scene agents are added to; world the built neighbourhood; sim the pure
+   *   sim.
+   * @returns the manager object M that the other functions here take as their first argument.
+   */
   function create(scene, world, sim) {
     const pathP = G.Path.build(world);
     const M = {
@@ -39,12 +46,16 @@
     return M;
   }
 
+  /** The world colliders within 3 m of an agent, so its walking only tests what it could touch. */
   function nearColliders(M, A) {
     return M.world.colliders.filter(
       (c) => A.x > c.minX - 3 && A.x < c.maxX + 3 && A.z > c.minZ - 3 && A.z < c.maxZ + 3,
     );
   }
 
+  /**
+   * Teleport an agent to x,z (standing on the ground there) facing a heading, and drop its path.
+   */
   function placeAt(A, x, z, heading, world) {
     A.x = x;
     A.z = z;
@@ -76,6 +87,9 @@
     G.NpcAgent.setPath(A, [{ x: A.x, z: A.z }].concat(pts), goal);
   }
 
+  /**
+   * Put an agent straight at its goal (seat, cook spot or door), visible, for loads and time jumps.
+   */
   function snapToGoal(M, A, goal) {
     A.hidden = false;
     A.show = 1;
@@ -85,6 +99,9 @@
     if (goal.cookSpot) A.cook = true;
   }
 
+  /**
+   * Make an indoor NPC appear at its building's door (falling back to its home) ready to walk out.
+   */
   function comeOutside(M, A, poiId) {
     const poi = M.world.pois[poiId] || M.world.pois.home;
     A.hidden = false;
@@ -92,6 +109,10 @@
     placeAt(A, poi.pos.x, poi.pos.z, poi.facing, M.world);
   }
 
+  /**
+   * Send an agent indoors: hide it on the spot when instant or already hidden, else walk it home
+   * first.
+   */
   function hideOrWalkHome(M, A, goal, instant) {
     if (instant || A.hidden) {
       A.hidden = true;
@@ -103,6 +124,10 @@
     else A.hidden = true;
   }
 
+  /**
+   * Ask the schedule what each NPC should be doing now and re-plan only the agents whose routine
+   * changed.
+   */
   function evaluate(M, instant) {
     const minute = M.sim.clock.minute;
     const state = M.sim.prayer.state();
@@ -115,6 +140,10 @@
     });
   }
 
+  /**
+   * Show a hidden indoor NPC at its door while the hero is near, and hide it again once the hero
+   * leaves.
+   */
   function reveal(M, A, hero) {
     const g = A.goal;
     if (!g || g.kind !== "hide" || A.path.length) return;
@@ -128,6 +157,10 @@
     }
   }
 
+  /**
+   * Nudge mobile agents apart from the hero and each other; seated, praying and cooking agents stay
+   * put.
+   */
   function separate(M, hero) {
     const live = M.agents.filter((A) => !A.hidden);
     live.forEach(function (A, i) {
@@ -154,6 +187,10 @@
     A.z += (dz / d) * amt;
   }
 
+  /**
+   * Per-frame step: re-evaluate routines each game minute, reveal / cull by distance, move agents,
+   * then separate them.
+   */
   function update(M, dt, hero) {
     G.prayClock += dt;
     const whole = Math.floor(M.sim.clock.minute);
@@ -188,6 +225,10 @@
     M.dirty = false;
   }
 
+  /**
+   * The closest visible agent within maxDist of x,z as {A, d}, or null; used to pick who to talk
+   * to.
+   */
   function nearest(M, x, z, maxDist) {
     let best = null;
     M.agents.forEach(function (A) {

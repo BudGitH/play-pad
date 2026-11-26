@@ -8,10 +8,17 @@
   const TAU = Math.PI * 2;
   const pieceCache = {};
 
+  /**
+   * A half-sphere dome of radius r raised to height y and squashed by sy (the base of caps and
+   * hair).
+   */
   function dome(r, y, sy, hex, segs) {
     const g = new THREE.SphereGeometry(r, segs || 26, 9, 0, TAU, 0, Math.PI / 2);
     return G.place(G.paint(g, hex), [0, y, 0], null, [1, sy, 1]);
   }
+  /**
+   * A small ellipsoid of size s at position p (turned by r), used for hair tufts, buns and buttons.
+   */
   function blob(s, p, r, hex) {
     return G.place(G.paint(new THREE.SphereGeometry(1, 14, 9), hex), p, r, s);
   }
@@ -66,6 +73,7 @@
     return list;
   }
 
+  /** The songkok: a lathed flat-topped cap, with an optional hair tuft behind it. */
   function songkok(hd) {
     const prof = [0, 0.146, 0.114, 0.146, 0.114, 0.2, 0.111, 0.214, 0.1, 0.221, 0, 0.221];
     const list = [G.place(G.paint(G.lathe(prof, 28), hd.colour), null, null, [1, 1, 0.93])];
@@ -73,6 +81,7 @@
     return list;
   }
 
+  /** The kopiah: a lathed cap with three thin trim rings in the accent colour. */
   function kopiah(hd) {
     const prof = [0, 0.146, 0.113, 0.146, 0.113, 0.198, 0.106, 0.214, 0.092, 0.222, 0, 0.222];
     const list = [G.paint(G.lathe(prof, 28), hd.colour)];

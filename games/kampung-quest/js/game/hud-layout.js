@@ -31,12 +31,14 @@
   const isPortraitPhone = () => Boolean(L.portraitMq && L.portraitMq.matches);
   const isCompact = () => Boolean(L.compactMq && L.compactMq.matches);
 
+  /** Set a CSS custom property on the HUD root only when its value changed. */
   function setVar(name, value) {
     if (L.vars[name] === value) return;
     L.vars[name] = value;
     L.root.style.setProperty(name, value);
   }
 
+  /** A visible element's screen rectangle, or null when it is hidden or has no size. */
   function rectOf(el) {
     if (!el || el.hidden) return null;
     const r = el.getBoundingClientRect();
@@ -62,6 +64,7 @@
     a.top < b.bottom + GAP &&
     a.bottom > b.top - GAP;
 
+  /** Build a rectangle {left, top, right, bottom} from a corner and a size. */
   function boxAt(left, top, w, h) {
     return { left, top, right: left + w, bottom: top + h };
   }
@@ -157,6 +160,10 @@
     mission: { box: G.Hud.refs.mission, toggle: G.Hud.refs.missionToggle },
   });
 
+  /**
+   * Open or fold a phone card (status or mission); an open card folds again by itself after a few
+   * seconds.
+   */
   function setOpen(which, open) {
     const part = folding()[which];
     clearTimeout(L.timers[which]);
@@ -196,6 +203,7 @@
     });
   }
 
+  /** Dismiss the 'turn sideways' hint for the rest of the session and re-measure the layout. */
   function dismissTurn() {
     const R = G.Hud.refs;
     R.portrait.hidden = true;

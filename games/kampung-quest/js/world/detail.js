@@ -17,6 +17,10 @@
     "mosque-wall",
   ]);
 
+  /**
+   * Translucent, depth-write-off material with polygon offset so ground decals sit on the road
+   * without z-fighting.
+   */
   function decalMat(map, opacity) {
     return new THREE.MeshBasicMaterial({
       map,
@@ -73,6 +77,10 @@
     }
     kerbGrime(B, L, h);
   }
+  /**
+   * Lay grime strips along both kerbs of the road, with storm drains and manhole covers along the
+   * way.
+   */
   function kerbGrime(B, L, h) {
     const e = L.road.half - 0.25;
     for (let t = -h; t < h; t += 12) {
@@ -93,6 +101,10 @@
 
   /** Haze uniforms shared by the skyline (fog colour copied in by the runtime each update). */
   const HAZE = { kqHazeCol: { value: new THREE.Color(0xcfe0ee) }, kqHaze: { value: 0.5 } };
+  /**
+   * Clone a material with fog off and a shader tweak that blends toward the shared haze colour
+   * (distant skyline haze).
+   */
   function hazeMaterial(base) {
     const m = base.clone();
     m.fog = false;

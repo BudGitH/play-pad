@@ -11,10 +11,12 @@
   const PI = Math.PI;
   const TAU = PI * 2;
 
+  /** A tiny rise and fall of the torso, so a held posture still looks alive. */
   function breathe(p) {
     return 0.008 * Math.sin(p * TAU);
   }
 
+  /** Qiyam (standing): hands folded on the chest, gaze down at the place of sujud. */
   function qiyam(p) {
     return {
       torso: [breathe(p), 0, 0],
@@ -28,6 +30,7 @@
     };
   }
 
+  /** Takbir: both hands raised beside the ears at the opening of the prayer. */
   function takbir(p) {
     const lift = 1.45;
     const fold = PI + 0.34 - lift;
@@ -43,6 +46,7 @@
     };
   }
 
+  /** I'tidal: standing upright with arms at the sides after rising from ruku. */
   function itidal(p) {
     return {
       torso: [breathe(p), 0, 0],
@@ -140,6 +144,10 @@
     return P;
   }
 
+  /**
+   * Build the salam pose for a direction: the seated pose with the head turned to the right (-1) or
+   * left (1).
+   */
   function salam(dir) {
     return function (p, d) {
       const P = julus(p, d);
@@ -162,6 +170,7 @@
   }
 
   // ---------- wudu ----------
+  /** Wudu, washing the hands: both forearms crossed in front and rubbing together. */
   function wuduHands(p) {
     const s = Math.sin(p * TAU * 2);
     return {
@@ -176,6 +185,7 @@
     };
   }
 
+  /** Wudu, washing the face: leaning forward with both hands to the face. */
   function wuduFace(p) {
     const s = Math.sin(p * TAU * 1.5);
     return {
@@ -190,6 +200,7 @@
     };
   }
 
+  /** Wudu, washing the feet: one foot lifted and the body bent toward it. */
   function wuduFeet(p) {
     const s = Math.sin(p * TAU * 2);
     return {

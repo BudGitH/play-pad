@@ -13,6 +13,10 @@
   const H = () => G.Hud;
   const label = (n) => KQ.Sim.Prayer.DISPLAY[n] || n;
 
+  /**
+   * The short note beside the clock: praying now, a prayer's time, one coming soon, or the next
+   * prayer and its time.
+   */
   function nextNote(ps) {
     if (ps.flow) return "Praying " + label(ps.flow.name);
     if (ps.due) return label(ps.due) + " time!";
@@ -21,6 +25,10 @@
     return "Next: " + label(ps.next.name) + " " + KQ.PRAYER_TIMES[ps.next.name];
   }
 
+  /**
+   * CSS class for one prayer chip: done, due, qada or the next one; a status is never colour alone
+   * (the icon changes too).
+   */
   function prayerClass(entry, isNext) {
     const base = "kq-prayer";
     if (entry.status === "done" || entry.status === "qada-done") return base + " is-done";
@@ -29,6 +37,10 @@
     return base + (isNext ? " is-next" : "");
   }
 
+  /**
+   * Refresh the five-prayer strip: chip classes, and the mosque icon turning into a tick once a
+   * prayer is done.
+   */
   function updatePrayers(ps) {
     const R = H().refs;
     const nextIdx = ps.due || ps.flow ? -1 : ps.prayers.findIndex((p) => p.status === "upcoming");
@@ -45,6 +57,10 @@
     });
   }
 
+  /**
+   * Refresh the food / energy numbers, the ring arcs and the ring's spoken label (only when a value
+   * changed).
+   */
   function updateNeeds(needs) {
     const R = H().refs;
     const food = Math.round(needs.hunger);
@@ -59,6 +75,10 @@
     R.ring.setAttribute("aria-label", "Food " + food + " of 100, energy " + energy + " of 100");
   }
 
+  /**
+   * Build one step chip for the mission card (done, now or to-do), with a progress count on the
+   * current counted step.
+   */
   function stepChip(step, i, now, mission, count) {
     const st = i < now ? "done" : i === now ? "now" : "todo";
     let text = G.Names.stepLabel(step, i, mission);
@@ -78,6 +98,7 @@
 
   const CHIP_VERB = { talk: "Talk to ", goto: "Go to " };
 
+  /** Set the phone's one-line mission chip to the current step (or 'Waiting while we pray'). */
   function chipFor(mission, prog) {
     const step = mission.steps[prog.stepIndex];
     let text = (CHIP_VERB[step.type] || "") + G.Names.stepLabel(step, prog.stepIndex, mission);
@@ -85,6 +106,10 @@
     setChip(G.Pictures.stepIcon(step.type), prog.paused ? "Waiting while we pray" : text);
   }
 
+  /**
+   * Draw the active mission: title, an arrowed row of step chips, and a waiting note while a prayer
+   * pauses it.
+   */
   function renderMissionSteps(mission, prog) {
     const R = H().refs;
     R.missionTitle.textContent = mission.title;
@@ -101,6 +126,10 @@
     chipFor(mission, prog);
   }
 
+  /**
+   * Draw the empty mission card: 'find a neighbour with a star' before any mission, a cheer when
+   * all are done.
+   */
   function renderNoMission(sig) {
     const R = H().refs;
     const done = sig === "done";
@@ -116,6 +145,7 @@
     );
   }
 
+  /** Redraw the mission card only when its signature (mission, step, count, paused) changes. */
   function renderMission(sim) {
     const R = H().refs;
     const prog = sim.missions.progress();
@@ -134,6 +164,10 @@
     if (!first && mission) G.HudLayout.peek("mission");
   }
 
+  /**
+   * Refresh the dock: the Pray button glows when a prayer is due or in qada, and Missions shows the
+   * new-mission badge.
+   */
   function updateDock(sim, ps, extra) {
     const R = H().refs;
     const pray = R.dockBtns.pray;

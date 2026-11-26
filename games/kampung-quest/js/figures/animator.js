@@ -42,6 +42,10 @@
     wudu_feet: 0.6,
   };
 
+  /**
+   * Move a joint's rotation a fraction w of the way toward a target [x, y, z] (w = 1 sets it
+   * outright).
+   */
   function blendJoint(node, t, w) {
     const r = node.rotation;
     r.x += (t[0] - r.x) * w;
@@ -74,6 +78,9 @@
     return (rig.dims.hipH - rig.dims.legD / 2) * rig.dims.scale;
   };
 
+  /**
+   * Record the rig's current joint rotations and root offsets so a new pose can fade in from them.
+   */
   function snapshot(rig) {
     const snap = { rootY: rig.root.position.y, rootZ: rig.root.position.z };
     F.POSE_PARTS.JOINTS.forEach(function (k) {
@@ -83,6 +90,7 @@
     return snap;
   }
 
+  /** Put a recorded snapshot back on the rig (the start of a cross-fade). */
   function applySnapshot(rig, snap) {
     F.POSE_PARTS.JOINTS.forEach(function (k) {
       rig[k].rotation.set(snap[k][0], snap[k][1], snap[k][2]);
@@ -91,6 +99,7 @@
     rig.root.position.z = snap.rootZ;
   }
 
+  /** Smoothstep easing for 0..1, so pose fades start and end gently. */
   function smooth(x) {
     return x * x * (3 - 2 * x);
   }
@@ -106,6 +115,10 @@
     let fadeDur = 0;
     let rateScale = 1;
     return {
+      /**
+       * Switch to a named pose or cycle, cross-fading from the current look over fadeSec (default
+       * 0.25 s); a repeat call is ignored.
+       */
       play: function (name, fadeSec, rate) {
         if (name === cur.name && rate === undefined) return;
         from = snapshot(rig);
@@ -117,9 +130,14 @@
           rate: rate || RATES[name] || 0.3,
         };
       },
+      /** Scale the playback speed of the current cycle (e.g. to match walking speed). */
       setRate: function (r) {
         rateScale = r;
       },
+      /**
+       * Advance the cycle by dt seconds and pose the rig, blending from the snapshot while a fade
+       * is running.
+       */
       update: function (dt) {
         cur.phase = (cur.phase + dt * cur.rate * rateScale) % 1;
         fade += dt;
@@ -131,6 +149,7 @@
         from = null;
         F.pose(rig, cur.name, cur.phase, 1);
       },
+      /** Name of the pose or cycle being played. */
       current: function () {
         return cur.name;
       },

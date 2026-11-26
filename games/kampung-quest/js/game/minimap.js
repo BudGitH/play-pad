@@ -25,6 +25,7 @@
   };
   let bg = null;
 
+  /** Fill a world-space rectangle {x0, z0, x1, z1} with a colour. */
   function rect(ctx, r, color) {
     ctx.fillStyle = color;
     ctx.fillRect(r.x0, r.z0, r.x1 - r.x0, r.z1 - r.z0);
@@ -61,6 +62,7 @@
     ctx.fill();
   }
 
+  /** The town drawn once into a cached offscreen canvas, reused by every minimap frame. */
   function background() {
     if (bg) return bg;
     const size = 512;
@@ -74,6 +76,7 @@
     return bg;
   }
 
+  /** Convert a world position to minimap pixels for the current view (centre and span). */
   function toMap(x, z, view, cw) {
     return {
       x: cw / 2 + ((x - view.cx) / view.span) * cw,
@@ -81,6 +84,7 @@
     };
   }
 
+  /** Draw a marker dot at a world position, pinned to the map's edge when it is off the view. */
   function marker(ctx, m, view, cw) {
     const p = toMap(m.x, m.z, view, cw);
     const c = cw / 2;
@@ -101,6 +105,7 @@
     ctx.stroke();
   }
 
+  /** Draw the hero's arrow on the map, turned to their heading. */
   function heroArrow(ctx, cw, heading, view, hero) {
     const p = toMap(hero.x, hero.z, view, cw);
     ctx.save();

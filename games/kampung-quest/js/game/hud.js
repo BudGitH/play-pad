@@ -25,12 +25,17 @@
     node.textContent = text;
   }
 
+  /** Write a className to the DOM only when it changed (cheap per-frame updates). */
   function setClass(key, node, cls) {
     if (cache[key] === cls) return;
     cache[key] = cls;
     node.className = cls;
   }
 
+  /**
+   * Build one prayer chip (icon + name) in the status strip and register it in the refs for
+   * updates.
+   */
   function prayerItem(name) {
     const label = name.charAt(0).toUpperCase() + name.slice(1);
     const ic = U.el("span", { cls: "kq-pi-ic" }, P().icon("mosque"));
@@ -44,6 +49,10 @@
     return item;
   }
 
+  /**
+   * Build the clock + five-prayer status card (the first stop in the keyboard focus order after
+   * Talk).
+   */
   function buildStatus() {
     R.prayers = {};
     R.clock = U.el(
@@ -109,6 +118,7 @@
     return R.mission;
   }
 
+  /** Build one big dock button (icon + label) that reports its id to the click handler. */
   function dockButton(id, label, icon, on) {
     const b = U.el(
       "button",
@@ -126,6 +136,7 @@
     return b;
   }
 
+  /** Build the bottom dock (Missions, Map, Pray, Bag, Pause), with the missions badge. */
   function buildDock(on) {
     R.dockBtns = {};
     R.badge = U.el("i", { cls: "kq-badge", hidden: true, text: "" });
@@ -143,6 +154,7 @@
     return R.dock;
   }
 
+  /** SVG arc path for one side of the needs ring: the left arc is food, the right arc is energy. */
   function ringPath(side) {
     const cx = 70;
     const r = 62;
@@ -158,6 +170,10 @@
     return "M" + s[0] + " " + s[1] + " A" + r + " " + r + " 0 0 " + sweep + " " + e[0] + " " + e[1];
   }
 
+  /**
+   * Build the needs-ring SVG: a track and a value arc per side, drawn with pathLength 100 so fill
+   * is a percentage.
+   */
   function ringSvg() {
     const ns = "http://www.w3.org/2000/svg";
     const svg = document.createElementNS(ns, "svg");
@@ -180,6 +196,7 @@
     return svg;
   }
 
+  /** Build the minimap canvas wrapped in the needs ring, with food and energy number chips. */
   function buildMap(on) {
     R.canvas = U.el("canvas", { cls: "kq-minimap", width: "200", height: "200" });
     R.foodChip = U.el(
@@ -214,6 +231,7 @@
     return R.ring;
   }
 
+  /** Build the coins chip and the mute button at the top right. */
   function buildTopRight(on) {
     R.coins = U.el(
       "span",
@@ -238,6 +256,7 @@
     return R.topright;
   }
 
+  /** Build the touch controls: the joystick with its knob and the Run toggle. */
   function buildTouch(on) {
     R.knob = U.el("span", { cls: "kq-knob" });
     R.joy = U.el("div", { cls: "kq-joy", id: "kqJoy", "aria-hidden": "true" }, R.knob);
@@ -257,6 +276,7 @@
     return U.el("div", { cls: "kq-touch" }, R.joy, R.run);
   }
 
+  /** Build the keyboard hint strip (WASD, Shift, E, drag, Esc) shown to keyboard players. */
   function buildHints() {
     const k = (t) => U.el("kbd", { text: t });
     return U.el(
@@ -270,6 +290,7 @@
     );
   }
 
+  /** Build the floating Talk / interact button, hidden until something is within reach. */
   function buildTalk(on) {
     R.talkLabel = U.el("span", { cls: "kq-talk-label", text: "Talk" });
     R.talkKey = U.el("kbd", { text: "E" });
@@ -304,6 +325,7 @@
     return R;
   }
 
+  /** Build the dismissible 'Turn sideways for a wider view' chip shown in portrait. */
   function buildPortraitChip() {
     const chip = U.el(
       "button",

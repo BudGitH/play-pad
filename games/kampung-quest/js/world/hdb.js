@@ -77,6 +77,7 @@
     for (let i = 0; i < f.bays; i++) {
       const x = bayX(f, i);
       const zf = f.zw + s * 0.02;
+      if (rnd() < 0.4) B.plane("streak", x, y - 0.1, zo + s * 0.012, 2.2, 1.7, f.faceOut, null, 0xffffff);
       if (Math.abs(x - f.xc) < 2.8) continue;
       B.plane("window", x - 0.8, y + 0.95, zf, 1.0, 1.9, f.faceOut, f.win.uv(8 + Math.floor(rnd() * 4)));
       const key = rnd() < 0.38 ? "windowLit" : "window";
@@ -96,7 +97,11 @@
       [-0.95, 0.95].forEach((dx) => {
         const key = rnd() < 0.4 ? "windowLit" : "window";
         B.plane(key, x + dx, y + 1.35, zf, 1.25, 1.25, f.faceBack, f.win.uv(Math.floor(rnd() * 8)));
+        B.box("concrete", x + dx, y + 0.68, f.zb - s * 0.09, 1.45, 0.07, 0.18, 0xd5d1c8);
+        B.box("concrete", x + dx, y + 2.03, f.zb - s * 0.12, 1.5, 0.08, 0.26, 0xd5d1c8);
+        [-0.68, 0.68].forEach((o) => B.box("concrete", x + dx + o, y + 1.35, f.zb - s * 0.05, 0.08, 1.36, 0.1, 0xe0ddd6));
       });
+      if (rnd() < 0.55) B.plane("streak", x, y - 0.15, f.zb - s * 0.025, 1.3, 1.6, f.faceBack, null, 0xffffff);
       B.box("concrete", x, y + 0.6, f.zb - s * 0.35, 1.2, 0.08, 0.7, 0xd8d5ce);
       if (rnd() < 0.6) B.box("paint", x, y + 0.88, f.zb - s * 0.38, 0.8, 0.5, 0.45, 0xe9eaea);
       if (rnd() < 0.45) laundry(B, x + 0.95, y + 1.95, f.zb - s * 0.55, rnd);

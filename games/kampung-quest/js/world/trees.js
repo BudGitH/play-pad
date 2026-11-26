@@ -44,21 +44,42 @@
   function layout(trees) {
     const trunks = [];
     const blobs = [];
-    const greens = [0xffffff, 0xe4f0d0, 0xd2e6b8, 0xf0f6e4, 0xc8dca8];
+    const greens = [0xb8c8a8, 0xa8bc98, 0x9cb48c, 0xc0ccb0, 0x94a884];
     trees.forEach((t, i) => {
       const r = P.rng(i * 17 + 3);
       const s = t.s;
-      trunks.push({ x: t.x, y: 0, z: t.z, ry: r() * 6, sx: s, sy: s * (t.kind === "rain" ? 1 : 1.25), sz: s });
+      trunks.push({ x: t.x, y: 0, z: t.z, ry: r() * 6, color: 0x8f8274, sx: s, sy: s * (t.kind === "rain" ? 1 : 1.25), sz: s });
       const spread = (t.kind === "rain" ? 4.2 : 2.2) * s;
       const top = (t.kind === "rain" ? 5.6 : 5.0) * s;
       for (let k = 0; k < BLOBS; k++) {
         const a = (k / BLOBS) * Math.PI * 2 + r();
         const d = k === 0 ? 0 : spread * (0.45 + r() * 0.5);
-        const bs = (t.kind === "rain" ? 2.6 : 1.7) * s * (0.8 + r() * 0.4);
+        const bs = (t.kind === "rain" ? 2.3 : 1.5) * s * (0.8 + r() * 0.4);
         blobs.push({ x: t.x + Math.cos(a) * d, y: top + r() * 1.2 * s - d * 0.15, z: t.z + Math.sin(a) * d, ry: r() * 6, sx: bs * 1.2, sy: bs * 0.75, sz: bs * 1.2, color: greens[Math.floor(r() * greens.length)] });
       }
     });
-    return { trunks, blobs };
+    return { trunks, blobs, cards: cards(trees) };
+  }
+
+  /** Alpha leaf-cluster cards scattered through each canopy (breaks up the blob silhouette). */
+  function cards(trees) {
+    const out = [];
+    const tints = [0xd8e4c8, 0xc8d8b4, 0xe0e8d0, 0xbccca8];
+    trees.forEach((t, i) => {
+      const r = P.rng(i * 29 + 5);
+      const rain = t.kind === "rain";
+      const n = rain ? 110 : 48;
+      const spread = (rain ? 5.4 : 2.9) * t.s;
+      const top = (rain ? 6.0 : 5.3) * t.s;
+      for (let k = 0; k < n; k++) {
+        const a = r() * Math.PI * 2;
+        const d = (0.35 + 0.65 * Math.sqrt(r())) * spread;
+        const y = top + (r() - 0.35) * (rain ? 2.4 : 2.6) * t.s - (d / spread) * 0.9 * t.s;
+        const sz = (rain ? 2.0 : 1.5) * t.s * (0.7 + r() * 0.6);
+        out.push({ x: t.x + Math.cos(a) * d, y, z: t.z + Math.sin(a) * d, rot: [r() * 3, r() * 3, r() * 3], sx: sz, sy: sz, sz: 1, color: tints[Math.floor(r() * 4)] });
+      }
+    });
+    return out;
   }
 
   /** Build tree meshes and trunk colliders. */
@@ -68,7 +89,9 @@
     trunk.name = "treeTrunks";
     const canopy = P.instanced(blobGeo(), mats.leaf, lists.blobs);
     canopy.name = "treeCanopy";
-    group.add(trunk, canopy);
+    const leafCards = P.instanced(P.cached("card", () => new THREE.PlaneGeometry(1, 1)), mats.leafCard, lists.cards);
+    leafCards.name = "treeLeafCards";
+    group.add(trunk, canopy, leafCards);
     trees.forEach((t) => colliders.push({ minX: t.x - 0.45 * t.s, maxX: t.x + 0.45 * t.s, minZ: t.z - 0.45 * t.s, maxZ: t.z + 0.45 * t.s, kind: "tree" }));
     return { trunk, canopy };
   }
@@ -77,7 +100,8 @@
   function shrubs(group, mats, spots) {
     const list = spots.map((p, i) => {
       const r = P.rng(i * 7 + 1);
-      return { x: p.x, y: 0.35, z: p.z, ry: r() * 6, sx: 0.7 + r() * 0.4, sy: 0.55 + r() * 0.2, sz: 0.7 + r() * 0.4, color: r() < 0.5 ? 0xd8eac0 : 0xffffff };
+      const k = p.s || 1;
+      return { x: p.x, y: p.y || 0.35, z: p.z, ry: r() * 6, sx: (0.7 + r() * 0.4) * k, sy: (0.55 + r() * 0.2) * k, sz: (0.7 + r() * 0.4) * k, color: r() < 0.5 ? 0xd8eac0 : 0xffffff };
     });
     const im = P.instanced(blobGeo(), mats.leaf, list);
     im.name = "shrubs";

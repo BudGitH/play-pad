@@ -20,6 +20,8 @@
       fans.mesh.setMatrixAt(i, P.compose(f.x, f.y, f.z, f.ry + s.fanAngle, 1, 1, 1));
     });
     fans.mesh.instanceMatrix.needsUpdate = true;
+    s.time = (s.time || 0) + dt;
+    P.Clutter.animateSteam(s.ctx.steamSprites, s.time);
     const pole = s.areas.barber.pole.material.map;
     pole.offset.y = (pole.offset.y + dt * 0.35) % 1;
   }

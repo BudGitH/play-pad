@@ -71,9 +71,9 @@
     const list = [];
     for (let i = 0; i < 46; i++) {
       const a = (i / 46) * Math.PI * 2 + r() * 0.08;
-      const d = 150 + r() * 90;
-      const hgt = 26 + r() * 40;
-      list.push({ x: Math.cos(a) * d, y: hgt / 2, z: Math.sin(a) * d, ry: r() * 3, sx: 14 + r() * 18, sy: hgt, sz: 10 + r() * 8, color: r() < 0.5 ? 0xffffff : 0xe8e0d4 });
+      const d = 240 + r() * 100;
+      const hgt = 24 + r() * 40;
+      list.push({ x: Math.cos(a) * d, y: hgt / 2, z: Math.sin(a) * d, ry: r() * 3, sx: 14 + r() * 18, sy: hgt, sz: 10 + r() * 8, color: r() < 0.5 ? 0xaebbc6 : 0xc2c8cc });
     }
     const im = P.instanced(P.cached("skyBox", () => new THREE.BoxGeometry(1, 1, 1)), mats.skyline, list, { cast: false, receive: false });
     im.name = "skyline";

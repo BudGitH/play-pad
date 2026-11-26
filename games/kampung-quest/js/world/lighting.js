@@ -69,7 +69,7 @@
       night: 0, envMinute: -999, envRT: null, glow: [],
     };
     scene.add(rig.sky, rig.sun, rig.sun.target, rig.hemi);
-    scene.fog = new THREE.Fog(0xcfe0ee, 60, 260);
+    scene.fog = new THREE.Fog(0xcfe0ee, 70, 340);
     rig.pmrem = renderer ? new THREE.PMREMGenerator(renderer) : null;
     return rig;
   }
@@ -103,7 +103,7 @@
     rig.hemi.groundColor.copy(k.hemiGround).convertSRGBToLinear();
     rig.hemi.intensity = k.hemiI;
     rig.scene.fog.color.copy(k.horizon).lerp(k.zenith, 0.15);
-    rig.scene.fog.far = 260 - rig.night * 90;
+    rig.scene.fog.far = 340 - rig.night * 80;
     rig.glow.forEach((g) => (g.mat.emissiveIntensity = g.base * rig.night));
     placeSun(rig);
   }

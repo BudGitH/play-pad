@@ -41,7 +41,7 @@
 
   function surfaces() {
     return {
-      asphalt: photo("asphalt", 0.95, 0.8, {}),
+      asphalt: photo("asphalt", 1.0, 0.8, { envMapIntensity: 0.35 }),
       paving: photo("paving", 0.85, 0.7),
       plaster: photo("plaster", 0.88, 0.5),
       concrete: photo("concrete", 0.9, 0.6),
@@ -92,12 +92,27 @@
     };
   }
 
+  /** Detail-layer materials: grime/streak decals, leaf cards, distant skyline. */
+  function details() {
+    const P2 = P.Patterns2;
+    const decal = (map) => std({ map, transparent: true, depthWrite: false, roughness: 1, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 }, { cast: false });
+    const sky = P2.skyline();
+    sky.col.repeat.set(2, 3);
+    return {
+      grime: decal(P2.grime()),
+      streak: decal(P2.streaks()),
+      leafCard: std({ map: P2.leafCard(), alphaTest: 0.45, side: THREE.DoubleSide, roughness: 0.75 }),
+      skyline: std({ map: sky.col, emissiveMap: sky.glow, emissive: 0xffffff, emissiveIntensity: 0, roughness: 0.9 }, { cast: false }),
+    };
+  }
+
   /** Night-glow levels per material key (multiplied by the night factor). */
-  const GLOW = { windowLit: 1.25, sign: 0.75, lamp: 3.2, beacon: 2.0, dome: 0.55 };
+  const GLOW = { windowLit: 1.25, sign: 0.75, lamp: 3.2, beacon: 2.0, dome: 0.55, skyline: 0.9 };
 
   /** Build the whole catalogue once. */
   function create(pat, atlas) {
     const m = Object.assign(surfaces(), painted(pat), glowing(pat, atlas));
+    Object.assign(m, details());
     const carpetN = P.Tex.set("carpet").normalMap;
     m.carpet = new THREE.MeshStandardMaterial({ map: pat.carpet, normalMap: carpetN, roughness: 0.95 });
     m.carpet.userData.cast = false;

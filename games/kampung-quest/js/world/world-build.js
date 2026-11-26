@@ -71,8 +71,11 @@
     const inst = W.parts.buildInstanced(group, kit, ctx);
     kit.atlas.texture.needsUpdate = true;
     B.build(kit.mats, group);
+    const heightAt = W.parts.makeHeightAt(B.floors);
     const spots = ctx.lamps.map((p) => ({ x: p.x, z: p.z, s: 1 })).concat(ctx.pools);
-    group.add(lampPools(spots, W.parts.makeHeightAt(B.floors)));
+    group.add(lampPools(spots, heightAt));
+    P.Detail.contactShadows(group, ctx.colliders, heightAt, []);
+    ctx.steamSprites = P.Clutter.steam(group, ctx.steam || []);
     boundary(L, ctx.colliders);
     scene.add(group);
     const rig = P.Lighting.create(scene, opts.renderer, tier);

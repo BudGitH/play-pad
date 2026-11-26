@@ -9,9 +9,9 @@
   function carriageways(B, L) {
     const r = L.road.half;
     B.aabb("grass", -FAR * 1.4, -0.2, -FAR * 1.4, FAR * 1.4, 0, FAR * 1.4);
-    B.aabb("asphalt", -FAR, -0.2, -r, FAR, 0.01, r);
-    B.aabb("asphalt", -r, -0.2, -FAR, r, 0.012, -r);
-    B.aabb("asphalt", -r, -0.2, r, r, 0.012, FAR);
+    B.aabb("asphalt", -FAR, -0.2, -r, FAR, 0.01, r, 0x707070);
+    B.aabb("asphalt", -r, -0.2, -FAR, r, 0.012, -r, 0x707070);
+    B.aabb("asphalt", -r, -0.2, r, r, 0.012, FAR, 0x707070);
   }
 
   /** Sidewalk slabs and kerbs along both sides of both roads (corners shared). */

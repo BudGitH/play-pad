@@ -59,6 +59,7 @@
     <script src="../../../games/kampung-quest/js/world/textures.js"></script>
     <script src="../../../games/kampung-quest/js/world/canvas.js"></script>
     <script src="../../../games/kampung-quest/js/world/patterns.js"></script>
+    <script src="../../../games/kampung-quest/js/world/patterns2.js"></script>
     <script src="../../../games/kampung-quest/js/world/materials.js"></script>
     <script src="../../../games/kampung-quest/js/world/layout.js"></script>
     <script src="../../../games/kampung-quest/js/world/sky.js"></script>
@@ -75,6 +76,8 @@
     <script src="../../../games/kampung-quest/js/world/trees.js"></script>
     <script src="../../../games/kampung-quest/js/world/props.js"></script>
     <script src="../../../games/kampung-quest/js/world/town.js"></script>
+    <script src="../../../games/kampung-quest/js/world/detail.js"></script>
+    <script src="../../../games/kampung-quest/js/world/clutter.js"></script>
     <script src="../../../games/kampung-quest/js/world/nav.js"></script>
     <script src="../../../games/kampung-quest/js/world/world.js"></script>
     <script src="../../../games/kampung-quest/js/world/world-runtime.js"></script>
@@ -88,7 +91,7 @@
         const renderer = new THREE.WebGLRenderer({ canvas, antialias: tier !== "low", preserveDrawingBuffer: true });
         renderer.outputEncoding = THREE.sRGBEncoding;
         renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        renderer.toneMappingExposure = 1.0;
+        renderer.toneMappingExposure = 0.95;
         renderer.shadowMap.enabled = true;
         renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         const scene = new THREE.Scene();

@@ -2,9 +2,9 @@
    wires up lighting and returns the contract object:
    { pois, colliders, walkGraph, interactables, lights, update(dt, clock), setQuality(tier),
      setShadowTarget(v), heightAt(x, z), group, qualityHints(tier), dispose() }.
-   Script order: geo, textures, canvas, patterns, materials, layout, sky, lighting, roads, hdb,
-   hawker, mosque, mosque-shell, mosque-yard, mosque-inside, shops, services, trees, props,
-   town, nav, world. */
+   Script order: geo, textures, canvas, patterns, patterns2, materials, layout, sky, lighting,
+   roads, hdb, hawker, mosque, mosque-shell, mosque-yard, mosque-inside, shops, services, trees,
+   props, town, detail, clutter, nav, world, world-runtime, world-build. */
 (function (KQ) {
   "use strict";
   const P = KQ.WorldParts;
@@ -45,13 +45,21 @@
     P.Town.plazas(B);
     P.Town.carpark(B, L.carpark);
     P.Town.park(B, L.park, ctx);
+    P.Detail.roadWear(B, L);
+    ctx.potSpots = [];
+    P.Clutter.pots(B, ctx.colliders, ctx.potSpots);
+    P.Clutter.bollards(B, ctx.colliders);
+    P.Clutter.hedges(B, ctx.colliders);
     return { blocks, hawker, mosque, mart, barber, clinic, library, bins };
   }
 
   /** Instanced vegetation, furniture and cars. */
   function buildInstanced(group, kit, ctx) {
     const trees = P.Trees.build(group, kit.mats, P.Town.treeList(), ctx.colliders);
-    const shrubs = P.Trees.shrubs(group, kit.mats, P.Town.shrubSpots());
+    const potPlants = ctx.potSpots.map((p) => ({ x: p.x, z: p.z, y: 1.0, s: 0.75 }));
+    const shrubs = P.Trees.shrubs(group, kit.mats, potPlants.concat(P.Town.shrubSpots()));
+    P.Clutter.vehicles(group, kit.mats, ctx.colliders);
+    P.Detail.skyline(group, kit.mats);
     P.Trees.tables(group, kit.mats, ctx.tables, ctx.colliders);
     P.Town.cars(group, kit.mats, ctx.colliders);
     return { trees, shrubs };

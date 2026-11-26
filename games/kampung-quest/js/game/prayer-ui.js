@@ -71,7 +71,7 @@
     );
     if (!compact.matches) return;
     host.collapseTimer = setTimeout(function () {
-      if (!host.el.hidden) host.el.classList.add("is-bar");
+      if (!host.el.hidden) G.PrayerFlow.collapse();
     }, COLLAPSE_MS);
   }
 

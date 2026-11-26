@@ -188,12 +188,17 @@
     );
   }
 
-  function showWay() {
-    F.guide = true;
-    F.guideT = 0;
+  /** The phone auto-collapse shrank the card to its pill: drop the camera lift with it. */
+  function collapse() {
     F.expanded = false;
     if (F.card) F.card.el.classList.add("is-bar");
     liftHero(0);
+  }
+
+  function showWay() {
+    F.guide = true;
+    F.guideT = 0;
+    collapse();
     computeGuide();
     G.Audio.play("tap");
     G.UI.toast("Follow the green footprints to the mosque.", "good");
@@ -592,6 +597,7 @@
     atHall,
     openDayCard,
     showWay,
+    collapse,
     resume,
     refit,
     restoreDue,

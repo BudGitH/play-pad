@@ -1,0 +1,340 @@
+// AC-11, AC-12: missions are data-driven, child-friendly, completable, and pause during prayer.
+import test from "node:test";
+import assert from "node:assert/strict";
+import { loadSim, FIXTURE_TIMES, plain, mins } from "./load-sim.mjs";
+
+const KQ = loadSim();
+const { Missions, MISSIONS, STICKERS, CHAT, POI_IDS, NPC_IDS, Prayer, SALAM } = { ...KQ.Sim };
+const POI_STEPS = ["goto", "buy", "collect"];
+const NPC_STEPS = ["talk", "deliver"];
+
+/** Build the world events that complete one mission, in order. */
+function eventsFor(mission) {
+  const events = [];
+  for (const step of mission.steps) {
+    const count = step.count || 1;
+    for (let i = 0; i < count; i += 1)
+      events.push({ type: step.type, target: step.target, item: step.item });
+  }
+  return events;
+}
+
+function runAll(missions, mission) {
+  let last = null;
+  for (const event of eventsFor(mission)) last = missions.notify(event);
+  return last;
+}
+
+test("there are at least 10 missions with unique ids", () => {
+  assert.ok(MISSIONS.length >= 10);
+  assert.equal(new Set(MISSIONS.map((m) => m.id)).size, MISSIONS.length);
+});
+
+test("missions only use contract POI / NPC ids and valid step types", () => {
+  for (const mission of MISSIONS) {
+    assert.ok(NPC_IDS.includes(mission.giver), mission.id + " giver");
+    assert.ok(mission.steps.length >= 2, mission.id);
+    for (const step of mission.steps) {
+      if (POI_STEPS.includes(step.type))
+        assert.ok(POI_IDS.includes(step.target), mission.id + ":" + step.target);
+      else if (NPC_STEPS.includes(step.type))
+        assert.ok(NPC_IDS.includes(step.target), mission.id + ":" + step.target);
+      else assert.fail(mission.id + " unknown step type " + step.type);
+      assert.ok(step.label.length > 3, mission.id);
+      assert.ok(
+        step.count === undefined ||
+          (Number.isInteger(step.count) && step.count >= 1 && step.count <= 10),
+        mission.id,
+      );
+    }
+  }
+});
+
+test("missions carry titles, Malay titles, dialogue lines and a reward", () => {
+  const stickerIds = STICKERS.map((s) => s.id);
+  for (const m of MISSIONS) {
+    assert.ok(m.title && m.titleMs, m.id);
+    for (const key of ["intro", "reminder", "thanks"]) {
+      assert.ok(Array.isArray(m[key]) && m[key].length >= 1, m.id + " " + key);
+      assert.ok(
+        m[key].every((line) => typeof line === "string" && line.length > 5),
+        m.id + " " + key,
+      );
+    }
+    assert.ok(Number.isInteger(m.reward.coins) && m.reward.coins >= 1, m.id);
+    assert.ok(
+      m.reward.stickers.length >= 1 && m.reward.stickers.every((id) => stickerIds.includes(id)),
+      m.id,
+    );
+  }
+});
+
+test("AC-11 themes exist: errand, elder's groceries, lost cat, recycling, kuih, playground, salam to imam", () => {
+  const ids = MISSIONS.map((m) => m.id);
+  for (const id of [
+    "prata_for_nenek",
+    "groceries_for_atuk",
+    "lost_cat",
+    "recycling_hero",
+    "kuih_delivery",
+    "clean_playground",
+    "salam_to_imam",
+  ]) {
+    assert.ok(ids.includes(id), id);
+  }
+  const imam = MISSIONS.find((m) => m.id === "salam_to_imam");
+  assert.ok(imam.steps.some((s) => s.target === "imam_hakim"));
+});
+
+test("all text is child-friendly: no violence, crime, gambling, alcohol or pork", () => {
+  const text = JSON.stringify([MISSIONS, CHAT, STICKERS]);
+  assert.doesNotMatch(
+    text,
+    /\b(kill|fight|weapon|gun|knife|steal|stole|theft|crime|police|gambl|bet\b|casino|beer|wine|alcohol|pork|bacon|blood|die\b|dead)/i,
+  );
+});
+
+test("dialogue includes Malay greetings: Assalamualaikum / Waalaikumsalam", () => {
+  const text = JSON.stringify(MISSIONS);
+  assert.match(text, /Assalamualaikum/);
+  assert.match(text, /Waalaikumsalam/);
+  assert.equal(SALAM.greet, "Assalamualaikum!");
+  assert.equal(SALAM.reply, "Waalaikumsalam!");
+});
+
+test("every NPC has chat lines; Muslim neighbours greet with salam, others are friendly", () => {
+  for (const id of NPC_IDS) {
+    assert.ok(CHAT[id] && CHAT[id].length >= 2, id);
+    assert.ok(Missions.chatLine(id, 0).length > 3);
+    assert.notEqual(Missions.chatLine(id, 0), Missions.chatLine(id, 1));
+  }
+  assert.match(Missions.chatLine("imam_hakim", 0), /salam/i);
+  assert.equal(Missions.chatLine("nobody", 0), "Assalamualaikum!");
+  assert.ok(Missions.chatLine("nenek", -7).length > 3);
+  assert.ok(Missions.chatLine("nenek", NaN).length > 3);
+});
+
+test("a fresh tracker offers every mission and nothing is active", () => {
+  const missions = Missions.create();
+  assert.equal(missions.available().length, MISSIONS.length);
+  assert.equal(missions.active(), null);
+  assert.equal(missions.progress(), null);
+  assert.equal(missions.available()[0].id, "prata_for_nenek", "the coach-line mission comes first");
+});
+
+test("accept -> active -> step progress -> complete with reward", () => {
+  const missions = Missions.create();
+  const accepted = missions.accept("prata_for_nenek");
+  assert.equal(accepted.ok, true);
+  assert.ok(accepted.lines.length >= 1);
+  assert.equal(missions.active().id, "prata_for_nenek");
+  assert.equal(missions.progress().type, "buy");
+  assert.equal(missions.progress().markerKind, "poi");
+  const bought = missions.notify({ type: "buy", target: "stall_prata", item: "roti_prata" });
+  assert.equal(bought.stepDone, true);
+  assert.equal(missions.progress().stepIndex, 1);
+  assert.equal(missions.progress().markerKind, "npc");
+  const done = missions.notify({ type: "deliver", target: "nenek", item: "roti_prata" });
+  assert.equal(done.completed, true);
+  assert.equal(done.reward.coins, 5);
+  assert.deepEqual(plain(done.reward.stickers), ["sticker_prata"]);
+  assert.equal(missions.active(), null);
+  assert.deepEqual(plain(missions.completed()), ["prata_for_nenek"]);
+  assert.deepEqual(plain(missions.stickers()), ["sticker_prata"]);
+});
+
+test("every mission is completable from its own step list", () => {
+  for (const mission of MISSIONS) {
+    const missions = Missions.create();
+    assert.equal(missions.accept(mission.id).ok, true, mission.id);
+    const last = runAll(missions, mission);
+    assert.equal(last.completed, true, mission.id);
+    assert.equal(missions.active(), null);
+  }
+});
+
+test("all missions can be completed in one playthrough; stickers collect without duplicates", () => {
+  const missions = Missions.create();
+  for (const mission of MISSIONS) {
+    assert.equal(missions.accept(mission.id).ok, true, mission.id);
+    runAll(missions, mission);
+  }
+  assert.equal(missions.completed().length, MISSIONS.length);
+  assert.equal(missions.available().length, 0);
+  assert.equal(new Set(missions.stickers()).size, missions.stickers().length);
+});
+
+test("wrong or out-of-order events change nothing", () => {
+  const missions = Missions.create();
+  missions.accept("prata_for_nenek");
+  assert.equal(
+    missions.notify({ type: "deliver", target: "nenek" }).changed,
+    false,
+    "deliver before buy",
+  );
+  assert.equal(missions.notify({ type: "buy", target: "stall_satay" }).changed, false);
+  assert.equal(missions.notify({ type: "goto", target: "stall_prata" }).changed, false);
+  assert.equal(
+    missions.notify({ type: "buy", target: "stall_prata", item: "murtabak" }).changed,
+    false,
+    "wrong dish",
+  );
+  for (const junk of [null, undefined, {}, "buy", 5])
+    assert.equal(missions.notify(junk).changed, false);
+  assert.equal(missions.progress().stepIndex, 0);
+  assert.equal(
+    missions.notify({ type: "buy", target: "stall_prata" }).changed,
+    true,
+    "no item given still counts",
+  );
+});
+
+test("collect steps count up and respect the event count", () => {
+  const missions = Missions.create();
+  missions.accept("recycling_hero");
+  const first = missions.notify({ type: "collect", target: "park", item: "can" });
+  assert.equal(first.changed, true);
+  assert.equal(first.stepDone, false);
+  assert.equal(missions.progress().count, 1);
+  assert.equal(missions.progress().need, 3);
+  assert.equal(
+    missions.notify({ type: "collect", target: "park", count: 5 }).stepDone,
+    true,
+    "over-count is capped",
+  );
+  assert.equal(missions.progress().stepIndex, 1);
+  assert.equal(missions.progress().count, 0);
+});
+
+test("only one mission at a time; completed missions cannot be re-accepted; unknown ids refused", () => {
+  const missions = Missions.create();
+  assert.equal(missions.accept("lost_cat").ok, true);
+  const second = missions.accept("salam_to_imam");
+  assert.equal(second.ok, false);
+  assert.match(second.hint, /current mission/);
+  assert.equal(missions.accept("nope").ok, false);
+  assert.equal(missions.accept(undefined).ok, false);
+  runAll(
+    missions,
+    MISSIONS.find((m) => m.id === "lost_cat"),
+  );
+  assert.match(missions.accept("lost_cat").hint, /already did/);
+});
+
+test("abandon returns the mission to the available list with fresh progress", () => {
+  const missions = Missions.create();
+  missions.accept("lost_cat");
+  missions.notify({ type: "goto", target: "park" });
+  assert.equal(missions.abandon(), true);
+  assert.equal(missions.abandon(), false);
+  assert.ok(missions.available().some((m) => m.id === "lost_cat"));
+  missions.accept("lost_cat");
+  assert.equal(missions.progress().stepIndex, 0);
+});
+
+test("paused: accepting AND progressing both stop, the active mission is kept, resume continues", () => {
+  const missions = Missions.create();
+  missions.accept("lost_cat");
+  missions.notify({ type: "goto", target: "park" });
+  missions.setPaused(true);
+  assert.equal(missions.isPausedNow(), true);
+  assert.equal(missions.notify({ type: "goto", target: "playground" }).changed, false);
+  assert.equal(missions.progress().stepIndex, 1, "no progress while paused");
+  assert.equal(missions.progress().paused, true);
+  assert.equal(missions.active().id, "lost_cat", "mission kept");
+  const other = Missions.create({ paused: true });
+  const refused = other.accept("prata_for_nenek");
+  assert.equal(refused.ok, false);
+  assert.match(refused.hint, /pray/);
+  missions.setPaused(false);
+  assert.equal(missions.notify({ type: "goto", target: "playground" }).stepDone, true);
+});
+
+test("isPaused callback is polled live (wired to the prayer tracker)", () => {
+  const prayer = Prayer.create(FIXTURE_TIMES);
+  prayer.update(mins("07:00"), 1);
+  const missions = Missions.create({ isPaused: () => prayer.isBlockingMissions() });
+  missions.accept("lost_cat");
+  assert.equal(missions.notify({ type: "goto", target: "park" }).changed, true);
+  prayer.update(mins("13:00"), 1);
+  assert.equal(
+    missions.notify({ type: "goto", target: "playground" }).changed,
+    false,
+    "Zohor is due",
+  );
+  prayer.startFlow("zohor");
+  assert.equal(missions.isPausedNow(), true, "still paused while praying");
+  prayer.update(mins("16:30"), 1);
+  assert.equal(missions.isPausedNow(), true, "Asar is due and Zohor is still in progress");
+});
+
+test("a qada prayer does not pause missions (only due / in-progress do)", () => {
+  const prayer = Prayer.create(FIXTURE_TIMES);
+  prayer.update(mins("07:00"), 1);
+  prayer.update(mins("13:00"), 1);
+  prayer.update(mins("16:29"), 1);
+  prayer.update(mins("16:31"), 1);
+  prayer.startFlow("asar");
+  for (const step of prayer.state().flow ? Prayer.WUDU_STEPS : []) prayer.wuduStep(step.id);
+  for (const step of Prayer.rakaatPlan("asar")) if (!step.optional) prayer.prayStep(step.id);
+  const missions = Missions.create({ isPaused: () => prayer.isBlockingMissions() });
+  assert.equal(prayer.state().qada.length, 1, "Zohor is qada");
+  assert.equal(missions.accept("lost_cat").ok, true);
+  assert.equal(missions.notify({ type: "goto", target: "park" }).changed, true);
+});
+
+test("snapshot / restore round-trips active step, count, completed and stickers", () => {
+  const missions = Missions.create();
+  missions.accept("prata_for_nenek");
+  runAll(missions, MISSIONS[0]);
+  missions.accept("recycling_hero");
+  missions.notify({ type: "collect", target: "park" });
+  const saved = plain(missions.snapshot());
+  const copy = Missions.create();
+  copy.restore(saved);
+  assert.deepEqual(plain(copy.snapshot()), saved);
+  assert.equal(copy.progress().count, 1);
+});
+
+test("restore() drops unknown ids, clamps steps, de-duplicates and survives junk", () => {
+  const missions = Missions.create();
+  missions.restore({
+    active: { id: "recycling_hero", step: 99, count: 500 },
+    completed: ["lost_cat", "lost_cat", "made_up", 7, null],
+    stickers: ["sticker_cat", "sticker_cat", "sticker_evil", {}],
+  });
+  assert.deepEqual(plain(missions.completed()), ["lost_cat"]);
+  assert.deepEqual(plain(missions.stickers()), ["sticker_cat"]);
+  assert.equal(missions.progress().stepIndex, 2, "clamped to the last step");
+  for (const junk of [
+    null,
+    undefined,
+    3,
+    "x",
+    [],
+    { active: "lost_cat" },
+    { active: { id: "nope" } },
+  ]) {
+    missions.restore(junk);
+    assert.equal(missions.active(), null);
+    assert.deepEqual(plain(missions.completed()), []);
+  }
+});
+
+test("a restored active mission that is already completed is dropped", () => {
+  const missions = Missions.create();
+  missions.restore({ active: { id: "lost_cat", step: 0, count: 0 }, completed: ["lost_cat"] });
+  assert.equal(missions.active(), null);
+});
+
+test("grantSticker only accepts known stickers, once; prayer stars exist", () => {
+  const missions = Missions.create();
+  assert.equal(missions.grantSticker(Missions.prayerSticker("zohor")), true);
+  assert.equal(missions.grantSticker("prayer_zohor"), false);
+  assert.equal(missions.grantSticker("sticker_hax"), false);
+  for (const name of Prayer.NAMES)
+    assert.ok(
+      STICKERS.some((s) => s.id === "prayer_" + name),
+      name,
+    );
+});

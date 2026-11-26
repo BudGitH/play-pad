@@ -10,6 +10,7 @@
     "check": "npm run lint && npm run ratchet && npm run format:check",
     "secrets": "node tools/secret-scan.mjs",
     "smoke": "playwright test",
+    "test:kq": "node --test \"tests/kampung-quest/*.test.mjs\"",
     "ratchet": "node tools/lint-ratchet.mjs"
   },
   "devDependencies": {

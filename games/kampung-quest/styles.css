@@ -764,6 +764,7 @@ kbd {
   font-weight: 700;
   text-align: center;
   animation: kq-toast-in 0.25s ease-out;
+  flex-shrink: 0;
 }
 .kq-toast.good {
   border-color: #1f9d4a;
@@ -1654,9 +1655,10 @@ kbd {
     box-shadow: 0 0 0 6px rgba(255, 107, 133, 0);
   }
 }
+/* Fade + slight scale (never a slide): a slide-in briefly overlapped the toast above (gap 6 px). */
 @keyframes kq-toast-in {
   from {
-    transform: translateY(-8px);
+    transform: scale(0.96);
     opacity: 0;
   }
   to {

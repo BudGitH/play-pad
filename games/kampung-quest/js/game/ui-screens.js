@@ -362,7 +362,14 @@
       G.UI.header("Paused", { close: false }),
       U.el("div", { cls: "kq-pause-grid" }, pauseButtons(ctx), right),
     );
-    return G.UI.openSheet({ el: box, label: "Paused", onClose: ctx.onClose, focus: ".kq-big" });
+    // a stray tap outside must not resume the game: Pause closes from its Resume button (or Esc)
+    return G.UI.openSheet({
+      el: box,
+      label: "Paused",
+      onClose: ctx.onClose,
+      focus: ".kq-big",
+      dismissible: false,
+    });
   }
 
   G.Screens = { missions, bag, map, howTo, pause, credits, dayStrip };

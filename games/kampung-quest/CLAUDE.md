@@ -49,16 +49,17 @@ State lives in one object, `KQ.Game.S` (created in `boot.js`). The pure sim obje
 - **Quality:** coarse pointers and software GL (SwiftShader / llvmpipe) start on `low`; pixel ratio is capped at 1.5 on touch devices; the loop drops one tier after ~3 s under 40 fps (`Loop.monitor`).
 - **Audio on iOS:** `Audio.unlock()` runs on Start and on later touches (resumes a suspended context after returning to the tab); the azan `<audio>` element is created at Start and primed with a silent play+pause inside that gesture. It is NOT created at load (an idle media request keeps the page from ever being "network idle").
 - **Prayer panels:** a side panel when the viewport is >= 700 x 340 (the hero stays centred in the rest via `Camera.setShift`), a bottom sheet otherwise. `PrayerFlow.refit()` re-frames / switches the panel on rotation or resize.
+- **Phone "lite" HUD:** on phones the status card (clock + icon-only prayer strip, only the due prayer named) and the mission card (one-line chip) fold; a tap opens them, a new mission step peeks for 7 s (`HudLayout.toggle/peek`). In phone landscape the azan card sits in the band above the dock; Talk (z 9) stays above it. Toasts are held while a modal sheet is open. Sheets close on a backdrop tap, except Pause.
 - `tests/kampung-quest-mobile.spec.mjs` drives an emulated iPhone 13 (landscape) and Pixel 7 with raw CDP touches.
 
 ## Test hooks (`window.__kq`)
 
-`ready` (game running), `loaded` (assets ready, Start enabled), `state()`, `step(ms)`, `setMinute(m)`, `teleport(poiId)`, `place(x, z, yaw)`, `interact()`, `action(name)`, `input(action, on)`, `forcePrayer(name)`, `freeze(bool)`, `stats()` (`fps`, `frames`, `calls`, `tris`), `npc(id)`, `start(fresh)`. URL flags: `?q=low|med|high`, `?autoq=0` (no auto-downgrade), `?still` (no rAF loop; drive with `step`).
+`ready` (game running), `loaded` (assets ready, Start enabled), `state()`, `step(ms)`, `setMinute(m)`, `teleport(poiId)`, `place(x, z, yaw)`, `interact()`, `action(name)`, `input(action, on)`, `forcePrayer(name)`, `freeze(bool)`, `stats()` (`fps`, `frames`, `calls` incl. shadows, `tris`, `programs`), `npc(id)`, `start(fresh)`. URL flags: `?q=low|med|high`, `?autoq=0` (no auto-downgrade), `?still` (no rAF loop; drive with `step`).
 
 ## How to run and test
 
 - Run: `node tools/serve.mjs 5599` then open `/games/kampung-quest/`, or open `index.html` from disk (`file://`: photo textures are drawn in code).
-- `npm run test:kq` (sim unit tests, in CI), `npm run smoke` (all browser specs incl. `tests/kampung-quest-ac.spec.mjs` and `tests/kampung-quest-mobile.spec.mjs`, minus `@slow`), `npm run perf:kq` (the 4x-throttled CPU frame probe), `npx eslint games/kampung-quest tests`.
+- `npm run test:kq` (sim unit tests, in CI), `npm run smoke` (all browser specs incl. `tests/kampung-quest-ac.spec.mjs` and `tests/kampung-quest-mobile.spec.mjs`, minus `@slow`), `npm run smoke:core` / `smoke:kq` / `smoke:kq:ac` / `smoke:kq:mobile` (CI runs core and the two kq legs as separate jobs), `npm run perf:kq` (the 4x-throttled CPU frame probe; runs in `probes.yml`), `npx eslint games/kampung-quest tests`.
 - **Interact priority:** an NPC with mission business beats a service counter (`KQ.Sim.Missions.pickTarget`); after talking, the counter wins again until the hero walks 4.5 m away.
 - **Saves** carry a `rev`; a stale tab is refused (`storage` listener toasts it). A tracker ahead of the clock is rebuilt (`Prayer.update`).
 - **Perf:** `stats().calls` includes the shadow pass; static batches are split into 72 m ground cells; the low tier keeps 3 point lights and only the hero + 3 nearest NPCs cast shadows; `boot.js` precompiles every tier's shaders behind the loading screen.

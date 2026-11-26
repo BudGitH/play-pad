@@ -145,7 +145,7 @@
     G.Menus.card({
       title: "Dr Nurul's clinic",
       paragraphs: [
-        "Waalaikumsalam! Come in. Let's give you a friendly check-up: open wide, say aaah, and breathe in and out.",
+        "Assalamualaikum! Come in. Let's give you a friendly check-up: open wide, say aaah, and breathe in and out.",
         "Everything looks good. A little rest and plenty of water will make you strong!",
       ],
       buttons: [

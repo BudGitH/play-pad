@@ -536,9 +536,14 @@
     F.pending = true;
   }
 
+  /** Root classes for the CSS: `kq-azan-bar` (the pill is up) and `kq-azan-full` (the whole card is up). */
   function syncBarClass() {
-    const bar = Boolean(F.card && !F.card.el.hidden && F.card.el.classList.contains("is-bar"));
+    const shown = Boolean(F.card && !F.card.el.hidden);
+    const bar = shown && F.card.el.classList.contains("is-bar");
     S().root.classList.toggle("kq-azan-bar", bar);
+    const wasFull = S().root.classList.contains("kq-azan-full");
+    S().root.classList.toggle("kq-azan-full", shown && !bar);
+    if (wasFull && !(shown && !bar)) G.UI.releaseToasts();
   }
 
   /** After a resize or rotation: switch the prayer panel between side and bottom, then re-frame. */

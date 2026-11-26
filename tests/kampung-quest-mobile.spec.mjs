@@ -3,8 +3,11 @@
 // Uses Playwright's device descriptors (isMobile + hasTouch, default device scale factor) and raw touch
 // events over CDP, because page.touchscreen can only tap. Run: npm run smoke
 // The HUD layout block (bottom of the file) checks, on every phone / tablet / desktop size, that no HUD
-// box covers another, that toasts and the Talk button stay clear of the HUD, and that the azan card
-// stays off the controls; plus the 48 px rule (pause dialog too), contrast, announcements and focus.
+// box covers another, that toasts and the Talk button stay clear of the HUD, that the azan card / pill
+// never covers the Talk button (a hit-test, A11Y2-01), that every sheet's Close button is on screen and
+// a tap on the backdrop closes it (A11Y2-02), that toasts stay off an open sheet (A11Y2-05), that the
+// pause dialog's controls fit (A11Y2-09) and that the wudu tiles are >= 48 px wide (A11Y2-03); plus the
+// 48 px rule, contrast, announcements and focus.
 import { test, expect, devices } from "@playwright/test";
 
 /** A device descriptor without `defaultBrowserType` (only Chromium is installed; the engine is the same). */
@@ -121,7 +124,7 @@ async function checkTalkAndDock(page) {
   await expect(page.locator("#kqTalk")).toBeVisible();
   await page.locator("#kqTalk").tap();
   await expect(page.getByRole("dialog", { name: /Talking to Nenek/ })).toBeVisible();
-  await page.getByRole("button", { name: "Next" }).tap();
+  await page.getByRole("button", { name: "Next", exact: true }).tap();
   await page.getByRole("button", { name: /Waalaikumsalam/ }).tap();
   expect(await kq(page, () => window.__kq.state().mission?.id)).toBe("prata_for_nenek");
   await page.locator("#kqDock-missions").tap();
@@ -208,7 +211,7 @@ for (const name of ["iPad Mini", "iPad Mini landscape", "iPhone 13", "Pixel 7 la
 // HUD layout, accessibility and credits, on every size the game must work on.
 // ---------------------------------------------------------------------------------------------
 
-/** [name, width, height, touch]. 568x320 is the smallest phone-landscape the HUD is laid out for. */
+/** [name, width, height, touch]. 568x280 is the shortest phone-landscape, 320x568 the narrowest portrait. */
 const SIZES = [
   ["iphone13-portrait", 390, 844, true],
   ["iphone13-landscape", 844, 390, true],
@@ -219,7 +222,11 @@ const SIZES = [
   ["ipad-landscape", 1180, 820, true],
   ["desktop", 1280, 720, false],
   ["narrow-phone", 360, 740, true],
+  ["android-portrait-360", 360, 640, true],
+  ["small-phone-portrait-320", 320, 568, true],
   ["small-phone-landscape", 568, 320, true],
+  ["short-phone-landscape", 568, 280, true],
+  ["short-phone-landscape-wide", 667, 280, true],
 ];
 
 /** Boxes of every visible HUD piece that must not cover another (the outermost ones). */
@@ -242,7 +249,7 @@ function hudBoxes(page) {
       return r.width > 0 && r.height > 0 && getComputedStyle(e).visibility !== "hidden";
     });
     return list
-      .filter((e) => !list.some((o) => o !== e && o.contains(e) && !o.matches(".kq-mission")))
+      .filter((e) => !list.some((o) => o !== e && o.contains(e)))
       .map((e) => {
         const r = e.getBoundingClientRect();
         return { name: name(e), x: r.left, y: r.top, r: r.right, b: r.bottom };
@@ -305,6 +312,9 @@ function standByNenek(page, metres) {
 const toast = (page, text) =>
   kq(page, (t) => (window.KQ.Game.UI.toast(t, "good", 60_000), window.__kq.step(100)), text);
 
+/** The longest toast the game shows (the qada hint): the worst case for a narrow toast lane. */
+const LONG_TOAST = "Zohor time has passed. You can make it up (qada) any time. No rush.";
+
 /** A11Y-06: the five prayers (icons and labels) sit inside the status card. */
 async function expectPrayerStripInCard(page) {
   const out = await kq(page, () => {
@@ -336,6 +346,180 @@ async function expectNoTinyText(page) {
   expect(tiny, "text under 12 px").toEqual([]);
 }
 
+/** True when the phone ("lite") HUD is on: short landscape or narrow portrait (same query as styles.css). */
+const isCompact = (page) =>
+  kq(
+    page,
+    () =>
+      window.matchMedia("(max-height: 520px), (orientation: portrait) and (max-width: 700px)")
+        .matches,
+  );
+
+/** A11Y2-04: the status card and the mission chip fold; a tap opens each, and nothing then overlaps. */
+async function checkFoldingCards(page) {
+  if (!(await isCompact(page))) return;
+  for (const [sel, label] of [
+    ["#kqMission", "mission"],
+    ["#kqStatus", "status"],
+  ]) {
+    await page.locator(sel).click();
+    await expect(page.locator(sel), `${label} opens on a tap`).toHaveClass(/is-open/);
+    await kq(page, () => window.__kq.step(100));
+    await expectHudClear(page, `${label} card open`);
+    await expectPrayerStripInCard(page);
+    await page.locator(sel).click();
+    await expect(page.locator(sel), `${label} folds on a second tap`).not.toHaveClass(/is-open/);
+  }
+}
+
+/** The centre and four inset points of `sel` all land on `sel` itself: nothing covers it (a hit-test). */
+async function expectNotCovered(page, sel, label) {
+  const hits = await kq(
+    page,
+    (q) => {
+      const el = document.querySelector(q);
+      const r = el.getBoundingClientRect();
+      return [
+        [0.5, 0.5],
+        [0.2, 0.2],
+        [0.8, 0.2],
+        [0.2, 0.8],
+        [0.8, 0.8],
+      ].map(([fx, fy]) => {
+        const top = document.elementFromPoint(r.left + r.width * fx, r.top + r.height * fy);
+        return el.contains(top) ? "ok" : (top && (top.id || top.className.toString())) || "nothing";
+      });
+    },
+    sel,
+  );
+  expect(hits, `${label}: ${sel} is covered`).toEqual(["ok", "ok", "ok", "ok", "ok"]);
+}
+
+/**
+ * Show the azan with the hero at the wudu taps (so the primary "Take wudu" Talk button is up).
+ * The setMinute hook can drop the card when the free-running loop has moved the clock a few seconds past
+ * the target (QA ACC2-01, in hooks.js), so retry from a minute earlier instead of failing the layout test.
+ */
+async function showAzanAtWudu(page) {
+  await kq(page, () => window.__kq.teleport("mosque_wudu"));
+  for (let i = 0; i < 4; i += 1) {
+    await kq(
+      page,
+      (n) => {
+        window.__kq.setMinute(773 - n);
+        window.__kq.setMinute(774);
+        window.__kq.step(1500);
+      },
+      i,
+    );
+    if (await kq(page, () => window.__kq.state().ui.azanCard)) break;
+  }
+  await expect(page.locator("#kqAzan")).toBeVisible();
+  await expect(page.locator("#kqTalk")).toBeVisible();
+}
+
+/** A11Y2-01 / 08: the azan card and then its pill never cover or touch the Talk button or any HUD box. */
+async function checkAzan(page) {
+  await showAzanAtWudu(page);
+  await toast(page, "Nenek is waiting by your block. Walk to her and press Talk.");
+  await expectHudClear(page, "azan card + toast + Talk");
+  await expectNotCovered(page, "#kqTalk", "azan card");
+  await kq(page, () => window.KQ.Game.PrayerFlow.collapse());
+  await kq(page, () => window.__kq.step(300));
+  await expect(page.locator("#kqAzan")).toHaveClass(/is-bar/);
+  await expectHudClear(page, "azan pill + toast + Talk");
+  await expectNotCovered(page, "#kqTalk", "azan pill");
+}
+
+/** Every button of the open sheet is on screen; Close is not clipped by the sheet and nothing covers it. */
+async function expectSheetOnScreen(page, label) {
+  const bad = await kq(page, () => {
+    const box = document.querySelector(".kq-sheet-box");
+    const bx = box.getBoundingClientRect();
+    const out = [];
+    box.querySelectorAll("button").forEach((b) => {
+      const r = b.getBoundingClientRect();
+      if (r.width === 0) return;
+      const off = r.left < -0.5 || r.top < -0.5 || r.right > innerWidth + 0.5;
+      const clipped = r.left < bx.left - 0.5 || r.right > bx.right + 0.5;
+      if (off || clipped) out.push((b.getAttribute("aria-label") || b.textContent).slice(0, 20));
+    });
+    if (box.scrollWidth > box.clientWidth + 1) out.push("sheet scrolls sideways");
+    return out;
+  });
+  expect(bad, `${label}: sheet controls off screen`).toEqual([]);
+  const close = page.getByRole("dialog").getByRole("button", { name: "Close" });
+  if (await close.count())
+    await expectNotCovered(page, ".kq-sheet-box button[aria-label=Close]", label);
+}
+
+const modalName = (page) => kq(page, () => window.__kq.state().ui.modal);
+
+/** A11Y2-02: each sheet's Close is reachable, and a tap on the dimmed backdrop closes it. */
+async function checkSheetsClose(page) {
+  const open = {
+    "stall sheet": async () => {
+      await kq(page, () => {
+        window.__kq.teleport("stall_prata");
+        window.__kq.step(300);
+        window.__kq.interact();
+      });
+    },
+    "missions sheet": () => page.locator("#kqDock-missions").click(),
+    "bag sheet": () => page.locator("#kqDock-bag").click(),
+    "map sheet": () => page.locator("#kqDock-map").click(),
+  };
+  for (const [label, run] of Object.entries(open)) {
+    await run();
+    expect(await modalName(page), `${label} opens`).not.toBeNull();
+    await expectSheetOnScreen(page, label);
+    await expectTouchTargets(page);
+    await page.mouse.click(3, 3);
+    expect(await modalName(page), `${label}: a tap on the backdrop closes it`).toBeNull();
+  }
+}
+
+/** A11Y2-05: a toast raised while a sheet is open is held back, and shows after the sheet closes. */
+async function checkToastHeldBack(page) {
+  await page.locator("#kqDock-bag").click();
+  await kq(page, () => window.KQ.Game.UI.toast("Held back while the bag is open", "good", 60_000));
+  expect(
+    await kq(page, () => getComputedStyle(document.querySelector("#kqToasts")).visibility),
+  ).toBe("hidden");
+  await page.getByRole("button", { name: "Close" }).click();
+  await expect(page.locator(".kq-toast")).toContainText("Held back while the bag is open");
+  await kq(page, () => document.querySelectorAll(".kq-toast").forEach((t) => t.remove()));
+  expect(
+    await kq(page, () => getComputedStyle(document.querySelector("#kqToasts")).visibility),
+  ).toBe("visible");
+}
+
+/** A11Y2-09: the pause dialog (four-option picture quality) fits; a backdrop tap does not resume. */
+async function checkPauseFits(page) {
+  await page.locator("#kqDock-pause").click();
+  await expect(page.getByRole("dialog", { name: "Paused" })).toBeVisible();
+  await expectSheetOnScreen(page, "pause dialog");
+  await expectTouchTargets(page);
+  await page.mouse.click(3, 3);
+  expect(await modalName(page), "pause stays open on a stray tap").toBe("Paused");
+  await page.getByRole("button", { name: "Resume" }).click();
+  expect(await modalName(page)).toBeNull();
+}
+
+/** A11Y2-03: Talk starts wudu; its step tiles are >= 48 px wide (every button is) and fully on screen. */
+async function checkWuduTiles(page) {
+  await page.locator("#kqTalk").click();
+  await expect(page.getByRole("dialog", { name: "Wudu steps" })).toBeVisible();
+  await expectTouchTargets(page);
+  await expectSheetOnScreen(page, "wudu sheet");
+  const widths = await kq(page, () =>
+    Array.from(document.querySelectorAll(".kq-wtile")).map((t) => t.getBoundingClientRect().width),
+  );
+  expect(widths.length).toBeGreaterThanOrEqual(12);
+  expect(Math.min(...widths), "narrowest wudu tile").toBeGreaterThanOrEqual(MIN_TARGET);
+  await expectNoPageScroll(page);
+}
+
 for (const [name, width, height, touch] of SIZES) {
   test.describe(`HUD layout ${name} ${width}x${height}`, () => {
     test.use({
@@ -344,39 +528,39 @@ for (const [name, width, height, touch] of SIZES) {
       isMobile: touch,
       deviceScaleFactor: 1,
     });
-    test.describe.configure({ timeout: 120_000 });
+    test.describe.configure({ timeout: 180_000 });
 
-    test("no HUD box covers another; toast, Talk, azan stay clear", async ({ page }) => {
+    test("no HUD box covers another; toast, Talk, azan stay clear; sheets and wudu fit", async ({
+      page,
+    }) => {
       await startAt(page, name);
       await expectNoPageScroll(page);
       await expectHudClear(page, "exploring");
       await expectPrayerStripInCard(page);
       await expectNoTinyText(page);
+      await checkFoldingCards(page);
       // needs at 100: the two chips do not touch
       await kq(page, () => {
         window.KQ.Game.S.sim.needs.restore({ hunger: 100, energy: 100 });
         window.__kq.step(300);
       });
       await expectHudClear(page, "needs at 100");
-      // a toast and the Talk button next to Nenek
+      // a toast (the longest one) and the Talk button next to Nenek
       await standByNenek(page, 1.2);
-      await toast(page, "Nenek is waiting by your block. Walk to her and press Talk.");
+      await toast(page, LONG_TOAST);
       await expect(page.locator("#kqTalk")).toBeVisible();
       await expectHudClear(page, "toast + Talk");
       // the disabled "Walk closer" bubble
       await standByNenek(page, 5);
       await expectHudClear(page, "toast + Walk closer");
-      // the azan card, expanded and then as a pill (not on the 568 px phone: its top lane is only 154 px wide)
-      if (width < 640) return;
-      await kq(page, () => {
-        window.__kq.setMinute(774);
-        window.__kq.step(1500);
-      });
-      await expect(page.locator("#kqAzan")).toBeVisible();
-      await expectHudClear(page, "azan card + toast");
-      await kq(page, () => document.querySelector("#kqAzan").classList.add("is-bar"));
-      await kq(page, () => window.__kq.step(300));
-      await expectHudClear(page, "azan pill + toast");
+      await kq(page, () => document.querySelectorAll(".kq-toast").forEach((t) => t.remove()));
+      // sheets: Close on screen, backdrop tap, toasts held back, the pause dialog
+      await checkSheetsClose(page);
+      await checkToastHeldBack(page);
+      await checkPauseFits(page);
+      // the azan card, then its pill: the "Take wudu" Talk button is never covered; then wudu by that tap
+      await checkAzan(page);
+      await checkWuduTiles(page);
     });
   });
 }

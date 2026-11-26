@@ -23,6 +23,7 @@
     liveCaption: null,
     sheet: null,
     handle: null,
+    queued: null,
   };
 
   function init(root) {
@@ -75,14 +76,31 @@
 
   /**
    * Show one modal sheet. `opts`: { el, label, variant: "center"|"bottom"|"bubble", onClose,
-   * dismissible (default true), scrim (default true), focus (selector to focus first) }.
-   * Returns a handle { close() }. Opening a second sheet closes the first.
+   * dismissible (default true: a tap on the dimmed backdrop closes it, like Esc), scrim (default
+   * true), focus (selector to focus first) }. Returns a handle { close() }. Opening a second
+   * sheet closes the first.
    */
   function openSheet(opts) {
     if (UI.handle) UI.handle.close("replaced");
     const opener = document.activeElement;
+    const { wrap, box } = buildSheet(opts);
+    UI.layer.appendChild(wrap);
+    UI.sheet = box;
+    UI.root.classList.add("kq-modal");
+    UI.root.classList.toggle("kq-modal-side", opts.variant === "side");
+    if (opts.scrim === false) UI.root.classList.add("kq-modal-clear");
+    const handle = { opts, wrap, opener, close: (reason) => closeHandle(handle, reason) };
+    UI.handle = handle;
+    const first = opts.focus ? box.querySelector(opts.focus) : focusables(box)[0];
+    if (first) first.focus({ preventScroll: true });
+    return handle;
+  }
+
+  /** The backdrop wrapper and the dialog box around `opts.el`. */
+  function buildSheet(opts) {
     const wrap = U.el("div", { cls: "kq-sheet kq-sheet-" + (opts.variant || "center") });
     if (opts.scrim === false) wrap.classList.add("kq-noscrim");
+    else if (opts.dismissible !== false) wrap.addEventListener("click", onBackdropTap);
     const box = U.el("div", {
       cls: "kq-sheet-box",
       role: "dialog",
@@ -91,53 +109,72 @@
     });
     box.appendChild(opts.el);
     wrap.appendChild(box);
-    UI.layer.appendChild(wrap);
-    UI.sheet = box;
-    UI.root.classList.add("kq-modal");
-    UI.root.classList.toggle("kq-modal-side", opts.variant === "side");
-    if (opts.scrim === false) UI.root.classList.add("kq-modal-clear");
-    const handle = {
-      opts,
-      wrap,
-      opener,
-      close(reason) {
-        if (UI.handle !== handle) return;
-        UI.handle = null;
-        UI.sheet = null;
-        UI.root.classList.remove("kq-modal", "kq-modal-clear", "kq-modal-side");
-        wrap.remove();
-        G.Speech.cancel();
-        if (opts.onClose) opts.onClose(reason || "closed");
-        if (reason === "replaced") return;
-        if (opener && opener.isConnected && opener.focus) opener.focus({ preventScroll: true });
-        focusHome();
-      },
-    };
-    UI.handle = handle;
-    const first = opts.focus ? box.querySelector(opts.focus) : focusables(box)[0];
-    if (first) first.focus({ preventScroll: true });
-    return handle;
+    return { wrap, box };
+  }
+
+  function closeHandle(handle, reason) {
+    if (UI.handle !== handle) return;
+    UI.handle = null;
+    UI.sheet = null;
+    UI.root.classList.remove("kq-modal", "kq-modal-clear", "kq-modal-side");
+    handle.wrap.remove();
+    G.Speech.cancel();
+    if (handle.opts.onClose) handle.opts.onClose(reason || "closed");
+    if (reason === "replaced") return;
+    releaseToasts();
+    const opener = handle.opener;
+    if (opener && opener.isConnected && opener.focus) opener.focus({ preventScroll: true });
+    focusHome();
   }
 
   function closeSheet(reason) {
     if (UI.handle) UI.handle.close(reason);
   }
 
-  /** How many toasts the reserved lane holds: one on a phone, two elsewhere. */
-  function toastCap() {
-    return window.innerHeight <= 520 || window.innerWidth <= 700 ? 1 : 2;
+  /** A tap on the dimmed backdrop (not on the sheet itself) closes a dismissible sheet (A11Y2-02). */
+  function onBackdropTap(e) {
+    if (e.target === e.currentTarget) closeSheet("scrim");
   }
 
-  /** A transient message chip in the reserved toast lane. kind: "" | "good" | "gold" | "hint".
-   *  Screen readers hear it through the polite live region (the chip itself has no role). */
-  function toast(text, kind, ms) {
+  /** A sheet with a dimmed backdrop covers the toast lane; the walking-view sheets (dialogue, prayer) do not.
+   *  On a portrait phone the open azan card needs the room under the minimap, so it holds toasts back too. */
+  function toastsBlocked() {
+    if (UI.handle && UI.handle.opts.scrim !== false) return true;
+    return (
+      UI.root.classList.contains("kq-azan-full") &&
+      window.matchMedia("(orientation: portrait) and (max-width: 700px)").matches
+    );
+  }
+
+  /** Show the toast that was held back (the latest one), if nothing blocks the lane any more. */
+  function releaseToasts() {
+    const q = UI.queued;
+    if (!q || toastsBlocked()) return;
+    UI.queued = null;
+    showToast(q.text, q.kind, q.ms);
+  }
+
+  /** How many toasts the reserved lane holds: two when it is wide enough for one line each, else one
+   *  (two wrapped toasts would not fit its height and the lower one would be clipped). */
+  function toastCap() {
+    return UI.toasts.clientWidth >= 480 && window.innerHeight > 520 ? 2 : 1;
+  }
+
+  function showToast(text, kind, ms) {
     const node = U.el("div", { cls: "kq-toast " + (kind || ""), text });
     UI.toasts.appendChild(node);
     while (UI.toasts.children.length > toastCap()) UI.toasts.firstChild.remove();
-    const life = ms || 3600;
-    setTimeout(() => node.remove(), life);
+    setTimeout(() => node.remove(), ms || 3600);
+  }
+
+  /** A transient message chip in the reserved toast lane. kind: "" | "good" | "gold" | "hint".
+   *  Screen readers hear it through the polite live region (the chip itself has no role).
+   *  While a backdrop sheet is open the chip is held back (the latest one wins) and shown when it
+   *  closes, so it never hides sheet content (A11Y2-05); the announcement is not delayed. */
+  function toast(text, kind, ms) {
     announce(text);
-    return node;
+    if (toastsBlocked()) UI.queued = { text, kind, ms };
+    else showToast(text, kind, ms);
   }
 
   /** Polite screen-reader message. channel "caption" uses its own region (azan and prayer text). */
@@ -189,23 +226,24 @@
     return b;
   }
 
-  /** Header row for a sheet: title + optional extras + a close button. */
+  /** Header row for a sheet: title, optional extras (chips) and a close button. On a narrow screen the
+   *  extras drop to their own row so the Close button always stays on screen (A11Y2-02). */
   function header(title, opts) {
     const o = opts || {};
     const kids = [U.el("h2", { cls: "kq-sheet-title", text: title })];
-    const right = U.el("div", { cls: "kq-row" });
-    (o.extras || []).forEach((x) => right.appendChild(x));
+    const extras = U.el("div", { cls: "kq-row kq-sheet-extras" });
+    (o.extras || []).forEach((x) => extras.appendChild(x));
+    if (extras.childNodes.length) kids.push(extras);
     if (o.close !== false) {
-      right.appendChild(
+      kids.push(
         btn("", {
           icon: "close",
-          cls: "kq-icon-btn",
+          cls: "kq-icon-btn kq-sheet-close",
           label: "Close",
           onClick: () => closeSheet("button"),
         }),
       );
     }
-    kids.push(right);
     return U.el("div", { cls: "kq-sheet-head" }, kids);
   }
 
@@ -219,6 +257,7 @@
     openSheet,
     closeSheet,
     toast,
+    releaseToasts,
     announce,
     btn,
     readButton,

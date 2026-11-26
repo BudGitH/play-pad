@@ -1,8 +1,9 @@
 /* ============================================================================
  * FILE: hud.js
  * PURPOSE: The in-game HUD of design option D ("Kid dock and needs ring"): clock + five-prayer
- *          strip, picture mission card, dock (Missions, Map, Pray, Bag, Pause), coins, mute,
- *          minimap wrapped in the food / energy ring, joystick + Run, and the floating Talk button.
+ *          strip (icons only on a phone), picture mission card (a one-line chip on a phone), dock
+ *          (Missions, Map, Pray, Bag, Pause), coins, mute, minimap wrapped in the food / energy
+ *          ring, joystick + Run, and the floating Talk button.
  * BUSINESS CONTEXT: AC-10 (needs meters), AC-11 (tracker, minimap), AC-12 (context prompt within
  *   2 m), AC-15 (>= 48 px targets, DOM order = the keyboard focus order of the design: nearest
  *   action, clock and prayers, mission card, dock, mute, needs ring).
@@ -37,7 +38,7 @@
       "span",
       { cls: "kq-prayer", "data-p": name },
       ic,
-      U.el("span", { text: label }),
+      U.el("span", { cls: "kq-pl", text: label }),
     );
     R.prayers[name] = { item, ic };
     return item;
@@ -66,24 +67,45 @@
       R.clockrow,
       strip,
     );
+    bindToggle(R.status, R.status, "status");
     return R.status;
   }
 
-  function buildMission(h) {
+  /** On a phone a tap on the card (or Enter / Space on its toggle) opens / folds it; the read-to-me button is left alone. */
+  function bindToggle(card, toggle, which) {
+    const go = () => G.HudLayout.toggle(which);
+    card.addEventListener("click", function (e) {
+      if (!e.target.closest(".kq-read")) go();
+    });
+    toggle.addEventListener("keydown", function (e) {
+      if (e.target !== toggle || (e.key !== "Enter" && e.key !== " ")) return;
+      e.preventDefault();
+      go();
+    });
+  }
+
+  /** The mission card: a toggle row (the one-line chip on a phone, the title when open) + the steps. */
+  function buildMission() {
     R.missionBody = U.el("div", { cls: "kq-mission-body" });
     R.missionRead = G.UI.readButton(() => (R.missionText || "").toString());
+    R.missionTitle = U.el("b", { cls: "kq-mtitle", text: "" });
+    R.chipIc = U.el("span", { cls: "kq-mchip-ic" });
+    R.chipText = U.el("span", { cls: "kq-mchip-text", text: "" });
+    R.missionToggle = U.el(
+      "div",
+      { cls: "kq-mtoggle" },
+      R.chipIc,
+      R.chipText,
+      R.missionTitle,
+      U.el("i", { cls: "kq-caret", "aria-hidden": "true" }),
+    );
     R.mission = U.el(
       "div",
       { cls: "kq-glass kq-mission", id: "kqMission" },
-      U.el(
-        "div",
-        { cls: "kq-mission-head" },
-        (R.missionTitle = U.el("b", { text: "" })),
-        R.missionRead,
-      ),
+      U.el("div", { cls: "kq-mission-head" }, R.missionToggle, R.missionRead),
       R.missionBody,
     );
-    h.missionHandler = null;
+    bindToggle(R.mission, R.missionToggle, "mission");
     return R.mission;
   }
 
@@ -268,9 +290,8 @@
 
   /** Build the HUD into `host`. on(action) receives dock / button actions. */
   function build(host, on) {
-    const h = {};
     host.appendChild(buildTalk(on));
-    R.tl = U.el("div", { cls: "kq-tl" }, buildStatus(), buildMission(h));
+    R.tl = U.el("div", { cls: "kq-tl" }, buildStatus(), buildMission());
     host.appendChild(R.tl);
     host.appendChild(buildDock(on));
     host.appendChild(buildTopRight(on));

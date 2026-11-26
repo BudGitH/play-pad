@@ -332,6 +332,16 @@ kbd {
 .kq-mission-head b {
   font-size: 14px;
 }
+.kq-mtoggle {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+/* the chip and its caret only exist on a phone (the "lite" HUD media block) */
+.kq-mchip-ic,
+.kq-mchip-text,
+.kq-caret {
+  display: none;
+}
 .kq-mission-head .kq-btn {
   min-height: 48px;
   min-width: 48px;
@@ -649,7 +659,7 @@ kbd {
   font-weight: 800;
   font-size: 15px;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
-  z-index: 6;
+  z-index: 9; /* above the azan card (7): the primary action is never covered by it (A11Y2-01) */
 }
 .kq-talk-row {
   display: inline-flex;
@@ -827,14 +837,32 @@ kbd {
 }
 .kq-sheet-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 4px 12px;
   margin-bottom: 8px;
 }
 .kq-sheet-title {
+  flex: 1 1 auto;
+  min-width: 0;
   margin: 0;
   font-size: 19px;
+}
+.kq-sheet-extras {
+  flex-wrap: wrap;
+}
+.kq-sheet-close {
+  flex: none;
+}
+/* narrow screens: the title and the Close button share the first row, the chips drop below (A11Y2-02) */
+@media (max-width: 520px) {
+  .kq-sheet-close {
+    order: 1;
+  }
+  .kq-sheet-extras {
+    order: 2;
+    flex: 1 0 100%;
+  }
 }
 .kq-menu {
   display: flex;
@@ -1062,19 +1090,24 @@ kbd {
 }
 .kq-setting {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 4px 12px;
   min-height: 48px;
 }
+/* the segmented control wraps (2 x 2 for four options) instead of running off a narrow sheet (A11Y2-09) */
 .kq-seg {
   display: inline-flex;
+  flex-wrap: wrap;
+  max-width: 100%;
   gap: 4px;
   padding: 3px;
-  border-radius: 999px;
+  border-radius: 26px;
   background: var(--md-sys-color-surface-container-highest);
 }
 .kq-seg-btn {
+  flex: 1 1 auto;
   min-height: 48px;
   min-width: 48px;
   padding: 0 14px;
@@ -1367,27 +1400,231 @@ kbd {
 .kq-modal-clear .kq-azan.is-bar {
   visibility: visible;
 }
+/* a sheet with a dimmed backdrop hides the toast lane (ui-core.js queues the message; A11Y2-05) */
+.kq-modal:not(.kq-modal-clear) .kq-toasts {
+  visibility: hidden;
+}
 
-/* ---------- phone landscape: a lighter HUD ----------
-   Status card + a compact mission (top left), coins / mute / minimap (top right), the toast lane and the
-   azan pill between them, joystick + Run at the bottom corners and the dock at the bottom centre. */
+/* ---------- phone "lite" HUD (landscape and portrait) ----------
+   While exploring, a phone shows as little HUD as it can (A11Y2-04): the status card is the clock row
+   plus an icon-only prayer strip (only a prayer that is due carries its name), the mission card is a
+   one-line chip with the step to do now. A tap on either opens it for a few seconds (hud-layout.js
+   toggle / peek); `.is-open` is that state. Wider screens (tablet, desktop) keep the full cards. */
+@media (max-height: 520px), (orientation: portrait) and (max-width: 700px) {
+  .kq-status {
+    padding: 5px 8px 4px;
+    cursor: pointer;
+  }
+  .kq-clockrow {
+    min-height: 30px;
+    gap: 8px;
+  }
+  .kq-clock {
+    min-height: 30px;
+    padding: 0 10px;
+    font-size: 15px;
+  }
+  .kq-nextp {
+    font-size: 12px;
+  }
+  .kq-prayers {
+    align-items: center;
+    gap: 4px;
+    margin-top: 3px;
+  }
+  .kq-prayer {
+    position: relative;
+    flex: 0 0 auto;
+    flex-direction: row;
+    gap: 4px;
+  }
+  .kq-pi-ic {
+    width: 26px;
+    height: 26px;
+  }
+  .kq-pi-ic .kq-ic {
+    width: 18px;
+    height: 18px;
+  }
+  /* the name stays for screen readers; it is drawn only for a due prayer or while the card is open */
+  .kq-prayer .kq-pl {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  .kq-prayer.is-due .kq-pl,
+  .kq-status.is-open .kq-pl {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip: auto;
+  }
+  .kq-status.is-open .kq-prayers {
+    align-items: flex-start;
+  }
+  .kq-status.is-open .kq-prayer {
+    flex: 1 1 0;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  /* mission: the chip (step icon + the step in words) until it is opened */
+  .kq-mission {
+    padding: 0;
+    cursor: pointer;
+  }
+  .kq-mission-head {
+    justify-content: flex-start;
+    gap: 4px;
+  }
+  .kq-mtoggle {
+    display: flex;
+    align-items: center;
+    flex: 1 1 auto;
+    gap: 8px;
+    min-width: 0;
+    min-height: 48px;
+    padding: 0 6px 0 10px;
+    border-radius: 18px;
+  }
+  .kq-mchip-ic {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--md-sys-color-primary-container);
+    color: var(--md-sys-color-on-primary-container);
+    outline: 2px solid var(--md-sys-color-primary);
+  }
+  .kq-mission.is-paused .kq-mchip-ic {
+    outline-style: dashed;
+  }
+  .kq-mchip-ic .kq-ic {
+    width: 20px;
+    height: 20px;
+  }
+  .kq-mchip-text {
+    display: block;
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.15;
+  }
+  .kq-caret {
+    display: block;
+    flex: none;
+    width: 8px;
+    height: 8px;
+    margin: -3px 4px 0 0;
+    border-right: 2px solid var(--md-sys-color-on-surface-variant);
+    border-bottom: 2px solid var(--md-sys-color-on-surface-variant);
+    transform: rotate(45deg);
+  }
+  .kq-mission.is-open .kq-caret {
+    margin-top: 3px;
+    transform: rotate(-135deg);
+  }
+  .kq-mtitle,
+  .kq-mission.is-open .kq-mchip-ic,
+  .kq-mission.is-open .kq-mchip-text {
+    display: none;
+  }
+  .kq-mission.is-open .kq-mtitle {
+    display: block;
+    flex: 1 1 auto;
+  }
+  .kq-mission:not(.is-open) .kq-mission-body,
+  .kq-mission:not(.is-open) .kq-read {
+    display: none;
+  }
+  .kq-mission.is-open {
+    padding: 0 6px 8px 0;
+  }
+  .kq-mission.is-open .kq-mission-body {
+    padding: 0 0 0 10px;
+  }
+  .kq-toast {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+  /* compact azan card: the title and the button share a row, the captions sit below */
+  .kq-azan {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: 10px;
+    padding: 8px 12px 10px;
+  }
+  .kq-azan .kq-azan-title {
+    grid-column: 1;
+    grid-row: 1;
+    margin: 0;
+    font-size: 16px;
+  }
+  .kq-azan .kq-big {
+    grid-column: 2;
+    grid-row: 1;
+    width: auto;
+    margin: 0;
+    min-height: 48px;
+    padding: 0 16px;
+    font-size: 14px;
+  }
+  .kq-azan .kq-azan-cues {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+  .kq-azan .kq-azan-sub {
+    display: none;
+  }
+  .kq-azan .kq-ar {
+    margin: 0;
+    font-size: 20px;
+    line-height: 1.5;
+  }
+  .kq-azan .kq-tr,
+  .kq-azan .kq-en {
+    font-size: 14px;
+  }
+  /* the pill keeps the Arabic and the meaning; the transliteration is in the expanded card */
+  .kq-azan.is-bar {
+    display: block;
+  }
+  .kq-azan.is-bar .kq-tr {
+    display: none;
+  }
+}
+
+/* ---------- phone landscape ----------
+   Status card + chip (top left), coins / mute / minimap (top right), the toast lane between them,
+   joystick + Run at the bottom corners, the dock at the bottom centre and the azan card / pill in the
+   band above the dock between the joystick and Run: that band is clear of the cards, of the Talk button
+   (which floats mid-screen) and of the toast lane (A11Y2-01, 06, 08). */
 @media (max-height: 520px) {
   .kq-root {
-    --kq-map: 112px;
-    --kq-dock: 60px;
-    --kq-dock-h: 54px;
-    --kq-tl-w: 240px;
-    --kq-right-w: 170px;
+    --kq-map: 96px;
+    --kq-dock: 56px;
+    --kq-dock-h: 48px;
+    --kq-tl-w: 220px;
+    --kq-right-w: 160px;
     --kq-joy: 112px;
     --kq-bot: max(10px, env(safe-area-inset-bottom, 0px));
     --kq-lane-h: 72px;
+    --kq-azan-side: max(var(--kq-joy-x), calc(var(--kq-padr) + var(--kq-right-w) + 12px));
   }
   .kq-dock {
     gap: 4px;
   }
   .kq-dock-btn .kq-ic-lg {
-    width: 24px;
-    height: 24px;
+    width: 22px;
+    height: 22px;
   }
   .kq-topright {
     grid-template-columns: auto auto;
@@ -1397,37 +1634,35 @@ kbd {
   .kq-topright .kq-mapwrap {
     grid-column: 1 / -1;
   }
-  .kq-toast {
-    padding: 8px 12px;
-    font-size: 13px;
+  .kq-needchip {
+    height: 26px;
+    font-size: 12px;
   }
-  .kq-status {
-    padding: 6px 8px 4px;
-  }
-  /* compact mission: the title, and only the step to do now beside the read-to-me button */
-  .kq-mission {
+  .kq-mission.is-open {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     column-gap: 6px;
     align-items: center;
-    padding: 6px 8px 8px 10px;
+    padding: 2px 6px 8px 0;
   }
-  .kq-mission-head {
+  .kq-mission.is-open .kq-mission-head {
     display: contents;
   }
-  .kq-mission-head b {
+  .kq-mission.is-open .kq-mtoggle {
     grid-column: 1;
     grid-row: 1;
+    min-height: 30px;
   }
-  .kq-mission-head .kq-read {
+  .kq-mission.is-open .kq-read {
     grid-column: 2;
     grid-row: 1 / span 2;
   }
-  .kq-mission-body {
+  .kq-mission.is-open .kq-mission-body {
     grid-column: 1;
     grid-row: 2;
     min-width: 0;
   }
+  /* open card: only the step to do now, as before */
   .kq-steps .kq-step:not(.is-now),
   .kq-steps .kq-step-arrow {
     display: none;
@@ -1447,11 +1682,31 @@ kbd {
     margin-top: 4px;
     padding: 2px 8px;
   }
-  .kq-azan:not(.is-bar) {
-    left: calc(var(--kq-pad) + var(--kq-tl-w) + 12px);
-    right: calc(var(--kq-padr) + var(--kq-right-w) + 12px);
-    width: auto;
-    transform: none;
+  .kq-azan,
+  .kq-azan.is-bar {
+    top: auto;
+    bottom: calc(var(--kq-bot) + var(--kq-dock-h) + 6px);
+    left: 50%;
+    right: auto;
+    width: min(560px, calc(100% - 2 * var(--kq-azan-side)));
+    max-height: none;
+    transform: translateX(-50%);
+    padding: 6px 10px 8px;
+  }
+  .kq-azan .kq-big {
+    grid-row: 1 / span 2;
+    grid-column: 2;
+    max-width: 120px;
+    white-space: normal;
+    line-height: 1.15;
+    padding: 0 12px;
+  }
+  .kq-azan .kq-azan-cues {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  .kq-azan.is-bar .kq-azan-cues {
+    grid-column: 1 / -1;
   }
   .kq-sheet-title {
     font-size: 16px;
@@ -1487,7 +1742,7 @@ kbd {
   .kq-wudu-act {
     min-height: 48px;
   }
-  .kq-talk {
+  .kq-root .kq-talk {
     min-height: 72px;
   }
   .kq-grid {
@@ -1499,27 +1754,87 @@ kbd {
 }
 @media (max-height: 520px) and (max-width: 759px) {
   .kq-root {
-    --kq-right-w: 126px;
+    --kq-right-w: 116px;
   }
   .kq-coins-word {
     display: none;
   }
+  /* a narrow lane: a toast may take three 12 px lines (the longest copy), and is never clipped (A11Y2-06) */
+  .kq-root {
+    --kq-lane-h: 68px;
+  }
+  .kq-toasts {
+    overflow: visible;
+  }
+  .kq-toast {
+    padding: 5px 10px;
+    font-size: 12px;
+  }
 }
+/* very short phones: the azan card is the pill (Arabic + meaning, no title / button), so the Talk button,
+   the toast lane and the pill all fit in the middle column; "Show me the way" lives in the Pray dock menu */
 @media (max-height: 360px) {
   .kq-root {
     --kq-joy: 104px;
     --kq-run: 60px;
-    --kq-map: 104px;
-    --kq-lane-h: 64px;
+    --kq-map: 92px;
+  }
+  .kq-azan .kq-azan-title,
+  .kq-azan .kq-tr,
+  .kq-azan .kq-big {
+    display: none;
+  }
+  .kq-azan .kq-azan-cues {
+    grid-column: 1 / -1;
+  }
+  .kq-azan,
+  .kq-azan.is-bar {
+    display: block;
+    padding: 5px 10px 6px;
+  }
+  .kq-azan .kq-ar,
+  .kq-azan.is-large .kq-ar {
+    font-size: 20px;
+    line-height: 1.4;
+  }
+  .kq-azan .kq-en,
+  .kq-azan.is-large .kq-en {
+    font-size: 14px;
+    line-height: 1.25;
+  }
+  .kq-root .kq-talk {
+    min-height: 60px;
+    padding: 4px 12px;
+  }
+  .kq-talk .kq-ic-xl {
+    width: 28px;
+    height: 28px;
+  }
+}
+/* under 300 px high even the pill gives up its Arabic line (the screen readers still get all of it),
+   and an opened mission card stays above the joystick ring */
+@media (max-height: 300px) {
+  .kq-azan .kq-ar {
+    display: none;
+  }
+  .kq-mission.is-open {
+    padding-bottom: 4px;
+  }
+  .kq-mission.is-open .kq-mtoggle {
+    min-height: 24px;
+  }
+  .kq-step-ic {
+    width: 30px;
+    height: 30px;
   }
 }
 
 /* ---------- portrait phone ----------
-   A wide status card (clock, next prayer, coins, the five prayers), then the mission beside the minimap,
+   A wide status card (clock, next prayer, coins, the five prayers), then the mission chip beside the minimap,
    the toast lane below them, joystick + Run above the dock; the azan card sits above the joystick. */
 @media (orientation: portrait) and (max-width: 700px) {
   .kq-root {
-    --kq-map: 104px;
+    --kq-map: 96px;
     --kq-dock: 56px;
     --kq-dock-h: 56px;
     --kq-joy: 112px;
@@ -1560,10 +1875,7 @@ kbd {
     right: var(--kq-padr);
     top: calc(var(--kq-top-end) + 8px + var(--kq-turn-h));
   }
-  .kq-toast {
-    padding: 8px 12px;
-    font-size: 13px;
-  }
+  /* the azan card / pill: above the joystick, and never taller than the room under the minimap (A11Y2-08) */
   .kq-azan,
   .kq-azan.is-bar {
     top: auto;
@@ -1571,68 +1883,43 @@ kbd {
     left: 50%;
     right: auto;
     width: calc(100% - 24px);
+    max-height: calc(100% - var(--kq-top-end) - var(--kq-ctl-bot) - var(--kq-joy) - 20px);
     transform: translateX(-50%);
     padding: 8px 12px 10px;
+  }
+  /* the open azan card needs the room under the minimap: toasts wait until it folds (ui-core.js, A11Y2-08) */
+  .kq-azan-full .kq-toasts {
+    visibility: hidden;
   }
   .kq-mapbody,
   .kq-pause-grid {
     grid-template-columns: 1fr;
   }
 }
+/* a short portrait phone (e.g. 320 x 568) has no room for the full card above the joystick: it is the pill,
+   with the meaning only (the toast lane above it stays clear) */
+@media (orientation: portrait) and (max-width: 700px) and (max-height: 600px) {
+  .kq-azan .kq-azan-title,
+  .kq-azan .kq-tr,
+  .kq-azan .kq-ar,
+  .kq-azan .kq-big {
+    display: none;
+  }
+  .kq-azan,
+  .kq-azan.is-bar {
+    display: block;
+    padding: 5px 10px 6px;
+  }
+  .kq-azan .kq-en,
+  .kq-azan.is-large .kq-en {
+    font-size: 14px;
+    line-height: 1.25;
+  }
+}
 /* very narrow phones: the coins chip drops its word so the clock row never wraps */
 @media (orientation: portrait) and (max-width: 400px) {
   .kq-coins-word {
     display: none;
-  }
-}
-
-/* compact azan card (phones): the title and the button share a row, the captions sit below */
-@media (max-height: 520px), (orientation: portrait) and (max-width: 700px) {
-  .kq-azan {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: center;
-    column-gap: 10px;
-    padding: 8px 12px 10px;
-  }
-  .kq-azan .kq-azan-title {
-    grid-column: 1;
-    grid-row: 1;
-    margin: 0;
-    font-size: 16px;
-  }
-  .kq-azan .kq-big {
-    grid-column: 2;
-    grid-row: 1;
-    width: auto;
-    margin: 0;
-    min-height: 48px;
-    padding: 0 16px;
-    font-size: 14px;
-  }
-  .kq-azan .kq-azan-cues {
-    grid-column: 1 / -1;
-    grid-row: 2;
-  }
-  .kq-azan .kq-azan-sub {
-    display: none;
-  }
-  .kq-azan .kq-ar {
-    margin: 0;
-    font-size: 20px;
-    line-height: 1.5;
-  }
-  .kq-azan .kq-tr,
-  .kq-azan .kq-en {
-    font-size: 14px;
-  }
-  .kq-azan.is-bar {
-    display: block;
-  }
-}
-@media (max-height: 360px) and (max-width: 600px) {
-  .kq-root {
-    --kq-lane-h: 84px;
   }
 }
 
@@ -1824,6 +2111,21 @@ kbd {
   }
   .kq-sheet-bottom .kq-wudu-act {
     min-width: 0;
+  }
+}
+
+/* narrow phones: slimmer sheet padding so six wudu tiles stay >= 48 px wide; under 360 px, four per row (A11Y2-03) */
+@media (max-width: 400px) {
+  .kq-sheet-bottom {
+    padding: 8px;
+  }
+  .kq-sheet-bottom .kq-sheet-box {
+    padding: 10px 12px 12px;
+  }
+}
+@media (max-width: 359px) {
+  .kq-sheet-bottom .kq-wudu-row {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 

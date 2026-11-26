@@ -15,7 +15,8 @@
     const first = String(line).toLowerCase();
     if (first.indexOf("waalaikumsalam") === 0) return "Assalamualaikum!";
     if (first.indexOf("assalamualaikum") === 0) return "Waalaikumsalam!";
-    return muslim ? "Assalamualaikum!" : "Hello!";
+    // not a greeting (a thank-you, a finished mission): a natural reply, never a second salam
+    return muslim ? "Thank you!" : "Hello!";
   }
 
   /** Render the current page: a Next button, or the reply choices on the last page. */

@@ -9,7 +9,7 @@
   var BACK2 = ["hawker_aminah", "barber_raju", "dr_nurul", "librarian_farah", "postman_dan"];
   var FRONT = ["nenek", "kid_aisyah", "hero", "kid_irfan", "kid_wei", "atuk"];
 
-  var state = { view: "lineup", pose: "idle", phase: 0.25, frozen: false, cycle: false, turn: 0, cycleT: 0 };
+  var state = { solo: "hero", view: "lineup", pose: "idle", phase: 0.25, frozen: false, cycle: false, turn: 0, cycleT: 0 };
   var app = {};
 
   function makeRenderer() {
@@ -66,9 +66,25 @@
       o.castShadow = false;
     });
     app.mirror.add(twin);
-    var entry = { id: id, fig: fig, twinFig: twin, home: x, rig: fig.userData.rig, twin: twin.userData.rig };
+    var entry = { id: id, fig: fig, twinFig: twin, home: x, homeZ: z, rig: fig.userData.rig, twin: twin.userData.rig };
     entry.anim = F.Animator(fig.userData.rig);
+    addStool(entry);
     list.push(entry);
+  }
+
+  /** A little wooden stool for the sit / eat poses: feet on the table, thighs on the seat. */
+  function addStool(entry) {
+    var d = entry.rig.dims;
+    var h = (d.shin - d.legD / 2) * d.scale;
+    var drop = F.seatDrop(entry.rig);
+    if (!app.stoolMat) app.stoolMat = new THREE.MeshPhysicalMaterial({ color: 0x8a5a36, roughness: 0.45, clearcoat: 0.8 });
+    var stool = new THREE.Mesh(new THREE.BoxGeometry(0.26, h, 0.2), app.stoolMat);
+    stool.position.set(0, drop - h / 2, -0.02);
+    stool.castShadow = stool.receiveShadow = true;
+    stool.visible = false;
+    entry.fig.add(stool);
+    entry.stool = stool;
+    entry.seatY = h - drop;
   }
 
   function makeCast(scene) {
@@ -100,8 +116,8 @@
 
   var VIEWS = {
     lineup: { pos: [0, 1.55, 4.3], at: [0, 0.42, -0.35], fov: 36 },
-    hero: { pos: [0.75, 0.82, 1.9], at: [0, 0.46, 0.3], fov: 30 },
-    side: { pos: [2.1, 0.62, 0.55], at: [0, 0.32, 0.25], fov: 30 },
+    hero: { pos: [0.8, 0.9, 2.25], at: [0, 0.5, 0.3], fov: 30 },
+    side: { pos: [-2.5, 0.72, 0.45], at: [0, 0.4, 0.3], fov: 30 },
     turntable: { pos: [0, 0.75, 2.3], at: [0, 0.47, 0.3], fov: 30 },
   };
 
@@ -113,12 +129,15 @@
     app.camera.updateProjectionMatrix();
     var solo = state.view !== "lineup";
     app.figs.forEach(function (f) {
-      var show = !solo || f.id === "hero";
+      var show = !solo || f.id === state.solo;
       f.fig.visible = f.twinFig.visible = show;
       f.fig.position.x = f.twinFig.position.x = solo ? 0 : f.home;
+      f.fig.position.z = f.twinFig.position.z = solo ? 0.3 : f.homeZ;
     });
     if (!solo || state.view === "turntable") return;
-    app.hero.fig.rotation.y = 0;
+    app.figs.forEach(function (f) {
+      f.fig.rotation.y = 0;
+    });
   }
 
   function tick(dt) {
@@ -130,13 +149,25 @@
         setPose(names[(names.indexOf(state.pose) + 1) % names.length], 0.45);
       }
     }
-    if (state.view === "turntable") app.hero.fig.rotation.y = state.frozen ? state.turn : (app.hero.fig.rotation.y + dt * 0.6) % (Math.PI * 2);
+    var solo = soloFig();
+    if (state.view === "turntable") solo.fig.rotation.y = state.frozen ? state.turn : (solo.fig.rotation.y + dt * 0.6) % (Math.PI * 2);
+    var seated = state.pose === "sit" || state.pose === "eat";
     app.figs.forEach(function (f) {
+      f.stool.visible = seated;
+      f.fig.position.y = f.twinFig.position.y = seated ? f.seatY : 0;
       if (state.frozen) F.pose(f.rig, state.pose, state.phase, 1);
       else f.anim.update(dt);
       syncTwin(f.rig, f.twin);
       f.twinFig.rotation.y = f.fig.rotation.y;
     });
+  }
+
+  function soloFig() {
+    return (
+      app.figs.filter(function (f) {
+        return f.id === state.solo;
+      })[0] || app.hero
+    );
   }
 
   function setPose(name, fade) {
@@ -189,6 +220,7 @@
   function readParams() {
     var q = new URLSearchParams(location.search);
     if (q.get("view")) state.view = q.get("view");
+    if (q.get("solo")) state.solo = q.get("solo");
     if (q.get("clean")) document.body.classList.add("clean");
     if (q.get("cycle")) state.cycle = true;
     return q.get("pose") || "idle";
@@ -204,6 +236,10 @@
       },
       setView: function (v) {
         state.view = v;
+        applyView();
+      },
+      setSolo: function (id) {
+        state.solo = id;
         applyView();
       },
       setTurn: function (r) {

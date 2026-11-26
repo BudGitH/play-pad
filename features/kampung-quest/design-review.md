@@ -5,7 +5,7 @@
 **Feature:** Kampung Quest (open-neighbourhood life game)
 **Ticket:** PLAY-013
 **Date:** 2026-11-26
-**Status:** AWAITING OWNER DECISION (Roundtable recommendation: **C, with three pieces of D**; see §5)
+**Status:** DECIDED — **Option D (Kid dock and needs ring)**, owner choice 2026-11-26. The Roundtable had recommended C with three pieces of D; that recommendation stays on record in §5.
 
 ---
 
@@ -51,9 +51,9 @@ Each target persona looked at both frames of every option. (A structured heurist
 
 ## 5. Human decision (the real call)
 
-> **Interactive:** the owner picks from `mockups.html`; mixing is valid. Until they do, this stays **AWAITING OWNER DECISION** and Phase 2 does not start.
+> **Interactive:** the owner picked from `mockups.html`. The decision is below; the Roundtable's recommendation is kept for the record.
 
-**Roundtable recommendation: Option C as the base, plus three pieces of D:**
+**Roundtable recommendation (on record, not chosen): Option C as the base, plus three pieces of D:**
 
 1. **C's layout and model:** compass strip on top (markers with distances, the paused mission shown on it), food/energy bars under it, and one bottom context card whose button is the interact action. Prayer steps run in-world, with the hero in the posture.
 2. **From D, posture pictures** on C's prayer-step buttons and **picture dish tiles with coin pips** in C's stall bottom sheet (pre-readers can do both main loops).
@@ -62,13 +62,24 @@ Each target persona looked at both frames of every option. (A structured heurist
 
 **Why:** C best serves the business rule that prayer is central and gentle (the azan card replaces the mission card, and you see your hero pray). It is the most usable one-handed on a phone (Maya) and has the most predictable focus (Sam), and it is the lowest-risk build (one context resolver that tests can drive). D's pictures close C's single real gap, reading age (Priya & kid). A is a safe fallback; B is not recommended because of the values concern and the extra mini-OS.
 
-- **Chosen option:** _pending: owner_
-- **Mockup file:** `mockups.html` · **Chosen tab:** _pending_
-- **Decided by:** _pending: @BudGitH_
-- **Date:** _pending_
-- **Rationale:** _pending_
+- **Chosen option:** **D, Kid dock and needs ring**, pure D (not the C hybrid).
+- **Mockup file:** `mockups.html` · **Chosen tab:** "Chosen (D) — full states" (screenshots `shots/chosen-D-phone.png`, `shots/chosen-D-desktop.png`).
+- **Decided by:** owner (@BudGitH)
+- **Date:** 2026-11-26
+- **Rationale:** the owner's call. It puts the main player, a young child, first: everything is a picture with a label, and every card has read-to-me.
 
-## Accuracy notes (for whichever option wins)
+### Known costs of D, and how the build handles them
+
+| Cost (from the Roundtable)                                                                       | Mitigation in the spec                                                                                                                                                                                                                                                                                     |
+| ------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Screen space on a phone:** the dock, day strip and needs ring take the whole top band.         | The dock moves to the top band only in landscape, and the bottom corners stay for the thumbs. Full-screen cards (prayer, stall, missions) hide the dock. The mission card is compact (3 pictures). Portrait moves the dock to the bottom row. Every control stays inside `--pp-app-h`.                     |
+| **Covering the world:** the big azan card and Talk button sit over the scene.                    | The azan card sits low on a phone, and the footprints stay visible once it is dismissed with "Show me the way". The Talk button sits above the NPC's head, not over the hero.                                                                                                                              |
+| **Art load:** about 10 dish, 4 posture, 11 wudu and 8 mission pictures.                          | Posture pictures are renders of the toy-figure poses the figures workstream already builds (`KQ.Figures`). Wudu, dish and mission pictures are small inline SVGs, as in the mockup (no image files, and they work on `file://`). Every tile also has a text label, so a missing picture never blocks play. |
+| **Read-to-me depends on the device:** `speechSynthesis` voices vary, and some devices have none. | Read-to-me is optional and hidden when there is no voice. Captions and labels are always on, so it is never the only channel. It makes no network calls.                                                                                                                                                   |
+| **May feel young to teens and adults (Maya, Dan).**                                              | Keyboard shortcuts and a "Less motion" option. Read-to-me can be switched off in the pause menu. The same tiles still work at adult speed.                                                                                                                                                                 |
+| **Needs ring is dense.**                                                                         | Each arc carries an icon chip and a number (62 / 78), so colour is never the only signal. The ring is announced as text.                                                                                                                                                                                   |
+
+## Accuracy notes
 
 - **Raka'at:** Subuh 2, Zohor 4, Asar 4, Maghrib 3, Isyak 4. In a 4-raka'at prayer, raka'at 2 ends with **tasyahud awal** (the mockups' step list shows it); the final raka'at ends with tasyahud akhir and salam. Maghrib's tasyahud awal also follows raka'at 2.
 - **Ruku dhikr** (shown on the posture card): سُبْحَانَ رَبِّيَ الْعَظِيمِ, _Subḥāna rabbiyal-ʿaẓīm_ (×3), "Glory be to my Lord, the Most Great".
@@ -78,4 +89,13 @@ Each target persona looked at both frames of every option. (A structured heurist
 
 ## Handoff
 
-After the decision, **expand the chosen option's states** in the "Chosen — full states" tab of `mockups.html`: loading, empty (no mission, no stickers, no qada), notices (WebGL off, no storage, corrupt save, coins short), disabled (missions paused, dish too dear, hall before wudu), the prayer edge cases (muted or hidden tab means captions only, prayer due during a menu, late, qada, Maghrib → Isyak overlap, resume mid-flow, the full wudu sequence, Subuh/Maghrib step lists), the pause dialog and the portrait phone layout. **That tab is then the spec:** Phase 2 tests encode it, Phase 3 builds to it, and Phase 5 judges the build of this option without reopening the design.
+The "Chosen (D) — full states" tab of `mockups.html` now holds D's 19 frames on a phone in landscape and on desktop, plus the portrait-phone fallback:
+
+- **Happy path:** explore, talk, prayer due, the **wudu steps** (11 picture tiles in Shafi'i order: intention, hands, mouth, nose, face, right arm, left arm, wipe head, ears, right foot, left foot), prayer steps, hawker stall and missions board.
+- **Loading.**
+- **Empty:** no mission, and all missions done.
+- **Errors and notices:** WebGL unavailable, and saving unavailable.
+- **Disabled:** out of range ("Walk closer"), a dish too dear (with the coins hint), and missions paused during a prayer.
+- **Prayer and controls:** the qada card, the pause dialog, the keyboard focus order (numbered) and reduced motion.
+
+The rules that apply to every frame (focus order and shortcuts, reduced motion, captions, wudu order, edge-case ordering, portrait) are written at the top of that tab. **That tab is the spec:** Phase 2 tests encode it, Phase 3 builds to it, and Phase 5 judges the build of D without reopening the design.

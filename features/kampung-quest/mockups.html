@@ -208,6 +208,24 @@
         width: 844px;
         height: 390px;
       }
+      .f.portrait {
+        width: 390px;
+        height: 844px;
+      }
+      .fo {
+        position: absolute;
+        display: grid;
+        place-items: center;
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        background: var(--md-sys-color-tertiary);
+        color: var(--md-sys-color-on-tertiary);
+        font-weight: 800;
+        font-size: 13px;
+        box-shadow: var(--md-sys-elevation-level2);
+        z-index: 2;
+      }
       .f.desk {
         width: 1280px;
         height: 720px;
@@ -1010,7 +1028,7 @@
       <input type="radio" name="opt" id="t-d" /><label for="t-d"
         >Option D — Kid dock &amp; needs ring</label
       >
-      <input type="radio" name="opt" id="t-x" /><label for="t-x">Chosen — full states</label>
+      <input type="radio" name="opt" id="t-x" /><label for="t-x">Chosen (D) — full states</label>
 
       <section class="panel" id="p-a" aria-label="Option A — Classic corners">
         <div class="tradeoff">
@@ -1096,42 +1114,54 @@
       <section class="panel" id="p-x" aria-label="Chosen option — full states">
         <div class="tradeoff">
           <p>
-            <b>Filled AFTER the owner decides (Rule 6).</b> Expands the chosen option's states. This
-            tab, not the happy path, is the spec Phase 2 tests encode.
+            <b>Chosen: Option D.</b> Its full states follow, on a phone in landscape (plus the
+            portrait fallback) and on desktop. This tab, not the happy path, is the spec that Phase
+            2 tests encode.
           </p>
         </div>
-        <div class="ph">
-          <p><b>Placeholder — awaiting the owner's choice.</b> This tab will show:</p>
+        <div class="ph" style="border-style: solid; margin-bottom: 16px">
+          <p>
+            <b>Decided: Option D, "Kid dock and needs ring" (owner, 2026-11-26).</b> These frames
+            are the build spec for Phase 2 tests and Phase 3. Rules that apply to every frame:
+          </p>
           <ul>
             <li>
-              <b>Loading:</b> title + "Building the neighbourhood…" progress; textures failing on
-              <code>file://</code> → procedural stand-ins (no visible error).
+              <b>Focus order (keyboard):</b> the nearest action (Talk / Show me the way) → clock and
+              prayers → mission card and its read-to-me → dock (Missions, Map, Pray, Bag, Pause) →
+              mute → needs ring (read-only, announced). Shortcuts <span class="kbd">E</span> act,
+              <span class="kbd">1</span>-<span class="kbd">4</span> pick a tile,
+              <span class="kbd">M</span> map, <span class="kbd">J</span> missions,
+              <span class="kbd">P</span> pray, <span class="kbd">Esc</span> pause. Every dialog
+              traps focus and returns it to the control that opened it.
             </li>
             <li>
-              <b>Empty:</b> no active mission ("Talk to a neighbour with a ★ to start"), new game
-              with no stickers, the qada list empty.
+              <b>Reduced motion:</b> with <code>prefers-reduced-motion</code> or "Less motion" on,
+              there is no camera bob or shake, no pulse (a steady outline instead), footprints
+              appear at once, cards fade instead of sliding, and meters jump.
             </li>
             <li>
-              <b>Error / notice:</b> WebGL unavailable (friendly card, no crash), localStorage
-              blocked ("Playing without saving"), corrupt save → new game, coins short ("You need 2
-              more coins — try helping Pakcik Rahman!").
+              <b>Captions:</b> the azan always shows Arabic, transliteration and English. Muted
+              sound or a hidden tab means captions only, and nothing plays while paused or hidden.
             </li>
             <li>
-              <b>Disabled:</b> missions paused while a prayer is due (the badge and the greyed
-              Accept button), unaffordable dishes, wudu not done → prayer hall door hint.
+              <b>Wudu order (AC-8, Shafi'i):</b> intention, hands ×3, mouth ×3, nose ×3, face ×3,
+              right arm to the elbow ×3, left arm ×3, wipe the head, ears, right foot to the ankle
+              ×3, left foot ×3. A wrong tile gives a hint, never a fail.
             </li>
             <li>
-              <b>Prayer edges:</b> azan muted or tab hidden (captions only), prayer due during a
-              menu (card after the menu), late prayer praised, missed → "make it up (qada)", Maghrib
-              → Isyak overlap, reload mid-flow (resume at the step), the full wudu step list, Subuh
-              (2) / Maghrib (3) raka'at with tasyahud on the right raka'at.
+              <b>Edge order:</b> a prayer that comes due during dialogue or a menu shows its card
+              after that closes. Reloading mid-flow resumes at the start of the current step, and
+              completed wudu is kept. Maghrib → Isyak are tracked separately, and the earlier
+              becomes qada.
             </li>
             <li>
-              <b>Controls:</b> pause dialog (resume, sound, captions size, quality tier, reduced
-              motion, controls help), keyboard focus order, the portrait phone layout.
+              <b>Portrait phone:</b> playable fallback. The dock moves to the bottom row, the
+              joystick and Run sit above it, and a dismissible chip suggests turning sideways.
+              Everything stays inside <code>--pp-app-h</code>.
             </li>
           </ul>
         </div>
+        <div data-chosen="D"></div>
       </section>
     </div>
 
@@ -2006,10 +2036,362 @@
           block(DK, "Desktop · 1280 × 720 (keyboard + mouse; focus ring shown on one control)");
       }
 
+      /* =====================================================================
+         CHOSEN — Option D, full states (the build spec)
+         ===================================================================== */
+      const WUDU = [
+        ["niat", "Intention (niat)", "in the heart"],
+        ["hands", "Hands", "×3"],
+        ["mouth", "Mouth", "rinse ×3"],
+        ["nose", "Nose", "rinse ×3"],
+        ["face", "Face", "×3"],
+        ["armR", "Right arm", "to the elbow ×3"],
+        ["armL", "Left arm", "to the elbow ×3"],
+        ["head", "Wipe head", "once"],
+        ["ears", "Ears", "wipe"],
+        ["footR", "Right foot", "to the ankle ×3"],
+        ["footL", "Left foot", "to the ankle ×3"],
+      ];
+      const WUDU_NOW = 4;
+      const WU_FACE =
+        '<circle cx="24" cy="22" r="14" fill="#d9a066"/><circle cx="19" cy="20" r="2" fill="#2a1a10"/><circle cx="29" cy="20" r="2" fill="#2a1a10"/>';
+      const wuDrop = (x, y) => `<path d="M${x} ${y}c-3 4-3 7 0 7s3-3 0-7z" fill="#64d2ff"/>`;
+      const wuSide = (t) =>
+        `<text x="40" y="44" font-size="12" font-weight="800" fill="#f4f4f7" text-anchor="middle">${t}</text>`;
+      function wuduArt(k, size) {
+        const art = {
+          niat: '<path d="M24 40 8 24a8 8 0 0 1 16-10 8 8 0 0 1 16 10z" fill="#ff6b85"/>',
+          hands:
+            '<ellipse cx="16" cy="26" rx="7" ry="11" fill="#d9a066"/><ellipse cx="32" cy="26" rx="7" ry="11" fill="#d9a066"/>' +
+            wuDrop(24, 6),
+          mouth:
+            WU_FACE +
+            '<path d="M18 28q6 5 12 0" stroke="#7d1530" stroke-width="3" fill="none"/>' +
+            wuDrop(38, 26),
+          nose:
+            WU_FACE +
+            '<path d="M24 21v7h-3" stroke="#7d4a20" stroke-width="2.5" fill="none"/>' +
+            wuDrop(38, 18),
+          face: WU_FACE + wuDrop(8, 10) + wuDrop(38, 10) + wuDrop(23, 2),
+          armR:
+            '<rect x="6" y="18" width="34" height="12" rx="6" fill="#d9a066"/><circle cx="8" cy="24" r="7" fill="#fff"/>' +
+            wuDrop(30, 4) +
+            wuSide("R"),
+          armL:
+            '<rect x="8" y="18" width="34" height="12" rx="6" fill="#d9a066"/><circle cx="40" cy="24" r="7" fill="#fff"/>' +
+            wuDrop(16, 4) +
+            wuSide("L"),
+          head:
+            WU_FACE + '<path d="M10 14q14-14 28 0" stroke="#fff" stroke-width="5" fill="none"/>',
+          ears:
+            WU_FACE +
+            '<circle cx="9" cy="22" r="4" fill="#f4c26b"/><circle cx="39" cy="22" r="4" fill="#f4c26b"/>',
+          footR:
+            '<path d="M14 8h10v22h14a5 5 0 0 1 0 10H14z" fill="#d9a066"/>' +
+            wuDrop(32, 18) +
+            wuSide("R"),
+          footL:
+            '<path d="M34 8H24v22H10a5 5 0 0 0 0 10h24z" fill="#d9a066"/>' +
+            wuDrop(16, 18) +
+            wuSide("L"),
+        }[k];
+        return `<svg width="${size}" height="${size}" viewBox="0 0 48 48" aria-hidden="true">${art}</svg>`;
+      }
+      function badge(n, x, y) {
+        return `<span class="fo" style="left:${x}px;top:${y}px" aria-hidden="true">${n}</span>`;
+      }
+      function panel(ph, inner, extra) {
+        return `<div class="scrim"></div><div class="hud card col" style="${ph ? "inset:10px" : "left:50%;top:50%;transform:translate(-50%,-50%);width:1000px"};gap:${ph ? 6 : 14}px;padding:${ph ? 10 : 24}px;${extra || ""}">${inner}</div>`;
+      }
+      function headRow(ph, title, right) {
+        return `<div class="row" style="justify-content:space-between;gap:12px"><h3 style="font-size:${ph ? 16 : 22}px">${title}</h3><div class="row">${right || ""}</div></div>`;
+      }
+      const readBtn = (label) =>
+        `<button class="btn icon" aria-label="${label || "Read to me"}">${ic("speaker")}</button>`;
+
+      function xLoading(dev) {
+        const ph = dev === PH;
+        const list = [
+          ["Streets and blocks", "done"],
+          ["Neighbours (16 figures)", "done"],
+          ["Photo textures", "now"],
+          ["Azan recording", ""],
+        ]
+          .map(
+            ([t, s]) =>
+              `<li class="${s}">${s === "done" ? ic("check") : s === "now" ? ic("arrow") : "<span>○</span>"}<span>${t}${s === "now" ? " · 64%" : ""}</span></li>`,
+          )
+          .join("");
+        const inner = `<h2 style="margin:0;font-size:${ph ? 28 : 44}px;font-weight:800">Kampung Quest</h2><p class="muted">A day in the neighbourhood: help, eat, pray.</p>
+          <div class="bar" style="height:12px" role="progressbar" aria-valuenow="64" aria-valuemin="0" aria-valuemax="100" aria-label="Loading"><i style="width:64%;--c:var(--md-sys-color-tertiary)"></i></div>
+          <p role="status" class="small"><b>Building the neighbourhood…</b> 64%</p><ol class="steps small">${list}</ol>
+          <div class="row"><button class="btn" disabled style="min-height:56px">${ic("star")}Loading…</button><span class="small muted">On file:// the photo textures are skipped and drawn in code instead; no error is shown.</span></div>`;
+        return `<div class="scrim" style="background:color-mix(in srgb, var(--md-sys-color-scrim) 35%, transparent)"></div><div class="hud card col" style="${ph ? "left:120px;right:120px;top:14px;bottom:14px" : "left:50%;top:50%;transform:translate(-50%,-50%);width:620px"};gap:${ph ? 4 : 12}px;padding:${ph ? 12 : 32}px">${inner}</div>`;
+      }
+      function xEmpty(dev) {
+        const c = optDCtx("talk", dev);
+        const ph = c.ph;
+        const card = `<div ${pos(ph ? "left:16px;top:118px;width:230px" : "left:24px;top:190px;width:290px")}><div class="card col" style="gap:4px"><div class="row" style="justify-content:space-between"><b class="small">No mission yet</b>${readBtn("Read to me")}</div><p class="small">Find a neighbour with a ${ic("star").replace('class="ic "', 'class="ic" style="width:16px;height:16px;vertical-align:-3px;color:var(--md-sys-color-tertiary)"')} over their head and say salam.</p></div></div>`;
+        const star = `<div ${pos(`left:${c.nx - 20}px;top:${c.ny - (ph ? 52 : 70)}px`)}><span class="chip gold" style="width:40px;height:40px;justify-content:center;padding:0" aria-label="Nenek has a mission">${ic("star", "lg")}</span></div>`;
+        const hud = c.hudAll.replace(
+          '<span class="tag" style="position:absolute;top:-6px;right:-6px">1</span>',
+          "",
+        );
+        return hud + card + star + c.ctl;
+      }
+      function xAllDone(dev) {
+        const ph = dev === PH;
+        const cards = MISSIONS.map(
+          ([t, , i]) =>
+            `<div class="tile" style="padding:6px;gap:2px"><span class="chip" style="width:${ph ? 40 : 56}px;height:${ph ? 40 : 56}px;min-height:0;justify-content:center;padding:0;background:#0f4d2a;color:#c9f7d8">${ic(i, "lg")}</span><b style="font-size:${ph ? 11 : 14}px;line-height:1.2">${t}</b><span class="small muted" style="font-size:11px">Done ✓ ★</span></div>`,
+        ).join("");
+        const msg = `<div class="note row" style="position:static;gap:8px">${ic("star", "lg")}<span><b>All 8 missions done. Masya-Allah!</b> New missions come tomorrow at 07:00. You can still eat, visit the library and play.</span>${readBtn()}</div>`;
+        return panel(
+          ph,
+          headRow(
+            ph,
+            `${ic("star")} My missions · 8 of 8 done`,
+            `<button class="btn icon" aria-label="Close">${ic("close")}</button>`,
+          ) +
+            msg +
+            `<div class="grid" style="grid-template-columns:repeat(4,1fr);gap:${ph ? 6 : 12}px">${cards}</div>`,
+        );
+      }
+      function xWebgl(dev) {
+        const ph = dev === PH;
+        return `<div class="hud" style="inset:0;background:var(--md-sys-color-surface-container-low)"></div><div class="hud card col" role="alert" style="left:50%;top:50%;transform:translate(-50%,-50%);width:${ph ? 560 : 640}px;gap:12px;padding:24px;text-align:center;align-items:center">${ic("home", "xl")}<h3 style="font-size:22px">This device can't show the 3D neighbourhood</h3><p class="muted">Kampung Quest needs WebGL, and this browser has it turned off or doesn't support it. Nothing is broken and nothing was lost.</p><p class="small">Try another browser, or turn on "hardware acceleration" in the browser settings.</p><div class="row"><button class="btn primary demo-focus">${ic("home")}Back to PlayPad</button><button class="btn">Try again</button></div></div>`;
+      }
+      function xNoSave(dev) {
+        const c = optDCtx("talk", dev);
+        const snack = `<div ${pos(c.ph ? "left:180px;right:180px;bottom:16px" : "left:50%;bottom:128px;transform:translateX(-50%);width:560px")}><div class="card row" role="status" style="background:var(--md-sys-color-inverse-surface, #e5e1e9);color:#1c1b1f;gap:12px"><span class="small"><b>Playing without saving.</b> This browser blocks storage, so today's progress lasts until you close the tab.</span><button class="btn" style="background:transparent;box-shadow:none;color:#b5103a">OK</button></div></div>`;
+        return c.hudAll + c.mission + (c.ph ? touch({ noAct: true }) : c.ctl) + snack;
+      }
+      function xFar(dev) {
+        const c = optDCtx("talk", dev);
+        const ph = c.ph;
+        const tap = `<div ${pos(`left:${c.nx - (ph ? 56 : 70)}px;top:${c.ny - (ph ? 100 : 130)}px`)}><button class="btn" disabled aria-disabled="true" style="width:${ph ? 112 : 140}px;height:${ph ? 84 : 110}px;border-radius:24px;flex-direction:column;gap:2px;border:2px dashed var(--md-sys-color-outline);background:var(--kq-hud);opacity:1;color:var(--md-sys-color-on-surface-variant)" aria-label="Talk to Nenek: walk closer">${ic("talk", "xl")}<span class="small">Walk closer</span></button></div>`;
+        return c.hudAll + c.mission + c.ctl + tap;
+      }
+      function xPaused(dev) {
+        const ph = dev === PH;
+        const cards = MISSIONS.slice(0, 8)
+          .map(
+            ([t, who, i, s]) =>
+              `<div class="tile" aria-disabled="true" style="padding:6px;gap:2px;opacity:${s === "active" ? 1 : 0.6};${s === "active" ? "border-color:var(--md-sys-color-outline);border-style:dashed" : ""}"><span class="chip" style="width:${ph ? 40 : 56}px;height:${ph ? 40 : 56}px;min-height:0;justify-content:center;padding:0">${ic(s === "done" ? "check" : i, "lg")}</span><b style="font-size:${ph ? 11 : 14}px;line-height:1.2">${t}</b><span class="small muted" style="font-size:11px">${s === "active" ? "Kept · waiting" : s === "done" ? "Done ✓" : `${who} · after prayer`}</span></div>`,
+          )
+          .join("");
+        const msg = `<div class="card row" style="position:static;gap:8px;background:#0f4d2a;color:#c9f7d8">${ic("mosque", "lg")}<span><b>Missions wait while it's Zohor time.</b> Your prata mission is kept. Pray first, then carry on.</span><button class="btn primary" style="margin-left:auto">Show me the way</button></div>`;
+        return panel(
+          ph,
+          headRow(
+            ph,
+            `${ic("pause")} My missions · paused`,
+            readBtn() + `<button class="btn icon" aria-label="Close">${ic("close")}</button>`,
+          ) +
+            msg +
+            `<div class="grid" style="grid-template-columns:repeat(4,1fr);gap:${ph ? 6 : 12}px">${cards}</div>`,
+        );
+      }
+      function xCoinsShort(dev) {
+        const ph = dev === PH;
+        const note = `<div class="note row" role="status" style="${ph ? "left:120px;right:120px;bottom:16px" : "left:50%;bottom:64px;transform:translateX(-50%);width:600px"};gap:8px">${ic("coin", "lg")}<span><b>You need 1 more coin for Nasi briyani ayam.</b> Try helping Pakcik Rahman with the recycling!</span>${readBtn()}</div>`;
+        return optD("hawker", dev) + note;
+      }
+      function wuduStrip(ph) {
+        return `<ol class="row" style="list-style:none;margin:0;padding:0;gap:${ph ? 4 : 8}px;justify-content:center" aria-label="Wudu steps, step ${WUDU_NOW + 1} of ${WUDU.length}">${WUDU.map(
+          ([k, n], i) => {
+            const st = i < WUDU_NOW ? "done" : i === WUDU_NOW ? "now" : "";
+            return `<li class="tile ${st === "now" ? "now" : ""}" style="width:${ph ? 64 : 80}px;padding:2px;position:relative;${st === "done" ? "opacity:.7" : ""}" aria-label="${i + 1}. ${n}${st === "done" ? ", done" : st === "now" ? ", now" : ""}"><span class="small" style="position:absolute;left:4px;top:2px;font-weight:800">${st === "done" ? "✓" : i + 1}</span>${wuduArt(k, ph ? 32 : 44)}<span style="font-size:${ph ? 10 : 11}px;line-height:1.1">${n}</span></li>`;
+          },
+        ).join("")}</ol>`;
+      }
+      function xWudu(dev) {
+        const ph = dev === PH;
+        const [k, n, d] = WUDU[WUDU_NOW];
+        const big = `<div class="row" style="justify-content:center;gap:${ph ? 12 : 24}px"><div class="tile now" style="width:${ph ? 160 : 220}px;padding:8px">${wuduArt(k, ph ? 72 : 120)}<b style="font-size:${ph ? 16 : 22}px">${n} ${d}</b><span class="small muted">Splash 2 of 3</span></div>
+          <div class="col" style="max-width:${ph ? 320 : 420}px"><button class="btn primary ${ph ? "" : "demo-focus"}" style="min-height:${ph ? 56 : 72}px;font-size:${ph ? 16 : 20}px;border-radius:20px">${ic("hand", "lg")}Splash! <span class="small">(2 of 3)</span>${ph ? "" : ' <span class="kbd">Space</span>'}</button>
+          <p class="small muted">Next comes: <b>Right arm</b>, then left. A wrong picture only gives a hint: "First the right arm, then the left. Take your time."</p></div></div>`;
+        return panel(
+          ph,
+          headRow(
+            ph,
+            `Wudu at the mosque taps · step ${WUDU_NOW + 1} of ${WUDU.length}`,
+            readBtn(),
+          ) +
+            wuduStrip(ph) +
+            big,
+          "",
+        );
+      }
+      function xQada(dev) {
+        const c = optDCtx("talk", dev);
+        const ph = c.ph;
+        const strip = PRAYERS.map(([n, t]) => {
+          const s = { Asar: "qada", Isyak: "next" }[n] || "done";
+          return `<span class="chip ${s === "qada" ? "pink" : s === "next" ? "gold" : ""}" style="min-height:28px">${s === "done" ? ic("check") : ic("mosque")}${n}${s === "qada" ? " · make up" : s === "next" ? ` · ${t}` : ""}</span>`;
+        }).join("");
+        const card = `<div ${pos(ph ? "left:150px;right:150px;top:110px" : "left:50%;top:170px;width:640px;transform:translateX(-50%)")}><div class="card col" style="gap:8px;border:3px solid var(--md-sys-color-primary);padding:${ph ? "10px 14px" : "18px 22px"}"><div class="row" style="justify-content:space-between"><h3 style="font-size:${ph ? 16 : 22}px">Asar is waiting to be made up (qada)</h3>${readBtn()}</div><p class="small">You were busy when Asar time ended. That's okay. You can pray it now or any time, and it counts. No rush.</p><div class="row" style="flex-wrap:wrap;gap:4px">${strip}</div><div class="row"><button class="btn primary ${ph ? "" : "demo-focus"}" style="min-height:${ph ? 48 : 56}px">${ic("mosque")}Pray Asar (qada) now</button><button class="btn glass" style="min-height:${ph ? 48 : 56}px">Later</button></div></div></div>`;
+        const clockC = `<div ${pos(ph ? "left:16px;top:12px" : "left:24px;top:24px")}><span class="chip solid" style="min-height:40px">${ic("clock")}<b>19:20</b> · Isyak at 20:08</span></div>`;
+        return clockC + c.ring + c.coinsMute + card;
+      }
+      function toggleRow(label, value, on) {
+        return `<div class="row" style="justify-content:space-between;gap:8px"><span>${label}</span><button class="btn ${on ? "gold" : ""}" style="min-height:44px;min-width:110px" role="switch" aria-checked="${on ? "true" : "false"}">${value}</button></div>`;
+      }
+      function xPause(dev) {
+        const ph = dev === PH;
+        const left = `<div class="col" style="gap:${ph ? 6 : 10}px"><button class="btn primary ${ph ? "" : "demo-focus"}" style="min-height:${ph ? 52 : 64}px;font-size:18px">${ic("arrow")}Resume <span class="kbd">Esc</span></button><button class="btn" style="min-height:48px">${ic("book")}How to play</button><button class="btn" style="min-height:48px">${ic("home")}Save and go to PlayPad</button><p class="small muted">Day 1 · 12:42 · saved a moment ago. The world and all sound stop while paused.</p></div>`;
+        const right = `<div class="col" style="gap:${ph ? 4 : 8}px">${toggleRow("Sound", "On", true)}${toggleRow("Azan captions", "Always on", true)}${toggleRow("Caption size", "Large", false)}${toggleRow("Read to me", "On", true)}${toggleRow("Picture quality", "Auto (medium)", false)}${toggleRow("Less motion", "Follow device", false)}</div>`;
+        return panel(
+          ph,
+          headRow(ph, `${ic("pause")} Paused`) +
+            `<div style="display:grid;grid-template-columns:1fr 1.3fr;gap:${ph ? 12 : 32}px">${left}${right}</div>`,
+        );
+      }
+      function xFocus(dev) {
+        const c = optDCtx("talk", dev);
+        const ph = c.ph;
+        const P = ph
+          ? [
+              [400, 120],
+              [18, 6],
+              [196, 118],
+              [260, 6],
+              [320, 6],
+              [382, 6],
+              [444, 6],
+              [506, 6],
+              [648, 96],
+              [800, 6],
+            ]
+          : [
+              [600, 280],
+              [28, 18],
+              [254, 194],
+              [436, 640],
+              [522, 640],
+              [608, 640],
+              [694, 640],
+              [780, 640],
+              [1000, 74],
+              [1180, 22],
+            ];
+        const tap = `<div ${pos(`left:${c.nx - (ph ? 48 : 60)}px;top:${c.ny - (ph ? 100 : 130)}px`)}><button class="btn primary demo-focus" style="width:${ph ? 96 : 120}px;height:${ph ? 84 : 110}px;border-radius:24px;flex-direction:column;gap:2px" aria-label="Talk to Nenek">${ic("talk", "xl")}<span>Talk</span></button></div>`;
+        const badges = P.map(([x, y], i) => badge(i + 1, x, y)).join("");
+        const legend = ph
+          ? ""
+          : `<div ${pos("left:24px;top:330px;width:330px")}><div class="card small"><b>Tab order</b> ① Talk (the nearest action) ② clock + prayers ③ mission card + read-to-me ④-⑧ Missions, Map, Pray, Bag, Pause ⑨ mute ⑩ needs ring (read-only, announced). Shortcuts: <span class="kbd">E</span> act <span class="kbd">M</span> map <span class="kbd">J</span> missions <span class="kbd">P</span> pray <span class="kbd">Esc</span> pause. Dialogs trap focus and return it to the opener.</div></div>`;
+        return c.hudAll + c.mission + c.ctl + tap + badges + legend;
+      }
+      function xReduced(dev) {
+        const c = optDCtx("talk", dev);
+        const ph = c.ph;
+        const tap = `<div ${pos(`left:${c.nx - (ph ? 48 : 60)}px;top:${c.ny - (ph ? 100 : 130)}px`)}><button class="btn primary" style="width:${ph ? 96 : 120}px;height:${ph ? 84 : 110}px;border-radius:24px;flex-direction:column;gap:2px;outline:3px solid var(--md-sys-color-on-surface);outline-offset:2px" aria-label="Talk to Nenek">${ic("talk", "xl")}<span>Talk</span></button></div>`;
+        const note = `<div ${pos(ph ? "left:170px;right:120px;bottom:12px" : "left:50%;top:190px;width:460px")}><div class="note small" style="position:static"><b>Less motion (system setting or the pause menu):</b> no camera bob or shake, no pulsing Talk button (a steady outline instead), footprints appear at once instead of stepping, cards fade instead of sliding, and the needs ring and coins jump to the new value.</div></div>`;
+        return c.hudAll + c.mission + c.ctl + tap + note;
+      }
+      function xPortrait() {
+        const k = 844 / 720;
+        const nx = Math.round(712 * k - (1280 * k - 390) / 2);
+        const ny = Math.round(452 * k);
+        const clockC = `<div ${pos("left:12px;top:12px")}><div class="card col" style="gap:4px;padding:6px 10px"><div class="row" style="gap:6px"><span class="chip gold">${ic("clock")}<b>12:42</b></span><b class="small">Zohor soon</b></div>${dayStrip(true, false)}</div></div>`;
+        const ring = `<div ${pos("right:20px;top:12px")}>${needsRing(104)}</div><div ${pos("right:12px;top:132px")}>${coins()}</div>`;
+        const mission = `<div ${pos("left:12px;top:118px")}>${picMission(true, false)}</div>`;
+        const hintRot = `<div ${pos("left:50%;top:262px;transform:translateX(-50%)")}><span class="chip solid" style="min-height:40px">${ic("phone")}Turn sideways for a wider view <button class="btn icon" style="min-height:32px;min-width:32px;width:32px;box-shadow:none" aria-label="Dismiss">${ic("close")}</button></span></div>`;
+        const tap = `<div ${pos(`left:${nx - 44}px;top:${ny - 96}px`)}><button class="btn primary" style="width:88px;height:80px;border-radius:24px;flex-direction:column;gap:2px" aria-label="Talk to Nenek">${ic("talk", "xl")}<span>Talk</span></button></div>`;
+        const ctl = `<div class="hud joy" style="left:20px;bottom:96px;width:112px;height:112px" role="img" aria-label="Move joystick"><i></i></div><button class="btn glass round" style="position:absolute;right:20px;bottom:110px;width:64px;height:64px;flex-direction:column;gap:0;font-size:11px" aria-label="Run">${ic("run")}Run</button>`;
+        const dk = `<div ${pos("left:50%;bottom:12px;transform:translateX(-50%)")}>${dock(true, "")}</div>`;
+        return clockC + ring + mission + hintRot + tap + ctl + dk;
+      }
+
+      const X_STATES = [
+        [
+          "explore",
+          "Exploring",
+          "D happy path: the big Talk button over Nenek",
+          (d) => optD("explore", d),
+        ],
+        ["talk", "Talking", "picture bubble, read-to-me, two big replies", (d) => optD("talk", d)],
+        [
+          "azan",
+          "Prayer due",
+          "captions, mission paused, footprints to the mosque",
+          (d) => optD("azan", d),
+        ],
+        [
+          "wudu",
+          "Wudu steps",
+          "11 picture tiles in Shafi'i order; step 5 Face, splash 2 of 3",
+          xWudu,
+          "day",
+        ],
+        [
+          "pray",
+          "Prayer steps",
+          "posture picture tiles; gentle hint after a wrong tap",
+          (d) => optD("pray", d),
+          "hall",
+        ],
+        [
+          "hawker",
+          "Hawker stall",
+          "picture tiles, coin pips; the dear dish is disabled",
+          (d) => optD("hawker", d),
+          "hawker",
+        ],
+        ["menu", "Missions board", "8 picture missions", (d) => optD("menu", d)],
+        ["loading", "Loading", "title + asset progress; Start disabled until ready", xLoading],
+        ["empty", "Empty · no mission", "a ★ over neighbours who have one", xEmpty],
+        ["alldone", "Empty · all done", "8 of 8 done, new ones tomorrow", xAllDone],
+        ["webgl", "Error · no WebGL", "friendly card, no crash, back to PlayPad", xWebgl],
+        ["nosave", "Notice · no saving", "storage blocked: play on, told once", xNoSave],
+        ["far", "Disabled · out of range", "Talk shows 'Walk closer' (more than 2 m away)", xFar],
+        [
+          "coins",
+          "Disabled · too dear",
+          "tapping the dear dish explains how to earn coins",
+          xCoinsShort,
+          "hawker",
+        ],
+        [
+          "paused",
+          "Disabled · missions paused",
+          "during a due prayer; the active mission is kept",
+          xPaused,
+        ],
+        ["qada", "Qada card", "a missed prayer to make up, gentle copy, no penalty", xQada],
+        [
+          "pause",
+          "Pause dialog",
+          "resume, sound, captions, read-to-me, quality, less motion",
+          xPause,
+        ],
+        ["focus", "Keyboard focus order", "numbered Tab order + shortcuts", xFocus],
+        ["reduced", "Reduced motion", "what changes when less motion is on", xReduced],
+      ];
+      function chosenBlock(dev, title) {
+        const figs = X_STATES.map(
+          ([, name, desc, fn, scene], i) =>
+            `<figure>${frame(dev, scene || "day", fn(dev), `Chosen D, ${dev === PH ? "phone" : "desktop"}: ${name}`)}<figcaption><b>${i + 1} · ${name}</b> — ${desc}</figcaption></figure>`,
+        ).join("");
+        const portrait =
+          dev === PH
+            ? `<figure>${frame("portrait", "day", xPortrait(), "Chosen D, portrait phone fallback")}<figcaption><b>${X_STATES.length + 1} · Portrait phone (390 × 844)</b> — fallback layout</figcaption></figure>`
+            : "";
+        return `<section class="dev" id="X-${dev}"><h2>${title}</h2><div class="frames">${figs}${portrait}</div></section>`;
+      }
+      const xHost = document.querySelector('[data-chosen="D"]');
+      xHost.innerHTML =
+        chosenBlock(PH, "Phone landscape · 844 × 390 (touch) + portrait fallback") +
+        chosenBlock(DK, "Desktop · 1280 × 720 (keyboard + mouse)");
+
       /* Scale frames down on narrow screens so nothing scrolls sideways. */
       function fit() {
         for (const f of document.querySelectorAll(".f")) {
-          const w = f.classList.contains("phone") ? 844 : 1280;
+          const w = f.classList.contains("phone")
+            ? 844
+            : f.classList.contains("portrait")
+              ? 390
+              : 1280;
           const avail = f.closest(".dev").clientWidth || window.innerWidth;
           f.style.zoom = String(Math.min(1, avail / w));
         }

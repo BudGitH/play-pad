@@ -61,11 +61,23 @@
       const z = o.z0 + (o.z1 - o.z0) * t;
       B.geo(o.key || "plaster", panel(o.types[i], w, o.h), P.compose(x, o.y || 0, z, rot, 1, 1, 1), o.color);
       if (o.types[i] === "win") B.plane("glass", x, (o.y || 0) + 2.4, z, 1.6, 2.6, rot);
-      if (o.types[i] === "door" || o.types[i] === "arcade") continue;
-      const hx = Math.abs(Math.cos(rot)) * w / 2 + 0.25;
-      const hz = Math.abs(Math.sin(rot)) * w / 2 + 0.25;
-      ctx.colliders.push({ minX: x - hx, maxX: x + hx, minZ: z - hz, maxZ: z + hz, kind: "mosque-wall" });
+      if (o.types[i] === "door" || o.types[i] === "arcade") jambs(ctx, x, z, rot, w, o.types[i] === "door" ? 1.15 : w / 2 - 0.35);
+      else pushWall(ctx, x, z, rot, w / 2);
     }
+  }
+  function pushWall(ctx, x, z, rot, half) {
+    const hx = Math.abs(Math.cos(rot)) * half + 0.25;
+    const hz = Math.abs(Math.sin(rot)) * half + 0.25;
+    ctx.colliders.push({ minX: x - hx, maxX: x + hx, minZ: z - hz, maxZ: z + hz, kind: "mosque-wall" });
+  }
+  /** Colliders for the solid pieces either side of an opening of half-width hw. */
+  function jambs(ctx, x, z, rot, w, hw) {
+    const half = (w / 2 - hw) / 2;
+    if (half < 0.05) return;
+    [-1, 1].forEach((s) => {
+      const d = s * (hw + half);
+      pushWall(ctx, x + Math.cos(rot) * d, z - Math.sin(rot) * d, rot, half);
+    });
   }
 
   /** Onion dome by lathe, on an octagonal drum, with a gold finial and crescent. */

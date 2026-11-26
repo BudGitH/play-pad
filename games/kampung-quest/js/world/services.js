@@ -3,7 +3,6 @@
 (function (KQ) {
   "use strict";
   const P = (KQ.WorldParts = KQ.WorldParts || {});
-  const SH = () => P.Shops;
 
   /** Barber: two chairs facing a mirror wall, a spinning pole (returned for animation). */
   function barber(B, u, S, ctx, group) {

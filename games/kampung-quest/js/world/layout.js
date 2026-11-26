@@ -14,7 +14,7 @@
     crossings: [
       { axis: "x", at: -10 }, // zebra crossings over the E–W road (fixed x)
       { axis: "x", at: 10 },
-      { axis: "x", at: -38 },
+      { axis: "x", at: -37 },
       { axis: "x", at: 30 },
       { axis: "z", at: -10 }, // over the N–S road (fixed z)
       { axis: "z", at: 10 },
@@ -56,10 +56,10 @@
     park: { x0: 34, x1: 70, z0: 10, z1: 38 },
     busStop: { x0: 16, x1: 24, z0: 6.2, z1: 8.6 },
     carpark: { x0: -20, x1: -8, z0: 28, z1: 44 },
-    recycling: { x: 41, z: -9 },
+    recycling: { x: 19, z: -9 },
     linkways: [
-      { x0: -40.6, x1: -37.4, z0: 6, z1: 16 }, // block A → road
-      { x0: -40.6, x1: -37.4, z0: 25, z1: 46 }, // block A ↔ block B
+      { x0: -38.6, x1: -35.4, z0: 6, z1: 16 }, // block A → road
+      { x0: -38.6, x1: -35.4, z0: 25, z1: 46 }, // block A ↔ block B
       { x0: 47.4, x1: 50.6, z0: 6, z1: 46 }, // block C → road (through the park)
       { x0: 24, x1: 30, z0: 6, z1: 8.6 }, // bus stop extension
     ],

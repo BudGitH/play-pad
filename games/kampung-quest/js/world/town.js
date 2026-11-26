@@ -88,7 +88,7 @@
     B.geo("roof", P.cached("gazebo", () => new THREE.ConeGeometry(4.4, 1.8, 4)), P.compose(gx, 3.7, gz, Math.PI / 4, 1, 1, 1), 0xffffff);
     B.aabb("wood", gx - 1.2, 0.15, gz - 0.5, gx + 1.2, 0.75, gz + 0.5, 0x8a5a32);
     ctx.colliders.push({ minX: gx - 1.3, maxX: gx + 1.3, minZ: gz - 0.6, maxZ: gz + 0.6, kind: "gazebo-table" });
-    B.aabb("paving", 47.4, 18, gx - 3, 20, 0.12, 0xf2eee8);
+    B.aabb("paving", 50.6, 0, 18, gx - 3, 0.12, 20, 0xf2eee8);
   }
 
   /** Trees: [x, z, scale, kind]. */
@@ -105,7 +105,8 @@
       if (Math.abs(t) < 12) continue;
       out.push([t, 8.0, 0.7, "street"], [-8.0, t, 0.7, "street"]);
     }
-    return out.filter(([x, z]) => !(x > 12 && x < 32 && z < 10) && !(x < -6 && z > 26 && z < 47));
+    const skip = ([x, z]) => (x > 12 && x < 32 && z < 10) || (x < -6 && z > 26 && z < 47) || (x === 48 && z === 8) || (x === -8 && z === -32);
+    return out.filter((t) => !skip(t));
   };
   function treeList() {
     return TREES.concat(streetVerge()).map(([x, z, s, kind]) => ({ x, z, s, kind }));

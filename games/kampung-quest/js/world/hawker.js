@@ -18,17 +18,17 @@
     B.box("roof", (x0 + x1) / 2, cy, cz, x1 - x0, 0.14, len, 0xffffff, [th, 0, 0]);
     const nz = Math.sin(th) * 0.13;
     const ny = Math.cos(th) * 0.13;
-    B.box("paint", (x0 + x1) / 2, cy - ny, cz - nz, x1 - x0 - 0.2, 0.06, len - 0.2, 0xe9e2cf, [th, 0, 0]);
+    B.box("paint", (x0 + x1) / 2, cy - ny, cz - nz, x1 - x0 - 0.2, 0.06, len - 0.2, 0xfaf6ea, [th, 0, 0]);
     B.box("paint", (x0 + x1) / 2, yEave - 0.12, zEave, x1 - x0, 0.32, 0.08, 0x2f6b4a);
   }
 
   /** Columns, floor, roof tiers and the front name board. */
   function shell(B, H, ctx) {
     const h = H.h;
-    B.aabb("tiles", H.x0 - 1.5, 0, H.z0 - 1.5, H.x1 + 1.5, 0.14, H.z1 + 1.5);
+    B.aabb("tiles", H.x0 - 1.5, 0, H.z0 - 1.5, H.x1 + 1.5, 0.14, H.z1 + 1.5, 0xf3dcc0);
     for (let x = H.x0; x <= H.x1; x += 6) {
       [H.z0, (H.z0 + H.z1) / 2, H.z1].forEach((z, i) => {
-        if (i === 1 && (x === H.x0 || x === H.x1 || x === 26)) return;
+        if (x === 26 || (i === 1 && (x === H.x0 || x === H.x1))) return;
         B.box("plaster", x, h / 2, z, 0.45, h, 0.45, 0xf1ead8);
         B.box("plaster", x, 0.5, z, 0.5, 1.0, 0.5, 0x2f6b4a);
         ctx.colliders.push({ minX: x - 0.3, maxX: x + 0.3, minZ: z - 0.3, maxZ: z + 0.3, kind: "column" });
@@ -60,8 +60,8 @@
         B.box("lamp", x + 3, H.h - 0.35, z, 1.2, 0.06, 0.1, 0xffffff);
       });
     }
-    const blade = new THREE.BoxGeometry(1.5, 0.02, 0.16);
-    blade.translate(0.75, 0, 0);
+    const blade = new THREE.BoxGeometry(0.95, 0.02, 0.13);
+    blade.translate(0.5, 0, 0);
     const g = mergeBlades(blade);
     const mat = new THREE.MeshStandardMaterial({ color: 0xf4f4f2, roughness: 0.4 });
     const im = P.instanced(g, mat, list, { cast: false });

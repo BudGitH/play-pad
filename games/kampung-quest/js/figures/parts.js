@@ -68,7 +68,7 @@
   F.partThigh = function (spec, d) {
     var sk = spec.skirt;
     if (sk && sk.upper) return G.merge([skirtHalf(d.thigh + 0.012, 0.125, 0.14, 0.13, 0.15, sk.upper, 0.01)]);
-    var g = G.place(box(d.legW, d.thigh + 0.004, d.legD, 0.014, 2, spec.legs), [0, -d.thigh / 2 + 0.002, 0]);
+    var g = G.place(box(d.legW, d.thigh + 0.004, d.legD, 0.014, 1, spec.legs), [0, -d.thigh / 2 + 0.002, 0]);
     return G.merge([g]);
   };
 
@@ -76,7 +76,7 @@
   F.partShin = function (spec, d) {
     var sk = spec.skirt;
     var footY = -d.shin + d.footH / 2;
-    var list = [G.place(box(d.legW, d.footH, d.legD + 0.03, 0.012, 2, spec.shoes), [0, footY, 0.015])];
+    var list = [G.place(box(d.legW, d.footH, d.legD + 0.03, 0.012, 1, spec.shoes), [0, footY, 0.015])];
     if (sk && sk.lower) {
       var len = d.shin - d.footH + 0.006;
       list.push(skirtHalf(len, 0.14, 0.152, 0.15, 0.165, sk.lower, 0.0));
@@ -84,7 +84,7 @@
     }
     var shoeH = spec.band ? 0.032 : 0.0;
     var legH = d.shin - d.footH - shoeH - (spec.band ? 0.02 : 0);
-    list.push(G.place(box(d.legW, legH + 0.002, d.legD, 0.012, 2, spec.legs), [0, -legH / 2, 0]));
+    list.push(G.place(box(d.legW, legH + 0.002, d.legD, 0.012, 1, spec.legs), [0, -legH / 2, 0]));
     if (!spec.band) return G.merge(list);
     list.push(G.place(box(d.legW, 0.02, d.legD, 0.004, 1, spec.band), [0, -legH - 0.01, 0]));
     list.push(G.place(box(d.legW, shoeH + 0.004, d.legD, 0.006, 1, spec.shoes), [0, -legH - 0.02 - shoeH / 2, 0]));
@@ -171,7 +171,7 @@
     var hex = spec.hands || spec.skin;
     var skin = !spec.hands;
     var peg = G.place(G.paint(new THREE.CylinderGeometry(0.02, 0.023, 0.03, 12, 1), hex, skin), [0, -0.01, 0]);
-    var opts = { depth: 0.032, bevelEnabled: true, bevelThickness: 0.007, bevelSize: 0.006, bevelSegments: 2, curveSegments: 14 };
+    var opts = { depth: 0.032, bevelEnabled: true, bevelThickness: 0.007, bevelSize: 0.006, bevelSegments: 1, curveSegments: 10 };
     var clip = new THREE.ExtrudeGeometry(clipShape(), opts);
     G.place(clip, [0, -0.052, -0.016]);
     return G.merge([peg, G.paint(clip, hex, skin)]);

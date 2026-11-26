@@ -8,7 +8,7 @@
 
   /** Shadow/env settings per quality tier. */
   const TIERS = {
-    low: { map: 1024, span: 28, envEvery: 0, pixelRatio: 1 },
+    low: { map: 1024, span: 28, envEvery: 120, pixelRatio: 1 },
     med: { map: 2048, span: 36, envEvery: 45, pixelRatio: 1.5 },
     high: { map: 2048, span: 44, envEvery: 20, pixelRatio: 2 },
   };

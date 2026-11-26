@@ -1,53 +1,51 @@
-# QA Report (Post-Run Findings): <feature name>
+# QA report — Kampung Quest (PLAY-013)
 
-> **Phase 4 output.** Produced by **merging** the multi-lens QA panel (ACCURACY · QUALITY · COMPLIANCE · RISK). This is the feature's "pipeline result". It is the gate: the feature is not done until this report is clean.
+> Phase 4 Post-Run Findings Report. Merged + deduped from 6 independent lenses.
+> Round 1: 2026-11-26 · Lenses: ACCURACY, QUALITY, COMPLIANCE, RISK, ACCESSIBILITY/MOBILE, PERFORMANCE.
 
-**Feature:** <feature name>
-**Ticket:** PLAY-\_\_\_
-**Run at:** 2026-11-21 (round 1)
-**Overall result:** ☐ PASS ☐ FAIL
+## Round 1 — result: **FAIL** (5 HIGH)
 
----
+| Severity | Count |
+| -------- | ----- |
+| CRITICAL | 0     |
+| HIGH     | 5     |
+| MEDIUM   | 21    |
+| LOW      | 25    |
 
-## Gate summary
+### HIGH (blocking)
 
-| Lens (dimension) | Agent verdict | Findings      | Blocking? |
-| ---------------- | ------------- | ------------- | --------- |
-| ACCURACY         | _PASS/FAIL_   | _n_           | _y/n_     |
-| QUALITY          | _PASS/FAIL_   | _n_           | _y/n_     |
-| COMPLIANCE       | _PASS/FAIL_   | _n_           | _y/n_     |
-| RISK (security)  | _PASS/FAIL_   | _n_           | _y/n_     |
-| **Tests**        | _PASS/FAIL_   | _x/y passing_ | _y/n_     |
+| ID      | Lens          | Finding                                                                                                             | Fix owner            |
+| ------- | ------------- | ------------------------------------------------------------------------------------------------------------------- | -------------------- |
+| ACC-1   | Accuracy      | Hawkers Ali / Aminah cannot be Talk-targeted at their stalls (counter always wins) → 2 missions unacceptable by day | gameplay agent       |
+| Q-01    | Quality       | `contract.md` not Prettier-formatted → CI `check` fails                                                             | fixed (orchestrator) |
+| Q-02    | Quality       | Most browser ACs have no automated test (test plan "probe pending")                                                 | perf/probe agent     |
+| A11Y-01 | Accessibility | Phone landscape: dock overlaps coins chip; Pause / Bag cannot be tapped                                             | HUD agent            |
+| PERF-01 | Performance   | No AC-14 perf probe; 4×-throttled main-thread frame 18–22 ms (borderline)                                           | perf/probe agent     |
 
-## Findings
+### MEDIUM (fixing this round)
 
-> One block per finding. Severity ∈ {CRITICAL, HIGH, MEDIUM, LOW}. Dimensions are the lenses it scored on. Check the ledger for recurrence.
+- **ACC-2** — root cause of the "Isyak time!" at 07:10 / 12:55 screenshots: the test hook `setMinute` jumped the clock backwards. Not reachable in natural play. Fix: rebuild the prayer tracker on a backwards jump or a mismatched save.
+- **Q-03** — a texture 404 over http leaves a blank material (fallback only on file://).
+- **Q-04** — sim unit tests not run in CI.
+- **Q-05 / Q-06** — standing enforcement rows; function-level doc blocks are thin.
+- **Q-07** — the shipped prayer-time / azan data files are untested.
+- **COMP-001** — a real brand name ("Milo") on the sign and menu.
+- **COMP-002** — azan CC BY-SA credit visible only on the title screen.
+- **COMP-003** — capture docs pending.
+- **RISK-01** — no cross-tab save guard (ledger `multi-tab-save-overwrite`, 3×).
+- **A11Y-02..07** — toast, Walk-closer bubble and azan card overlaps on phones; action-label contrast 2.49:1; prayer strip overflow on narrow phones; no screen-reader announcements for the azan or steps.
+- **PERF-02..04** — draw calls under-counted (shadow pass); whole-map merged batches defeat culling; shader recompiles on auto-downgrade.
 
-### FINDING-2026-11-21-001
+### LOW
 
-- **Severity:** _HIGH_
-- **Dimensions:** _quality, risk_
-- **Where:** `path/to/file` — _what/which pattern_
-- **What:** _the problem, concretely._
-- **Recommendation:** _the fix; reference `docs/CODE_QUALITY.md` section._
-- **Recurrence:** _new / Nth occurrence — update `docs/findings-ledger.md`._
-- **Status:** OPEN
+Tracked in the raw panel output and fixed where cheap: ACC-3/4, Q-08..12, COMP-004..009, RISK-02..04, A11Y-08..12, PERF-05..08.
 
-## Blocker classification → response
+## Verified OK (round 1)
 
-| Severity | ACCURACY         | QUALITY            | COMPLIANCE          | RISK             |
-| -------- | ---------------- | ------------------ | ------------------- | ---------------- |
-| CRITICAL | hotfix now       | stop-ship          | stop-ship           | stop-ship        |
-| HIGH     | blocks feature   | blocks feature     | blocks feature      | blocks feature   |
-| MEDIUM   | fix next release | ticket, ≤2 cycles  | ticket, ≤1 cycle    | ticket, ≤1 cycle |
-| LOW      | backlog          | tech-debt register | compliance register | risk register    |
+- Prayer times match the MUIS row on data.gov.sg (`2026-11-26,Thurs,05:29,06:51,12:54,16:17,18:54,20:08`).
+- Raka'at plans, the 12-step wudu order and the Subuh window ending at Syuruk are correct.
+- A full Zohor flow and 3 missions were driven end to end in the real game; 125/125 sim tests pass.
 
-## Human summary
+## Round 2
 
-_2–3 plain sentences: what was checked, what passed, what blocks, what's next. Written so a non-engineer understands the state._
-
----
-
-### Loop control
-
-If any CRITICAL/HIGH is OPEN → **FIX**, then re-spawn the panel and add a new round below. Repeat until **Overall result = PASS**. Then proceed to **Phase 5 (PRODUCT & UX VALIDATION)** — see `features/<feature-name>/product-validation.md` — and only after that gate passes, to **Phase 6 (CAPTURE)**: append learnings, update the map, update the ledger.
+_Pending — the panel re-runs after the fixes land._

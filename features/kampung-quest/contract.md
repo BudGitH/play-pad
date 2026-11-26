@@ -13,15 +13,15 @@ All runtime code is **classic scripts** (no ES modules — file:// rule) that at
 
 ## Layout (games/kampung-quest/)
 
-| Path                           | Owner         | Exposes                                                                                                                                       |
-| ------------------------------ | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| `js/data/prayer-times.js`      | research      | `KQ.PRAYER_TIMES` = `{ date:"2026-11-26", source, subuh, syuruk, zohor, asar, maghrib, isyak }` as `"HH:MM"` 24 h                             |
-| `js/data/azan.js`              | research      | `KQ.AZAN_TEXT` = `[{ ar, translit, en, start, end }]` caption cues (seconds, matching the recording)                                         |
-| `assets/audio/azan.ogg` (+mp3) | research      | Licensed recording; licence file alongside; row in `assets/CREDITS.md`                                                                       |
-| `js/sim/*.js`                  | systems       | Pure logic, **no THREE, no DOM** — see below. Unit-tested from Node (`tests/kampung-quest/*.test.mjs` via `node:test` + `vm`)                  |
-| `js/figures/*.js`              | figures       | `KQ.Figures` — see below                                                                                                                       |
-| `js/world/*.js` + `assets/textures/` | world   | `KQ.World` — see below                                                                                                                         |
-| `js/game/*.js`, `index.html`   | integration   | Player controller, camera, input, NPC agents, HUD, audio, main loop (built after the above land, to the chosen mockup)                        |
+| Path                                 | Owner       | Exposes                                                                                                                       |
+| ------------------------------------ | ----------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `js/data/prayer-times.js`            | research    | `KQ.PRAYER_TIMES` = `{ date:"2026-11-26", source, subuh, syuruk, zohor, asar, maghrib, isyak }` as `"HH:MM"` 24 h             |
+| `js/data/azan.js`                    | research    | `KQ.AZAN_TEXT` = `[{ ar, translit, en, start, end }]` caption cues (seconds, matching the recording)                          |
+| `assets/audio/azan.ogg` (+mp3)       | research    | Licensed recording; licence file alongside; row in `assets/CREDITS.md`                                                        |
+| `js/sim/*.js`                        | systems     | Pure logic, **no THREE, no DOM** — see below. Unit-tested from Node (`tests/kampung-quest/*.test.mjs` via `node:test` + `vm`) |
+| `js/figures/*.js`                    | figures     | `KQ.Figures` — see below                                                                                                      |
+| `js/world/*.js` + `assets/textures/` | world       | `KQ.World` — see below                                                                                                        |
+| `js/game/*.js`, `index.html`         | integration | Player controller, camera, input, NPC agents, HUD, audio, main loop (built after the above land, to the chosen mockup)        |
 
 ## KQ.Sim (systems)
 

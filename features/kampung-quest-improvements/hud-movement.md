@@ -5,11 +5,11 @@ Owner requests: "make the HUD easier to see and manage", "too much HUD with doub
 
 ## Audit: one control per action
 
-| Was | Now | Why |
-| --- | --- | --- |
-| Run button (touch) **and** Shift in the key hints | No Run button. Push the joystick out to its dashed rim to run (Shift on a keyboard). | A button the left thumb cannot reach while steering is the thing that made players stop. One less control. |
-| Minimap tap opened the Map **and** the dock had Map | The minimap is a picture only. The dock's Map (and `M`) opens it. | Two buttons, one action; the minimap was an unlabelled, role-less button. |
-| Key hints listed "Esc pause" **and** the dock has Pause | Hint removed (Esc still works). | Same action shown twice. |
+| Was                                                     | Now                                                                                  | Why                                                                                                        |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
+| Run button (touch) **and** Shift in the key hints       | No Run button. Push the joystick out to its dashed rim to run (Shift on a keyboard). | A button the left thumb cannot reach while steering is the thing that made players stop. One less control. |
+| Minimap tap opened the Map **and** the dock had Map     | The minimap is a picture only. The dock's Map (and `M`) opens it.                    | Two buttons, one action; the minimap was an unlabelled, role-less button.                                  |
+| Key hints listed "Esc pause" **and** the dock has Pause | Hint removed (Esc still works).                                                      | Same action shown twice.                                                                                   |
 
 Kept on purpose: Mute (top right) and the Pause-menu sound switch (a setting, not a HUD control); the status and
 mission cards (information, folded on phones as before); the Talk button (the single "do the nearest thing" action).

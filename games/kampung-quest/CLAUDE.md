@@ -50,7 +50,7 @@ State lives in one object, `KQ.Game.S` (created in `boot.js`). The pure sim obje
 
 ## Mobile and touch
 
-- **Touch is first-class** (owner priority): joystick (left), drag-to-look and two-finger pinch on the scene, Run toggle, the floating Talk button, the dock, every menu and the wudu / prayer tiles. All HUD buttons are >= 48 px; `touch-action: none` on the stage, `user-select: none`, `-webkit-touch-callout: none`, `contextmenu` blocked, `viewport-fit=cover` plus `env(safe-area-inset-*)`.
+- **Touch is first-class** (owner priority): joystick (left), drag-to-look and two-finger pinch on the scene, joystick-rim run (no Run button), Jump button, the floating Talk button, the dock, every menu and the wudu / prayer tiles. All HUD buttons are >= 48 px; `touch-action: none` on the stage, `user-select: none`, `-webkit-touch-callout: none`, `contextmenu` blocked, `viewport-fit=cover` plus `env(safe-area-inset-*)`.
 - **Quality:** coarse pointers and software GL (SwiftShader / llvmpipe) start on `low`; pixel ratio is capped at 1.5 on touch devices; the loop drops one tier after ~3 s under 40 fps (`Loop.monitor`).
 - **Audio on iOS:** `Audio.unlock()` runs on Start and on later touches (resumes a suspended context after returning to the tab); the azan `<audio>` element is created at Start and primed with a silent play+pause inside that gesture. It is NOT created at load (an idle media request keeps the page from ever being "network idle").
 - **Prayer panels:** a side panel when the viewport is >= 700 x 340 (the hero stays centred in the rest via `Camera.setShift`), a bottom sheet otherwise. `PrayerFlow.refit()` re-frames / switches the panel on rotation or resize.

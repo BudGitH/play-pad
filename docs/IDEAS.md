@@ -29,6 +29,7 @@
 
 ## 🌱 Later (needs shaping first)
 
+- **Kampung Quest improvements follow-ups (`features/kampung-quest-improvements/`):** hide sunat in makruh windows (owner call); jump buffering; floating joystick; merge food/energy rings and chips; salaam for everyone vs Muslim-only (owner call).
 - **Kampung Quest crowd follow-ups (`features/kampung-quest-crowd/`):** queue shuffle with take-away leavers; extras who walk to a table instead of appearing; cast neighbours chatting in pairs (face each other, `talk` / `listen` poses are ready); a bus that arrives and the bus-stop queue boards it; busier mosque courtyard near prayer times; per-extra faces (brows, glasses) via a per-instance UV offset; bicycle parking users; shopping-bag hand-offs between aunties.
 
 - **Brick Buddies v2 follow-ups (non-blocking, from `features/brick-buddies-v2/`):** a one-time pinch / two-finger-pan hint the first time the player is on a touch device; a floating joystick option; highlight the spot for a missing door / bed / torch like the red gap (gold glow on a suggested spot); undo for the last placed block; a "paint bucket" that recolours an existing block; more critters (butterflies by day when it is dry, a cat in the house); a real-handset check of the whole-world overview frame cost.

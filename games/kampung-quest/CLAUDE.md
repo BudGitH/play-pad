@@ -32,7 +32,7 @@
 | Prayer        | `prayer-flow.js` (controller), `prayer-ui.js` (screens), `prayer-text.js` (dhikr, captions)                                                                                                                                                                              |
 | Play          | `interact.js`, `mission-flow.js`, `services.js`, `actions.js`, `nudge.js` (first-meal nudge + hawker beacon, food / energy low notes; decisions in `js/sim/hints.js`)                                                                                                    |
 | Greetings     | `greetings.js` (salaam bubbles over passing citizens and for the hero; pooled DOM, no draw calls; hook `__kq.greetings()`); decisions, chances, cooldowns and caps are pure in `js/sim/greet.js`. The salaam exchange is only between Muslim people, others say "Hello!" |
-| Sound         | `audio.js` (synth UI sounds, azan element, lifecycle gates)                                                                                                                                                                                                              |
+| Sound         | `audio.js` (synth UI sounds, footsteps, azan element, lifecycle gates), `ambience.js` (synth day/night/place soundscape, ducked to silence under the azan and prayer; probe `Audio.debug().ambience`); `greetings.js` (salaam bubbles, rules in `js/sim/greet.js`)       |
 
 State lives in one object, `KQ.Game.S` (created in `boot.js`). The pure sim objects are `S.sim.{clock, prayer, needs, hints, economy, missions}`.
 

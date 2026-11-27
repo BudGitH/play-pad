@@ -14,14 +14,16 @@
   "use strict";
   KQ.Sim = KQ.Sim || {};
 
-  const KEY = "kampung-quest:v1";
+  /** One save slot per region: the kampung keeps the original key, other regions add their id. */
+  const REGION = typeof KQ.region === "string" && KQ.region !== "kampung" ? KQ.region : "";
+  const KEY = "kampung-quest:v1" + (REGION ? ":" + REGION : "");
   const VERSION = 1;
   /** A real save is a few KB; refuse absurd blobs before parsing. */
   const MAX_CHARS = 200000;
   const QUALITIES = ["low", "med", "high"];
   const DEFAULT_OUTFIT = { hair: "classic", hat: "none" };
   /** The walkable world is about +/-72 m (edge colliders); a saved position must sit inside it. */
-  const WORLD_HALF = 70;
+  const WORLD_HALF = REGION ? 1000 : 70;
   const MAX_REV = 1e9;
   /**
    * The revision this tab last loaded or wrote (tab-local: every page has its own copy of this
@@ -56,6 +58,7 @@
       needs: { hunger: 85, energy: 90 },
       missions: { active: null, completed: [], stickers: [] },
       prayers: null,
+      rituals: null,
       hints: { nudged: false, ate: false, foodDay: 0, energyDay: 0 },
       outfit: Object.assign({}, DEFAULT_OUTFIT),
       pos: null,
@@ -74,6 +77,12 @@
   function cleanPrayers(raw) {
     const prayer = KQ.Sim.Prayer;
     return prayer && prayer.sanitizeSnapshot ? prayer.sanitizeSnapshot(raw) : null;
+  }
+
+  /** Sanitise the saved rituals section (Umrah / Hajj / Ziarah progress); null (or a save from before it existed) starts them fresh. */
+  function cleanRituals(raw) {
+    const umrah = KQ.Sim.Umrah;
+    return umrah && umrah.sanitize ? umrah.sanitize(raw) : null;
   }
 
   /** Sanitise the saved hints section (what was already nudged); a save from before hints gets the defaults. */
@@ -151,6 +160,7 @@
       },
       missions: cleanMissions(raw.missions),
       prayers: cleanPrayers(raw.prayers),
+      rituals: cleanRituals(raw.rituals),
       hints: cleanHints(raw.hints),
       outfit: cleanOutfit(raw.outfit),
       pos: cleanPos(raw.pos),
@@ -248,6 +258,7 @@
       needs: sim.needs.snapshot(),
       missions: sim.missions.snapshot(),
       prayers: sim.prayer ? sim.prayer.snapshot() : null,
+      rituals: sim.umrah ? sim.umrah.snapshot() : null,
       hints: sim.hints ? sim.hints.snapshot() : base.hints,
       outfit: sim.outfit || base.outfit,
       pos: sim.pos || null,
@@ -263,6 +274,7 @@
     sim.needs.restore(state.needs);
     sim.missions.restore(state.missions);
     if (sim.prayer && state.prayers) sim.prayer.restore(state.prayers);
+    if (sim.umrah && state.rituals) sim.umrah.restore(state.rituals);
     if (sim.hints) sim.hints.restore(state.hints);
   }
 

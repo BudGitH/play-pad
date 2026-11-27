@@ -155,6 +155,63 @@
     return picks.sort((a, b) => NATURAL.indexOf(a) - NATURAL.indexOf(b));
   }
 
+  /** What the hero does in each posture, in one short child-friendly sentence (shown on the step card). */
+  const STEP_HOW = {
+    takbir:
+      "Face the qibla, raise both hands to your ears and say Allahu akbar. Make your niat in your heart.",
+    qiyam: "Stand with your hands folded on your chest and read Al-Fatihah.",
+    ruku: "Bow with a flat back and your hands on your knees.",
+    itidal: "Stand up straight again.",
+    qunut: "Subuh only: raise your palms and make this dua. You may skip it.",
+    sujud: "Put your forehead, nose, hands, knees and toes on the ground.",
+    julus: "Sit up calmly between the two prostrations.",
+    tasyahud_awal: "Sit for the first tasyahud.",
+    tasyahud_akhir: "Sit for the last tasyahud and ask Allah to bless the Prophet.",
+    salam_r: "Turn your face to the right and say the salam.",
+    salam_l: "Now turn to the left and say the salam.",
+  };
+
+  /** Ritual text ids per posture (see js/data/ritual-text.js); the first one is read word by word first. */
+  const STEP_TEXTS = {
+    takbir: ["takbir"],
+    qiyam: ["fatihah"],
+    ruku: ["ruku"],
+    itidal: ["itidal"],
+    qunut: ["qunut"],
+    sujud: ["sujud"],
+    julus: ["julus"],
+    tasyahud_awal: ["tashahhud"],
+    tasyahud_akhir: ["tashahhud", "salawat"],
+    salam_r: ["salam"],
+    salam_l: ["salam"],
+  };
+  /** The short surahs offered after Al-Fatihah in the first two raka'at (any short surah is fine). */
+  const SHORT_SURAHS = ["ikhlas", "kawthar", "kafirun", "falaq", "nas"];
+
+  /** The ritual text items for a posture card: Al-Fatihah plus the short surahs in raka'at 1 and 2. */
+  function cardTexts(type, rakaat) {
+    const ids = (STEP_TEXTS[type] || []).slice();
+    if (type === "qiyam" && rakaat <= 2) ids.push(...SHORT_SURAHS);
+    const all = KQ.RITUAL_TEXT || {};
+    return ids.filter((id) => all[id]).map((id) => Object.assign({ id }, all[id]));
+  }
+
+  /** The one-line instruction for a posture (empty for an unknown type). */
+  function howFor(type) {
+    return STEP_HOW[type] || "";
+  }
+
+  /** What each wudu step says or reads, if anything: the niat, Bismillah and the doa after wudu. */
+  const WUDU_TEXTS = { niat: ["wuduNiyyah"], hands: ["bismillah"], doa: ["wuduDoa"] };
+
+  /** The ritual text items for a wudu step card. */
+  function wuduTexts(id) {
+    const all = KQ.RITUAL_TEXT || {};
+    return (WUDU_TEXTS[id] || [])
+      .filter((k) => all[k])
+      .map((k) => Object.assign({ id: k }, all[k]));
+  }
+
   G.PrayerText = {
     DHIKR,
     TILE,
@@ -165,5 +222,8 @@
     flowLabel,
     choices,
     nextHint,
+    cardTexts,
+    howFor,
+    wuduTexts,
   };
 })((window.KQ = window.KQ || {}));

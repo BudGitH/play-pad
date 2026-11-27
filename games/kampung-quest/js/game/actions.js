@@ -1,7 +1,8 @@
 /* ============================================================================
  * FILE: actions.js
- * PURPOSE: Routes every button and shortcut to what it does: interact (E), jump, the dock
- *          (Missions, Map, Pray, Bag, Pause), mute, number keys for picture tiles, Escape.
+ * PURPOSE: Routes every button and shortcut to what it does: interact (E), jump, the menus
+ *          (Missions and Bag in the dock, Map = the radar, Pray = the prayer-time card, Pause =
+ *          the corner button), mute, number keys for picture tiles, Escape.
  * BUSINESS CONTEXT: AC-15 (fully keyboard-playable; shortcuts E, 1-4, M, J, P, B, Esc; pause and
  *   mute always available), AC-16 (pause dialog stops the sim and all sound).
  * DEPENDENCIES: ui-screens.js, prayer-flow.js, interact.js, loop.js, audio.js, settings.js.
@@ -16,11 +17,11 @@
     return Object.assign({ sim: S().sim, onClose: () => (S().hudDirty = true) }, extra || {});
   }
 
-  /** Open the map screen with a live map view from the loop. */
+  /** Open the map screen (north-up, with word labels) with a live map view from the loop. */
   function openMap() {
     const h = G.Screens.map(
       ctxFor({
-        mapView: () => G.Loop.mapView(150),
+        mapView: () => G.Loop.mapView(G.Minimap.fullSpan(), G.Minimap.fullOpts()),
       }),
     );
     return h;
@@ -71,6 +72,9 @@
       setRead: (v) => (
         (G.Settings.prefs.readToMe = v), G.Settings.save(S().storage), G.Speech.cancel()
       ),
+      setVoices: (v) => (
+        (G.Settings.prefs.voices = v), G.Settings.save(S().storage), !v && G.Voice.cancel("off")
+      ),
       setAmbience: (v) => ((G.Settings.prefs.ambience = v), G.Settings.save(S().storage)),
       getQuality: () => (G.Settings.prefs.autoQuality ? "auto" : S().quality),
       setQuality: setQualityChoice,
@@ -85,6 +89,10 @@
         location.href = "../../index.html";
       },
       onStartOver: confirmStartOver,
+      onChangeRegion() {
+        G.Region.openSheet({ onClose: (why) => why !== "replaced" && openPause() });
+        G.Loop.setPaused(true);
+      },
       onClose: () => G.Loop.setPaused(false),
     };
   }
@@ -136,6 +144,7 @@
     if (id === "missions") G.Screens.missions(ctxFor());
     else if (id === "map") openMap();
     else if (id === "pray") G.PrayerFlow.openDayCard();
+    else if (id === "rites") G.RitualFlow.openMenu();
     else if (id === "bag") openBag();
     else if (id === "pause") openPause();
   }
@@ -167,8 +176,11 @@
     if (G.UI.modalOpen() && name !== "mute") return;
     if (name === "interact") return G.Interact.activate(S().target);
     if (name === "mute") return setMuted(!G.Audio.isMuted());
-    if (name === "jump") return canJump() && G.Player.jump(S().player, G.Audio);
-    if (["missions", "map", "pray", "bag"].indexOf(name) !== -1) dock(name);
+    if (name === "jump")
+      return G.Vehicles.mounted()
+        ? G.Vehicles.horn()
+        : canJump() && G.Player.jump(S().player, G.Audio);
+    if (["missions", "map", "pray", "bag", "rites"].indexOf(name) !== -1) dock(name);
   }
 
   /** Can the hero jump now: in play, no sheet or prayer screen open, not held by a flow. */

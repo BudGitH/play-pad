@@ -131,6 +131,8 @@
    */
   function build(scene, opts) {
     opts = opts || {};
+    if (KQ.region === "haramain" && KQ.Holy && KQ.Holy.buildWorld)
+      return KQ.Holy.buildWorld(scene, opts);
     const tier = opts.quality || "high";
     const kit = W.parts.makeKit(opts);
     const L = P.LAYOUT;

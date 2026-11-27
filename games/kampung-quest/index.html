@@ -53,7 +53,7 @@
       >
         <div class="kq-title-card">
           <h1 id="kqTitleH">Kampung Quest</h1>
-          <p class="kq-lead">A day in the neighbourhood: help, eat, pray.</p>
+          <p id="kqLead" class="kq-lead">A day in the neighbourhood: help, eat, pray.</p>
           <div
             class="kq-progress"
             role="progressbar"
@@ -74,6 +74,7 @@
             </button>
             <button id="kqNew" class="kq-btn" type="button" hidden><span>New game</span></button>
           </div>
+          <div id="kqRegions"></div>
           <p id="kqLoadNote" class="kq-small"></p>
           <p class="kq-small kq-credit">
             Azan: "The Adhan - Muslim Call to Prayer - Aaqib Azeez" by Atcovi,
@@ -120,8 +121,12 @@
     </script>
     <script src="three.min.js"></script>
     <!-- data -->
+    <script src="js/data/region.js"></script>
     <script src="js/data/prayer-times.js"></script>
+    <script src="js/data/prayer-times-makkah.js"></script>
     <script src="js/data/azan.js"></script>
+    <script src="js/data/holy-sites.js"></script>
+    <script src="js/data/ritual-text.js"></script>
     <!-- sim -->
     <script src="js/sim/ids.js"></script>
     <script src="js/sim/clock.js"></script>
@@ -133,9 +138,15 @@
     <script src="js/sim/missions.js"></script>
     <script src="js/sim/schedule.js"></script>
     <script src="js/sim/crowd.js"></script>
+    <script src="js/sim/crowd-pilgrim-dress.js"></script>
+    <script src="js/sim/crowd-pilgrim.js"></script>
     <script src="js/sim/jump.js"></script>
+    <script src="js/sim/vehicle.js"></script>
     <script src="js/sim/greet.js"></script>
     <script src="js/sim/ambience-mix.js"></script>
+    <script src="js/sim/recite.js"></script>
+    <script src="js/sim/ritual-walk.js"></script>
+    <script src="js/sim/umrah.js"></script>
     <script src="js/sim/save.js"></script>
     <!-- figures -->
     <script src="js/figures/materials.js"></script>
@@ -145,13 +156,18 @@
     <script src="js/figures/parts.js"></script>
     <script src="js/figures/headpieces.js"></script>
     <script src="js/figures/build.js"></script>
+    <script src="js/figures/ihram.js"></script>
     <script src="js/figures/cast.js"></script>
     <script src="js/figures/poses.js"></script>
     <script src="js/figures/prayer-poses.js"></script>
     <script src="js/figures/crowd-poses.js"></script>
+    <script src="js/figures/crowd-pilgrim-poses.js"></script>
+    <script src="js/figures/crowd-pilgrim-props.js"></script>
+    <script src="js/figures/vehicle-poses.js"></script>
     <script src="js/figures/animator.js"></script>
     <script src="js/figures/crowd-geo.js"></script>
     <script src="js/figures/crowd-kit.js"></script>
+    <script src="js/figures/vehicle-meshes.js"></script>
     <!-- world (prayer-times.js above is loaded first so the sun follows Syuruk / Maghrib) -->
     <script src="js/world/geo.js"></script>
     <script src="js/world/textures.js"></script>
@@ -186,6 +202,15 @@
     <script src="js/world/surface.js"></script>
     <script src="js/world/world.js"></script>
     <script src="js/world/world-runtime.js"></script>
+    <script src="js/world/holy-kit.js"></script>
+    <script src="js/world/holy-haram.js"></script>
+    <script src="js/world/holy-makkah.js"></script>
+    <script src="js/world/holy-nabawi.js"></script>
+    <script src="js/world/holy-nabawi-inside.js"></script>
+    <script src="js/world/holy-madinah.js"></script>
+    <script src="js/world/holy-nav.js"></script>
+    <script src="js/world/holy-pigeons.js"></script>
+    <script src="js/world/holy-world.js"></script>
     <script src="js/world/world-build.js"></script>
     <!-- game -->
     <script src="js/game/util.js"></script>
@@ -194,6 +219,7 @@
     <script src="js/game/collide.js"></script>
     <script src="js/game/input.js"></script>
     <script src="js/game/camera.js"></script>
+    <script src="js/game/shots.js"></script>
     <script src="js/game/player.js"></script>
     <script src="js/game/pathing.js"></script>
     <script src="js/game/seats.js"></script>
@@ -203,15 +229,23 @@
     <script src="js/game/crowd-zones.js"></script>
     <script src="js/game/crowd-members.js"></script>
     <script src="js/game/crowd-walkers.js"></script>
+    <script src="js/game/crowd-holy-units.js"></script>
+    <script src="js/game/crowd-holy-spots.js"></script>
+    <script src="js/game/crowd-holy.js"></script>
     <script src="js/game/crowd.js"></script>
     <script src="js/game/greetings.js"></script>
     <script src="js/game/audio.js"></script>
     <script src="js/game/ambience.js"></script>
+    <script src="js/game/vehicle-sound.js"></script>
+    <script src="js/game/vehicle-spots.js"></script>
+    <script src="js/game/vehicles.js"></script>
+    <script src="js/game/voice.js"></script>
     <script src="js/game/speech.js"></script>
     <script src="js/game/pictures.js"></script>
     <script src="js/game/names.js"></script>
     <script src="js/game/ui-core.js"></script>
     <script src="js/game/minimap.js"></script>
+    <script src="js/game/map-markers.js"></script>
     <script src="js/game/hud.js"></script>
     <script src="js/game/hud-layout.js"></script>
     <script src="js/game/hud-view.js"></script>
@@ -220,15 +254,22 @@
     <script src="js/game/ui-screens.js"></script>
     <script src="js/game/collectibles.js"></script>
     <script src="js/game/markers.js"></script>
+    <script src="js/game/ritual-ui.js"></script>
     <script src="js/game/prayer-text.js"></script>
     <script src="js/game/prayer-ui.js"></script>
     <script src="js/game/prayer-flow.js"></script>
+    <script src="js/game/ritual-look.js"></script>
+    <script src="js/game/ritual-trek.js"></script>
+    <script src="js/game/ritual-flow.js"></script>
+    <script src="js/game/eat-flow.js"></script>
     <script src="js/game/mission-flow.js"></script>
     <script src="js/game/services.js"></script>
     <script src="js/game/nudge.js"></script>
     <script src="js/game/interact.js"></script>
     <script src="js/game/loop.js"></script>
     <script src="js/game/actions.js"></script>
+    <script src="js/game/region.js"></script>
+    <script src="js/game/holy-travel.js"></script>
     <script src="js/game/boot-ui.js"></script>
     <script src="js/game/hooks.js"></script>
     <script src="js/game/boot.js"></script>

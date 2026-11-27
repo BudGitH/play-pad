@@ -90,7 +90,8 @@
       G.UI.toast("Sedap! " + foodLine(), "good");
       hint += " " + foodLine(); // the sheet announces this hint last, so it must carry the level
     }
-    happy("wave", 1.6);
+    if (!forMission && item.hunger > 0) G.EatFlow.start(item);
+    else happy("wave", 1.6);
     return { ok: true, hint };
   }
 
@@ -171,6 +172,7 @@
         if (!sim().economy.spend(price))
           return { ok: false, hint: KQ.Sim.Economy.shortMessage(price - have) };
         sim().outfit = { hair: look.hair, hat: look.hat };
+        sim().umrah.setCut("none"); // a new look from the barber replaces the tahallul haircut
         G.Player.applyOutfit(S().player, sim().outfit);
         G.Audio.play("good");
         S().hudDirty = true;

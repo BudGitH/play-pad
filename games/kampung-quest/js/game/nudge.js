@@ -69,6 +69,7 @@
    * show it once. Does nothing while paused (the loop does not call it then).
    */
   function update(dt) {
+    if (KQ.region === "haramain") return; // no hawker centre in Makkah and Madinah
     const s = S();
     s.nudgeT = (s.nudgeT || 0) + dt;
     if (s.nudgeT < CHECK_EVERY) return;
@@ -84,6 +85,7 @@
 
   /** Where the hawker beacon goes ({x, z}) while the first-meal nudge is on and the hero can still eat, else null. */
   function markerPos() {
+    if (KQ.region === "haramain") return null;
     if (!S() || !S().sim || !sim().hints.markerWanted() || !sim().needs.canEat()) return null;
     const hawker = S().world.pois.hawker.pos;
     return { x: hawker.x, z: hawker.z };

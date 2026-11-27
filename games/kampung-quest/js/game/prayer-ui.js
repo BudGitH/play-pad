@@ -20,11 +20,6 @@
     return window.innerWidth >= 700 && window.innerHeight >= 340;
   }
 
-  /** Which prayer panel to build: 'side' on wide screens, 'bottom' sheet otherwise. */
-  function panelVariant() {
-    return wantsSide() ? "side" : "bottom";
-  }
-
   /**
    * Create the Arabic, transliteration and English caption paragraphs on a host and return them in
    * order.
@@ -137,222 +132,85 @@
     return host;
   }
 
-  /**
-   * Build one numbered wudu step tile (picture + short label) that reports its index when pressed.
-   */
-  function wuduTile(step, i, onPick) {
-    const num = U.el("i", { cls: "kq-tile-num", text: String(i + 1) });
-    return U.el(
-      "button",
-      {
-        type: "button",
-        cls: "kq-wtile",
-        "data-i": String(i),
-        "aria-label": "Step " + (i + 1) + ": " + step.label,
-        on: { click: () => onPick(i) },
-      },
-      num,
-      G.Pictures.wudu(step.id, 40),
-      U.el("span", { cls: "kq-small", text: shortWudu(step) }),
-    );
-  }
-
-  const SHORT = {
-    niat: "Niat",
-    hands: "Hands",
-    mouth: "Mouth",
-    nose: "Nose",
-    face: "Face",
-    arm_r: "Right arm",
-    arm_l: "Left arm",
-    head: "Head",
-    ears: "Ears",
-    foot_r: "Right foot",
-    foot_l: "Left foot",
-    doa: "Doa",
-  };
-  /** The short label a wudu tile shows, falling back to the step's full label. */
-  function shortWudu(step) {
-    return SHORT[step.id] || step.label;
-  }
-
-  /** Build the row of all wudu step tiles, in the correct order. */
-  function wuduRow(onPick) {
-    const row = U.el("div", { cls: "kq-wudu-row", role: "list" });
-    KQ.Sim.Prayer.WUDU_STEPS.forEach((s, i) =>
-      row.appendChild(U.el("div", { role: "listitem" }, wuduTile(s, i, onPick))),
-    );
-    return row;
-  }
-
-  /** Wudu screen. h: { onPick(i), onAct(), onClose() } */
-  function wudu(h) {
-    const row = wuduRow(h.onPick);
-    const info = U.el("p", { cls: "kq-wudu-info", text: "" });
-    const hint = U.el("p", { cls: "kq-note", role: "status", text: "" });
-    const cue = {};
-    const cueBox = U.el("div", { cls: "kq-pcue kq-wudu-cue" }, captionLines(cue));
-    const act = G.UI.btn("Splash!", {
-      cls: "primary kq-big kq-wudu-act",
-      icon: "star",
-      onClick: h.onAct,
-    });
-    const title = U.el("h2", { cls: "kq-sheet-title", text: "" });
-    const head = U.el(
-      "div",
-      { cls: "kq-sheet-head" },
-      title,
-      G.UI.btn("Not now", { icon: "close", onClick: () => G.UI.closeSheet("button") }),
-    );
-    const box = U.el(
-      "div",
-      { cls: "kq-menu kq-prayer-sheet" },
-      head,
-      row,
-      U.el("div", { cls: "kq-wudu-foot" }, act, info),
-      hint,
-      cueBox,
-    );
-    const handle = G.UI.openSheet({
-      el: box,
-      label: "Wudu steps",
-      variant: panelVariant(),
-      scrim: false,
-      onClose: h.onClose,
-      focus: ".kq-wudu-act",
-    });
-    return { handle, row, info, hint, act, title, cue };
+  /** The wudu step's reminder line: how many times, and whether this part is a must (fard) or sunnah. */
+  function wuduHow(step) {
+    const lines = [step.labelMs];
+    if (step.count > 1) lines.push("Do this " + step.count + " times.");
+    lines.push(step.fard ? "This part of wudu is a must (fard)." : "This part of wudu is sunnah.");
+    return lines;
   }
 
   const ACT_WORD = { niat: "Say niat", head: "Wipe", ears: "Wipe", doa: "Say doa" };
+  const VIEW_BUTTON = { id: "view", label: "Change view", icon: "refresh" };
 
-  /**
-   * Show each wudu tile's state for sight and for screen readers: done steps say ", done" in their
-   * name, the current step is aria-current="step" (colour is never the only signal).
-   */
-  function markWuduTiles(tiles, v) {
-    tiles.forEach(function (t, i) {
-      const done = i < v.index;
-      t.classList.toggle("is-done", done);
-      t.classList.toggle("is-now", i === v.index);
-      t.classList.toggle("is-tried", v.tried === i);
-      const label = "Step " + (i + 1) + ": " + KQ.Sim.Prayer.WUDU_STEPS[i].label;
-      t.setAttribute("aria-label", label + (done ? ", done" : ""));
-      if (i === v.index) t.setAttribute("aria-current", "step");
-      else t.removeAttribute("aria-current");
-    });
-  }
-
-  /** Refresh the wudu screen. v: { index, taps, step, total, hint } */
-  function wuduUpdate(ui, v) {
-    const tiles = ui.row.querySelectorAll(".kq-wtile");
-    markWuduTiles(tiles, v);
-    const cur = tiles[v.index];
-    if (cur && cur.scrollIntoView) cur.scrollIntoView({ block: "nearest", inline: "center" });
-    ui.title.textContent =
-      "Wudu at the mosque taps · step " + Math.min(v.index + 1, v.total) + " of " + v.total;
-    const word = ACT_WORD[v.step.id] || (v.step.count > 1 ? "Splash!" : "Splash!");
-    const count = v.step.count > 1 ? " (" + (v.taps + 1) + " of " + v.step.count + ")" : "";
-    ui.act.lastChild.textContent = word + count;
-    ui.info.textContent = v.step.label + " · " + v.step.labelMs;
-    ui.hint.textContent = v.hint || "";
-    setCue(ui.cue, v.step.id === "doa" ? T().DHIKR.doa : {});
-    if (ui.said !== v.index) {
-      ui.said = v.index;
-      say("Step " + Math.min(v.index + 1, v.total) + " of " + v.total + ": " + v.step.label);
-    }
-  }
-
-  /**
-   * Build one prayer posture tile (picture, name, keyboard number) that reports its type when
-   * pressed.
-   */
-  function postureTile(type, i, onPick) {
-    const t = T().TILE[type];
-    return U.el(
-      "button",
-      {
-        type: "button",
-        cls: "kq-ptile",
-        "data-type": type,
-        "aria-label": t[0] + ", " + t[1] + ". Key " + (i + 1),
-        on: { click: () => onPick(type) },
-      },
-      U.el("i", { cls: "kq-tile-num", text: String(i + 1) }),
-      G.Pictures.posture(t[2], 84),
-      U.el("b", { text: t[0] }),
-      U.el("span", { cls: "kq-small", text: t[1] }),
-    );
-  }
-
-  /** Prayer steps screen. h: { onPick(type), onClose() } */
-  function pray(h) {
-    const row = U.el("div", { cls: "kq-prow" });
-    const dots = U.el("div", { cls: "kq-dots", role: "img" });
-    const title = U.el("h2", { cls: "kq-sheet-title", text: "" });
-    const head = U.el(
-      "div",
-      { cls: "kq-sheet-head" },
-      title,
-      dots,
-      G.UI.btn("Not now", { icon: "close", onClick: () => G.UI.closeSheet("button") }),
-    );
-    const cue = {};
-    const cueBox = U.el("div", { cls: "kq-pcue" }, captionLines(cue));
-    const hint = U.el("p", { cls: "kq-note", role: "status", text: "" });
-    const side = U.el("div", { cls: "kq-pside" }, cueBox, hint);
-    const body = U.el("div", { cls: "kq-pbody" }, row, side);
-    const box = U.el("div", { cls: "kq-menu kq-prayer-sheet" }, head, body);
-    const handle = G.UI.openSheet({
-      el: box,
-      label: "Prayer steps",
-      variant: panelVariant(),
-      scrim: false,
+  /** Wudu stepper. h: { onAct(), onView(), onClose() }. One card per wudu step; Next is one wash. */
+  function wudu(h) {
+    const ctl = G.RitualUI.open({
+      label: "Wudu steps",
+      onNext: h.onAct,
+      onExtra: () => h.onView(),
       onClose: h.onClose,
-      focus: ".kq-ptile",
     });
-    return { handle, row, dots, title, cue, hint, onPick: h.onPick };
+    return { ctl, handle: ctl.handle };
+  }
+
+  /** Refresh the wudu stepper. v: { index, total, taps, step } (the sim's current wudu step and the washes so far). */
+  function wuduUpdate(ui, v) {
+    const step = v.step;
+    const word = ACT_WORD[step.id] || "Splash!";
+    const count = step.count > 1 ? " (" + (v.taps + 1) + " of " + step.count + ")" : "";
+    const card = {
+      key: "wudu-" + v.index,
+      kicker: "Wudu at the mosque taps · step " + Math.min(v.index + 1, v.total) + " of " + v.total,
+      index: v.index,
+      total: v.total,
+      picture: G.Pictures.wudu(step.id, 72),
+      title: step.label,
+      how: wuduHow(step),
+      texts: T().wuduTexts(step.id),
+      next: { label: word + count, cls: "kq-wudu-act" },
+      extras: [VIEW_BUTTON],
+    };
+    if (step.count > 1)
+      card.counter = { count: v.taps, target: step.count, unit: "wash", unitLabel: "Done" };
+    ui.ctl.show(card);
+  }
+
+  /** Prayer stepper. h: { onPick(type), onClose() }. One card per posture; Next takes the posture. */
+  function pray(h) {
+    const ui = { pick: h.onPick, want: null };
+    ui.ctl = G.RitualUI.open({
+      label: "Prayer steps",
+      onNext: () => ui.pick(ui.want[0]),
+      onExtra: (id) => (id === "view" ? h.onView() : ui.pick(ui.want[1])),
+      onClose: h.onClose,
+    });
+    ui.handle = ui.ctl.handle;
+    return ui;
   }
 
   /**
-   * After a wrong tap, softly highlight the tile that comes next (the same gold-ish glow the wudu
-   * panel uses for its next tile, never red) and mark it for screen readers.
+   * Refresh the prayer stepper. v: { name, kind, rakaat, total, stepId, want:[type] } where want[0]
+   * is the posture to take now (and want[1], when an optional step is up, the one after it).
    */
-  function markExpected(tile) {
-    tile.classList.add("is-now");
-    tile.setAttribute("aria-current", "step");
-  }
-
-  /** Refresh. v: { name, kind, rakaat, total, choices:[type], want:[type], tried, hint, cue } */
   function prayUpdate(ui, v) {
+    ui.want = v.want;
+    const type = v.want[0];
+    const tile = T().TILE[type] || T().TILE.qiyam;
     const label = T().flowLabel(v.name, v.kind);
-    ui.title.textContent = label + " · raka'at " + v.rakaat + " of " + v.total + "";
-    ui.dots.setAttribute("aria-label", "Raka'at " + v.rakaat + " of " + v.total);
-    U.clear(ui.dots);
-    for (let i = 1; i <= v.total; i += 1) {
-      ui.dots.appendChild(
-        U.el("span", {
-          cls: "kq-dot" + (i < v.rakaat ? " is-done" : i === v.rakaat ? " is-now" : ""),
-          text: String(i),
-        }),
-      );
-    }
-    U.clear(ui.row);
-    v.choices.forEach((type, i) => {
-      const tile = postureTile(type, i, ui.onPick);
-      if (v.tried === type) tile.classList.add("is-tried");
-      if (v.tried && v.want && v.want.indexOf(type) !== -1) markExpected(tile);
-      ui.row.appendChild(tile);
-    });
-    if (v.cue) setCue(ui.cue, v.cue);
-    ui.hint.textContent = v.hint || "";
-    const sig = v.rakaat + "|" + (v.cue ? v.cue.en : "");
-    if (ui.said !== sig) {
-      ui.said = sig;
-      say(label + ", raka'at " + v.rakaat + " of " + v.total + ". " + (v.cue ? v.cue.en : ""));
-    }
-    const first = ui.row.querySelector(".kq-ptile");
-    if (first && !ui.row.contains(document.activeElement)) first.focus({ preventScroll: true });
+    const card = {
+      key: "pray-" + v.stepId,
+      kicker: label + " · raka'at " + v.rakaat + " of " + v.total,
+      index: v.rakaat - 1,
+      total: v.total,
+      picture: G.Pictures.posture(tile[2], 112),
+      title: tile[0] + " (" + tile[1].toLowerCase() + ")",
+      how: [T().howFor(type)],
+      texts: T().cardTexts(type, v.rakaat),
+      next: { label: "Next", cls: "kq-pray-next" },
+      extras: (v.want.length > 1 ? [{ id: "skip", label: "Skip this" }] : []).concat(VIEW_BUTTON),
+    };
+    ui.ctl.show(card);
   }
 
   /**
@@ -386,16 +244,19 @@
     const acts = U.el("div", { cls: "kq-bubble-actions" });
     const go = (fn) => () => (G.UI.closeSheet("choice"), fn());
     const D = KQ.Sim.Prayer.DISPLAY;
+    acts.appendChild(
+      G.UI.btn("Wudu and pray right here", {
+        cls: "primary kq-pray-here",
+        icon: "drop",
+        onClick: go(o.onHere),
+      }),
+    );
     if (ps.flow || ps.due) {
-      acts.appendChild(
-        G.UI.btn("Show me the way", { cls: "primary", icon: "mosque", onClick: go(o.onWay) }),
-      );
+      acts.appendChild(G.UI.btn("Show me the way", { icon: "mosque", onClick: go(o.onWay) }));
     } else if (ps.qada.length) {
       const name = ps.qada[0].name;
       const label = "Pray " + D[name] + " (qada) now";
-      acts.appendChild(
-        G.UI.btn(label, { cls: "primary", icon: "mosque", onClick: go(() => o.onQada(name)) }),
-      );
+      acts.appendChild(G.UI.btn(label, { icon: "mosque", onClick: go(() => o.onQada(name)) }));
     }
     const later = ps.due || ps.qada.length ? "Later" : "Close";
     acts.appendChild(G.UI.btn(later, { icon: "close", onClick: () => G.UI.closeSheet("button") }));

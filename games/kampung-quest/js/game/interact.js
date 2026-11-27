@@ -82,7 +82,15 @@
    * spot; inside the mosque hall the Pray prompt is the fallback.
    */
   function objectTarget(hero) {
-    return withPrayerLabel(nearestObject(hero) || mosqueTarget(hero));
+    return withPrayerLabel(
+      closer(nearestObject(hero) || mosqueTarget(hero), G.Vehicles.target(hero)),
+    );
+  }
+
+  /** Of two prompts the nearer one (either may be null); the mosque fallback never beats a real vehicle. */
+  function closer(a, b) {
+    if (!a || !b) return a || b;
+    return b.dist < a.dist || a.fallback ? b : a;
   }
 
   /** The nearest interactable or pick-up within reach, or null. */
@@ -179,6 +187,7 @@
     const P = S().player;
     if (P.locked || G.UI.modalOpen() || S().paused) return null;
     const hero = P.pos;
+    if (G.Vehicles.mounted()) return G.Vehicles.target(hero); // in a vehicle the only prompt is Exit
     forgetFar(hero);
     const obj = objectTarget(hero);
     const npc = npcTarget(hero);
@@ -213,6 +222,7 @@
    */
   function dispatchObject(id) {
     const V = G.Services;
+    if (id.indexOf("vehicle:") === 0) return G.Vehicles.press(id);
     if (id.indexOf("counter_") === 0) return V.stall(id);
     if (id.indexOf("wudu_tap_") === 0) return G.PrayerFlow.atTaps();
     const table = {
@@ -245,6 +255,9 @@
     Sit: "pin",
     "Pick up": "hand",
     "Walk closer": "pin",
+    Drive: "car",
+    Ride: "bike",
+    Exit: "exit",
   };
   const tmp = new THREE.Vector3();
 

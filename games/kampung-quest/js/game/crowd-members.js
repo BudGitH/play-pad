@@ -44,6 +44,7 @@
   /** The outfit for a slot's person (stable: the same slot and block always dresses the same). */
   function outfitFor(slot, block) {
     const seed = slot.id + "@" + block;
+    if (slot.holy) return G.CrowdHoly.outfitFor(slot, seed);
     if (slot.kind === "sweep") return cleanerOutfit(seed);
     return SC().outfit(seed, ROLE[slot.kind] || "any");
   }
@@ -78,7 +79,7 @@
       rate: 0.22,
       show: instant ? 1 : 0.01,
       leaving: false,
-      mode: slot.roam ? "roam" : slot.line ? "pace" : "rest",
+      mode: slot.holy ? "holy" : slot.roam ? "roam" : slot.line ? "pace" : "rest",
       t: draw() * 30,
       phoner: draw() < 0.22,
       draw,
@@ -199,7 +200,8 @@
   /** Step a fixed-spot person by dt: choose the pose, move if it moves, and ease in or out. */
   function update(m, dt, C) {
     m.t += dt;
-    if (m.mode === "roam") roam(m, dt, C);
+    if (m.mode === "holy") G.CrowdHoly.step(m, dt, C);
+    else if (m.mode === "roam") roam(m, dt, C);
     else if (m.mode === "pace") pace(m, dt);
     else {
       const bucket = Math.floor(m.t / POSE_EVERY_S);

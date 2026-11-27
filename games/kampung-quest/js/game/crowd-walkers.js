@@ -150,8 +150,10 @@
     const lanes = pair ? [-LANE * 0.8, LANE * 0.8] : [C.rng() < 0.5 ? LANE : -LANE];
     lanes.forEach(function (lane, i) {
       const m = makeWalker(C, type, id + (i ? "b" : ""), lane);
-      if (i) m.speed = out[0].speed;
-      if (i) m.rate = out[0].rate;
+      if (i && out[0]) {
+        m.speed = out[0].speed;
+        m.rate = out[0].rate;
+      }
       if (launch(C, m, from, dest)) out.push(m);
     });
     return out;

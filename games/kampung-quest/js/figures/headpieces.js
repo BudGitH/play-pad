@@ -188,7 +188,25 @@
     return list;
   }
 
+  /** A trim: the same carved hair, but only a skin-thick coat close to the head (no fringe). */
+  function buzz(hd) {
+    const prof = [
+      0.104, 0.05, 0.108, 0.07, 0.109, 0.12, 0.108, 0.16, 0.101, 0.2, 0.079, 0.224, 0.04, 0.234, 0,
+      0.236,
+    ];
+    const g = carve(G.lathe(densify(prof, 0.018), 30), 1.3, -0.12, 0.146, 0.092);
+    g.computeVertexNormals();
+    return [G.paint(g, hd.colour)];
+  }
+
+  /** A shave: nothing visible, only a tiny speck hidden inside the head so the piece is never empty. */
+  function bald(hd) {
+    return [blob([0.004, 0.004, 0.004], [0, 0.05, 0], null, hd.colour)];
+  }
+
   const PIECES = {
+    hair_buzz: buzz,
+    hair_bald: bald,
     cap: cap,
     songkok: songkok,
     kopiah: kopiah,

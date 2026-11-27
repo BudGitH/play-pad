@@ -65,8 +65,8 @@
   const WUDU_STEPS = [
     wudu("niat", "Make your intention (niat)", "Berniat wuduk", 1, true, "idle"),
     wudu("hands", "Wash both hands", "Basuh kedua tangan", 3, false, "wudu_hands"),
-    wudu("mouth", "Rinse your mouth", "Berkumur", 3, false, "wudu_face"),
-    wudu("nose", "Sniff water into your nose", "Menghirup air ke hidung", 3, false, "wudu_face"),
+    wudu("mouth", "Rinse your mouth", "Berkumur", 3, false, "wudu_mouth"),
+    wudu("nose", "Sniff water into your nose", "Menghirup air ke hidung", 3, false, "wudu_nose"),
     wudu("face", "Wash your face", "Basuh muka", 3, true, "wudu_face"),
     wudu(
       "arm_r",
@@ -84,8 +84,8 @@
       true,
       "wudu_hands",
     ),
-    wudu("head", "Wipe your head", "Sapu kepala", 1, true, "wudu_face"),
-    wudu("ears", "Wipe your ears", "Sapu telinga", 1, false, "wudu_face"),
+    wudu("head", "Wipe your head", "Sapu kepala", 1, true, "wudu_head"),
+    wudu("ears", "Wipe your ears", "Sapu telinga", 1, false, "wudu_ears"),
     wudu(
       "foot_r",
       "Wash your right foot to the ankle",

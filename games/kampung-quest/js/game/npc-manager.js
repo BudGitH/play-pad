@@ -35,6 +35,7 @@
    * @returns the manager object M that the other functions here take as their first argument.
    */
   function create(scene, world, sim) {
+    const holy = KQ.region === "haramain"; // the kampung cast stays home: pilgrims are the crowd
     const pathP = G.Path.build(world);
     const M = {
       scene,
@@ -42,13 +43,13 @@
       sim,
       pathP,
       seats: G.Seats.build(world),
-      slots: G.NpcGoals.buildSlots(world),
+      slots: holy ? { men: [], women: [] } : G.NpcGoals.buildSlots(world),
       agents: [],
       byId: {},
       lastMinute: -1,
       dirty: true,
     };
-    KQ.Sim.NPC_IDS.forEach(function (id) {
+    (holy ? [] : KQ.Sim.NPC_IDS).forEach(function (id) {
       const A = G.NpcAgent.create(scene, id, KQ.Sim.NPC_PROFILE[id].name);
       A.group.visible = false;
       M.agents.push(A);

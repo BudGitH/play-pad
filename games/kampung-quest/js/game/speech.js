@@ -82,6 +82,7 @@
 
   /** Stop any speech at once; failures are ignored since speech is optional. */
   function cancel() {
+    if (G.Voice) G.Voice.cancel("sheet"); // a closing sheet / pause / hidden tab also stops the NPC voices
     const s = synth();
     if (!s) return;
     try {

@@ -132,7 +132,7 @@
     if (!node) return;
     node.text.textContent = text;
     node.el.style.background = who === KQ.Sim.Greet.HERO ? HERO_BG : CITIZEN_BG;
-    st.bubbles.push({ node, who, text, from, until: from + secs, started: false });
+    st.bubbles.push({ node, who, text, from, until: from + secs, started: false, spoken: false });
   }
 
   /** Show a started greeting: the first bubble now, the reply a moment later. */
@@ -162,6 +162,13 @@
     if (A) G.Npcs.wave(A, WAVE_SECONDS);
   }
 
+  /** The first time a bubble is on screen its words are also spoken (voice.js decides whether, and how). */
+  function voiceBubble(s, b, at) {
+    b.spoken = true;
+    const hero = s.player.pos;
+    G.Voice.bubble({ who: b.who, text: b.text, dist: U.dist(at.x, at.z, hero.x, hero.z) });
+  }
+
   /** Put one bubble over its owner (or hide it when it is not time, they are gone or off screen). */
   function place(s, st, b) {
     const el = b.node.el;
@@ -175,6 +182,7 @@
     const out = tmp.z > 1 || Math.abs(tmp.x) > 1.1 || Math.abs(tmp.y) > 1.1;
     el.hidden = out;
     if (out) return;
+    if (!b.spoken) voiceBubble(s, b, at);
     const px = (tmp.x * 0.5 + 0.5) * s.size.w;
     const py = Math.max(TOP_PX, (-tmp.y * 0.5 + 0.5) * s.size.h);
     el.style.transform =

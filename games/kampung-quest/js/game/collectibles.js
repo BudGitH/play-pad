@@ -109,10 +109,11 @@
    * hidden.
    */
   function create(scene, world) {
+    const holy = KQ.region === "haramain"; // no cans, litter or Mimi in Makkah and Madinah
     const C = {
       world,
-      cans: spawn(scene, world, CAN_SPOTS, canMesh, "can"),
-      litter: spawn(scene, world, LITTER_SPOTS, litterMesh, "litter"),
+      cans: holy ? [] : spawn(scene, world, CAN_SPOTS, canMesh, "can"),
+      litter: holy ? [] : spawn(scene, world, LITTER_SPOTS, litterMesh, "litter"),
       cat: catMesh(),
       catFollow: false,
     };

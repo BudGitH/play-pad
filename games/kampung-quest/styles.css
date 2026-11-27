@@ -58,8 +58,9 @@ body {
   --kq-top: max(12px, env(safe-area-inset-top, 0px));
   --kq-bot: max(12px, env(safe-area-inset-bottom, 0px));
   --kq-map: 150px;
-  --kq-dock: 64px;
-  --kq-dock-h: 64px;
+  --kq-need-w: 168px;
+  --kq-dock: 72px;
+  --kq-dock-h: 68px;
   --kq-tl-w: 254px;
   --kq-right-w: 150px;
   --kq-joy: 124px;
@@ -253,7 +254,40 @@ kbd {
   pointer-events: auto;
 }
 .kq-status {
+  position: relative;
   padding: 8px 10px 6px;
+  cursor: pointer;
+}
+.kq-status:hover {
+  box-shadow:
+    0 0 0 2px var(--kq-gold),
+    0 2px 10px rgba(0, 0, 0, 0.35);
+}
+/* a prayer is due or being prayed: the card glows gold; one to make up (qada) gets a dashed gold edge */
+.kq-status.is-due {
+  box-shadow: 0 0 0 3px var(--kq-gold);
+  animation: kq-glow-gold 1.8s ease-in-out infinite;
+}
+.kq-status.is-qada {
+  outline: 2px dashed var(--kq-gold);
+  outline-offset: -2px;
+}
+/* the "Pray >" chip: what tells a player the card is a button */
+.kq-pray-go {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 28px;
+  margin-top: 6px;
+  border-radius: 999px;
+  background: var(--md-sys-color-tertiary-container);
+  color: var(--md-sys-color-on-tertiary-container);
+  font-size: 13px;
+}
+.kq-pray-go .kq-ic {
+  width: 18px;
+  height: 18px;
 }
 .kq-clockrow {
   display: flex;
@@ -453,6 +487,9 @@ kbd {
   color: var(--md-sys-color-on-tertiary);
   animation: kq-pulse 1.6s ease-in-out infinite;
 }
+.kq-dock-btn.is-active {
+  border-color: var(--kq-green);
+}
 .kq-dock-btn.is-qada {
   border-color: var(--kq-gold);
   border-style: dashed;
@@ -472,21 +509,41 @@ kbd {
     sans-serif;
   text-align: center;
 }
+/* a mission is under way: the badge is a green "1" */
+.kq-badge.is-active {
+  background: #1f7a3c;
+}
 
-/* top right: coins, mute, minimap with the needs ring */
+/* top right: a row of coins, sound and Pause, the round radar (a tap opens the map), the needs bars */
 .kq-topright {
   position: absolute;
   right: var(--kq-padr);
   top: var(--kq-top);
-  display: grid;
-  justify-items: end;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
   gap: 8px;
   pointer-events: none;
 }
-.kq-topright .kq-coins {
+.kq-tr-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.kq-topright .kq-coins,
+.kq-dock .kq-coins {
   min-height: 36px;
 }
-.kq-topright > * {
+/* phone landscape keeps the coins in the dock row (hud-layout.js placeCoins) */
+.kq-dock .kq-coins {
+  align-self: center;
+  padding: 0 10px;
+}
+.kq-dock .kq-coins-word {
+  display: none;
+}
+.kq-topright > *,
+.kq-tr-row > * {
   pointer-events: auto;
 }
 .kq-round {
@@ -500,92 +557,128 @@ kbd {
   background: var(--kq-hud);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
-.kq-mapwrap {
+/* the radar: a round map button; the gold map badge on its rim says "tap me" */
+.kq-radar {
   position: relative;
+  align-self: center;
   width: var(--kq-map);
   height: var(--kq-map);
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #16211a;
+  box-shadow:
+    0 0 0 3px var(--kq-hud-strong),
+    0 0 0 5px rgba(255, 255, 255, 0.35),
+    0 3px 10px rgba(0, 0, 0, 0.5);
+}
+.kq-radar:hover,
+.kq-radar:active {
+  box-shadow:
+    0 0 0 3px var(--kq-hud-strong),
+    0 0 0 5px var(--kq-gold),
+    0 3px 10px rgba(0, 0, 0, 0.5);
 }
 .kq-minimap {
-  position: absolute;
-  inset: 11%;
-  width: 78%;
-  height: 78%;
-  border-radius: 50%;
-  background: #1c2a1f;
-  box-shadow: 0 0 0 3px #15151c;
-}
-.kq-ring {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
+  display: block;
+  border-radius: 50%;
 }
-.kq-ring-track,
-.kq-ring-val {
-  fill: none;
-  stroke-width: 9;
-  stroke-linecap: round;
-}
-.kq-ring-track {
-  stroke: #15151c;
-  stroke-opacity: 0.9;
-}
-.kq-ring-food {
-  stroke: var(--kq-gold);
-}
-.kq-ring-energy {
-  stroke: var(--kq-green);
-}
-.kq-north {
+.kq-map-go {
   position: absolute;
-  top: 8%;
-  left: 50%;
-  transform: translateX(-50%);
-  font:
-    700 12px/12px system-ui,
-    sans-serif;
-  color: #fff;
-  text-shadow: 0 0 3px #000;
-}
-.kq-needchip {
-  position: absolute;
-  bottom: -2px;
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
+  right: -6px;
+  bottom: -6px;
+  display: grid;
+  place-items: center;
+  width: 28px;
   height: 28px;
-  padding: 0 8px;
-  border-radius: 999px;
-  background: var(--kq-hud-strong);
-  font-size: 13px;
+  border-radius: 50%;
+  background: var(--kq-gold);
+  color: #3b2a00;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
 }
-.kq-needchip.kq-food {
-  left: -6px;
+.kq-map-go .kq-ic {
+  width: 17px;
+  height: 17px;
+}
+
+/* food and energy: an icon, a bar that drains from green to orange, and a word ("Hungry" / "Tired" when low) */
+.kq-needs {
+  display: grid;
+  align-self: stretch;
+  min-width: var(--kq-need-w);
+  gap: 4px;
+  padding: 5px 8px;
+  border-radius: 14px;
+}
+.kq-need {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding: 0 2px;
+  border-radius: 11px;
+  font-size: 12px;
+}
+.kq-need .kq-ic {
+  width: 18px;
+  height: 18px;
+}
+.kq-need.kq-food .kq-ic {
   color: var(--kq-gold);
 }
-.kq-needchip.kq-energy {
-  right: -6px;
-  color: var(--kq-green);
+.kq-need.kq-energy .kq-ic {
+  color: #8be08f;
 }
-.kq-needchip b {
-  color: var(--md-sys-color-on-surface);
+.kq-need-bar {
+  flex: 1 1 auto;
+  min-width: 30px;
+  height: 10px;
+  overflow: hidden;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
 }
-/* a meter under the low line: a soft amber ring (never red); the pulse stops under reduced motion */
-.kq-needchip.is-low {
-  box-shadow: 0 0 0 3px #ffb74d;
+.kq-need-fill {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 6px;
+  background: var(--kq-green);
+  transform: scaleX(0.85);
+  transform-origin: left center;
+  transition:
+    transform 0.4s,
+    background-color 0.4s;
+}
+.kq-need-word {
+  flex: none;
+  min-width: 46px;
+  font-weight: 700;
+  color: var(--md-sys-color-on-surface-variant);
+}
+/* a meter under the low line: a soft amber ring and the kind word (never red); the pulse stops under reduced motion */
+.kq-need.is-low {
+  background: rgba(255, 183, 77, 0.14);
+  box-shadow: 0 0 0 2px #ffb74d;
   animation: kq-low-pulse 2.2s ease-in-out infinite;
 }
-.kq-ring-val.is-low {
-  stroke: #ffb74d;
-  filter: drop-shadow(0 0 4px #ffb74d);
+.kq-need.is-low .kq-need-fill {
+  background: #ffb74d;
+}
+.kq-need.is-low .kq-need-word {
+  color: #ffb74d;
 }
 @keyframes kq-low-pulse {
   0%,
   100% {
-    box-shadow: 0 0 0 3px #ffb74d;
+    box-shadow: 0 0 0 2px #ffb74d;
   }
   50% {
-    box-shadow: 0 0 0 6px rgba(255, 183, 77, 0.35);
+    box-shadow: 0 0 0 4px rgba(255, 183, 77, 0.35);
   }
 }
 
@@ -1514,7 +1607,7 @@ kbd {
     width: 18px;
     height: 18px;
   }
-  /* the name stays for screen readers; it is drawn only for a due prayer or while the card is open */
+  /* the name stays for screen readers; it is drawn only for a due prayer */
   .kq-prayer .kq-pl {
     position: absolute;
     width: 1px;
@@ -1523,21 +1616,28 @@ kbd {
     clip: rect(0 0 0 0);
     white-space: nowrap;
   }
-  .kq-prayer.is-due .kq-pl,
-  .kq-status.is-open .kq-pl {
+  .kq-prayer.is-due .kq-pl {
     position: static;
     width: auto;
     height: auto;
     overflow: visible;
     clip: auto;
   }
-  .kq-status.is-open .kq-prayers {
-    align-items: flex-start;
+  /* the Pray chip is only an arrow on a phone, at the end of the prayer strip; a glowing due card says it already */
+  .kq-pray-go {
+    position: absolute;
+    right: 8px;
+    bottom: 4px;
+    width: 28px;
+    min-height: 28px;
+    margin: 0;
   }
-  .kq-status.is-open .kq-prayer {
-    flex: 1 1 0;
-    flex-direction: column;
-    gap: 2px;
+  .kq-pray-go .kq-ic:first-child,
+  .kq-pray-go b {
+    display: none;
+  }
+  .kq-status.is-due .kq-pray-go {
+    display: none;
   }
 
   /* mission: the chip (step icon + the step in words) until it is opened */
@@ -1677,7 +1777,8 @@ kbd {
    (which floats mid-screen) and of the toast lane (A11Y2-01, 06, 08). */
 @media (max-height: 520px) {
   .kq-root {
-    --kq-map: 96px;
+    --kq-map: 100px;
+    --kq-need-w: 120px;
     --kq-dock: 56px;
     --kq-dock-h: 48px;
     --kq-tl-w: 220px;
@@ -1699,16 +1800,17 @@ kbd {
     font-size: 12px;
   }
   .kq-topright {
-    grid-template-columns: auto auto;
+    gap: 6px;
+  }
+  .kq-needs {
+    gap: 2px;
+    padding: 4px 6px;
+  }
+  .kq-dock {
     align-items: center;
-    column-gap: 8px;
   }
-  .kq-topright .kq-mapwrap {
-    grid-column: 1 / -1;
-  }
-  .kq-needchip {
-    height: 26px;
-    font-size: 12px;
+  .kq-need {
+    height: 20px;
   }
   .kq-mission.is-open {
     display: grid;
@@ -1863,6 +1965,9 @@ kbd {
     --kq-jump: 64px;
     --kq-map: 92px;
   }
+  .kq-need-word {
+    min-width: 44px;
+  }
   .kq-azan .kq-azan-title,
   .kq-azan .kq-tr,
   .kq-azan .kq-big {
@@ -1898,6 +2003,9 @@ kbd {
 /* under 300 px high even the pill gives up its Arabic line (the screen readers still get all of it),
    and an opened mission card stays above the joystick ring */
 @media (max-height: 300px) {
+  .kq-root {
+    --kq-map: 72px;
+  }
   .kq-azan .kq-ar {
     display: none;
   }
@@ -1919,6 +2027,7 @@ kbd {
 @media (orientation: portrait) and (max-width: 700px) {
   .kq-root {
     --kq-map: 96px;
+    --kq-need-w: 120px;
     --kq-dock: 56px;
     --kq-dock-h: 56px;
     --kq-joy: 112px;
@@ -1930,26 +2039,34 @@ kbd {
   .kq-root.kq-no-turn {
     --kq-turn-h: 0px;
   }
-  /* an open status card or the azan takes the hint's room: hide the hint so the toast lane stays
+  /* the azan takes the hint's room: hide the hint so the toast lane stays
      clear of the joystick and the azan card */
-  .kq-root:has(.kq-status.is-open),
   .kq-root.kq-azan-bar,
   .kq-root.kq-azan-full {
     --kq-turn-h: 0px;
   }
-  .kq-root:has(.kq-status.is-open) .kq-portrait,
   .kq-root.kq-azan-bar .kq-portrait,
   .kq-root.kq-azan-full .kq-portrait {
     display: none;
   }
+  /* right-aligned, so the hole under the needs bars on the left stays free for the Talk button */
   .kq-portrait {
     display: block;
+    left: auto;
+    right: var(--kq-padr);
+    transform: none;
+  }
+  .kq-portrait .kq-chip {
+    max-width: 160px;
+    text-align: left;
   }
   .kq-tl {
     width: calc(100% - var(--kq-pad) - var(--kq-padr));
   }
-  .kq-mission {
-    width: calc(100% - var(--kq-map) - 8px);
+  .kq-mission,
+  .kq-tl .kq-needs {
+    width: calc(100% - var(--kq-right-w) - 8px);
+    min-width: 0;
   }
   .kq-clockrow .kq-coins {
     margin-left: auto;
@@ -1998,6 +2115,36 @@ kbd {
 /* a short portrait phone (e.g. 320 x 568) has no room for the full card above the joystick: it is the pill,
    with the meaning only (the toast lane above it stays clear) */
 @media (orientation: portrait) and (max-width: 700px) and (max-height: 600px) {
+  /* one slim row: each need is an icon and its bar; under the low line the bar gives way to the word */
+  .kq-needs {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 6px;
+  }
+  .kq-need {
+    flex: 1 1 0;
+    min-width: 0;
+    height: 24px;
+  }
+  .kq-need .kq-need-word {
+    display: none;
+    min-width: 0;
+  }
+  .kq-need.is-low .kq-need-word {
+    display: block;
+  }
+  .kq-need.is-low .kq-need-bar {
+    display: none;
+  }
+  .kq-root .kq-talk {
+    min-height: 64px;
+    padding: 4px 12px;
+  }
+  .kq-talk .kq-ic-xl {
+    width: 28px;
+    height: 28px;
+  }
   .kq-azan .kq-azan-title,
   .kq-azan .kq-tr,
   .kq-azan .kq-ar,
@@ -2263,4 +2410,385 @@ kbd {
 }
 .kq-credits {
   max-height: 100%;
+}
+
+/* ---------- guided steppers: rituals, wudu, prayer, eating (ritual-ui.js) ---------- */
+.kq-sheet .kq-sheet-box:has(> .kq-stepper) {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  overflow: hidden;
+}
+.kq-sheet-bottom .kq-sheet-box:has(> .kq-stepper) {
+  max-height: calc(100% - 4px);
+}
+.kq-stepper {
+  flex: 1 1 auto;
+  min-height: 0;
+  gap: 8px;
+}
+.kq-stepper > .kq-sheet-head {
+  position: static;
+  margin-top: 0;
+  padding: 0;
+  background: none;
+}
+.kq-stepper-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  padding: 2px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.kq-stepper-foot-host {
+  flex: none;
+}
+.kq-step-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.kq-step-foot .kq-step-next {
+  width: 100%;
+  min-height: 60px;
+  font-size: 18px;
+}
+.kq-step-sub {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+.kq-step-sub:empty {
+  display: none;
+}
+.kq-step-back .kq-ic {
+  transform: rotate(-90deg);
+}
+.kq-step-art {
+  display: grid;
+  place-items: center;
+  min-height: 64px;
+  font-size: 52px;
+  line-height: 1.1;
+}
+.kq-step-art .kq-posture {
+  width: 112px;
+  height: 112px;
+}
+.kq-step-title {
+  margin: 0;
+  font-size: 20px;
+  text-align: center;
+}
+.kq-step-how {
+  margin: 0;
+  font-size: 15px;
+}
+.kq-stepbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.kq-stepbar-host {
+  flex: none;
+}
+.kq-stepbar-host:empty {
+  display: none;
+}
+.kq-sp {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--md-sys-color-outline-variant);
+}
+.kq-sp.is-done {
+  background: #1f9d4a;
+}
+.kq-sp.is-now {
+  background: var(--kq-gold);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--kq-gold) 40%, transparent);
+}
+.kq-recite {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.kq-words {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  justify-content: center;
+  padding: 8px;
+  border-radius: 14px;
+  background: var(--md-sys-color-surface-container-high);
+}
+.kq-word {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  min-width: 48px;
+  min-height: 48px;
+  padding: 2px 8px 4px;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  background: transparent;
+  color: inherit;
+}
+.kq-word.is-said {
+  opacity: 0.62;
+}
+.kq-word.is-now {
+  border-color: var(--kq-gold);
+  background: var(--md-sys-color-tertiary-container);
+  opacity: 1;
+}
+.kq-w-ar {
+  font-size: 28px;
+  line-height: 1.55;
+}
+.kq-w-tr {
+  font-size: 13px;
+  font-style: italic;
+  font-weight: 600;
+}
+.kq-meaning {
+  text-align: center;
+  min-height: 1.4em;
+}
+.kq-word-controls,
+.kq-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+}
+.kq-word-controls .kq-btn,
+.kq-chip-btn {
+  min-height: 48px;
+}
+.kq-word-prev .kq-ic {
+  transform: rotate(-90deg);
+}
+.kq-word-controls .kq-btn.is-on,
+.kq-chip-btn.is-on {
+  background: var(--md-sys-color-tertiary-container);
+  color: var(--md-sys-color-on-tertiary-container);
+  box-shadow: inset 0 0 0 2px var(--kq-gold);
+}
+.kq-chip-btn {
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--md-sys-color-surface-container-highest);
+  color: var(--md-sys-color-on-surface);
+  font-weight: 700;
+}
+.kq-full {
+  max-height: 34vh;
+  padding: 8px 10px;
+  overflow-y: auto;
+  border-radius: 12px;
+  background: var(--md-sys-color-surface-container);
+  scrollbar-width: thin;
+}
+.kq-full[hidden] {
+  display: none;
+}
+.kq-full-line {
+  padding: 4px 0 8px;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+  text-align: center;
+}
+.kq-full-line .kq-ar {
+  display: block;
+  font-size: 24px;
+}
+.kq-step-ref {
+  margin: 0;
+  text-align: center;
+  color: var(--md-sys-color-on-surface-variant);
+}
+.kq-step-counter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.kq-step-count {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 800;
+}
+.kq-step-dots {
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.kq-sheet-side .kq-stepper .kq-sheet-title {
+  font-size: 16px;
+}
+@media (max-height: 520px), (max-width: 700px) {
+  .kq-step-art {
+    min-height: 40px;
+    font-size: 34px;
+  }
+  .kq-step-art .kq-posture {
+    width: 72px;
+    height: 72px;
+  }
+  .kq-step-title {
+    font-size: 17px;
+  }
+  .kq-step-how {
+    font-size: 14px;
+  }
+  .kq-w-ar {
+    font-size: 24px;
+  }
+  .kq-full {
+    max-height: 26vh;
+  }
+  .kq-step-foot .kq-step-next {
+    min-height: 54px;
+  }
+}
+/* the minimised ritual chip: tap to bring the stepper back while you walk the rite yourself */
+.kq-ritual-chip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--kq-dock-h) + var(--kq-bot) + 12px);
+  z-index: 12;
+  transform: translateX(-50%);
+  max-width: min(92vw, 520px);
+  white-space: normal;
+}
+
+/* region picker: big picture cards on the title screen and in the pause menu */
+.kq-regions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 12px;
+  margin: 8px 0 14px;
+}
+.kq-region-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-height: 48px;
+  padding: 8px 8px 12px;
+  border: 3px solid transparent;
+  border-radius: 20px;
+  background: var(--md-sys-color-surface-container-high);
+  color: inherit;
+  text-align: center;
+  cursor: pointer;
+}
+.kq-region-card:hover,
+.kq-region-card:focus-visible {
+  border-color: var(--md-sys-color-outline);
+}
+.kq-region-card.is-here {
+  border-color: var(--md-sys-color-primary);
+}
+.kq-region-card b {
+  font-size: 18px;
+}
+.kq-region-art {
+  width: 100%;
+  max-width: 240px;
+  height: auto;
+  border-radius: 14px;
+}
+@media (max-height: 420px) {
+  .kq-region-art {
+    max-width: 120px;
+  }
+}
+
+/* tahallul: clippings that fly down while the hero's hair is cut (ritual-look.js) */
+.kq-snip {
+  position: absolute;
+  left: 50%;
+  top: 38%;
+  z-index: 25;
+  font-size: 22px;
+  pointer-events: none;
+  animation: kq-snip-fall 1.1s ease-out forwards;
+}
+@keyframes kq-snip-fall {
+  from {
+    opacity: 1;
+    transform: translate(var(--dx, 0), 0) rotate(0deg);
+  }
+  to {
+    opacity: 0;
+    transform: translate(var(--dx, 0), calc(var(--dy, 30px) * 4)) rotate(160deg);
+  }
+}
+/* phone bottom sheets for the steppers stay short, so the hero stays in view above them */
+@media (max-width: 700px), (max-height: 520px) {
+  .kq-sheet-bottom .kq-sheet-box:has(> .kq-stepper) {
+    max-height: 62%;
+  }
+}
+/* stepper header: the title and Not now share the first row, the progress pips get their own */
+.kq-stepper > .kq-sheet-head {
+  flex-wrap: wrap;
+  gap: 4px 8px;
+}
+.kq-stepper > .kq-sheet-head .kq-sheet-title {
+  flex: 1 1 0;
+  font-size: 15px;
+}
+.kq-stepper > .kq-sheet-head .kq-stepbar-host {
+  order: 3;
+  flex: 1 0 100%;
+}
+.kq-stepper > .kq-sheet-head .kq-btn {
+  order: 2;
+}
+/* the posture picture never overlaps the title on a phone */
+.kq-step-art:has(.kq-posture) {
+  min-height: 78px;
+}
+/* a phone held sideways is short: keep the words and the big Next on screen */
+@media (max-height: 520px) {
+  .kq-stepper .kq-step-art {
+    display: none;
+  }
+  .kq-stepper .kq-step-dots {
+    display: none;
+  }
+  .kq-stepper .kq-step-how {
+    font-size: 13px;
+  }
+  .kq-stepper .kq-step-foot .kq-step-next {
+    min-height: 52px;
+  }
+  .kq-stepper .kq-step-foot {
+    gap: 6px;
+  }
+  .kq-stepper .kq-step-count {
+    font-size: 15px;
+  }
+}
+/* short / narrow screens: compact region cards so Start stays in view */
+@media (max-width: 480px), (max-height: 600px) {
+  .kq-regions {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  .kq-region-art {
+    max-width: 110px;
+  }
+  .kq-region-card b {
+    font-size: 15px;
+  }
 }

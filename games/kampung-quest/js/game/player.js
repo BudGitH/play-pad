@@ -42,6 +42,12 @@
     return HEAD_STYLES[outfit.hair] || KQ.Figures.CAST.hero.head;
   }
 
+  /** The ritual look now: in ihram or not, and the haircut after tahallul ("none", "trim", "shave"). */
+  function ritualLook() {
+    const u = G.S && G.S.sim && G.S.sim.umrah;
+    return u ? { ihram: u.ihram, cut: u.cut } : { ihram: false, cut: "none" };
+  }
+
   /**
    * Build the hero: the toy figure added to the scene, its animator and the movement state.
    * @param scene the THREE scene.
@@ -71,9 +77,18 @@
     return P;
   }
 
-  /** Put the hair / hat choice from the barber (or a save) on the hero's head. */
-  function applyOutfit(P, outfit) {
-    KQ.Figures.setHeadPiece(P.rig, headSpecFor(outfit));
+  /**
+   * Put the hair / hat choice from the barber (or a save) on the hero's head. In ihram the hero wears
+   * the two white cloths and sandals and no cap; after tahallul the haircut shows (shorter hair).
+   * `look` is { ihram, cut }; by default it is read from the ritual tracker.
+   */
+  function applyOutfit(P, outfit, look) {
+    const l = look || ritualLook();
+    KQ.Figures.setIhram(P.rig, l.ihram);
+    const spec = l.ihram
+      ? KQ.Figures.IHRAM_HEAD[l.cut === "none" ? "none" : l.cut]
+      : KQ.Figures.cutHead(headSpecFor(outfit), l.cut);
+    KQ.Figures.setHeadPiece(P.rig, spec);
   }
 
   /** Put the hero on the ground at x,z, stop all motion and optionally set the heading. */

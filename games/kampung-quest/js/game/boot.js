@@ -16,7 +16,9 @@
   const params = new URLSearchParams(location.search);
   const TIERS = ["low", "med", "high"];
   /** A new game starts in the void deck of Block 118, a few steps from Nenek (and clear of the lift). */
-  const START_SPOT = { x: -42.6, z: 22.4 };
+  const KAMPUNG_START = { x: -42.6, z: 22.4 };
+  /** Where a new game starts: the void deck (kampung) or the hotel forecourt (Haramain). */
+  const startSpot = () => (KQ.region === "haramain" ? KQ.HOLY.spawn : KAMPUNG_START);
 
   /** True when WebGL works; also notes a software renderer (SwiftShader / llvmpipe) in G.Env. */
   function webglOk() {
@@ -128,7 +130,7 @@
     s.quality = tier;
     s.world.setQuality(tier);
     G.Loop.figureShadows(s);
-    s.world.setShadowTarget(START_SPOT);
+    s.world.setShadowTarget(startSpot());
     G.Crowd.showAll(s.crowd, true);
     s.renderer.compile(s.scene, s.camera);
     s.renderer.render(s.scene, s.camera);
@@ -254,10 +256,16 @@
       s.orbitSkip = (s.orbitSkip || 0) + 1;
       if (s.orbitSkip % 3) return;
       a += 0.01;
-      s.camera.position.set(14 + Math.sin(a) * 34, 7.5, -16 + Math.cos(a) * 34);
-      s.camera.lookAt(20, 2.2, -20);
+      const cam = G.Region.titleCamera(a);
+      if (cam) {
+        s.camera.position.set(cam.pos[0], cam.pos[1], cam.pos[2]);
+        s.camera.lookAt(cam.look[0], cam.look[1], cam.look[2]);
+      } else {
+        s.camera.position.set(14 + Math.sin(a) * 34, 7.5, -16 + Math.cos(a) * 34);
+        s.camera.lookAt(20, 2.2, -20);
+      }
       s.world.update(0, { minute: 640 });
-      s.world.setShadowTarget({ x: 20, z: -20 });
+      s.world.setShadowTarget(cam ? cam.target : { x: 20, z: -20 });
       s.renderer.render(s.scene, s.camera);
     })();
   }
@@ -273,8 +281,8 @@
     G.Audio.setMuted(state.settings.muted);
     G.Player.applyOutfit(s.player, s.sim.outfit);
     G.Npcs.attachSim(s.npcs, s.sim);
-    const pos = s.sim.pos || START_SPOT;
-    G.Player.place(s.player, pos.x, pos.z, s.sim.pos ? 0 : -Math.PI / 2, s.world.heightAt);
+    const pos = s.sim.pos || startSpot();
+    G.Player.place(s.player, pos.x, pos.z, s.sim.pos ? 0 : startHeading(), s.world.heightAt);
     s.player.group.visible = true;
     G.Camera.snapBehind(s.player.heading);
     s.sim.prayer.update(s.sim.clock.minute, s.sim.clock.day);
@@ -287,7 +295,9 @@
     G.Loop.frame(0);
     G.PrayerFlow.restoreDue();
     G.PrayerFlow.resume();
-    if (!s.sim.pos)
+    const welcome = G.Region.welcome(KQ.region === "haramain" ? KQ.Holy.cityOf(pos.x) : null);
+    if (welcome) G.UI.toast(welcome, "good", 7000, "holy-welcome");
+    else if (!s.sim.pos)
       G.UI.toast(
         "Nenek is waiting by your block. Walk to her and press Talk.",
         "good",
@@ -300,6 +310,9 @@
       G.Loop.start();
     }
   }
+
+  /** The way a new hero faces: west in the void deck (the qibla there), south toward the Haram's gate. */
+  const startHeading = () => (KQ.region === "haramain" ? 0 : -Math.PI / 2);
 
   /** Start or continue the game from a title button; New game also clears the save. */
   function begin(s, saved, fresh) {

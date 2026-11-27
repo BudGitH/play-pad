@@ -296,6 +296,7 @@
    * @returns {Array<object>} slots: { id, kind, x, z, heading, y?, sit?, seat?, group?, index?, ... }
    */
   function build(world, seats) {
+    if (KQ.region === "haramain") return G.CrowdHoly.build(world);
     const all = [].concat(
       seatSlots(world, seats),
       queueSlots(world),

@@ -12,7 +12,20 @@
   const KID_THIGH = 0.08 / 0.13;
   const KID_SHIN = 0.125 / 0.175;
   /** Poses that cycle fast enough to need more phase buckets for a smooth stride. */
-  const FAST = { walk: 1, run: 1, jog: 1, walkbag: 1, pedal: 1, hop: 1 };
+  const FAST = {
+    walk: 1,
+    run: 1,
+    jog: 1,
+    walkbag: 1,
+    pedal: 1,
+    hop: 1,
+    walk_stoop: 1,
+    push: 1,
+    walk_hold: 1,
+    walk_hold_kid: 1,
+    carry: 1,
+    guide: 1,
+  };
   const bank = new Map();
   const tmp = {
     e: new THREE.Euler(),
@@ -146,18 +159,19 @@
   }
 
   /** Fill g with the placement of a figure: scale s, yaw h, position (x, y, z). */
-  function placement(g, x, y, z, h, s) {
+  function placement(g, x, y, z, h, s, w) {
+    const k = w || 1; // girth: widens the figure sideways and front to back (body size)
     const c = Math.cos(h) * s;
     const n = Math.sin(h) * s;
-    g[0] = c;
+    g[0] = c * k;
     g[1] = 0;
-    g[2] = -n;
+    g[2] = -n * k;
     g[4] = 0;
     g[5] = s;
     g[6] = 0;
-    g[8] = n;
+    g[8] = n * k;
     g[9] = 0;
-    g[10] = c;
+    g[10] = c * k;
     g[12] = x;
     g[13] = y;
     g[14] = z;
@@ -304,10 +318,32 @@
       const sway = 0.2 * Math.sin(p.phase * 6.2832);
       const t = new THREE.Matrix4().makeRotationX(-0.55).setPosition(0.07 + sway, 0, 0.5);
       push(kit.meshes.broom, g, t.elements, 0, ID);
+    } else if (p.prop === "quran") {
+      const t = new THREE.Matrix4().makeTranslation(0, -0.03, 0.07);
+      const h = new THREE.Matrix4().fromArray(m, 13 * 16).multiply(t);
+      push(kit.meshes.book, g, h.elements, 0, tint.bag);
     } else if (p.prop === "bike") {
       addBike(kit, g, tint);
+    } else if (F.CROWD_PROPS && F.CROWD_PROPS[p.prop]) {
+      F.CROWD_PROPS[p.prop](kit, g, m, tint, p, PROP_TOOLS);
     }
   }
+
+  /** Helpers handed to the extra prop placers (js/figures/crowd-pilgrim-props.js). */
+  const PROP_TOOLS = {
+    /** Add one instance of mesh `name` at the matrix array `src` (16 floats) in colour `col`. */
+    put: (kit, name, g, src, col) => push(kit.meshes[name], g, src, 0, col),
+    /** The matrix of part slot `slot` (13 = right hand, 12 = left hand, 5 = torso) times a translation. */
+    at(m, slot, tx, ty, tz) {
+      const t = new THREE.Matrix4().makeTranslation(tx, ty, tz);
+      return new THREE.Matrix4().fromArray(m, slot * 16).multiply(t).elements;
+    },
+    /** A translation + X rotation in figure space. */
+    local(tx, ty, tz, rx) {
+      return new THREE.Matrix4().makeRotationX(rx || 0).setPosition(tx, ty, tz).elements;
+    },
+    ID,
+  };
 
   /** The soft ground shadow under a figure. */
   function addBlob(kit, p) {
@@ -365,7 +401,7 @@
     add(kit, p) {
       if (kit.drawn >= kit.people) return false;
       const g = kit.g;
-      placement(g, p.x, p.y, p.z, p.heading, p.scale);
+      placement(g, p.x, p.y, p.z, p.heading, p.scale, p.girth);
       const m = bankFor(p.pose, p.phase, p.kid);
       const table = partTable(kit, p.outfit);
       for (let i = 0; i < PARTS; i += 1) {

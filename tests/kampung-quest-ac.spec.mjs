@@ -217,6 +217,12 @@ async function checkEating(page) {
   expect(after.hunger).toBeGreaterThan(before.hunger);
   expect(after.coins).toBeLessThan(before.coins);
   expect(after.coins).toBeGreaterThanOrEqual(0);
+  // eating is a short stepper (wash, Bismillah, bites, Alhamdulillah): finish it with Next
+  await expect(page.getByRole("dialog", { name: "Eating steps" })).toBeVisible();
+  for (let i = 0; i < 12 && (await state(page)).ui.eating; i += 1) {
+    await page.locator(".kq-eat-next").click();
+  }
+  await expect(page.getByRole("dialog", { name: "Eating steps" })).toHaveCount(0);
   const menu = await kq(page, () => window.KQ.Sim.MENU);
   expect(menu.length).toBeGreaterThanOrEqual(8);
 }
@@ -266,14 +272,12 @@ async function checkPrayerFlow(page) {
   await kq(page, () => window.__kq.teleport("mosque_wudu"));
   await page.keyboard.press("e");
   await expect(page.getByRole("dialog", { name: "Wudu steps" })).toBeVisible();
-  await expectGentleHint(page, ".kq-wtile");
-  await expect(page.locator(".kq-prayer-sheet .kq-note[role=status]")).toHaveText(
-    /^Nearly! Next: /,
-  );
-  await expect(page.locator('.kq-wtile[aria-current="step"]')).toHaveAttribute("data-i", "0");
+  // the stepper shows one card at a time, starting with the niat; there is no tile to get wrong,
+  // and the sim still answers an out-of-order step with a gentle hint (never a scolding)
+  await expectGentleSimHint(page, "wudu");
+  await expect(page.locator(".kq-stepper .kq-step-title")).toHaveText("Make your intention (niat)");
   await page.locator(".kq-wudu-act").click(); // niat is one tap: step 1 is now done
-  await expect(page.locator(".kq-wtile").first()).toHaveAttribute("aria-label", /, done$/);
-  await expect(page.locator('.kq-wtile[aria-current="step"]')).toHaveAttribute("data-i", "1");
+  await expect(page.locator(".kq-stepper .kq-step-title")).toHaveText("Wash both hands");
   for (let i = 0; i < 60 && (await state(page)).prayer.flow?.phase === "wudu"; i += 1) {
     await page.locator(".kq-wudu-act").click();
   }
@@ -282,9 +286,8 @@ async function checkPrayerFlow(page) {
   await step(page, 500);
   await page.keyboard.press("e");
   await expect(page.getByRole("dialog", { name: "Prayer steps" })).toBeVisible();
-  await expect(page.locator(".kq-ptile.is-now")).toHaveCount(0); // nothing glows before a wrong tap
-  await expectGentleHint(page, ".kq-ptile");
-  await expectExpectedTileGlows(page);
+  await expect(page.locator(".kq-stepper .kq-step-title")).toHaveText("Takbir (hands up)");
+  await expectGentleSimHint(page, "pray");
   const coinsBefore = (await state(page)).coins;
   const taps = await prayAllSteps(page);
   expect(taps).toBe(29); // Zohor: 4 raka'at (KQ.Sim.Prayer plan size)
@@ -506,7 +509,7 @@ async function checkPrayedAtHome(page) {
     document.querySelector("#kqStatus").getAttribute("aria-label"),
   );
   expect(spoken).toMatch(/Subuh prayed at home/);
-  await page.locator("#kqDock-map").click();
+  await page.locator("#kqMap").click();
   await expect(page.locator(".kq-day")).toContainText("Prayed at home");
   await expect(page.locator(".kq-day")).not.toContainText(/Prayed(?! at home)/);
   await page.keyboard.press("Escape");
@@ -516,7 +519,7 @@ async function checkRingStillUnderReducedMotion(page) {
   // reduced motion: the ring stays (a static amber outline), the pulse stops
   await page.emulateMedia({ reducedMotion: "reduce" });
   const motion = await kq(page, () => {
-    const cs = getComputedStyle(document.querySelector(".kq-needchip.kq-food"));
+    const cs = getComputedStyle(document.querySelector(".kq-need.kq-food"));
     return { name: cs.animationName, ring: cs.boxShadow };
   });
   expect(motion.name).toBe("none");
@@ -574,8 +577,8 @@ test("PM-01 a low meter gets a soft highlight and words, a one-time toast, and S
     "aria-label",
     /Food low \u2014 time to eat/,
   );
-  await expect(page.locator(".kq-needchip.kq-food")).toHaveClass(/is-low/);
-  await expect(page.locator(".kq-needchip.kq-energy")).not.toHaveClass(/is-low/);
+  await expect(page.locator(".kq-need.kq-food")).toHaveClass(/is-low/);
+  await expect(page.locator(".kq-need.kq-energy")).not.toHaveClass(/is-low/);
   // once a day: after the toast is gone and more time passes, it is not shown again
   await kq(page, () => document.querySelectorAll(".kq-toast").forEach((n) => n.remove()));
   await step(page, 8000);
@@ -583,7 +586,7 @@ test("PM-01 a low meter gets a soft highlight and words, a one-time toast, and S
   await checkRingStillUnderReducedMotion(page);
   await kq(page, () => window.KQ.Game.S.sim.needs.restore({ hunger: 80, energy: 80 }));
   await step(page, 400);
-  await expect(page.locator(".kq-needchip.kq-food")).not.toHaveClass(/is-low/);
+  await expect(page.locator(".kq-need.kq-food")).not.toHaveClass(/is-low/);
   await expect(page.locator("#kqNeeds")).not.toHaveAttribute("aria-label", /low/);
 });
 
@@ -734,37 +737,24 @@ function watchNpcs() {
 
 const SCOLDING = /wrong|incorrect|bad|fail|error|mistake|no!|not right/i;
 
-/** Tap a tile that is NOT the next step: the hint is gentle and nothing is lost. */
-async function expectGentleHint(page, tileSel) {
+/**
+ * An out-of-order step is refused gently by the sim: a kind hint that names the real next step, no
+ * scolding words, and nothing is lost (the flow does not move).
+ */
+async function expectGentleSimHint(page, phase) {
   const before = JSON.stringify((await state(page)).prayer.flow);
-  const tiles = page.locator(tileSel);
-  const n = await tiles.count();
-  expect(n).toBeGreaterThan(2);
-  await tiles.nth(n - 1).click();
-  const hint = page.locator(".kq-prayer-sheet .kq-note[role=status]");
-  await expect(hint).not.toBeEmpty();
-  expect(await hint.textContent()).not.toMatch(SCOLDING);
-  expect(JSON.stringify((await state(page)).prayer.flow)).toBe(before);
-}
-
-/** After one wrong tap: a short picture-first hint, and the expected tile (only) glows and is aria-current. */
-async function expectExpectedTileGlows(page) {
-  const want = await kq(page, () => window.KQ.Game.S.sim.prayer.nextPrayStep().type);
-  await expect(page.locator(".kq-prayer-sheet .kq-note[role=status]")).toHaveText(
-    /^Nearly! Next: .{3,40}\.$/,
+  const res = await kq(
+    page,
+    (which) => {
+      const prayer = window.KQ.Game.S.sim.prayer;
+      return which === "wudu" ? prayer.wuduStep("foot_l") : prayer.prayStep("salam_l");
+    },
+    phase,
   );
-  const next = page.locator(`.kq-ptile[data-type="${want}"]`);
-  await expect(next).toHaveClass(/is-now/);
-  await expect(next).toHaveAttribute("aria-current", "step");
-  await expect(page.locator('.kq-ptile[aria-current="step"]')).toHaveCount(1);
-  const look = await next.evaluate((el) => {
-    const cs = getComputedStyle(el);
-    return [cs.borderTopColor, cs.backgroundColor].join(" ");
-  });
-  for (const m of look.matchAll(/rgba?\((\d+), (\d+), (\d+)/g)) {
-    const [r, g, b] = m.slice(1).map(Number);
-    expect(r > 150 && g < 100 && b < 100, "the cue is never red: " + look).toBe(false);
-  }
+  expect(res.ok).toBe(false);
+  expect(res.hint).toMatch(/^Good try! The next step is: /);
+  expect(res.hint).not.toMatch(SCOLDING);
+  expect(JSON.stringify((await state(page)).prayer.flow)).toBe(before);
 }
 
 /** Tap the correct posture tile until the prayer is finished. Returns the number of taps. */
@@ -772,7 +762,10 @@ async function prayAllSteps(page) {
   let taps = 0;
   while (taps < 60 && (await state(page)).prayer.flow?.phase === "pray") {
     const type = await kq(page, () => window.KQ.Game.S.sim.prayer.nextPrayStep().type);
-    await page.locator(`.kq-ptile[data-type="${type}"]`).click();
+    expect(await page.locator(".kq-stepper .kq-step-title").textContent()).toContain(
+      await kq(page, (t) => window.KQ.Game.PrayerText.TILE[t][0], type),
+    );
+    await page.locator(".kq-step-next").click();
     taps += 1;
   }
   return taps;
@@ -1137,7 +1130,7 @@ async function checkWayFocus(page) {
   await way.focus();
   await page.keyboard.press("Enter");
   await step(page, 300);
-  expect(await kq(page, focusedId), "focus after the button folds away").toBe("kqDock-pray");
+  expect(await kq(page, focusedId), "focus after the button folds away").toBe("kqStatus");
   await expectNoUnnamedButtons(page);
   // Esc from a sheet opened by a shortcut key goes back to that sheet's dock button
   for (const [key, id] of [
@@ -1150,9 +1143,9 @@ async function checkWayFocus(page) {
     await expect(page.getByRole("dialog")).toHaveCount(0);
     expect(await kq(page, focusedId), "focus after Esc from " + key).toBe(id);
   }
-  await page.locator("#kqDock-map").click();
+  await page.locator("#kqMap").click();
   await page.keyboard.press("Escape");
-  expect(await kq(page, focusedId)).toBe("kqDock-map");
+  expect(await kq(page, focusedId)).toBe("kqMap");
 }
 
 async function checkSoundAnnounce(page) {

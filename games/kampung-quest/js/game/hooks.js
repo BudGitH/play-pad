@@ -37,6 +37,8 @@
     const pf = G.PrayerFlow.state;
     return {
       modal: h ? h.opts.label : null,
+      ritual: G.RitualFlow.debug().open,
+      eating: G.EatFlow.open(),
       wudu: Boolean(pf.wui),
       pray: Boolean(pf.pui),
       azanCard: Boolean(pf.card && !pf.card.el.hidden),
@@ -46,6 +48,7 @@
       azanLive: pf.azanLive,
       guide: pf.guide,
       guideDest: pf.guideDest || null,
+      view: pf.viewName || null,
     };
   }
 
@@ -189,7 +192,10 @@
     stats,
     npc,
     crowd: () => (S() && S().crowd ? G.Crowd.debug(S().crowd) : null),
+    holy: () => (KQ.Holy && KQ.Holy.debug ? KQ.Holy.debug() : null),
     greetings: () => G.Greetings.debug(),
+    vehicles: () => G.Vehicles.debug(),
+    voice: () => G.Voice.debug(),
     greetChance: (p) => G.Greetings.setChance(p),
     crowdPeople: () => (S() && S().crowd ? G.Crowd.positions(S().crowd) : []),
     step: (ms) => (started() ? G.Loop.step(ms) : 0),
@@ -204,6 +210,8 @@
     action: (name) => G.Actions.handle(name),
     input: (action, on) => G.Input.virtual(action, on),
     forcePrayer,
+    ritual: () => G.RitualFlow.debug(),
+    openRite: (rite) => G.RitualFlow.open(rite),
     freeze(on) {
       S().frozen = Boolean(on);
     },

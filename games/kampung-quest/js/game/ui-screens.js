@@ -150,7 +150,10 @@
     });
     const legend = U.el("p", {
       cls: "kq-small kq-legend",
-      text: "White arrow: you. Pink dot: your mission. Green dot: the mosque. Orange: hawker centre. Pink house: home.",
+      text:
+        KQ.region === "haramain"
+          ? "Blue arrow: you. Black cube: the Kaaba. Green dome: the Prophet's Mosque. Pink pin: your mission. Red N: north."
+          : "Blue arrow: you. Pink pin: your mission. Gold star: a neighbour with a mission. Green dome: the mosque. Orange bowl: hawker centre. Pink house: home. Red N: north.",
     });
     const box = U.el(
       "div",
@@ -285,6 +288,7 @@
       fixed,
       choice("Caption size", CAPTION, () => prefs.captionSize, ctx.setCaption),
       choice("Read to me", ON_OFF, () => prefs.readToMe, ctx.setRead),
+      choice("Character voices", ON_OFF, () => prefs.voices, ctx.setVoices),
       choice("Ambient sounds", ON_OFF, () => prefs.ambience, ctx.setAmbience),
       choice("Picture quality", QUALITY, ctx.getQuality, ctx.setQuality),
       choice("Less motion", MOTION, () => prefs.lessMotion, ctx.setMotion),
@@ -363,6 +367,7 @@
       resume,
       G.UI.btn("How to play", { icon: "book", onClick: ctx.onHowTo }),
       G.UI.btn("Credits", { icon: "star", onClick: () => openCredits(ctx) }),
+      G.UI.btn("Change region", { icon: "mosque", onClick: ctx.onChangeRegion }),
       G.UI.btn("Save and go to PlayPad", { icon: "home", onClick: ctx.onSaveExit }),
       G.UI.btn("Start over", { icon: "refresh", onClick: ctx.onStartOver }),
       U.el("p", { cls: "kq-small", text: ctx.status }),

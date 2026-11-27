@@ -24,6 +24,7 @@
     const sim = {
       clock: S.Clock.create({ times: KQ.PRAYER_TIMES }),
       prayer,
+      umrah: S.Umrah.create(),
       needs: S.Needs.create(),
       hints: S.Hints.create(),
       economy: S.Economy.create(),
@@ -33,6 +34,8 @@
       settings: Object.assign({}, state.settings),
     };
     S.Save.apply(state, sim);
+    // Makkah and Madinah: a visit, not a day of chores. Hunger and energy hold still (no nudges).
+    if (KQ.region === "haramain") sim.needs.tick = () => {};
     watchStorage();
     return sim;
   }

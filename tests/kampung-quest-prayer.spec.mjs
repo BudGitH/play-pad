@@ -71,12 +71,11 @@ async function doWudu(page) {
   expect((await state(page)).prayer.flow.phase).toBe("pray");
 }
 
-/** Tap every posture the sim asks for until the flow finishes; returns how many taps it took. */
+/** Press Next on every posture card until the flow finishes; returns how many taps it took. */
 async function prayAllSteps(page) {
   let taps = 0;
   while (taps < 60 && (await state(page)).prayer.flow?.phase === "pray") {
-    const type = await kq(page, () => window.KQ.Game.S.sim.prayer.nextPrayStep().type);
-    await page.locator(`.kq-ptile[data-type="${type}"]`).click();
+    await page.locator(".kq-step-next").click();
     taps += 1;
   }
   return taps;
@@ -225,7 +224,7 @@ async function checkNotNowEndsSunat(page) {
   expect(st.prayer.flow, "Not now on the prayer screen ends it").toBeNull();
   expect(st.prayer.wuduClean).toBe(true);
   await step(page, 300);
-  await expect(page.locator(".kq-dock-btn.is-due")).toHaveCount(0);
+  await expect(page.locator(".kq-status.is-due")).toHaveCount(0);
 }
 
 /** HIGH-1: a fard prayer falling due always takes over an idle sunat flow (azan, HUD, Pray). */

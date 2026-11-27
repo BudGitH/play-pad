@@ -143,6 +143,11 @@
     ];
   }
 
+  /** A small book (a Quran) held at the chest. */
+  function book() {
+    return G.merge([G.place(box(0.15, 0.03, 0.2, 0.006, WHITE), [0, 0, 0])]);
+  }
+
   /** A baseball cap with a short peak. */
   function cap() {
     const dome = new THREE.SphereGeometry(0.119, 12, 5, 0, TAU, 0, Math.PI / 2);
@@ -260,10 +265,12 @@
       hand: hand(),
       bag: bag(),
       broom: broom(),
+      book: book(),
       bikeFrame: bikeFrame(),
       bikeWheel: bikeWheel(),
     };
     Object.keys(HATS).forEach((k) => (geo["hat_" + k] = G.merge(HATS[k]())));
+    if (F.crowdExtraGeometries) Object.assign(geo, F.crowdExtraGeometries());
     F._crowdGeo = geo;
     return geo;
   };

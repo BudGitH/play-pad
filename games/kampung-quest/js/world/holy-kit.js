@@ -11,6 +11,7 @@
   const P = (KQ.WorldParts = KQ.WorldParts || {});
   const C = () => P.Canvas;
   const TAU = Math.PI * 2;
+  const tmpColor = new THREE.Color();
 
   /** Metres per texture repeat for the new material keys. */
   const UV = { redCarpet: 3.2, greenCarpet: 3.2, hotel: 28.8, rockFace: 6 };
@@ -88,13 +89,20 @@
   }
 
   /** The materials only the Haramain world needs, added to the shared catalogue `mats`. */
-  function extendMats(mats, pat) {
+  function extendMats(mats) {
     const std = (o) => new THREE.MeshStandardMaterial(Object.assign({ vertexColors: true }, o));
     mats.redCarpet = std({ map: carpetCanvas("#8c1f24", "#d9c9a0", "#e9dfc3"), roughness: 0.95 });
     mats.greenCarpet = std({ map: carpetCanvas("#1f7a4d", "#efe7cf", "#e9f3e8"), roughness: 0.95 });
     mats.redCarpet.userData.cast = false;
     mats.greenCarpet.userData.cast = false;
-    mats.kiswah = std({ color: 0x2a2a30, roughness: 0.78, metalness: 0.05, envMapIntensity: 0.4 });
+    mats.kiswah = std({
+      color: 0x2a2a30,
+      roughness: 0.78,
+      metalness: 0.05,
+      envMapIntensity: 0.4,
+      emissive: 0x2a2a34,
+      emissiveIntensity: 0,
+    });
     mats.hotel = std({
       map: facadeTex("col"),
       emissiveMap: facadeTex("glow"),
@@ -110,15 +118,15 @@
     mats.greenLight = std({ color: 0x9dffc0, emissive: 0x2cff7a, emissiveIntensity: 1.6 });
     mats.greenLight.userData.cast = false;
     mats.frond = std({ side: THREE.DoubleSide, roughness: 0.8 });
-    mats.rock = std({ map: mats.concrete.map, roughness: 1, normalMap: mats.concrete.normalMap });
+    mats.rock = std({ roughness: 1, flatShading: true });
     mats.rock.userData.kqSkip = true;
-    mats.glowKeys = Object.assign({}, mats.glowKeys, { hotel: 1.1, clock: 0.9 });
+    mats.glowKeys = Object.assign({}, mats.glowKeys, { hotel: 1.1, clock: 0.9, kiswah: 1 });
     return mats;
   }
 
   /** The glow table for the Haramain world: the shared one plus the hotel windows and clock. */
   function glowTable() {
-    return Object.assign({}, P.Materials.GLOW, { hotel: 1.1, clock: 0.9 });
+    return Object.assign({}, P.Materials.GLOW, { hotel: 1.1, clock: 0.9, kiswah: 1 });
   }
 
   /**
@@ -161,7 +169,8 @@
       const pts = [];
       for (let i = 0; i <= 14; i += 1) {
         const t = i / 14;
-        const x = r * (Math.sin(Math.min(1, t * 1.15) * Math.PI * 0.5) * (1 + (bulge - 1) * (1 - t)));
+        const x =
+          r * (Math.sin(Math.min(1, t * 1.15) * Math.PI * 0.5) * (1 + (bulge - 1) * (1 - t)));
         pts.push(new THREE.Vector2(Math.max(0.02, x * (1 - Math.pow(t, 3) * 0.98)), t * r * k));
       }
       return new THREE.LatheGeometry(pts, 28);
@@ -171,7 +180,16 @@
   /** A dome on a drum with a gold finial; `key` picks the material (paint / metal / dome). */
   function dome(B, o) {
     const g = domeGeo(o.r, o.k || 1, o.bulge || 1);
-    B.cyl(o.drumKey || "whitePlaster", o.x, o.y + o.r * 0.12, o.z, o.r * 1.02, o.r * 0.24, 24, 0xf4efe4);
+    B.cyl(
+      o.drumKey || "whitePlaster",
+      o.x,
+      o.y + o.r * 0.12,
+      o.z,
+      o.r * 1.02,
+      o.r * 0.24,
+      24,
+      0xf4efe4,
+    );
     B.geo(o.key, g, P.compose(o.x, o.y + o.r * 0.24, o.z, 0, 1, 1, 1), o.color);
     if (o.finial === false) return;
     P.Mosque.finial(B, o.x, o.y + o.r * 0.24 + o.r * (o.k || 1), o.z, o.r * 0.7);
@@ -179,7 +197,7 @@
 
   /** One merged minaret: square base, tapering shaft, two balconies, a cap and a crescent. */
   function minaretParts(B, x, z, h, ctx) {
-    const w = 3.4;
+    const w = 2.6;
     B.aabb("whitePlaster", x - w, 0, z - w, x + w, h * 0.34, z + w, 0xf2ece0);
     B.box("whitePlaster", x, h * 0.36, z, w * 1.2, 0.5, w * 1.2, 0xe7dfce);
     const shaft = new THREE.CylinderGeometry(w * 0.62, w * 0.78, h * 0.5, 14);
@@ -257,7 +275,15 @@
   /** Add the palms as two instanced meshes (trunks, crowns) at the given spots; colliders are trunk-sized. */
   function palms(group, mats, spots, colliders) {
     const g = palmGeos();
-    const list = spots.map((s) => ({ x: s.x, y: 0, z: s.z, ry: s.ry || 0, sx: s.s, sy: s.s, sz: s.s }));
+    const list = spots.map((s) => ({
+      x: s.x,
+      y: 0,
+      z: s.z,
+      ry: s.ry || 0,
+      sx: s.s,
+      sy: s.s,
+      sz: s.s,
+    }));
     const trunk = P.instanced(tint(g.trunk.clone(), 0x7a5a3a), mats.bark, list);
     const crown = P.instanced(tint(g.crown.clone(), 0x3f7a3a), mats.frond, list, { cast: false });
     trunk.name = "holyPalmTrunk";
@@ -279,10 +305,14 @@
         const x = pos.getX(i);
         const y = pos.getY(i);
         const z = pos.getZ(i);
-        const k = 1 + 0.22 * Math.sin(x * 5 + phase[0]) * Math.cos(z * 4 + phase[1]) + 0.1 * Math.sin(y * 9 + phase[2]);
+        const k =
+          1 +
+          0.22 * Math.sin(x * 5 + phase[0]) * Math.cos(z * 4 + phase[1]) +
+          0.1 * Math.sin(y * 9 + phase[2]);
         pos.setXYZ(i, x * k, y * (0.9 + 0.2 * Math.sin(x * 3 + z * 2 + phase[0])), z * k);
         const shade = 0.62 + 0.38 * y + 0.12 * Math.sin(x * 12 + z * 9);
-        col.set([shade * 0.78, shade * 0.62, shade * 0.5], i * 3);
+        const c = tmpColor.setRGB(shade * 0.62, shade * 0.46, shade * 0.34).convertSRGBToLinear();
+        col.set([c.r, c.g, c.b], i * 3);
       }
       g.setAttribute("color", new THREE.BufferAttribute(col, 3));
       g.computeVertexNormals();
@@ -295,7 +325,15 @@
     [1, 2, 3].forEach((seed) => {
       const mine = list.filter((h) => h.seed === seed);
       if (!mine.length) return;
-      const items = mine.map((h) => ({ x: h.x, y: -1, z: h.z, ry: h.ry || 0, sx: h.w, sy: h.h, sz: h.w }));
+      const items = mine.map((h) => ({
+        x: h.x,
+        y: -1,
+        z: h.z,
+        ry: h.ry || 0,
+        sx: h.w,
+        sy: h.h,
+        sz: h.w,
+      }));
       const im = P.instanced(rockGeo(seed), mats.rock, items, { cast: false });
       im.name = "holyHills" + seed;
       group.add(im);
@@ -308,7 +346,16 @@
     const x1 = Math.max(o.x0, o.x1) + (o.z0 === o.z1 ? 0 : o.t / 2);
     const z0 = Math.min(o.z0, o.z1) - (o.x0 === o.x1 ? 0 : o.t / 2);
     const z1 = Math.max(o.z0, o.z1) + (o.x0 === o.x1 ? 0 : o.t / 2);
-    B.aabb(o.key || "whitePlaster", x0, o.y0 || 0, z0, x1, o.y1, z1, o.color === undefined ? 0xf4efe4 : o.color);
+    B.aabb(
+      o.key || "whitePlaster",
+      x0,
+      o.y0 || 0,
+      z0,
+      x1,
+      o.y1,
+      z1,
+      o.color === undefined ? 0xf4efe4 : o.color,
+    );
     if (!o.free) solid(ctx.colliders, x0, z0, x1, z1, o.kind || "mosque-wall");
   }
 

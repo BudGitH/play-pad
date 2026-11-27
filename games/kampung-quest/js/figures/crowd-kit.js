@@ -304,6 +304,10 @@
       const sway = 0.2 * Math.sin(p.phase * 6.2832);
       const t = new THREE.Matrix4().makeRotationX(-0.55).setPosition(0.07 + sway, 0, 0.5);
       push(kit.meshes.broom, g, t.elements, 0, ID);
+    } else if (p.prop === "quran") {
+      const t = new THREE.Matrix4().makeTranslation(0, -0.03, 0.07);
+      const h = new THREE.Matrix4().fromArray(m, 13 * 16).multiply(t);
+      push(kit.meshes.book, g, h.elements, 0, tint.bag);
     } else if (p.prop === "bike") {
       addBike(kit, g, tint);
     }

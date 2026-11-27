@@ -66,9 +66,10 @@
   /** Ease yaw, pitch and distance toward the fixed prayer / wudu frame. */
   function easeFrame(dt) {
     const f = C.frame;
-    C.yaw = U.dampAngle(C.yaw, f.yaw, 2.6, dt);
-    C.pitch = U.damp(C.pitch, f.pitch, 2.6, dt);
-    C.dist = U.damp(C.dist, f.dist, 2.6, dt);
+    const k = f.rate || 2.6;
+    C.yaw = U.dampAngle(C.yaw, f.yaw, k, dt);
+    C.pitch = U.damp(C.pitch, f.pitch, k, dt);
+    C.dist = U.damp(C.dist, f.dist, k, dt);
   }
 
   /**
@@ -149,6 +150,22 @@
     setFrame(frame) {
       C.frame = frame || null;
       if (!frame) C.idle = 0;
+    },
+    /**
+     * A scripted shot (a cut to a framed view that eases in smoothly): { target:{x,y,z}, yaw, pitch,
+     * dist, lift, rate } where `yaw` is the direction the camera looks along (the camera sits
+     * behind the target), `lift` the height of the look-at point above the target and `rate` how
+     * fast it eases (default 2.6 per second). The follow camera is untouched: clearShot() hands the
+     * view back to it.
+     */
+    shot(frame) {
+      C.frame = frame || null;
+      if (!frame) C.idle = 0;
+    },
+    /** End the scripted shot: the free follow camera takes over again. */
+    clearShot() {
+      C.frame = null;
+      C.idle = 0;
     },
     /** Shift the subject up by `px` (so a bottom sheet does not cover the hero). */
     setShift(px, sideways) {

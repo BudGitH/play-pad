@@ -102,7 +102,11 @@
   function followHall(s, v) {
     const inside = inHall(v.x, v.z);
     const k = inside ? 1.3 : 0;
-    const offs = [[0, 0], [9, -7], [-9, 7]];
+    const offs = [
+      [0, 0],
+      [9, -7],
+      [-9, 7],
+    ];
     s.hall.forEach((l, i) => {
       l.position.set(v.x + offs[i][0], 6.4, v.z + offs[i][1]);
       l.intensity += (k - l.intensity) * 0.25;
@@ -163,7 +167,13 @@
       colliders: s.colliders,
       walkGraph: s.nav.graph,
       interactables: s.interactables,
-      lights: { sun: s.rig.sun, hemi: s.rig.hemi, street: s.lamps.map((p) => ({ pos: p })), hall: s.hall[0], roaming: [] },
+      lights: {
+        sun: s.rig.sun,
+        hemi: s.rig.hemi,
+        street: s.lamps.map((p) => ({ pos: p })),
+        hall: s.hall[0],
+        roaming: [],
+      },
       heightAt: s.heightAt,
       qualityHints: (tier) => KQ.World.HINTS[tier || s.tier],
       update(dt, clock) {
@@ -185,6 +195,38 @@
     return Object.assign(api, sunApi(s));
   }
 
+  /** The internal state object the runtime closes over. */
+  function makeState(o) {
+    return {
+      scene: o.scene,
+      group: o.group,
+      rig: o.rig,
+      nav: o.nav,
+      sites: o.sites,
+      halos: o.hl,
+      minute: 420,
+      tier: o.opts.quality || "high",
+      colliders: o.ctx.colliders,
+      lamps: o.ctx.lamps,
+      pois: {},
+      interactables: [],
+      heightAt: KQ.World.parts.makeHeightAt(o.B.floors),
+      hall: interiorLights(o.group),
+    };
+  }
+
+  /** The sky / sun / shadow rig with the night-glow materials (including the hotel windows and clock). */
+  function makeRig(scene, opts, mats) {
+    // The marble and plaster are bright white: a lower exposure keeps them from washing out in the sun.
+    if (opts.renderer) opts.renderer.toneMappingExposure = 0.72;
+    const rig = P.Lighting.create(scene, opts.renderer, opts.quality || "high");
+    const table = P.HolyKit.glowTable();
+    rig.glow = Object.keys(table)
+      .filter((k) => mats[k])
+      .map((k) => ({ mat: mats[k], base: table[k] }));
+    return rig;
+  }
+
   /**
    * Build the whole Haramain world once.
    * @param scene the THREE scene; opts { quality, renderer, assetBase } like KQ.World.build.
@@ -193,7 +235,7 @@
   function buildWorld(scene, opts) {
     opts = opts || {};
     const kit = KQ.World.parts.makeKit(opts);
-    P.HolyKit.extendMats(kit.mats, kit.pat);
+    P.HolyKit.extendMats(kit.mats);
     const B = new P.Batch(Object.assign({}, P.Materials.UV_SCALES, P.HolyKit.UV), CHUNK);
     B.floors = [];
     const group = new THREE.Group();
@@ -209,16 +251,9 @@
     freeze(group);
     scene.add(group);
     P.Sky.fromPrayerTimes();
-    const rig = P.Lighting.create(scene, opts.renderer, opts.quality || "high");
-    const table = P.HolyKit.glowTable();
-    rig.glow = Object.keys(table).filter((k) => kit.mats[k]).map((k) => ({ mat: kit.mats[k], base: table[k] }));
+    const rig = makeRig(scene, opts, kit.mats);
     const nav = P.HolyNav.build();
-    const s = {
-      scene, group, rig, nav, sites, halos: hl, minute: 420, tier: opts.quality || "high",
-      colliders: ctx.colliders, lamps: ctx.lamps, pois: {}, interactables: [],
-      heightAt: KQ.World.parts.makeHeightAt(B.floors),
-      hall: interiorLights(group),
-    };
+    const s = makeState({ scene, group, rig, nav, sites, ctx, B, opts, hl });
     setCity(s, "makkah");
     const api = runtime(s);
     applyTime(s, s.minute);

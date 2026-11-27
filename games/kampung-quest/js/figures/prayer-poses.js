@@ -217,6 +217,65 @@
     };
   }
 
+  /** Wudu, rinsing the mouth: the right hand cupped at the mouth, head tipping a little. */
+  function wuduMouth(p) {
+    const s = Math.sin(p * TAU * 2);
+    return {
+      torso: [0.16, 0, 0],
+      head: [0.2 + 0.06 * s, 0, 0],
+      armR: [-1.3, 0, -0.14],
+      foreR: [-1.7 + 0.08 * s, 0.42, 0],
+      handR: [-0.4, 0, -0.5],
+      armL: [-0.12, 0, 0.1],
+      foreL: [-0.3, 0, 0],
+    };
+  }
+
+  /** Wudu, sniffing water into the nose: the right hand under the nose, head tipped up a little. */
+  function wuduNose(p) {
+    const s = Math.sin(p * TAU * 2);
+    return {
+      torso: [0.1, 0, 0],
+      head: [-0.06 + 0.05 * s, 0, 0],
+      armR: [-1.42, 0, -0.1],
+      foreR: [-1.85 + 0.06 * s, 0.32, 0],
+      handR: [-0.55, 0, -0.45],
+      armL: [-0.12, 0, 0.1],
+      foreL: [-0.3, 0, 0],
+    };
+  }
+
+  /** Wudu, wiping the head: both hands up on top of the head, sliding back. */
+  function wuduHead(p) {
+    const s = Math.sin(p * TAU);
+    return {
+      torso: [0.04, 0, 0],
+      head: [0.1, 0, 0],
+      armL: [-0.2 + 0.18 * s, 0, 2.15],
+      armR: [-0.2 + 0.18 * s, 0, -2.15],
+      foreL: [0, 0, 1.05],
+      foreR: [0, 0, -1.05],
+      handL: [0, 0, 0.3],
+      handR: [0, 0, -0.3],
+    };
+  }
+
+  /** Wudu, wiping the ears: both hands beside the ears, fingers running behind them. */
+  function wuduEars(p) {
+    const s = Math.sin(p * TAU * 1.5);
+    const lift = 1.5 + 0.05 * s;
+    return {
+      torso: [0.04, 0, 0],
+      head: [0.08, 0, 0],
+      armL: [-0.15, 0, lift],
+      armR: [-0.15, 0, -lift],
+      foreL: [0, 0, PI + 0.3 - lift],
+      foreR: [0, 0, -(PI + 0.3 - lift)],
+      handL: [-0.15 + 0.1 * s, 0, 0],
+      handR: [-0.15 + 0.1 * s, 0, 0],
+    };
+  }
+
   const P = F.POSES;
   P.qiyam = qiyam;
   P.takbir = takbir;
@@ -230,4 +289,8 @@
   P.wudu_hands = wuduHands;
   P.wudu_face = wuduFace;
   P.wudu_feet = wuduFeet;
+  P.wudu_mouth = wuduMouth;
+  P.wudu_nose = wuduNose;
+  P.wudu_head = wuduHead;
+  P.wudu_ears = wuduEars;
 })((window.KQ = window.KQ || {}));

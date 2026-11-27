@@ -201,6 +201,7 @@
     tilt.position.set(0, 0.85, 0.27);
     tilt.rotation.x = 0.64;
     const wheel = mesh(g.steer, m.trim, "steering");
+    wheel.castShadow = false;
     tilt.add(wheel);
     group.add(tilt);
     const v = { group, kind: "car", wheels: [], pivots: [], steering: wheel, rolled: 0 };
@@ -215,6 +216,7 @@
     const pivot = new THREE.Group();
     pivot.position.set(at[0], at[1], at[2]);
     const w = mesh(geo, mat, "wheel");
+    w.castShadow = false; // the body's shadow is enough; wheels would double the shadow pass
     pivot.add(w);
     v.group.add(pivot);
     v.wheels.push(w);
@@ -232,8 +234,11 @@
     addWheel(v, g.bikeWheel, m.trim, [0, 0.2, -0.42], false);
     const fork = new THREE.Group();
     fork.position.set(0, 0, 0.42);
-    fork.add(mesh(g.bikeFork, m.trim, "fork"));
+    const bars = mesh(g.bikeFork, m.trim, "fork");
+    bars.castShadow = false;
+    fork.add(bars);
     const front = mesh(g.bikeWheel, m.trim, "wheel");
+    front.castShadow = false;
     front.position.set(0, 0.2, 0);
     fork.add(front);
     group.add(fork);

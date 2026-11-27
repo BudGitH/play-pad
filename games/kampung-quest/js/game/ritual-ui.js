@@ -21,6 +21,18 @@
     return window.innerWidth >= 700 && window.innerHeight >= 340 ? "side" : "bottom";
   }
 
+  /**
+   * Slide the picture so the hero stays in the free part of the screen beside the open panel (to
+   * the left of a side panel, above a bottom sheet). No panel: no shift.
+   */
+  function fitShift() {
+    const box = G.UI.state.sheet;
+    if (!box) return G.Camera.setShift(0, 0);
+    const side = box.parentElement.classList.contains("kq-sheet-side");
+    if (side) G.Camera.setShift(0, box.offsetWidth * 0.5);
+    else G.Camera.setShift(box.offsetHeight * 0.5, 0);
+  }
+
   /** Arabic text span: right to left, language-tagged so screen readers pick the right voice. */
   function arabic(text, cls) {
     return el("span", { cls: cls || "kq-ar", lang: "ar", dir: "rtl", text });
@@ -195,11 +207,11 @@
   function progress(card) {
     const total = card.total || 0;
     if (!total || total > 30) return null;
-    const row = el("div", { cls: "kq-progress", role: "img", "aria-label": card.kicker || "" });
+    const row = el("div", { cls: "kq-stepbar", role: "img", "aria-label": card.kicker || "" });
     for (let i = 0; i < total; i += 1) {
       row.appendChild(
         el("i", {
-          cls: "kq-pip" + (i < card.index ? " is-done" : i === card.index ? " is-now" : ""),
+          cls: "kq-sp" + (i < card.index ? " is-done" : i === card.index ? " is-now" : ""),
         }),
       );
     }
@@ -274,6 +286,7 @@
       onClose(reason) {
         ctl.closed = true;
         if (G.RitualUI.active === ctl) G.RitualUI.active = null;
+        G.Camera.setShift(0, 0);
         h.onClose(reason);
       },
       focus: ".kq-step-next",
@@ -294,7 +307,7 @@
   /** The empty sheet content: header (title, progress, Not now), the scrolling body and the pinned footer. */
   function shell() {
     const title = el("h2", { cls: "kq-sheet-title", text: "" });
-    const prog = el("div", { cls: "kq-progress-host" });
+    const prog = el("div", { cls: "kq-stepbar-host" });
     const head = el(
       "div",
       { cls: "kq-sheet-head" },
@@ -321,6 +334,7 @@
     U.clear(parts.foot);
     parts.foot.appendChild(footOf(card, h, ctl));
     parts.body.scrollTop = keep;
+    fitShift();
     const sheet = G.UI.state.sheet;
     const active = document.activeElement;
     if (ctl.nextBtn && (!active || !sheet || !sheet.contains(active) || active === document.body))
@@ -340,6 +354,7 @@
 
   G.RitualUI = {
     open,
+    fitShift,
     variant,
     active: null,
     tick(dt) {

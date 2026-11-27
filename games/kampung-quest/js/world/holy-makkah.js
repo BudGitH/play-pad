@@ -39,7 +39,16 @@
     for (let t = r.from + 4; t < r.to - 4; t += 9) {
       const x = r.axis === "x" ? t : r.at;
       const z = r.axis === "x" ? r.at : t;
-      B.decal("marking", x, 0.05, z, r.axis === "x" ? 3.5 : 0.25, r.axis === "x" ? 0.25 : 3.5, 0, 0xf2f0e6);
+      B.decal(
+        "marking",
+        x,
+        0.05,
+        z,
+        r.axis === "x" ? 3.5 : 0.25,
+        r.axis === "x" ? 0.25 : 3.5,
+        0,
+        0xf2f0e6,
+      );
     }
   }
 
@@ -47,7 +56,7 @@
   function ground(c) {
     const B = c.B;
     B.aabb("concrete", -330, -0.4, -235, 150, 0, 150, 0xd6c29c);
-    B.aabb("marble", -34, 0, -96.5, 34, 0.1, -58, 0xece6d6);
+    B.aabb("marble", -34, 0, -96.5, 34, 0.1, -58, 0xd5cdb8);
     B.aabb("marble", -8, 0, -116, 8, 0.08, -96, 0xf4efe2);
     B.aabb("tiles", -34, 0.1, -96.5, 34, 0.12, -95.9, 0xb8aa84);
     B.aabb("tiles", -34, 0.1, -58.6, 34, 0.12, -58, 0xb8aa84);
@@ -57,7 +66,7 @@
   function clockTower(c) {
     const B = c.B;
     const t = KQ.HOLY.makkah.clockTower;
-    B.aabb("hotel", t.x - 17, 0, t.z - 17, t.x + 17, 42, t.z + 17, 0xf0e8d8);
+    B.aabb("hotel", t.x - 17, 0, t.z - 15, t.x + 17, 42, t.z + 15, 0xf0e8d8);
     B.aabb("hotel", t.x - 11, 42, t.z - 11, t.x + 11, 104, t.z + 11, 0xf6efe0);
     B.aabb("paint", t.x - 13.5, 104, t.z - 13.5, t.x + 13.5, 122, t.z + 13.5, 0xe3d6b4);
     [
@@ -67,9 +76,18 @@
       [-13.6, 0, -Math.PI / 2],
     ].forEach((f) => B.plane("clock", t.x + f[0], 113, t.z + f[1], 17, 17, f[2], null, 0xffffff));
     B.aabb("gold", t.x - 14.2, 122, t.z - 14.2, t.x + 14.2, 123.6, t.z + 14.2, 0xd9b04a);
-    K().dome(B, { key: "gold", x: t.x, y: 123.6, z: t.z, r: 9, k: 1.1, color: 0xe2bd62, bulge: 1.1 });
+    K().dome(B, {
+      key: "gold",
+      x: t.x,
+      y: 123.6,
+      z: t.z,
+      r: 9,
+      k: 1.1,
+      color: 0xe2bd62,
+      bulge: 1.1,
+    });
     B.cyl("gold", t.x, 142, t.z, 0.5, 14, 8, 0xe2bd62);
-    K().solid(c.colliders, t.x - 17, t.z - 17, t.x + 17, t.z + 17, "tower");
+    K().solid(c.colliders, t.x - 17, t.z - 15, t.x + 17, t.z + 15, "tower");
   }
 
   /** Hotel blocks: [x0, z0, x1, z1, height]; each becomes a podium plus a slimmer tower. */
@@ -97,7 +115,16 @@
       const inset = Math.min(w, d) * 0.14;
       c.B.aabb("hotel", h[0], 0, h[1], h[2], 16, h[3], 0xf0e8d8);
       c.B.aabb("hotel", h[0] + inset, 16, h[1] + inset, h[2] - inset, h[4], h[3] - inset, 0xeee6d4);
-      c.B.aabb("paint", h[0] + inset - 0.3, h[4], h[1] + inset - 0.3, h[2] - inset + 0.3, h[4] + 1, h[3] - inset + 0.3, 0xcdbf9a);
+      c.B.aabb(
+        "paint",
+        h[0] + inset - 0.3,
+        h[4],
+        h[1] + inset - 0.3,
+        h[2] - inset + 0.3,
+        h[4] + 1,
+        h[3] - inset + 0.3,
+        0xcdbf9a,
+      );
       K().solid(c.colliders, h[0], h[1], h[2], h[3], "tower");
     });
   }
@@ -106,9 +133,14 @@
   function palmSpots() {
     const out = [];
     for (let x = -30; x <= 30; x += 10) {
-      [-92, -62].forEach((z) => x !== 0 && out.push({ x, z, s: 0.9 + ((x * 7) % 5) / 25 }));
+      [-92, -62].forEach(
+        (z) => x !== 0 && x !== 20 && out.push({ x, z, s: 0.9 + ((x * 7) % 5) / 25 }),
+      );
     }
-    for (let x = -100; x <= 120; x += 22) out.push({ x, z: -94.5, s: 1 }, { x, z: -117.5, s: 1.1 });
+    for (let x = -100; x <= 120; x += 22) {
+      out.push({ x, z: -117.5, s: 1.1 });
+      if (Math.abs(x) > 40) out.push({ x, z: -94.5, s: 1 });
+    }
     for (let z = -100; z <= 120; z += 24) out.push({ x: 92, z, s: 1 }, { x: 68, z, s: 1.05 });
     return out.filter((p) => Math.abs(p.x) > 1 || p.z > -60 || p.z < -118);
   }
@@ -150,7 +182,12 @@
         const x = m.x + i * 6 + Math.sign(i) * 1;
         const z = m.z + j * 6 + Math.sign(j) * 1;
         B.aabb("plastic", x - 2, 0, z - 2, x + 2, 2.4, z + 2, 0xf6f3ea);
-        B.geo("plastic", new THREE.ConeGeometry(3.1, 1.8, 4), P.compose(x, 3.3, z, Math.PI / 4, 1, 1, 1), 0xefe9d8);
+        B.geo(
+          "plastic",
+          new THREE.ConeGeometry(3.1, 1.8, 4),
+          P.compose(x, 3.3, z, Math.PI / 4, 1, 1, 1),
+          0xefe9d8,
+        );
         K().solid(c.colliders, x - 2, z - 2, x + 2, z + 2, "tent");
       }
     }
@@ -162,7 +199,16 @@
     c.B.cyl("concrete", a.x, 0.04, a.z, 30, 0.1, 40, 0xd2bfa0);
     hills.push({ x: a.x, z: a.z, w: 12, h: 10, seed: 2 });
     for (let i = 0; i < 6; i += 1) {
-      c.B.aabb("marble", a.x - 1.2, i * 0.5, a.z + 8 - i * 1.0, a.x + 1.2, i * 0.5 + 0.5, a.z + 9 - i * 1.0, 0xe8e2d2);
+      c.B.aabb(
+        "marble",
+        a.x - 1.2,
+        i * 0.5,
+        a.z + 8 - i * 1.0,
+        a.x + 1.2,
+        i * 0.5 + 0.5,
+        a.z + 9 - i * 1.0,
+        0xe8e2d2,
+      );
     }
     c.B.box("marble", a.x, 11.5, a.z, 1.6, 4.8, 1.6, 0xf6f2e6);
     c.B.box("marble", a.x, 14.2, a.z, 1.0, 0.6, 1.0, 0xe2bd62);
@@ -199,7 +245,13 @@
       const a = (i / 22) * Math.PI * 2;
       const cx = -90 + Math.cos(a) * 340;
       const cz = -50 + Math.sin(a) * 250;
-      hills.push({ x: cx + r() * 20, z: cz + r() * 20, w: 70 + r() * 60, h: 38 + r() * 40, seed: 1 + (i % 3) });
+      hills.push({
+        x: cx + r() * 20,
+        z: cz + r() * 20,
+        w: 70 + r() * 60,
+        h: 38 + r() * 40,
+        seed: 1 + (i % 3),
+      });
     }
   }
 

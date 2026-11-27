@@ -122,10 +122,25 @@
    * world that builds its list late still counts.
    */
   function zones() {
-    const own = KQ.Holy && Array.isArray(KQ.Holy.noDrive) ? KQ.Holy.noDrive : [];
-    const base = region() === "haramain" ? haramainZones() : kampungZones();
-    return KQ.Sim.Vehicle.normalizeZones(own.concat(base));
+    const haram = region() === "haramain";
+    const own = haram && KQ.Holy && Array.isArray(KQ.Holy.noDrive) ? KQ.Holy.noDrive : [];
+    const base = haram ? haramainZones() : kampungZones();
+    return KQ.Sim.Vehicle.normalizeZones(own.map(named).concat(base, extra));
   }
 
-  G.VehicleSpots = { region, spots, zones, MASJID };
+  /** A world zone with its friendly line: its own `say`, else from its name (mosques and the mataf are the masjid). */
+  function named(z) {
+    if (!z || typeof z.say === "string") return z;
+    const mosque = /masjid|mataf|mas'a|haram|nabawi|quba|baqi/i.test(String(z.name || ""));
+    return Object.assign({}, z, { say: mosque ? MASJID : "Let's walk here" });
+  }
+
+  /** Zones added at run time (tests, future regions): the same shapes as KQ.Holy.noDrive. */
+  const extra = [];
+  function addZone(z) {
+    extra.push(z);
+    return () => extra.splice(extra.indexOf(z), 1);
+  }
+
+  G.VehicleSpots = { region, spots, zones, addZone, MASJID };
 })((window.KQ = window.KQ || {}));

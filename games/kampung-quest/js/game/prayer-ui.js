@@ -140,21 +140,26 @@
     return lines;
   }
 
-  /** Wudu stepper. h: { onAct(), onClose() }. One card per wudu step; Next does the whole step. */
+  const ACT_WORD = { niat: "Say niat", head: "Wipe", ears: "Wipe", doa: "Say doa" };
+  const VIEW_BUTTON = { id: "view", label: "Change view", icon: "refresh" };
+
+  /** Wudu stepper. h: { onAct(), onView(), onClose() }. One card per wudu step; Next is one wash. */
   function wudu(h) {
     const ctl = G.RitualUI.open({
       label: "Wudu steps",
       onNext: h.onAct,
+      onExtra: () => h.onView(),
       onClose: h.onClose,
     });
     return { ctl, handle: ctl.handle };
   }
 
-  /** Refresh the wudu stepper. v: { index, total, step } (the sim's current wudu step). */
+  /** Refresh the wudu stepper. v: { index, total, taps, step } (the sim's current wudu step and the washes so far). */
   function wuduUpdate(ui, v) {
     const step = v.step;
-    const last = v.index >= v.total - 1;
-    ui.ctl.show({
+    const word = ACT_WORD[step.id] || "Splash!";
+    const count = step.count > 1 ? " (" + (v.taps + 1) + " of " + step.count + ")" : "";
+    const card = {
       key: "wudu-" + v.index,
       kicker: "Wudu at the mosque taps · step " + Math.min(v.index + 1, v.total) + " of " + v.total,
       index: v.index,
@@ -163,12 +168,12 @@
       title: step.label,
       how: wuduHow(step),
       texts: T().wuduTexts(step.id),
-      next: {
-        label: last ? "Finish wudu" : "Next",
-        cls: "kq-wudu-act",
-        icon: last ? "check" : null,
-      },
-    });
+      next: { label: word + count, cls: "kq-wudu-act" },
+      extras: [VIEW_BUTTON],
+    };
+    if (step.count > 1)
+      card.counter = { count: v.taps, target: step.count, unit: "wash", unitLabel: "Done" };
+    ui.ctl.show(card);
   }
 
   /** Prayer stepper. h: { onPick(type), onClose() }. One card per posture; Next takes the posture. */
@@ -177,7 +182,7 @@
     ui.ctl = G.RitualUI.open({
       label: "Prayer steps",
       onNext: () => ui.pick(ui.want[0]),
-      onExtra: () => ui.pick(ui.want[1]),
+      onExtra: (id) => (id === "view" ? h.onView() : ui.pick(ui.want[1])),
       onClose: h.onClose,
     });
     ui.handle = ui.ctl.handle;
@@ -203,7 +208,7 @@
       how: [T().howFor(type)],
       texts: T().cardTexts(type, v.rakaat),
       next: { label: "Next", cls: "kq-pray-next" },
-      extras: v.want.length > 1 ? [{ id: "skip", label: "Skip this" }] : [],
+      extras: (v.want.length > 1 ? [{ id: "skip", label: "Skip this" }] : []).concat(VIEW_BUTTON),
     };
     ui.ctl.show(card);
   }

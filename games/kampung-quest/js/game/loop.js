@@ -124,44 +124,28 @@
     };
   }
 
-  /** The minimap markers: the mission target, the mosque while a prayer is due or owed, the hawker centre (bigger while the first-meal nudge is on) and home. */
-  function mapMarkers() {
-    const s = S();
-    const out = [];
-    const t = G.MissionFlow.targetPos();
-    if (t) out.push({ x: t.x, z: t.z, color: "#ff6b85", big: true });
-    const ps = s.sim.prayer.state();
-    if (ps.due || ps.flow || ps.qada.length) {
-      const m = s.world.pois.mosque_gate.pos;
-      out.push({ x: m.x, z: m.z, color: "#30d158", big: Boolean(ps.due || ps.flow) });
-    }
-    const hk = s.world.pois.hawker.pos;
-    const home = s.world.pois.home.pos;
-    out.push(
-      { x: hk.x, z: hk.z, color: "#ff9f0a", big: Boolean(G.Nudge.markerPos()) },
-      { x: home.x, z: home.z, color: "#f4a8b8" },
-    );
-    return out;
-  }
-
-  /** What the minimap draws for a span in metres: centred on the hero, with heading and markers. */
-  function mapView(span) {
+  /** What the radar / map draws for a span in metres: centred on the hero, with heading and blips (map-markers.js). `opts`: { rotate, labels }. */
+  function mapView(span, opts) {
     const s = S();
     const P = s.player;
-    return {
-      cx: P.pos.x,
-      cz: P.pos.z,
-      span,
-      hero: { x: P.pos.x, z: P.pos.z },
-      heading: P.heading,
-      markers: mapMarkers(),
-    };
+    return Object.assign(
+      {
+        cx: P.pos.x,
+        cz: P.pos.z,
+        span,
+        hero: { x: P.pos.x, z: P.pos.z },
+        heading: P.heading,
+        markers: G.MapMarkers.build(s),
+      },
+      opts || {},
+    );
   }
 
-  /** Draw the minimap onto the HUD canvas. */
+  /** Draw the radar onto the HUD canvas: round, turning with the hero. */
   function drawMinimap() {
     const R = G.Hud.refs;
-    G.Minimap.draw(R.canvas.getContext("2d"), R.canvas.width, mapView(70), true);
+    const view = mapView(G.Minimap.radarSpan(), { rotate: true });
+    G.Minimap.draw(R.canvas.getContext("2d"), R.canvas.width, view, true);
   }
 
   /** Give every figure the small studio reflection from the showcase (glossy toy plastic). */

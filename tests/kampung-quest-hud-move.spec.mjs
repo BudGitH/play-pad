@@ -29,7 +29,7 @@ function hudButtons(page) {
 test.use({ viewport: { width: 1280, height: 800 } });
 test.describe.configure({ timeout: 150_000 });
 
-test("one control per action: no Run button, no duplicate names, the minimap is not a second Map button", async ({
+test("one control per action: no Run button, no duplicate names, Map = the radar, Pray = the prayer card, Pause = the corner", async ({
   page,
 }) => {
   await open(page);
@@ -44,12 +44,97 @@ test("one control per action: no Run button, no duplicate names, the minimap is 
   expect(hint).not.toMatch(/Esc/);
   expect(hint).toMatch(/Shift/);
   expect(hint).toMatch(/Space/);
-  // tapping the minimap does nothing (the Map is the dock's job)
-  await page.locator("#kqNeeds").click({ force: true });
-  expect((await state(page)).ui.modal).toBeNull();
-  await page.locator("#kqDock-map").click();
+  // the dock holds only Missions and Bag: Map is the radar, Pray the prayer-time card, Pause the corner button
+  await expect(page.locator(".kq-dock-btn")).toHaveCount(2);
+  expect(names).toEqual(expect.arrayContaining(["Missions", "Bag", "Map", "Pause", "Sound"]));
+  expect(names).not.toContain("Pray");
+  // tapping the radar opens the full map; so does M
+  await page.locator("#kqMap").click();
   expect((await state(page)).ui.modal).toBe("Map");
   await page.keyboard.press("Escape");
+  await page.keyboard.press("m");
+  expect((await state(page)).ui.modal).toBe("Map");
+  await page.keyboard.press("Escape");
+  // the prayer-time card is a keyboard-reachable button that opens today's prayers; so does P
+  await page.locator("#kqStatus").focus();
+  await page.keyboard.press("Enter");
+  expect((await state(page)).ui.modal).toBe("Prayer");
+  await page.keyboard.press("Escape");
+  await page.locator("#kqStatus").click();
+  expect((await state(page)).ui.modal).toBe("Prayer");
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("p");
+  expect((await state(page)).ui.modal).toBe("Prayer");
+  await page.keyboard.press("Escape");
+  // Pause is the corner button (and Esc)
+  await page.locator("#kqDock-pause").click();
+  expect((await state(page)).ui.modal).toBe("Paused");
+  await page.getByRole("button", { name: "Resume" }).click();
+});
+
+test("radar: blips for the objective, mosque, food and mission givers; the radar turns with the hero", async ({
+  page,
+}) => {
+  await open(page);
+  const kinds = () =>
+    kq(page, () => window.KQ.Game.Loop.mapView(80, { rotate: true }).markers.map((m) => m.kind));
+  expect(await kinds(), "mosque, food, home and the neighbours with a star").toEqual(
+    expect.arrayContaining(["mosque", "food", "home", "giver"]),
+  );
+  await kq(page, () => {
+    window.KQ.Game.S.sim.missions.accept("recycling_hero");
+    window.__kq.step(300);
+  });
+  const markers = await kq(page, () => window.KQ.Game.Loop.mapView(80, { rotate: true }).markers);
+  const goal = markers.find((m) => m.kind === "objective");
+  expect(goal, "the objective blip").toMatchObject({ big: true, arrow: true });
+  expect(
+    markers.some((m) => m.kind === "giver"),
+    "no giver stars while a mission is on",
+  ).toBe(false);
+  // the radar canvas is drawn (not blank) and a heading change repaints it
+  const hash = () =>
+    kq(page, () => {
+      const c = document.querySelector("#kqHud canvas.kq-minimap");
+      const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
+      let h = 0;
+      for (let i = 0; i < d.length; i += 97) h = (h * 31 + d[i]) | 0;
+      return h;
+    });
+  const a = await hash();
+  await kq(page, () => window.__kq.place(-5, 4, Math.PI / 2));
+  await step(page, 400);
+  expect(await hash(), "the radar repaints when the hero turns").not.toBe(a);
+});
+
+test("food and energy bars: icon, bar, word; 'Hungry' and 'Tired' when low; Missions badge counts", async ({
+  page,
+}) => {
+  await open(page);
+  await expect(page.locator(".kq-need.kq-food .kq-need-word")).toHaveText("Food");
+  await expect(page.locator(".kq-need.kq-energy .kq-need-word")).toHaveText("Energy");
+  await kq(page, () => {
+    window.KQ.Game.S.sim.needs.restore({ hunger: 15, energy: 10 });
+    window.__kq.step(300);
+  });
+  await expect(page.locator(".kq-need.kq-food .kq-need-word")).toHaveText("Hungry");
+  await expect(page.locator(".kq-need.kq-energy .kq-need-word")).toHaveText("Tired");
+  const fill = await kq(
+    page,
+    () => document.querySelector(".kq-need.kq-food .kq-need-fill").style.transform,
+  );
+  expect(fill).toBe("scaleX(0.15)");
+  // Missions: a pink count of the stars to find, then a green 1 once one is under way
+  const badge = page.locator("#kqDock-missions .kq-badge");
+  await expect(badge).toBeVisible();
+  await expect(badge).not.toHaveClass(/is-active/);
+  await kq(page, () => {
+    window.KQ.Game.S.sim.missions.accept("recycling_hero");
+    window.__kq.step(300);
+  });
+  await expect(badge).toHaveText("1");
+  await expect(badge).toHaveClass(/is-active/);
+  await expect(page.locator("#kqDock-missions")).toHaveAttribute("aria-label", /1 in progress/);
 });
 
 test("Shift + W + Space together: the hero runs, hops and keeps going without stopping", async ({

@@ -4,10 +4,24 @@
 // The page runs with `?still=1` (time moves only through __kq.step). Set KQ_SHOTS=1 to write the
 // screenshots into features/kampung-quest-haramain/shots/.
 // Run: npx playwright test tests/kampung-quest-vehicles.spec.mjs
-import { test, expect } from "@playwright/test";
+import { test, expect, devices } from "@playwright/test";
 
 const GAME = "/games/kampung-quest/index.html?still=1&autoq=0&q=low";
 const SHOTS = process.env.KQ_SHOTS ? "features/kampung-quest-haramain/shots/" : null;
+/** A device descriptor without `defaultBrowserType` (only Chromium is installed; the engine is the same). */
+function device(name) {
+  const rest = { ...devices[name] };
+  delete rest.defaultBrowserType;
+  return rest;
+}
+
+/** One raw touch event over CDP (page.touchscreen can only tap). */
+const touchEvent = (cdp, type, pts) =>
+  cdp.send("Input.dispatchTouchEvent", {
+    type,
+    touchPoints: pts.map((p, i) => ({ x: p.x, y: p.y, id: i })),
+  });
+
 const kq = (page, fn, arg) => page.evaluate(fn, arg);
 const step = (page, ms) => kq(page, (t) => window.__kq.step(t), ms);
 const veh = (page) => kq(page, () => window.__kq.vehicles());
@@ -53,7 +67,28 @@ async function reset(page) {
     await kq(page, () => window.__kq.interact());
     await step(page, 2500);
   }
-  await kq(page, () => window.__kq.freeze(false));
+  await kq(page, () => window.KQ.Game.Vehicles.returnAll());
+}
+
+/** Let go of the stick and press Exit while still rolling: it brakes first, then he gets out on free ground. */
+async function exitAndCheck(page, camBefore) {
+  await input(page, "up", false);
+  await kq(page, () => window.__kq.interact());
+  await step(page, 1500);
+  const d = await veh(page);
+  expect(d.mounted).toBeNull();
+  const out = await state(page);
+  expect(out.pose).not.toBe("drive");
+  expect(out.cam.dist).toBeCloseTo(camBefore, 0);
+  await expect(page.locator("#kqJump")).toHaveAttribute("aria-label", "Jump");
+  const clear = await kq(page, () => {
+    const G = window.KQ.Game;
+    const p = G.S.player.pos;
+    return G.Collide.blockedAt(G.S.world.colliders, p.x, p.z, 0.3);
+  });
+  expect(clear, "the hero stepped out onto free ground").toBeNull();
+  const parked = d.list.find((v) => v.id === "car1");
+  expect(Math.hypot(out.pos.x - parked.x, out.pos.z - parked.z)).toBeGreaterThan(1.0);
 }
 
 test.use({ viewport: { width: 1100, height: 700 } });
@@ -61,6 +96,7 @@ test.describe.configure({ mode: "serial", timeout: 240_000 });
 
 let page;
 test.beforeAll(async ({ browser }) => {
+  test.setTimeout(150_000); // booting the 3D world in software GL
   page = await browser.newPage({ viewport: { width: 1100, height: 700 } });
   page.on("pageerror", (e) => console.log("PAGEERROR", e.message));
   await boot(page);
@@ -121,7 +157,6 @@ test("press Drive: the hero sits in the car, the stick drives it, the camera dro
   d = await veh(page);
   const car = d.list.find((v) => v.id === "car1");
   const hero = await state(page);
-  console.log("DBG", JSON.stringify([hero.pos, hero.locked, car, start, d.mounted]));
   expect(car.speed).toBeGreaterThan(5);
   expect(Math.hypot(car.x - start.x, car.z - start.z)).toBeGreaterThan(6);
   expect(
@@ -130,23 +165,7 @@ test("press Drive: the hero sits in the car, the stick drives it, the camera dro
   ).toBeLessThan(0.6);
   expect(hero.cam.dist, "the camera follows further back").toBeGreaterThan(camBefore + 1.5);
   await shot(page, "hero-driving");
-  await input(page, "up", false);
-  await kq(page, () => window.__kq.interact()); // Exit while rolling: it brakes first, then he gets out
-  await step(page, 1500);
-  d = await veh(page);
-  expect(d.mounted).toBeNull();
-  const out = await state(page);
-  expect(out.pose).not.toBe("drive");
-  expect(out.cam.dist).toBeCloseTo(camBefore, 0);
-  await expect(page.locator("#kqJump")).toHaveAttribute("aria-label", "Jump");
-  const clear = await kq(page, () => {
-    const G = window.KQ.Game;
-    const p = G.S.player.pos;
-    return G.Collide.blockedAt(G.S.world.colliders, p.x, p.z, 0.3);
-  });
-  expect(clear, "the hero stepped out onto free ground").toBeNull();
-  const parked = d.list.find((v) => v.id === "car1");
-  expect(Math.hypot(out.pos.x - parked.x, out.pos.z - parked.z)).toBeGreaterThan(1.0);
+  await exitAndCheck(page, camBefore);
 });
 
 test("a bicycle: pedal pose, faster than running, bell on the Jump button", async () => {
@@ -174,19 +193,16 @@ test("a car stops gently at a wall: it never ends inside a collider", async () =
   await kq(page, () => window.__kq.interact());
   expect((await veh(page)).mounted).toBe(id);
   await input(page, "up", true);
-  let worst = 0;
-  for (let i = 0; i < 40; i += 1) {
-    await step(page, 100);
-    worst = Math.max(
-      worst,
-      await kq(page, () => {
-        const G = window.KQ.Game;
-        const v = G.Vehicles.debug().list.find((x) => x.parked === false);
-        const hit = G.Collide.blockedAt(G.S.world.colliders, v.x, v.z, 0.5);
-        return hit ? 1 : 0;
-      }),
-    );
-  }
+  const worst = await kq(page, () => {
+    const G = window.KQ.Game;
+    let hits = 0;
+    for (let i = 0; i < 120; i += 1) {
+      G.Loop.frame(1 / 30, true);
+      const v = G.Vehicles.debug().list.find((x) => x.parked === false);
+      if (G.Collide.blockedAt(G.S.world.colliders, v.x, v.z, 0.5)) hits += 1;
+    }
+    return hits;
+  });
   expect(worst, "the car centre never entered a collider").toBe(0);
   const car = (await veh(page)).list.find((v) => v.id === id);
   expect(car.z).toBeLessThan(16);
@@ -195,7 +211,12 @@ test("a car stops gently at a wall: it never ends inside a collider", async () =
 
 test("a no-drive zone stops the car (and the bicycle) with a friendly line", async () => {
   await kq(page, () => {
-    window.KQ.Holy = { noDrive: [{ x: 10, z: 2, r: 5, say: "Let's walk inside the masjid" }] };
+    window.__removeZone = window.KQ.Game.VehicleSpots.addZone({
+      x: 10,
+      z: 2,
+      r: 5,
+      say: "Let's walk inside the masjid",
+    });
   });
   await standAt(page, -22, 4.1, Math.PI);
   await kq(page, () => window.__kq.interact());
@@ -212,7 +233,7 @@ test("a no-drive zone stops the car (and the bicycle) with a friendly line", asy
   await input(page, "down", true);
   await step(page, 1500);
   expect((await veh(page)).list.find((v) => v.id === "car1").x).toBeLessThan(car.x);
-  await kq(page, () => delete window.KQ.Holy);
+  await kq(page, () => window.__removeZone());
 });
 
 test("the real mosque compound is a no-drive zone", async () => {
@@ -241,22 +262,22 @@ test("a person in the way: the car brakes and stops short, and nobody is touched
   await standAt(page, -22, 4.1, Math.PI);
   await kq(page, () => window.__kq.interact());
   await input(page, "up", true);
-  let closest = Infinity;
-  for (let i = 0; i < 50; i += 1) {
-    const gap = await kq(page, () => {
-      const G = window.KQ.Game;
-      const A = G.S.npcs.byId.uncle_lim;
+  const closest = await kq(page, () => {
+    const G = window.KQ.Game;
+    const A = G.S.npcs.byId.uncle_lim;
+    let least = Infinity;
+    for (let i = 0; i < 150; i += 1) {
       A.hidden = false;
       A.group.visible = true;
       A.path = [];
       A.x = 0;
       A.z = 2.1;
       const c = G.Vehicles.debug().list.find((v) => v.id === "car1");
-      return A.x - (c.x + 1.4);
-    });
-    closest = Math.min(closest, gap);
-    await step(page, 100);
-  }
+      least = Math.min(least, A.x - (c.x + 1.4));
+      G.Loop.frame(1 / 30, true);
+    }
+    return least;
+  });
   const d = await veh(page);
   expect(d.braked, "it braked for him").toBeGreaterThan(0);
   expect(closest, "the bumper never reached him").toBeGreaterThan(0.2);
@@ -313,9 +334,64 @@ test("a vehicle left far away goes back to its parking spot", async () => {
 });
 
 test("a vehicle adds only a few draw calls", async () => {
-  const base = await kq(page, () => window.__kq.stats().calls);
   await standAt(page, -22, 4.1, Math.PI);
-  const near = await kq(page, () => window.__kq.stats().calls);
-  expect(near - base).toBeLessThan(40);
-  expect(near).toBeLessThan(400);
+  const calls = (visible) =>
+    kq(
+      page,
+      (on) => {
+        window.KQ.Game.S.scene.traverse((o) => {
+          if (o.name && o.name.indexOf("vehicle-") === 0) o.visible = on;
+        });
+        window.__kq.step(100);
+        return window.__kq.stats().calls;
+      },
+      visible,
+    );
+  const without = await calls(false);
+  const withCar = await calls(true);
+  expect(withCar - without, "the car and bicycle in view, shadows included").toBeLessThanOrEqual(
+    30,
+  );
+  expect(withCar).toBeLessThan(400);
+});
+
+test("phone landscape (touch): Drive, Exit and Honk fit, and the joystick drives the car", async ({
+  browser,
+}) => {
+  const ctx = await browser.newContext(device("iPhone 13 landscape"));
+  const ph = await ctx.newPage();
+  const errors = [];
+  ph.on("pageerror", (e) => errors.push(e.message));
+  await ph.goto("/games/kampung-quest/index.html?still=1&autoq=0");
+  await expect.poll(() => kq(ph, () => window.__kq?.loaded), { timeout: 90_000 }).toBe(true);
+  await ph.getByRole("button", { name: "Start", exact: true }).tap();
+  await expect.poll(() => kq(ph, () => window.__kq.ready), { timeout: 30_000 }).toBe(true);
+  await standAt(ph, -22, 4.1, Math.PI);
+  const talk = ph.locator("#kqTalk");
+  await expect(talk).toContainText("Drive");
+  await expect(talk).toBeInViewport({ ratio: 1 });
+  expect((await talk.boundingBox()).height).toBeGreaterThanOrEqual(48);
+  await talk.tap();
+  expect((await veh(ph)).mounted).toBe("car1");
+  await step(ph, 300);
+  await expect(talk).toContainText("Exit");
+  await expect(talk).toBeInViewport({ ratio: 1 });
+  const jump = ph.locator("#kqJump");
+  await expect(jump).toContainText("Honk");
+  const box = await jump.boundingBox();
+  expect(Math.min(box.width, box.height)).toBeGreaterThanOrEqual(48);
+  const before = (await veh(ph)).sound.honks;
+  await jump.tap();
+  expect((await veh(ph)).sound.honks, "the Honk button honks").toBe(before + 1);
+  const joy = await ph.locator("#kqJoy").boundingBox();
+  const at = { x: joy.x + joy.width / 2, y: joy.y + joy.height / 2 };
+  const cdp = await ctx.newCDPSession(ph);
+  await touchEvent(cdp, "touchStart", [at]);
+  await touchEvent(cdp, "touchMove", [{ x: at.x, y: at.y - 30 }]);
+  await step(ph, 1500);
+  expect((await veh(ph)).list.find((v) => v.id === "car1").speed).toBeGreaterThan(2);
+  await shot(ph, "veh-phone-landscape");
+  await touchEvent(cdp, "touchEnd", []);
+  expect(errors).toEqual([]);
+  await ctx.close();
 });

@@ -76,7 +76,7 @@
 
   /** The browser's speech synthesiser, or null when it is not supported. */
   function synth() {
-    return "speechSynthesis" in window && "SpeechSynthesisUtterance" in window
+    return window.speechSynthesis && "SpeechSynthesisUtterance" in window
       ? window.speechSynthesis
       : null;
   }

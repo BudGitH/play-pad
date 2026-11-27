@@ -13,15 +13,14 @@
   const P = (KQ.WorldParts = KQ.WorldParts || {});
   const K = () => P.HolyKit;
   const HALL_H = 9;
-  const BAY = 6.4;
   const MARBLE = 0xf1ece0;
 
   /** The complex floor (off-white marble) and the whiter mataf disc with its dark rim. */
   function floors(c) {
     const B = c.B;
-    B.aabb("marble", -60, 0, -58, 60, 0.1, 58, 0xe4ded0);
+    B.aabb("marble", -60, 0, -58, 60, 0.1, 58, 0xcfc8b6);
     const disc = new THREE.CircleGeometry(26, 72).rotateX(-Math.PI / 2);
-    B.geo("marble", disc, P.compose(0, 0.12, 0, 0, 1, 1, 1), 0xffffff);
+    B.geo("marble", disc, P.compose(0, 0.12, 0, 0, 1, 1, 1), 0xe6e1d3);
     const rim = new THREE.RingGeometry(25.4, 26.2, 72).rotateX(-Math.PI / 2);
     B.geo("tiles", rim, P.compose(0, 0.135, 0, 0, 1, 1, 1), 0x6d665c);
     const inner = new THREE.RingGeometry(11.6, 11.9, 64).rotateX(-Math.PI / 2);
@@ -92,7 +91,9 @@
       B.cyl("chrome", z.x - 2.5 + i, 1.05, z.z - 0.7, 0.06, 0.3, 8, 0xdfe3e8);
       B.box("chrome", z.x - 2.5 + i, 1.2, z.z - 0.55, 0.06, 0.06, 0.3, 0xdfe3e8);
     }
-    [-3.4, 3.4].forEach((dx) => B.cyl("whitePlaster", z.x + dx, 1.7, z.z + 0.7, 0.18, 3.4, 8, 0xf1ece0));
+    [-3.4, 3.4].forEach((dx) =>
+      B.cyl("whitePlaster", z.x + dx, 1.7, z.z + 0.7, 0.18, 3.4, 8, 0xf1ece0),
+    );
     B.aabb("whitePlaster", z.x - 3.8, 3.4, z.z - 2.0, z.x + 3.8, 3.7, z.z + 1.2, 0xf1ece0);
     B.aabb("paint", z.x - 3.9, 3.7, z.z - 2.1, z.x + 3.9, 3.85, z.z + 1.3, 0x1f7a4d);
     K().solid(c.colliders, z.x - 3.4, z.z - 1.6, z.x + 3.4, z.z - 0.4, "counter");
@@ -117,12 +118,18 @@
       const mid = o.from + w * (i + 0.5);
       const x = o.axis === "x" ? mid : o.fixed;
       const z = o.axis === "x" ? o.fixed : mid;
-      c.B.geo("whitePlaster", g, P.compose(x, 0, z, o.axis === "x" ? 0 : Math.PI / 2, 1, 1, 1), MARBLE);
+      c.B.geo(
+        "whitePlaster",
+        g,
+        P.compose(x, 0, z, o.axis === "x" ? 0 : Math.PI / 2, 1, 1, 1),
+        MARBLE,
+      );
       const t = (o.t || 1.2) / 2;
       const lo = [mid - w / 2, mid - hw];
       const hi = [mid + hw, mid + w / 2];
       [lo, hi].forEach((p) => {
-        if (o.axis === "x") K().solid(c.colliders, p[0], o.fixed - t, p[1], o.fixed + t, "arcade-col");
+        if (o.axis === "x")
+          K().solid(c.colliders, p[0], o.fixed - t, p[1], o.fixed + t, "arcade-col");
         else K().solid(c.colliders, o.fixed - t, p[0], o.fixed + t, p[1], "arcade-col");
       });
     }
@@ -173,7 +180,12 @@
   /** The gate (King Abdul Aziz style): a tall pointed arch between two towers with green domes. */
   function gate(c) {
     const B = c.B;
-    B.geo("whitePlaster", K().archSlab(12, 15, 4.6, 6.6, 2.6), P.compose(0, 0, -58, 0, 1, 1, 1), 0xf6f1e4);
+    B.geo(
+      "whitePlaster",
+      K().archSlab(12, 15, 4.6, 6.6, 2.6),
+      P.compose(0, 0, -58, 0, 1, 1, 1),
+      0xf6f1e4,
+    );
     B.aabb("gold", -6.2, 15, -59.4, 6.2, 15.6, -56.6, 0xd9b04a);
     B.aabb("paint", -6.2, 14.7, -59.4, 6.2, 15, -56.6, 0x1f7a4d);
     [-1, 1].forEach((s) => {
@@ -192,7 +204,12 @@
       B.aabb("marble", 40, 0.6, z - 1.8, 45, 1.2, z + 1.8, 0xc9c0ae);
       const rock = new THREE.ConeGeometry(2.6, 2.4, 9);
       B.geo("concrete", rock, P.compose(42.5, 1.2, z + s * 1.2, 0, 1.2, 1, 1), 0x8a6a52);
-      B.geo("whitePlaster", K().archSlab(8.4, 9, 2.6, 3.2, 0.8), P.compose(42.7, 0, s * 44.2, 0, 1, 1, 1), MARBLE);
+      B.geo(
+        "whitePlaster",
+        K().archSlab(8.4, 9, 2.6, 3.2, 0.8),
+        P.compose(42.7, 0, s * 44.2, 0, 1, 1, 1),
+        MARBLE,
+      );
       B.cyl("greenLight", 42.7, 3.5, s * 43.7, 0.2, 0.2, 8, 0xffffff);
     });
     B.aabb("whitePlaster", 38.4, 0, -44.6, 47, 9, -43.8, 0xf0ead9);
@@ -208,10 +225,22 @@
     arcade(c, { axis: "z", fixed: 38.4, from: -44, to: 44, n: 14 });
     arcade(c, { axis: "z", fixed: 47, from: -44, to: 44, n: 14 });
     const g = KQ.HOLY.makkah.greenLights;
-    [37.9, 47.5].forEach((x) => B.box("greenLight", x, 6.2, (g.z0 + g.z1) / 2, 0.12, 0.35, g.z1 - g.z0, 0xffffff));
-    B.box("greenLight", lane.x + 0.7, HALL_H - 0.5, (g.z0 + g.z1) / 2, 0.5, 0.15, g.z1 - g.z0, 0xffffff);
-    for (let z = -36; z <= 36; z += 12) B.box("chandelier", 42.7, HALL_H - 0.4, z, 0.9, 0.2, 0.9, 0xfff1d0);
-    B.aabb("tiles", 38.4, 0.1, -44, 47, 0.14, 44, 0xcfc7b4);
+    [37.9, 47.5].forEach((x) =>
+      B.box("greenLight", x, 6.2, (g.z0 + g.z1) / 2, 0.12, 0.35, g.z1 - g.z0, 0xffffff),
+    );
+    B.box(
+      "greenLight",
+      lane.x + 0.7,
+      HALL_H - 0.5,
+      (g.z0 + g.z1) / 2,
+      0.5,
+      0.15,
+      g.z1 - g.z0,
+      0xffffff,
+    );
+    for (let z = -36; z <= 36; z += 12)
+      B.box("chandelier", 42.7, HALL_H - 0.4, z, 0.9, 0.2, 0.9, 0xfff1d0);
+    B.aabb("marble", 38.4, 0.1, -44, 47, 0.14, 44, 0xd9d3c3);
   }
 
   /** Corner and gate minarets. */

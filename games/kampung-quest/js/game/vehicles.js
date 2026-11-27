@@ -290,11 +290,11 @@
     V.mounted = v;
     V.exiting = false;
     V.posed = false;
-    V.seat = null;
     V.cam = { eased: false, dist: G.Camera.state.dist, pitch: G.Camera.state.pitch };
     s.player.group.visible = true;
     G.Player.place(s.player, v.sim.x, v.sim.z, v.sim.heading, groundAt);
     v.sim.speed = 0;
+    V.seat = seatOf(v);
     labelHorn(v.kind);
     G.Audio.play("pose");
     s.hudDirty = true;
@@ -474,6 +474,11 @@
     return true;
   }
 
+  /** Put every parked vehicle back at its spot (a tidy-up for tests and for a new game). */
+  function returnAll() {
+    V.list.forEach((v) => v !== V.mounted && returnHome(v));
+  }
+
   /** The Jump button / Space while mounted: honk the horn or ring the bell. */
   function horn() {
     return V.mounted ? G.VehicleSound.horn(V.mounted.kind) : false;
@@ -508,6 +513,7 @@
     target,
     press,
     horn,
+    returnAll,
     spawn,
     debug,
     mounted: () => Boolean(V.mounted),

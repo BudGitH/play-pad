@@ -58,6 +58,21 @@
     mosque: { x0: -58, x1: -12, z0: -58, z1: -10, hall: { x0: -52, x1: -32, z0: -46, z1: -20 } },
   };
 
+  /** Haramain: no hawker centre or park (placed far away); the mosque is the Haram or the Prophet's Mosque. */
+  const FAR = { x0: 1e5, x1: 1e5 + 1, z0: 1e5, z1: 1e5 + 1 };
+  const HOLY_RECTS = {
+    makkah: {
+      hawker: FAR,
+      park: FAR,
+      mosque: { x0: -60, x1: 60, z0: -58, z1: 58, hall: { x0: -48, x1: 38, z0: -44, z1: 44 } },
+    },
+    madinah: {
+      hawker: FAR,
+      park: FAR,
+      mosque: { x0: 565, x1: 635, z0: -30, z1: 30, hall: { x0: 566, x1: 634, z0: -29, z1: 29 } },
+    },
+  };
+
   /** The prayer times the day is built on: the real ones, or a built-in copy if the data did not load. */
   function times() {
     return KQ.PRAYER_TIMES || FALLBACK_TIMES;
@@ -67,14 +82,15 @@
    * The town rectangles the mix measures against: the hawker centre, the park and the mosque
    * (with its hall). Falls back to a built-in copy when the layout is not loaded.
    */
-  function rects() {
+  function rects(x) {
+    if (KQ.region === "haramain") return x > 300 ? HOLY_RECTS.madinah : HOLY_RECTS.makkah;
     const L = KQ.WorldParts && KQ.WorldParts.LAYOUT;
     return L && L.hawker && L.park && L.mosque && L.mosque.hall ? L : FALLBACK_RECTS;
   }
 
   /** The target mix for a clock minute and hero position (pure maths: js/sim/ambience-mix.js). */
   function mixFor(minute, x, z) {
-    return KQ.Sim.AmbienceMix.mixFor(minute, x, z, times(), rects());
+    return KQ.Sim.AmbienceMix.mixFor(minute, x, z, times(), rects(x));
   }
 
   /* ------------------------------ the graph ------------------------------ */

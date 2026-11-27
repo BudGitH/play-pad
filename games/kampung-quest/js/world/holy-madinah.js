@@ -31,24 +31,47 @@
     [624, -160, 690, -118, 58],
   ];
 
-  /** Quba mosque: a white hall of arched walls round a green carpet, a central dome, 4 minarets. */
+  /** The Quba domes (one big, four small) and four minarets. */
+  function qubaRoof(c, q) {
+    const dome = (dx, dz, r) =>
+      K().dome(c.B, {
+        key: "paint",
+        x: q.x + dx,
+        y: 9.8,
+        z: q.z + dz,
+        r,
+        k: 0.95,
+        color: 0xf2eee2,
+        drumKey: "whitePlaster",
+      });
+    dome(0, 0, 5);
+    [-9, 9].forEach((dx) => [-5, 5].forEach((dz) => dome(dx, dz, 1.9)));
+    const list = [];
+    [-15, 15].forEach((dx) =>
+      [-11, 11].forEach((dz) => list.push({ x: q.x + dx, z: q.z + dz, h: 36 })),
+    );
+    K().minarets(c.B, list, c);
+  }
+
+  /** Quba mosque: a white hall of arched walls round a green carpet, domes and 4 minarets. */
   function quba(c) {
     const B = c.B;
     const q = KQ.HOLY.madinah.quba;
     B.aabb("marble", q.x - 24, 0, q.z - 22, q.x + 24, 0.1, q.z + 22, 0xf1ece0);
     B.aabb("greenCarpet", q.x - 11, 0.1, q.z - 7, q.x + 11, 0.14, q.z + 7, 0xffffff);
     const run = (axis, fixed) =>
-      P.HolyHaram.arcade(c, { axis, fixed, from: axis === "x" ? q.x - 12 : q.z - 8, to: axis === "x" ? q.x + 12 : q.z + 8, n: axis === "x" ? 4 : 3, t: 0.8 });
-    run("x", q.z - 8);
-    run("x", q.z + 8);
-    run("z", q.x - 12);
-    run("z", q.x + 12);
+      P.HolyHaram.arcade(c, {
+        axis,
+        fixed,
+        from: axis === "x" ? q.x - 12 : q.z - 8,
+        to: axis === "x" ? q.x + 12 : q.z + 8,
+        n: axis === "x" ? 4 : 3,
+        t: 0.8,
+      });
+    [q.z - 8, q.z + 8].forEach((z) => run("x", z));
+    [q.x - 12, q.x + 12].forEach((x) => run("z", x));
     B.aabb("whitePlaster", q.x - 12.5, 9, q.z - 8.5, q.x + 12.5, 9.8, q.z + 8.5, 0xf6f1e6);
-    K().dome(B, { key: "paint", x: q.x, y: 9.8, z: q.z, r: 5, k: 0.95, color: 0xf2eee2, drumKey: "whitePlaster" });
-    [[-9, -5], [9, -5], [-9, 5], [9, 5]].forEach((d) =>
-      K().dome(B, { key: "paint", x: q.x + d[0], y: 9.8, z: q.z + d[1], r: 1.9, k: 1, color: 0xf2eee2, drumKey: "whitePlaster" }),
-    );
-    K().minarets(B, [[-15, -11], [15, -11], [-15, 11], [15, 11]].map((m) => ({ x: q.x + m[0], z: q.z + m[1], h: 36 })), c);
+    qubaRoof(c, q);
   }
 
   /** The Baqi': a plain walled yard of beige gravel, a gate gap on the west side. Nothing inside it is modelled. */
@@ -59,7 +82,17 @@
     const z0 = b.z - 15;
     const z1 = b.z + 15;
     c.B.aabb("concrete", x0, 0, z0, x1, 0.06, z1, 0xc9b48f);
-    const wl = (a, bz, cx, dz) => K().wall(c.B, c, { x0: a, z0: bz, x1: cx, z1: dz, y1: 2.6, t: 0.7, color: 0xe6dcc4, kind: "fence" });
+    const wl = (a, bz, cx, dz) =>
+      K().wall(c.B, c, {
+        x0: a,
+        z0: bz,
+        x1: cx,
+        z1: dz,
+        y1: 2.6,
+        t: 0.7,
+        color: 0xe6dcc4,
+        kind: "fence",
+      });
     wl(x0, z0, x1, z0);
     wl(x0, z1, x1, z1);
     wl(x1, z0, x1, z1);
@@ -72,7 +105,10 @@
   function palmSpots() {
     const out = [];
     for (let x = 545; x <= 655; x += 18) out.push({ x, z: -93, s: 1.05 });
-    for (let x = 500; x <= 700; x += 20) out.push({ x, z: -115, s: 1 }, { x, z: 52, s: 1 });
+    for (let x = 500; x <= 700; x += 20) {
+      if (x !== 600) out.push({ x, z: -117, s: 1 });
+      out.push({ x, z: 52, s: 1 });
+    }
     for (let z = -95; z <= 140; z += 24) out.push({ x: 539, z, s: 1 }, { x: 691, z, s: 1.05 });
     return out.filter((p) => !(p.z > -35 && p.z < 52 && p.x > 545 && p.x < 650));
   }
@@ -98,7 +134,13 @@
     const r = P.rng(31);
     for (let i = 0; i < 14; i += 1) {
       const a = (i / 14) * Math.PI * 2;
-      out.push({ x: 600 + Math.cos(a) * 300 + r() * 20, z: -40 + Math.sin(a) * 250 + r() * 20, w: 70 + r() * 50, h: 34 + r() * 30, seed: 1 + (i % 3) });
+      out.push({
+        x: 600 + Math.cos(a) * 300 + r() * 20,
+        z: -40 + Math.sin(a) * 250 + r() * 20,
+        w: 70 + r() * 50,
+        h: 34 + r() * 30,
+        seed: 1 + (i % 3),
+      });
     }
     return out.filter((h) => h.z > -230 || Math.abs(h.x - u.x) < 140);
   }

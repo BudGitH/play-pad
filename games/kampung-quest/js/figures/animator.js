@@ -18,6 +18,10 @@
     "wudu_hands",
     "wudu_face",
     "wudu_feet",
+    "wudu_mouth",
+    "wudu_nose",
+    "wudu_head",
+    "wudu_ears",
     "takbir",
     "qiyam",
     "ruku",
@@ -40,6 +44,10 @@
     wudu_hands: 0.7,
     wudu_face: 0.5,
     wudu_feet: 0.6,
+    wudu_mouth: 0.6,
+    wudu_nose: 0.6,
+    wudu_head: 0.5,
+    wudu_ears: 0.5,
   };
 
   /**

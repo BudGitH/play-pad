@@ -25,6 +25,9 @@
   }
   const counter = (n, unit, plural) => ({ n, unit, plural: plural || unit + "s" });
 
+  /** Al-Fatihah, then the short surahs to choose from for the 2 raka'at of the Ziarah. */
+  const SHORT_SURAH_CARD = ["fatihah", "ikhlas", "kawthar", "kafirun", "falaq", "nas"];
+
   const UMRAH = [
     step(
       "ihram",
@@ -60,7 +63,7 @@
       "tawaf",
       "Tawaf: 7 rounds",
       "🕋",
-      "mataf",
+      "blackStone",
       ["istilam", "yemeni"],
       [
         "Start at the Black Stone corner. Keep the Kaaba on your LEFT and walk anticlockwise.",
@@ -209,7 +212,7 @@
       "h_ifadah",
       "Tawaf al-Ifadah",
       "🕋",
-      "mataf",
+      "blackStone",
       ["istilam", "yemeni"],
       ["Go back to the Kaaba and walk 7 rounds, just like in Umrah."],
       { counter: counter(7, "round"), walk: "tawaf" },
@@ -239,7 +242,7 @@
       "h_wada",
       "Tawaf al-Wada' (farewell)",
       "👋",
-      "mataf",
+      "blackStone",
       ["istilam", "yemeni"],
       ["Before leaving Makkah we say goodbye to the Kaaba with 7 rounds."],
       { counter: counter(7, "round"), walk: "tawaf" },
@@ -271,7 +274,7 @@
       "Pray in the Rawdah",
       "🟢",
       "rawdah",
-      ["fatihah", "ikhlas"],
+      SHORT_SURAH_CARD,
       [
         "The Rawdah, with the green carpet, is a garden from the gardens of Paradise. Pray 2 raka'at here.",
         "After Al-Fatihah read any short surah, such as Al-Ikhlas.",
@@ -283,7 +286,7 @@
       "Pray at Masjid Quba",
       "🤲",
       "quba",
-      ["fatihah", "ikhlas"],
+      SHORT_SURAH_CARD,
       [
         "Quba is the first mosque in Islam. Make wudu at home, then pray 2 raka'at here.",
         "The Prophet said it has the reward of an Umrah.",

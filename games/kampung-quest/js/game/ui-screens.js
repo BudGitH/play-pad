@@ -150,7 +150,10 @@
     });
     const legend = U.el("p", {
       cls: "kq-small kq-legend",
-      text: "White arrow: you. Pink dot: your mission. Green dot: the mosque. Orange: hawker centre. Pink house: home.",
+      text:
+        KQ.region === "haramain"
+          ? "Blue arrow: you. Black cube: the Kaaba. Green dome: the Prophet's Mosque. Pink pin: your mission. Red N: north."
+          : "Blue arrow: you. Pink pin: your mission. Gold star: a neighbour with a mission. Green dome: the mosque. Orange bowl: hawker centre. Pink house: home. Red N: north.",
     });
     const box = U.el(
       "div",

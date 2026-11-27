@@ -188,7 +188,8 @@ async function checkPrayer(page) {
   await expect(page.getByRole("dialog", { name: "Prayer steps" })).toBeVisible();
   await expectTouchTargets(page);
   const next = await kq(page, () => window.KQ.Game.S.sim.prayer.nextPrayStep().type);
-  await page.locator(`.kq-ptile[data-type="${next}"]`).tap();
+  expect(next).toBeTruthy();
+  await page.locator(".kq-step-next").tap();
   expect(await kq(page, () => window.__kq.state().prayer.flow.prayIndex)).toBe(1);
 }
 
@@ -306,7 +307,7 @@ function hudBoxes(page) {
       "#kq .kq-hud [tabindex='0']",
       ".kq-mission",
       ".kq-coins",
-      ".kq-needchip",
+      ".kq-needs",
       ".kq-joy",
       ".kq-azan",
       ".kq-toast",
@@ -442,21 +443,29 @@ const isCompact = (page) =>
         .matches,
   );
 
-/** A11Y2-04: the status card and the mission chip fold; a tap opens each, and nothing then overlaps. */
+/** A11Y2-04: the mission chip folds; a tap opens it, and nothing then overlaps. */
 async function checkFoldingCards(page) {
   if (!(await isCompact(page))) return;
-  for (const [sel, label] of [
-    ["#kqMission", "mission"],
-    ["#kqStatus", "status"],
-  ]) {
-    await page.locator(sel).click();
-    await expect(page.locator(sel), `${label} opens on a tap`).toHaveClass(/is-open/);
-    await kq(page, () => window.__kq.step(100));
-    await expectHudClear(page, `${label} card open`);
-    await expectPrayerStripInCard(page);
-    await page.locator(sel).click();
-    await expect(page.locator(sel), `${label} folds on a second tap`).not.toHaveClass(/is-open/);
-  }
+  const sel = "#kqMission";
+  await page.locator(sel).click();
+  await expect(page.locator(sel), "mission opens on a tap").toHaveClass(/is-open/);
+  await kq(page, () => window.__kq.step(100));
+  await expectHudClear(page, "mission card open");
+  await page.locator(sel).click();
+  await expect(page.locator(sel), "mission folds on a second tap").not.toHaveClass(/is-open/);
+}
+
+/** HUD redesign: the prayer-time card is the Pray button (tap, then Esc) and the radar is the Map button. */
+async function checkPrayCardAndRadar(page) {
+  await expectPrayerStripInCard(page);
+  await page.locator("#kqStatus").click();
+  expect(await modalName(page), "a tap on the prayer-time card opens the prayers").toBe("Prayer");
+  await page.keyboard.press("Escape");
+  await page.locator("#kqMap").click();
+  expect(await modalName(page), "a tap on the radar opens the map").toBe("Map");
+  await expectSheetOnScreen(page, "map from the radar");
+  await page.mouse.click(3, 3);
+  expect(await modalName(page)).toBeNull();
 }
 
 /** The centre and four inset points of `sel` all land on `sel` itself: nothing covers it (a hit-test). */
@@ -554,7 +563,7 @@ async function checkSheetsClose(page) {
     },
     "missions sheet": () => page.locator("#kqDock-missions").click(),
     "bag sheet": () => page.locator("#kqDock-bag").click(),
-    "map sheet": () => page.locator("#kqDock-map").click(),
+    "map sheet": () => page.locator("#kqMap").click(),
   };
   for (const [label, run] of Object.entries(open)) {
     await run();
@@ -599,11 +608,19 @@ async function checkWuduTiles(page) {
   await expect(page.getByRole("dialog", { name: "Wudu steps" })).toBeVisible();
   await expectTouchTargets(page);
   await expectSheetOnScreen(page, "wudu sheet");
+  // one card at a time: the big Next button and every other button are >= 48 px wide and on screen
   const widths = await kq(page, () =>
-    Array.from(document.querySelectorAll(".kq-wtile")).map((t) => t.getBoundingClientRect().width),
+    Array.from(document.querySelectorAll(".kq-stepper button")).map(
+      (t) => t.getBoundingClientRect().width,
+    ),
   );
-  expect(widths.length).toBeGreaterThanOrEqual(12);
-  expect(Math.min(...widths), "narrowest wudu tile").toBeGreaterThanOrEqual(MIN_TARGET);
+  expect(widths.length, "Next, Change view, Not now and the word controls").toBeGreaterThanOrEqual(
+    5,
+  );
+  expect(Math.min(...widths), "narrowest wudu button").toBeGreaterThanOrEqual(MIN_TARGET);
+  expect(
+    await kq(page, () => document.querySelectorAll(".kq-stepper .kq-stepbar .kq-sp").length),
+  ).toBe(12);
   await expectNoPageScroll(page);
 }
 
@@ -627,6 +644,7 @@ for (const [name, width, height, touch] of SIZES) {
       await expectNoTinyText(page);
       await expectDockLabelsAndPrayerStates(page);
       await checkFoldingCards(page);
+      await checkPrayCardAndRadar(page);
       // needs at 100: the two chips do not touch
       await kq(page, () => {
         window.KQ.Game.S.sim.needs.restore({ hunger: 100, energy: 100 });
@@ -772,17 +790,16 @@ test.describe("accessibility: wudu doa caption", () => {
       window.__kq.teleport("mosque_wudu");
     });
     await page.locator("#kqTalk").tap();
-    const cue = page.locator(".kq-wudu-cue");
-    await expect(cue).toBeHidden();
+    const words = page.locator(".kq-stepper .kq-words");
+    await expect(words).toContainText("Nawaytu"); // the first card reads the niat, word by word
+    await expect(words).not.toContainText("Ashhadu");
     for (let i = 0; i < 60; i += 1) {
-      const id = await kq(page, () => window.__kq.state().prayer.flow?.phase);
-      if (id !== "wudu") break;
-      const doa = await cue.isVisible();
-      if (doa) break;
+      const id = await kq(page, () => window.KQ.Game.S.sim.prayer.nextWuduStep()?.id);
+      if (id === "doa") break;
       await page.locator(".kq-wudu-act").tap();
     }
-    await expect(cue).toBeVisible();
-    await expect(cue).toContainText("Ashhadu an la ilaha illallah");
+    await expect(words).toContainText("Ashhadu"); // the doa after wudu is on the last card
+    await expect(page.locator(".kq-stepper .kq-step-title")).toHaveText(/doa after wudu/i);
     await expectNoPageScroll(page);
     await expectTouchTargets(page);
   });

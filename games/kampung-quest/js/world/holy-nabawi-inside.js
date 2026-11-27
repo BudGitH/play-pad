@@ -27,7 +27,9 @@
   function colAt(i, k) {
     const x = GRID.x0 + i * GRID.step;
     const z = GRID.z0 + k * GRID.step;
-    return SKIP.indexOf(x + "," + z) === -1 ? { x, z, ornate: RAWDAH_COLS.indexOf(x + "," + z) !== -1 } : null;
+    return SKIP.indexOf(x + "," + z) === -1
+      ? { x, z, ornate: RAWDAH_COLS.indexOf(x + "," + z) !== -1 }
+      : null;
   }
 
   /** One plain column with base and gilt capital (a low collider). */
@@ -53,8 +55,20 @@
         column(c, a);
         const e = colAt(i + 1, k);
         const s = colAt(i, k + 1);
-        if (e && i + 1 < GRID.nx) c.B.geo("whitePlaster", g, P.compose(a.x + GRID.step / 2, COL_H, a.z, 0, 1, 1, 1), 0xf6f1e6);
-        if (s && k + 1 < GRID.nz) c.B.geo("whitePlaster", g, P.compose(a.x, COL_H, a.z + GRID.step / 2, Math.PI / 2, 1, 1, 1), 0xf6f1e6);
+        if (e && i + 1 < GRID.nx)
+          c.B.geo(
+            "whitePlaster",
+            g,
+            P.compose(a.x + GRID.step / 2, COL_H, a.z, 0, 1, 1, 1),
+            0xf6f1e6,
+          );
+        if (s && k + 1 < GRID.nz)
+          c.B.geo(
+            "whitePlaster",
+            g,
+            P.compose(a.x, COL_H, a.z + GRID.step / 2, Math.PI / 2, 1, 1, 1),
+            0xf6f1e6,
+          );
       }
     }
   }
@@ -93,7 +107,12 @@
       if (k === 5) continue;
       B.geo("whitePlaster", g, P.compose(568.5 + k * 7, 0, 29.0, 0, 1, 1, 1), 0xf4efe4);
     }
-    B.geo("marble", K().archSlab(7, 9.2, 2.1, 3.4, 0.8), P.compose(603.5, 0, 28.9, 0, 1, 1, 1), 0xffffff);
+    B.geo(
+      "marble",
+      K().archSlab(7, 9.2, 2.1, 3.4, 0.8),
+      P.compose(603.5, 0, 28.9, 0, 1, 1, 1),
+      0xffffff,
+    );
     B.box("dark", 603.5, 3.2, 29.35, 4.3, 6.2, 0.3, 0x141a17);
     B.cyl("gold", 603.5, 6.9, 28.9, 0.04, 2.2, 4, 0xe2bd62);
     B.geo("chandelier", sphere(), P.compose(603.5, 5.6, 28.8, 0, 0.3, 0.35, 0.3), 0xfff1d0);
@@ -119,7 +138,10 @@
   /** Quran shelves: tall wooden cases of colourful spines along the long walls. */
   function shelves(c) {
     [-18, -6, 6, 18].forEach((z) => {
-      [[566.5, 0.6], [633.5, 0.6]].forEach((s) => {
+      [
+        [566.5, 0.6],
+        [633.5, 0.6],
+      ].forEach((s) => {
         c.B.box("books", s[0], 1.15, z, s[1], 2.3, 4, 0xffffff);
         c.B.box("wood", s[0], 2.35, z, s[1] + 0.1, 0.1, 4.1, 0x7a5636);
         K().solid(c.colliders, s[0] - 0.4, z - 2, s[0] + 0.4, z + 2, "counter");

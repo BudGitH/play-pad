@@ -1,7 +1,8 @@
 /* ============================================================================
  * FILE: actions.js
- * PURPOSE: Routes every button and shortcut to what it does: interact (E), jump, the dock
- *          (Missions, Map, Pray, Bag, Pause), mute, number keys for picture tiles, Escape.
+ * PURPOSE: Routes every button and shortcut to what it does: interact (E), jump, the menus
+ *          (Missions and Bag in the dock, Map = the radar, Pray = the prayer-time card, Pause =
+ *          the corner button), mute, number keys for picture tiles, Escape.
  * BUSINESS CONTEXT: AC-15 (fully keyboard-playable; shortcuts E, 1-4, M, J, P, B, Esc; pause and
  *   mute always available), AC-16 (pause dialog stops the sim and all sound).
  * DEPENDENCIES: ui-screens.js, prayer-flow.js, interact.js, loop.js, audio.js, settings.js.
@@ -16,11 +17,11 @@
     return Object.assign({ sim: S().sim, onClose: () => (S().hudDirty = true) }, extra || {});
   }
 
-  /** Open the map screen with a live map view from the loop. */
+  /** Open the map screen (north-up, with word labels) with a live map view from the loop. */
   function openMap() {
     const h = G.Screens.map(
       ctxFor({
-        mapView: () => G.Loop.mapView(150),
+        mapView: () => G.Loop.mapView(G.Minimap.fullSpan(), { labels: true }),
       }),
     );
     return h;

@@ -245,6 +245,7 @@
     readView(C);
     gatherOthers(C, hero);
     if (detectJump(C, hero, ctx.minute)) C.instant = true;
+    if (KQ.region === "haramain") G.CrowdHoly.tick(C.slots, C.clock);
     C.accT += dt;
     if (C.accT >= RECONCILE_S || C.instant) {
       C.accT = 0;

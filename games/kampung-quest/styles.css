@@ -58,8 +58,9 @@ body {
   --kq-top: max(12px, env(safe-area-inset-top, 0px));
   --kq-bot: max(12px, env(safe-area-inset-bottom, 0px));
   --kq-map: 150px;
-  --kq-dock: 64px;
-  --kq-dock-h: 64px;
+  --kq-need-w: 168px;
+  --kq-dock: 72px;
+  --kq-dock-h: 68px;
   --kq-tl-w: 254px;
   --kq-right-w: 150px;
   --kq-joy: 124px;
@@ -253,7 +254,40 @@ kbd {
   pointer-events: auto;
 }
 .kq-status {
+  position: relative;
   padding: 8px 10px 6px;
+  cursor: pointer;
+}
+.kq-status:hover {
+  box-shadow:
+    0 0 0 2px var(--kq-gold),
+    0 2px 10px rgba(0, 0, 0, 0.35);
+}
+/* a prayer is due or being prayed: the card glows gold; one to make up (qada) gets a dashed gold edge */
+.kq-status.is-due {
+  box-shadow: 0 0 0 3px var(--kq-gold);
+  animation: kq-glow-gold 1.8s ease-in-out infinite;
+}
+.kq-status.is-qada {
+  outline: 2px dashed var(--kq-gold);
+  outline-offset: -2px;
+}
+/* the "Pray >" chip: what tells a player the card is a button */
+.kq-pray-go {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 28px;
+  margin-top: 6px;
+  border-radius: 999px;
+  background: var(--md-sys-color-tertiary-container);
+  color: var(--md-sys-color-on-tertiary-container);
+  font-size: 13px;
+}
+.kq-pray-go .kq-ic {
+  width: 18px;
+  height: 18px;
 }
 .kq-clockrow {
   display: flex;
@@ -453,6 +487,9 @@ kbd {
   color: var(--md-sys-color-on-tertiary);
   animation: kq-pulse 1.6s ease-in-out infinite;
 }
+.kq-dock-btn.is-active {
+  border-color: var(--kq-green);
+}
 .kq-dock-btn.is-qada {
   border-color: var(--kq-gold);
   border-style: dashed;
@@ -472,21 +509,32 @@ kbd {
     sans-serif;
   text-align: center;
 }
+/* a mission is under way: the badge is a green "1" */
+.kq-badge.is-active {
+  background: #1f7a3c;
+}
 
-/* top right: coins, mute, minimap with the needs ring */
+/* top right: a row of coins, sound and Pause, the round radar (a tap opens the map), the needs bars */
 .kq-topright {
   position: absolute;
   right: var(--kq-padr);
   top: var(--kq-top);
-  display: grid;
-  justify-items: end;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
   gap: 8px;
   pointer-events: none;
+}
+.kq-tr-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 .kq-topright .kq-coins {
   min-height: 36px;
 }
-.kq-topright > * {
+.kq-topright > *,
+.kq-tr-row > * {
   pointer-events: auto;
 }
 .kq-round {
@@ -500,92 +548,128 @@ kbd {
   background: var(--kq-hud);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
-.kq-mapwrap {
+/* the radar: a round map button; the gold map badge on its rim says "tap me" */
+.kq-radar {
   position: relative;
+  align-self: center;
   width: var(--kq-map);
   height: var(--kq-map);
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #16211a;
+  box-shadow:
+    0 0 0 3px var(--kq-hud-strong),
+    0 0 0 5px rgba(255, 255, 255, 0.35),
+    0 3px 10px rgba(0, 0, 0, 0.5);
+}
+.kq-radar:hover,
+.kq-radar:active {
+  box-shadow:
+    0 0 0 3px var(--kq-hud-strong),
+    0 0 0 5px var(--kq-gold),
+    0 3px 10px rgba(0, 0, 0, 0.5);
 }
 .kq-minimap {
-  position: absolute;
-  inset: 11%;
-  width: 78%;
-  height: 78%;
-  border-radius: 50%;
-  background: #1c2a1f;
-  box-shadow: 0 0 0 3px #15151c;
-}
-.kq-ring {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
+  display: block;
+  border-radius: 50%;
 }
-.kq-ring-track,
-.kq-ring-val {
-  fill: none;
-  stroke-width: 9;
-  stroke-linecap: round;
-}
-.kq-ring-track {
-  stroke: #15151c;
-  stroke-opacity: 0.9;
-}
-.kq-ring-food {
-  stroke: var(--kq-gold);
-}
-.kq-ring-energy {
-  stroke: var(--kq-green);
-}
-.kq-north {
+.kq-map-go {
   position: absolute;
-  top: 8%;
-  left: 50%;
-  transform: translateX(-50%);
-  font:
-    700 12px/12px system-ui,
-    sans-serif;
-  color: #fff;
-  text-shadow: 0 0 3px #000;
-}
-.kq-needchip {
-  position: absolute;
-  bottom: -2px;
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
+  right: -6px;
+  bottom: -6px;
+  display: grid;
+  place-items: center;
+  width: 28px;
   height: 28px;
-  padding: 0 8px;
-  border-radius: 999px;
-  background: var(--kq-hud-strong);
-  font-size: 13px;
+  border-radius: 50%;
+  background: var(--kq-gold);
+  color: #3b2a00;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
 }
-.kq-needchip.kq-food {
-  left: -6px;
+.kq-map-go .kq-ic {
+  width: 17px;
+  height: 17px;
+}
+
+/* food and energy: an icon, a bar that drains from green to orange, and a word ("Hungry" / "Tired" when low) */
+.kq-needs {
+  display: grid;
+  align-self: stretch;
+  min-width: var(--kq-need-w);
+  gap: 4px;
+  padding: 5px 8px;
+  border-radius: 14px;
+}
+.kq-need {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding: 0 2px;
+  border-radius: 11px;
+  font-size: 12px;
+}
+.kq-need .kq-ic {
+  width: 18px;
+  height: 18px;
+}
+.kq-need.kq-food .kq-ic {
   color: var(--kq-gold);
 }
-.kq-needchip.kq-energy {
-  right: -6px;
-  color: var(--kq-green);
+.kq-need.kq-energy .kq-ic {
+  color: #8be08f;
 }
-.kq-needchip b {
-  color: var(--md-sys-color-on-surface);
+.kq-need-bar {
+  flex: 1 1 auto;
+  min-width: 30px;
+  height: 10px;
+  overflow: hidden;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
 }
-/* a meter under the low line: a soft amber ring (never red); the pulse stops under reduced motion */
-.kq-needchip.is-low {
-  box-shadow: 0 0 0 3px #ffb74d;
+.kq-need-fill {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 6px;
+  background: var(--kq-green);
+  transform: scaleX(0.85);
+  transform-origin: left center;
+  transition:
+    transform 0.4s,
+    background-color 0.4s;
+}
+.kq-need-word {
+  flex: none;
+  min-width: 46px;
+  font-weight: 700;
+  color: var(--md-sys-color-on-surface-variant);
+}
+/* a meter under the low line: a soft amber ring and the kind word (never red); the pulse stops under reduced motion */
+.kq-need.is-low {
+  background: rgba(255, 183, 77, 0.14);
+  box-shadow: 0 0 0 2px #ffb74d;
   animation: kq-low-pulse 2.2s ease-in-out infinite;
 }
-.kq-ring-val.is-low {
-  stroke: #ffb74d;
-  filter: drop-shadow(0 0 4px #ffb74d);
+.kq-need.is-low .kq-need-fill {
+  background: #ffb74d;
+}
+.kq-need.is-low .kq-need-word {
+  color: #ffb74d;
 }
 @keyframes kq-low-pulse {
   0%,
   100% {
-    box-shadow: 0 0 0 3px #ffb74d;
+    box-shadow: 0 0 0 2px #ffb74d;
   }
   50% {
-    box-shadow: 0 0 0 6px rgba(255, 183, 77, 0.35);
+    box-shadow: 0 0 0 4px rgba(255, 183, 77, 0.35);
   }
 }
 
@@ -1514,7 +1598,7 @@ kbd {
     width: 18px;
     height: 18px;
   }
-  /* the name stays for screen readers; it is drawn only for a due prayer or while the card is open */
+  /* the name stays for screen readers; it is drawn only for a due prayer */
   .kq-prayer .kq-pl {
     position: absolute;
     width: 1px;
@@ -1523,21 +1607,28 @@ kbd {
     clip: rect(0 0 0 0);
     white-space: nowrap;
   }
-  .kq-prayer.is-due .kq-pl,
-  .kq-status.is-open .kq-pl {
+  .kq-prayer.is-due .kq-pl {
     position: static;
     width: auto;
     height: auto;
     overflow: visible;
     clip: auto;
   }
-  .kq-status.is-open .kq-prayers {
-    align-items: flex-start;
+  /* the Pray chip is only an arrow on a phone, at the end of the prayer strip; a glowing due card says it already */
+  .kq-pray-go {
+    position: absolute;
+    right: 8px;
+    bottom: 4px;
+    width: 28px;
+    min-height: 28px;
+    margin: 0;
   }
-  .kq-status.is-open .kq-prayer {
-    flex: 1 1 0;
-    flex-direction: column;
-    gap: 2px;
+  .kq-pray-go .kq-ic:first-child,
+  .kq-pray-go b {
+    display: none;
+  }
+  .kq-status.is-due .kq-pray-go {
+    display: none;
   }
 
   /* mission: the chip (step icon + the step in words) until it is opened */
@@ -1677,7 +1768,8 @@ kbd {
    (which floats mid-screen) and of the toast lane (A11Y2-01, 06, 08). */
 @media (max-height: 520px) {
   .kq-root {
-    --kq-map: 96px;
+    --kq-map: 100px;
+    --kq-need-w: 120px;
     --kq-dock: 56px;
     --kq-dock-h: 48px;
     --kq-tl-w: 220px;
@@ -1699,16 +1791,17 @@ kbd {
     font-size: 12px;
   }
   .kq-topright {
-    grid-template-columns: auto auto;
-    align-items: center;
-    column-gap: 8px;
+    gap: 6px;
   }
-  .kq-topright .kq-mapwrap {
-    grid-column: 1 / -1;
+  .kq-topright .kq-coins {
+    padding: 0 8px;
   }
-  .kq-needchip {
-    height: 26px;
-    font-size: 12px;
+  .kq-needs {
+    gap: 2px;
+    padding: 4px 6px;
+  }
+  .kq-need {
+    height: 20px;
   }
   .kq-mission.is-open {
     display: grid;
@@ -1863,6 +1956,9 @@ kbd {
     --kq-jump: 64px;
     --kq-map: 92px;
   }
+  .kq-need-word {
+    min-width: 44px;
+  }
   .kq-azan .kq-azan-title,
   .kq-azan .kq-tr,
   .kq-azan .kq-big {
@@ -1930,14 +2026,12 @@ kbd {
   .kq-root.kq-no-turn {
     --kq-turn-h: 0px;
   }
-  /* an open status card or the azan takes the hint's room: hide the hint so the toast lane stays
+  /* the azan takes the hint's room: hide the hint so the toast lane stays
      clear of the joystick and the azan card */
-  .kq-root:has(.kq-status.is-open),
   .kq-root.kq-azan-bar,
   .kq-root.kq-azan-full {
     --kq-turn-h: 0px;
   }
-  .kq-root:has(.kq-status.is-open) .kq-portrait,
   .kq-root.kq-azan-bar .kq-portrait,
   .kq-root.kq-azan-full .kq-portrait {
     display: none;
@@ -1949,7 +2043,7 @@ kbd {
     width: calc(100% - var(--kq-pad) - var(--kq-padr));
   }
   .kq-mission {
-    width: calc(100% - var(--kq-map) - 8px);
+    width: calc(100% - var(--kq-right-w) - 8px);
   }
   .kq-clockrow .kq-coins {
     margin-left: auto;
@@ -2341,28 +2435,28 @@ kbd {
   margin: 0;
   font-size: 15px;
 }
-.kq-progress {
+.kq-stepbar {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
 }
-.kq-progress-host {
+.kq-stepbar-host {
   flex: none;
 }
-.kq-progress-host:empty {
+.kq-stepbar-host:empty {
   display: none;
 }
-.kq-pip {
+.kq-sp {
   flex: none;
   width: 10px;
   height: 10px;
   border-radius: 50%;
   background: var(--md-sys-color-outline-variant);
 }
-.kq-pip.is-done {
+.kq-sp.is-done {
   background: #1f9d4a;
 }
-.kq-pip.is-now {
+.kq-sp.is-now {
   background: var(--kq-gold);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--kq-gold) 40%, transparent);
 }
@@ -2529,6 +2623,7 @@ kbd {
   margin: 8px 0 14px;
 }
 .kq-region-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2583,4 +2678,26 @@ kbd {
     opacity: 0;
     transform: translate(var(--dx, 0), calc(var(--dy, 30px) * 4)) rotate(160deg);
   }
+}
+/* phone bottom sheets for the steppers stay short, so the hero stays in view above them */
+@media (max-width: 700px), (max-height: 520px) {
+  .kq-sheet-bottom .kq-sheet-box:has(> .kq-stepper) {
+    max-height: 62%;
+  }
+}
+/* stepper header: the title and Not now share the first row, the progress pips get their own */
+.kq-stepper > .kq-sheet-head {
+  flex-wrap: wrap;
+  gap: 4px 8px;
+}
+.kq-stepper > .kq-sheet-head .kq-sheet-title {
+  flex: 1 1 0;
+  font-size: 15px;
+}
+.kq-stepper > .kq-sheet-head .kq-stepbar-host {
+  order: 3;
+  flex: 1 0 100%;
+}
+.kq-stepper > .kq-sheet-head .kq-btn {
+  order: 2;
 }

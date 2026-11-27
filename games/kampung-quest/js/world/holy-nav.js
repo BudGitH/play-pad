@@ -52,7 +52,7 @@
     marwa: { x: 42, z: 39.2, yaw: N },
     gate: { x: 0, z: -60, yaw: 0 },
     hairSalon: { x: 20, z: -79, yaw: N },
-    clockTower: { x: 0, z: -113.75, yaw: N },
+    clockTower: { x: 0, z: -112.5, yaw: N },
     miqat: { x: -60, z: -146, yaw: 0 },
     mina: { x: -180, z: -40, yaw: 0 },
     arafah: { x: -260, z: 32, yaw: 0 },
@@ -93,18 +93,18 @@
     { x: -88, z: 40, heading: 0, kind: "car" },
     { x: -63, z: -190, heading: 0, kind: "car" },
     { x: -230, z: 7, heading: N / 2, kind: "car" },
-    { x: 20, z: -98.25, heading: N / 2, kind: "bike" },
-    { x: -40, z: -113.75, heading: -N / 2, kind: "bike" },
-    { x: 71.25, z: 20, heading: 0, kind: "bike" },
-    { x: -77.25, z: 30, heading: N, kind: "bike" },
+    { x: 20, z: -99.6, heading: N / 2, kind: "bike" },
+    { x: -40, z: -115, heading: -N / 2, kind: "bike" },
+    { x: 69.9, z: 20, heading: 0, kind: "bike" },
+    { x: -76, z: 30, heading: N, kind: "bike" },
     { x: 560, z: -108, heading: N / 2, kind: "car" },
     { x: 640, z: -102, heading: -N / 2, kind: "car" },
     { x: 697, z: -20, heading: 0, kind: "car" },
     { x: 533, z: 30, heading: N, kind: "car" },
     { x: 620, z: 63, heading: N / 2, kind: "car" },
-    { x: 560, z: 100, heading: 0, kind: "car" },
-    { x: 580, z: -97.25, heading: N / 2, kind: "bike" },
-    { x: 536.75, z: 10, heading: 0, kind: "bike" },
+    { x: 560, z: 80, heading: 0, kind: "car" },
+    { x: 580, z: -98.6, heading: N / 2, kind: "bike" },
+    { x: 535.4, z: 10, heading: 0, kind: "bike" },
   ];
 
   const rect = (name, x0, z0, x1, z1) => ({ kind: "rect", name, x0, z0, x1, z1 });
@@ -138,15 +138,123 @@
   function standFor(key) {
     if (STAND[key]) return STAND[key];
     const H = KQ.HOLY;
-    const a = (H.makkah && H.makkah[key]) || (H.hajj && H.hajj[key]) || (H.madinah && H.madinah[key]);
+    const a =
+      (H.makkah && H.makkah[key]) || (H.hajj && H.hajj[key]) || (H.madinah && H.madinah[key]);
     return a && typeof a.x === "number" ? { x: a.x, z: a.z, yaw: 0 } : null;
   }
 
-  Object.assign(Holy, { cityOf, qiblaAt, yawTo, STAND, HALL, ARRIVE, vehicleSpots, noDrive, inNoDrive, standFor });
+  Object.assign(Holy, {
+    cityOf,
+    qiblaAt,
+    yawTo,
+    STAND,
+    HALL,
+    ARRIVE,
+    vehicleSpots,
+    noDrive,
+    inNoDrive,
+    standFor,
+  });
 
   /* ------------------------------ walk graph ------------------------------ */
 
-  /** Walk polylines: [x, z, poiId?, facing?] (a point shared between lines merges into one node). */
+  /** The fixed walk polylines of Makkah: [x, z, poiId?, facing?] (a shared point merges into one node). */
+  const MAKKAH_FIXED = [
+    [
+      [0, -95, "forecourt", 0],
+      [0, -98.25],
+      [0, -113.75],
+    ],
+    [
+      [0, -98.25],
+      [0, -76],
+      [0, -56, "gate", 0],
+      [1.85, -50],
+      [1.85, -44],
+      [1.85, -36, "hall", 0],
+      [0, -30],
+    ],
+    [
+      [1.85, -36],
+      [-8, -36, "hall_w", 0],
+    ],
+    [
+      [RING_R, 0],
+      [36, 3.14],
+      [42, 3.14],
+      [42, -38],
+      [42, -39.2, "safa", 0],
+    ],
+    [
+      [42, 3.14],
+      [42, 38],
+      [42, 39.2, "marwa", N],
+    ],
+    [
+      [-25.98, 15],
+      [-27, 30],
+      [-27, 37],
+      [-35.5, 37, "wudu", N],
+    ],
+    [
+      [-25.98, -15],
+      [-22, -21.5, "zamzam", N],
+    ],
+    [
+      [-34, -95],
+      [0, -95],
+      [34, -95],
+    ],
+    [
+      [0, -76],
+      [20, -76],
+      [20, -79, "salon", N],
+    ],
+    [
+      [-77.25, -98.25],
+      [-77.25, -113.75],
+    ],
+    [
+      [71.25, -98.25],
+      [71.25, -113.75],
+    ],
+    [
+      [-60, -98.25],
+      [-60, -113.75],
+      [-60, -146, "miqat", 0],
+    ],
+    [
+      [-180, -98.25],
+      [-180, -113.75],
+    ],
+    [
+      [71.25, -98.25],
+      [71.25, -20],
+      [71.25, 76.25],
+      [-5, 76.25],
+      [-77.25, 76.25],
+      [-77.25, -20],
+      [-77.25, -98.25],
+    ],
+    [
+      [-150, -98.25],
+      [-150, -80, "jamarat", 0],
+    ],
+    [
+      [-180, -98.25],
+      [-180, -40, "mina", 0],
+      [-180, 2.25],
+      [-220, 2.25],
+      [-260, 2.25],
+      [-260, 32, "arafah", 0],
+    ],
+    [
+      [-220, 2.25],
+      [-220, -10, "muzdalifah", 0],
+    ],
+  ];
+
+  /** The tawaf ring, the two street footways and the fixed lines: every Makkah polyline. */
   function makkahLines() {
     const ring = [];
     for (let k = 0; k <= 12; k += 1) {
@@ -158,43 +266,69 @@
     const s1 = [-250, -180, -150, -77.25, -60, 0, 71.25, 118].map((x) => [x, -98.25]);
     const s2 = [-250, -180, -150, -77.25, -60, 0, 71.25, 118].map((x) => [x, -113.75]);
     s2[5] = [0, -113.75, "clock", N];
-    return [
-      ring,
-      [[0, -95, "forecourt", 0], [0, -98.25], [0, -113.75]],
-      [[0, -98.25], [0, -76], [0, -56, "gate", 0], [1.85, -50], [1.85, -44], [1.85, -36, "hall", 0], [0, -30]],
-      [[1.85, -36], [-8, -36, "hall_w", 0]],
-      [[RING_R, 0], [36, 3.14], [42, 3.14], [42, -38], [42, -39.2, "safa", 0]],
-      [[42, 3.14], [42, 38], [42, 39.2, "marwa", N]],
-      [[-25.98, 15], [-27, 30], [-27, 37], [-35.5, 37, "wudu", N]],
-      [[-25.98, -15], [-22, -21.5, "zamzam", N]],
-      [[-34, -95], [0, -95], [34, -95]],
-      [[20, -95], [20, -79, "salon", N]],
-      s1,
-      s2,
-      [[-77.25, -98.25], [-77.25, -113.75]],
-      [[71.25, -98.25], [71.25, -113.75]],
-      [[-60, -98.25], [-60, -113.75], [-60, -146, "miqat", 0]],
-      [[-180, -98.25], [-180, -113.75]],
-      [[71.25, -98.25], [71.25, -20], [71.25, 76.25], [-5, 76.25], [-77.25, 76.25], [-77.25, -20], [-77.25, -98.25]],
-      [[-150, -98.25], [-150, -80, "jamarat", 0]],
-      [[-180, -98.25], [-180, -40, "mina", 0], [-180, 2.25], [-220, 2.25], [-260, 2.25], [-260, 32, "arafah", 0]],
-      [[-220, 2.25], [-220, -10, "muzdalifah", 0]],
-    ];
+    return [ring, s1, s2].concat(MAKKAH_FIXED);
   }
 
-  function madinahLines() {
-    return [
-      [[600, -112.75], [600, -97.25], [600, -90, "busStop", 0], [600, -60], [600, -33], [597, -33, "nabGate", 0], [595, -31], [595, -24], [601, -24], [601, 10], [601, 12, "nabHall", 0]],
-      [[601, 12], [593, 12, "nabHall_w", 0]],
-      [[601, 12], [601, 18], [607, 18, "rawdah", 0], [607, 25.5], [612, 25.5, "salam", N]],
-      [[607, 25.5], [603.5, 27, "mihrab", 0]],
-      [[601, 18], [601, 23.5], [600.2, 23.5, "minbar", -N / 2]],
-      [[597, -33.5], [578, -33.5, "nabWudu", N]],
-      [[600, -60], [552, -60], [536.75, -60], [536.75, 67.75], [565.75, 67.75], [565.75, 100], [563, 100], [563, 120, "quba", 0]],
-      [[600, -112.75], [600, -190, "uhud", N]],
-      [[600, -92], [643, -92], [643, 10], [660, 10, "baqi", -N / 2]],
-    ];
-  }
+  /** The Madinah walk polylines (same format as Makkah's). */
+  const MADINAH_LINES = [
+    [
+      [600, -112.75],
+      [600, -97.25],
+      [600, -90, "busStop", 0],
+      [600, -60],
+      [600, -33],
+      [597, -33, "nabGate", 0],
+      [595, -31],
+      [595, -24],
+      [601, -24],
+      [601, 10],
+      [601, 12, "nabHall", 0],
+    ],
+    [
+      [601, 12],
+      [593, 12, "nabHall_w", 0],
+    ],
+    [
+      [601, 12],
+      [601, 18],
+      [607, 18, "rawdah", 0],
+      [607, 25.5],
+      [612, 25.5, "salam", N],
+    ],
+    [
+      [607, 25.5],
+      [603.5, 27, "mihrab", 0],
+    ],
+    [
+      [601, 18],
+      [601, 23.5],
+      [600.2, 23.5, "minbar", -N / 2],
+    ],
+    [
+      [597, -33.5],
+      [578, -33.5, "nabWudu", N],
+    ],
+    [
+      [600, -60],
+      [552, -60],
+      [536.75, -60],
+      [536.75, 67.75],
+      [565.75, 67.75],
+      [565.75, 100],
+      [563, 100],
+      [563, 120, "quba", 0],
+    ],
+    [
+      [600, -112.75],
+      [600, -190, "uhud", N],
+    ],
+    [
+      [600, -92],
+      [643, -92],
+      [643, 10],
+      [660, 10, "baqi", -N / 2],
+    ],
+  ];
 
   /** Merge-by-position graph builder; returns { nodes, edges, pois } with pois keyed by id. */
   function graphFrom(lines) {
@@ -216,7 +350,13 @@
         const n = node(pt[0], pt[1]);
         if (prev >= 0 && prev !== n) edges.push([prev, n]);
         prev = n;
-        if (pt[2]) pois[pt[2]] = { pos: new THREE.Vector3(pt[0], 0, pt[1]), facing: pt[3] || 0, radius: 2.5, node: n };
+        if (pt[2])
+          pois[pt[2]] = {
+            pos: new THREE.Vector3(pt[0], 0, pt[1]),
+            facing: pt[3] || 0,
+            radius: 2.5,
+            node: n,
+          };
       });
     });
     return { nodes, edges, pois };
@@ -264,8 +404,38 @@
     },
   };
   const CITY_IDS = {
-    makkah: ["forecourt", "gate", "hall", "hall_w", "wudu", "zamzam", "mataf", "safa", "marwa", "salon", "miqat", "mina", "arafah", "muzdalifah", "jamarat", "clock"],
-    madinah: ["busStop", "nabGate", "nabHall", "nabHall_w", "nabWudu", "rawdah", "mihrab", "minbar", "salam", "quba", "uhud", "baqi"],
+    makkah: [
+      "forecourt",
+      "gate",
+      "hall",
+      "hall_w",
+      "wudu",
+      "zamzam",
+      "mataf",
+      "safa",
+      "marwa",
+      "salon",
+      "miqat",
+      "mina",
+      "arafah",
+      "muzdalifah",
+      "jamarat",
+      "clock",
+    ],
+    madinah: [
+      "busStop",
+      "nabGate",
+      "nabHall",
+      "nabHall_w",
+      "nabWudu",
+      "rawdah",
+      "mihrab",
+      "minbar",
+      "salam",
+      "quba",
+      "uhud",
+      "baqi",
+    ],
   };
   const HALL_RADIUS = { hall: 8, nabHall: 8, mataf: 12, gate: 5, nabGate: 5 };
 
@@ -283,8 +453,16 @@
   /** The interactables of one city (ids the game already understands: wudu taps and prayer spots). */
   function interactablesFor(city) {
     const V = (x, z) => new THREE.Vector3(x, 0, z);
-    const taps = city === "makkah" ? [-40.5, -36.9, -33.3, -29.7].map((x) => [x, 35.55]) : [572.5, 576, 579.5, 583].map((x) => [x, -35.4]);
-    const out = taps.map((t, i) => ({ id: "wudu_tap_" + (i + 1), poi: "mosque_wudu", pos: V(t[0], t[1]), label: "Take wudu" }));
+    const taps =
+      city === "makkah"
+        ? [-40.5, -36.9, -33.3, -29.7].map((x) => [x, 35.55])
+        : [572.5, 576, 579.5, 583].map((x) => [x, -35.4]);
+    const out = taps.map((t, i) => ({
+      id: "wudu_tap_" + (i + 1),
+      poi: "mosque_wudu",
+      pos: V(t[0], t[1]),
+      label: "Take wudu",
+    }));
     const h = HALL[city];
     out.push({ id: "prayer_spot", poi: "mosque_hall", pos: V(h.x, h.z), label: "Pray" });
     out.push({ id: "prayer_spot_women", poi: "mosque_hall", pos: V(h.x - 8, h.z), label: "Pray" });
@@ -293,7 +471,7 @@
 
   /** Build the walk graph and per-city tables once for the world. */
   function build() {
-    const g = graphFrom(makkahLines().concat(madinahLines()));
+    const g = graphFrom(makkahLines().concat(MADINAH_LINES));
     return {
       graph: { nodes: g.nodes, edges: g.edges },
       pois: { makkah: poisFor(g.pois, "makkah"), madinah: poisFor(g.pois, "madinah") },

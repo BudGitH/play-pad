@@ -48,6 +48,7 @@
       azanLive: pf.azanLive,
       guide: pf.guide,
       guideDest: pf.guideDest || null,
+      view: pf.viewName || null,
     };
   }
 
@@ -191,6 +192,7 @@
     stats,
     npc,
     crowd: () => (S() && S().crowd ? G.Crowd.debug(S().crowd) : null),
+    holy: () => (KQ.Holy && KQ.Holy.debug ? KQ.Holy.debug() : null),
     greetings: () => G.Greetings.debug(),
     vehicles: () => G.Vehicles.debug(),
     voice: () => G.Voice.debug(),

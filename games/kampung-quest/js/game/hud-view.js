@@ -250,25 +250,27 @@
     flag("prayqada", R.status, "is-qada", !urgent && ps.qada.length > 0);
   }
 
-  /** The spoken name of the Missions button: how many are left, and whether one is in progress. */
-  function missionsLabel(active, todo) {
-    if (active) return "Missions, 1 in progress" + (todo > 1 ? ", " + (todo - 1) + " more" : "");
-    return todo ? "Missions, " + todo + " to find" : "Missions, all done";
+  /** The spoken name of the Missions button: the one in progress, else how many wait to be found. */
+  function missionsLabel(active, waiting) {
+    if (active)
+      return "Missions, 1 in progress" + (waiting ? ", " + waiting + " more to find" : "");
+    return waiting ? "Missions, " + waiting + " to find" : "Missions, all done";
   }
 
   /**
-   * Refresh the Missions button: the badge counts the missions still to do (the one in progress
-   * plus the ones waiting), pink while you still need to find a star, green once one is under way.
+   * Refresh the Missions button: the badge is the number of missions under way (a green "1" with a
+   * green edge on the button) or, when none is, how many wait to be found (pink).
    */
   function updateMissions(sim) {
     const R = H().refs;
     const active = Boolean(sim.missions.active());
-    const todo = sim.missions.available().length + (active ? 1 : 0);
-    H().setText("badge", R.badge, todo ? String(todo) : "");
-    R.badge.hidden = !todo;
+    const waiting = sim.missions.available().length;
+    const shown = active ? 1 : waiting;
+    H().setText("badge", R.badge, shown ? String(shown) : "");
+    R.badge.hidden = !shown;
     flag("misactive", R.badge, "is-active", active);
     flag("misbtn", R.dockBtns.missions, "is-active", active);
-    const name = missionsLabel(active, todo);
+    const name = missionsLabel(active, waiting);
     if (R.misname !== name) {
       R.misname = name;
       R.dockBtns.missions.setAttribute("aria-label", name);

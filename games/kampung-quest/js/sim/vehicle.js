@@ -241,14 +241,15 @@
   }
 
   /**
-   * May the vehicle go from (x0, z0) to (x1, z1)? It may unless the new place is in a zone the old
-   * one was not (so a vehicle somehow inside a zone can always drive back out). Returns the zone
-   * that blocks it, or null.
+   * May the vehicle go from (x0, z0) to (x1, z1)? It may unless the move takes it into a zone it was
+   * not already touching (so a vehicle somehow inside a zone can always drive back out). Returns the
+   * zone that blocks it, or null.
    */
   function blockedMove(zones, x0, z0, x1, z1, r) {
-    const next = zoneAt(zones, x1, z1, r);
-    if (!next) return null;
-    return zoneAt(zones, x0, z0, r) === next ? null : next;
+    for (let i = 0; i < zones.length; i += 1) {
+      if (touches(zones[i], x1, z1, r) && !touches(zones[i], x0, z0, r)) return zones[i];
+    }
+    return null;
   }
 
   KQ.Sim.Vehicle = {

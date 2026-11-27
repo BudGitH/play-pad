@@ -22,6 +22,7 @@ export const SIM_FILES = [
   "missions-data",
   "missions",
   "schedule",
+  "greet",
   "save",
 ];
 

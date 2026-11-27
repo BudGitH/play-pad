@@ -335,5 +335,9 @@
     endTalk(A) {
       A.talking = false;
     },
+    /** Raise a hand for a few seconds (a greeting); only shows while the agent is standing still. */
+    wave(A, seconds) {
+      A.greetT = seconds;
+    },
   };
 })((window.KQ = window.KQ || {}));

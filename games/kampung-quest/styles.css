@@ -613,7 +613,8 @@ kbd {
   background: rgba(255, 255, 255, 0.9);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
 }
-.kq-runbtn {
+.kq-runbtn,
+.kq-jumpbtn {
   position: absolute;
   right: max(18px, env(safe-area-inset-right, 0px));
   bottom: max(18px, env(safe-area-inset-bottom, 0px));
@@ -628,6 +629,13 @@ kbd {
   background: var(--kq-hud);
   font-size: 12px;
   font-weight: 700;
+}
+/* Jump sits straight above Run (the right thumb corner); the portrait phone puts it beside Run */
+.kq-jumpbtn {
+  bottom: calc(max(18px, env(safe-area-inset-bottom, 0px)) + var(--kq-run) + 12px);
+}
+.kq-jumpbtn:active {
+  background: var(--md-sys-color-tertiary-container);
 }
 .kq-runbtn.is-on {
   border-color: var(--kq-gold);
@@ -1948,8 +1956,12 @@ kbd {
   .kq-joy {
     bottom: var(--kq-ctl-bot);
   }
-  .kq-runbtn {
+  .kq-runbtn,
+  .kq-jumpbtn {
     bottom: var(--kq-ctl-bot);
+  }
+  .kq-jumpbtn {
+    right: calc(max(18px, env(safe-area-inset-right, 0px)) + var(--kq-run) + 12px);
   }
   .kq-toasts {
     left: var(--kq-pad);
@@ -2245,4 +2257,16 @@ kbd {
 }
 .kq-credits {
   max-height: 100%;
+}
+
+/* very short landscape phones (up to 310 px high): the needs chips fill the right edge above Run, so
+   Jump sits beside Run (both 52 px, still over 48) in the gap between the dock and the right edge */
+@media (max-height: 310px) {
+  .kq-root {
+    --kq-run: 52px;
+  }
+  .kq-jumpbtn {
+    bottom: max(18px, env(safe-area-inset-bottom, 0px));
+    right: calc(max(18px, env(safe-area-inset-right, 0px)) + var(--kq-run) + 8px);
+  }
 }

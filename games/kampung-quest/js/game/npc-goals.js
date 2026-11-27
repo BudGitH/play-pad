@@ -14,6 +14,9 @@
   const U = G.U;
   const HERO_SPOT = { x: -45, z: -33 };
   const SEAT_RANGE = 14;
+  /** A standing agent turns away from a wall closer than this, and a walker needs this much room. */
+  const LOOK_REACH = 0.9;
+  const WALK_CLEAR = 0.4;
 
   const IMAM_SPOT_X = -49.2;
   const WOMEN = [
@@ -112,7 +115,10 @@
    */
   function prayGoal(M, A, poi) {
     const slot = claimSlot(M, A);
-    if (!slot) return { kind: "stand", x: poi.pos.x, z: poi.pos.z, heading: poi.facing };
+    if (!slot) {
+      const heading = lookOpen(M, poi.pos.x, poi.pos.z, poi.facing);
+      return { kind: "stand", x: poi.pos.x, z: poi.pos.z, heading };
+    }
     A.slot = slot;
     const women = WOMEN.indexOf(A.id) !== -1;
     return {
@@ -125,6 +131,11 @@
     };
   }
 
+  /** A heading near `want` that looks at open space, not at a wall a step or two ahead. */
+  function lookOpen(M, x, z, want) {
+    return G.Collide.openHeading(M.world.colliders, x, z, want, LOOK_REACH);
+  }
+
   /** Build the goal for a routine. Releases whatever the agent held before. */
   function goalFor(M, A, r) {
     G.Seats.release(M.seats, A.id);
@@ -132,7 +143,8 @@
     A.seat = A.slot = null;
     const poi = M.world.pois[r.poi] || M.world.pois.park;
     if (r.indoors) {
-      return { kind: "hide", x: poi.pos.x, z: poi.pos.z, heading: poi.facing, home: r.poi };
+      const heading = lookOpen(M, poi.pos.x, poi.pos.z, poi.facing);
+      return { kind: "hide", x: poi.pos.x, z: poi.pos.z, heading, home: r.poi };
     }
     if (r.activity === "pray") return prayGoal(M, A, poi);
     if (r.activity === "sit" || r.activity === "eat") {
@@ -141,14 +153,16 @@
     }
     if (r.activity === "walk" || r.activity === "play") {
       const free = r.activity === "play";
-      return { kind: "wander", x: poi.pos.x, z: poi.pos.z, heading: poi.facing, free, poi: r.poi };
+      const at = G.Collide.freeSpot(M.world.colliders, poi.pos.x, poi.pos.z, WALK_CLEAR);
+      return { kind: "wander", x: at.x, z: at.z, heading: poi.facing, free, poi: r.poi };
     }
     if (r.poi.indexOf("stall_") === 0) {
       const cook = stallCook(poi);
       return { kind: "stand", x: poi.pos.x, z: poi.pos.z, heading: 0, cookSpot: cook };
     }
     const s = standSpot(M, A, poi);
-    return { kind: "stand", x: s.x, z: s.z, heading: poi.facing, ghostLeg: false };
+    const heading = lookOpen(M, poi.pos.x, poi.pos.z, poi.facing);
+    return { kind: "stand", x: s.x, z: s.z, heading, ghostLeg: false };
   }
 
   /** A random nearby place for a strolling / playing NPC, or null. */

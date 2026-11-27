@@ -167,7 +167,22 @@
     if (name === "interact") return G.Interact.activate(S().target);
     if (name === "mute") return setMuted(!G.Audio.isMuted());
     if (name === "run") return toggleRun();
+    if (name === "jump") return canJump() && G.Player.jump(S().player, G.Audio);
     if (["missions", "map", "pray", "bag"].indexOf(name) !== -1) dock(name);
+  }
+
+  /** Can the hero jump now: in play, no sheet or prayer screen open, not held by a flow. */
+  function canJump() {
+    const s = S();
+    return Boolean(
+      s &&
+        s.started &&
+        !s.paused &&
+        !s.hidden &&
+        !G.UI.modalOpen() &&
+        !G.PrayerFlow.screenOpen() &&
+        !s.player.locked,
+    );
   }
 
   /** Turn the camera a step left or right (keyboard look) and reset its idle timer. */
@@ -184,5 +199,5 @@
     b.classList.toggle("is-on", on);
   }
 
-  G.Actions = { handle, dock, openPause, setMuted, toggleRun };
+  G.Actions = { handle, dock, openPause, setMuted, toggleRun, canJump };
 })((window.KQ = window.KQ || {}));

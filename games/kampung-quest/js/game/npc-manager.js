@@ -15,6 +15,17 @@
   const ACTIVE_RANGE = 70;
   const PERSONAL_SPACE = 0.78;
   const HERO_SPACE = 0.95;
+  /** Closer than this and an agent that cannot step aside (wall behind it) shoves the hero out. */
+  const HERO_MIN = 0.62;
+  /** The near-collider list is rebuilt once an agent has moved this far from where it was built. */
+  const NEAR_REBUILD = 1.2;
+  const NEAR_MARGIN = 4;
+  /** An agent placed this close to a wall turns to face open space instead. */
+  const FACE_REACH = 0.9;
+  /** Where agents stand outside a door: this many places, QUEUE_GAP apart, swaying QUEUE_SWAY aside. */
+  const QUEUE_SLOTS = 5;
+  const QUEUE_GAP = 0.8;
+  const QUEUE_SWAY = 0.4;
 
   /**
    * Build the NPC manager: the shared path graph, seats and goal slots, plus one hidden agent per
@@ -46,23 +57,47 @@
     return M;
   }
 
-  /** The world colliders within 3 m of an agent, so its walking only tests what it could touch. */
+  /**
+   * The world colliders within reach of an agent (its walking only tests what it could touch).
+   * The list is cached on the agent and rebuilt when it has moved NEAR_REBUILD metres.
+   */
   function nearColliders(M, A) {
-    return M.world.colliders.filter(
-      (c) => A.x > c.minX - 3 && A.x < c.maxX + 3 && A.z > c.minZ - 3 && A.z < c.maxZ + 3,
+    const c = A.nearAt;
+    if (c && U.dist(A.x, A.z, c.x, c.z) < NEAR_REBUILD) return A.near;
+    A.nearAt = { x: A.x, z: A.z };
+    const m = NEAR_MARGIN;
+    A.near = M.world.colliders.filter(
+      (k) => A.x > k.minX - m && A.x < k.maxX + m && A.z > k.minZ - m && A.z < k.maxZ + m,
     );
+    return A.near;
+  }
+
+  /** True for agents that hold their spot: seated, praying in the row or cooking behind a counter. */
+  function fixed(A) {
+    const g = A.goal;
+    return Boolean(g && (g.kind === "sit" || g.kind === "pray")) || A.cook;
   }
 
   /**
    * Teleport an agent to x,z (standing on the ground there) facing a heading, and drop its path.
+   * Unless `exact` (a seat, a cook spot, a hidden indoor spot), the spot is moved off any wall or
+   * prop and the heading turned away from a wall it would face.
    */
-  function placeAt(A, x, z, heading, world) {
-    A.x = x;
-    A.z = z;
-    A.y = world.heightAt(x, z);
-    A.heading = heading;
+  function placeAt(A, x, z, heading, world, exact) {
+    let h = heading;
+    let p = { x, z };
+    if (!exact) {
+      p = G.Collide.freeSpot(world.colliders, x, z, G.NpcAgent.RADIUS + 0.04);
+      h = G.Collide.openHeading(world.colliders, p.x, p.z, heading, FACE_REACH);
+    }
+    A.x = p.x;
+    A.z = p.z;
+    A.y = world.heightAt(p.x, p.z);
+    A.heading = h;
     A.path = [];
     A.wp = 0;
+    A.nearAt = null;
+    A.stuckHits = 0;
   }
 
   /** Switch an agent to a new routine. `instant` jumps straight to the end state. */
@@ -76,6 +111,7 @@
     const goal = G.NpcGoals.goalFor(M, A, r);
     const home = A.goal && A.goal.kind === "hide" ? A.goal.home : null;
     A.goal = goal;
+    A.dest = goal.kind === "hide" ? goal.home : goal.pathPoi || r.poi;
     A.talking = false;
     A.idleT = 0;
     if (goal.kind === "hide") return hideOrWalkHome(M, A, goal, instant);
@@ -93,9 +129,10 @@
   function snapToGoal(M, A, goal) {
     A.hidden = false;
     A.show = 1;
-    placeAt(A, goal.x, goal.z, goal.heading, M.world);
+    const exact = goal.kind === "sit" || goal.kind === "pray" || Boolean(goal.cookSpot);
+    placeAt(A, goal.x, goal.z, goal.heading, M.world, exact);
     if (goal.kind === "sit") A.y = goal.y - KQ.Figures.seatDrop(A.rig);
-    if (goal.cookSpot) placeAt(A, goal.cookSpot.x, goal.cookSpot.z, 0, M.world);
+    if (goal.cookSpot) placeAt(A, goal.cookSpot.x, goal.cookSpot.z, 0, M.world, true);
     if (goal.cookSpot) A.cook = true;
   }
 
@@ -106,7 +143,23 @@
     const poi = M.world.pois[poiId] || M.world.pois.home;
     A.hidden = false;
     A.show = 0;
-    placeAt(A, poi.pos.x, poi.pos.z, poi.facing, M.world);
+    stepOut(M, A, poi.pos.x, poi.pos.z, poi.facing);
+  }
+
+  /**
+   * Stand an agent just outside a door at (x, z): looking at open space (never at the wall the
+   * door is in), and on a spot of its own: each cast member has a fixed place in a loose queue
+   * out from the door, so a crowd leaving one lobby does not stack. The first cast member (the
+   * first mission giver) stands right at the door.
+   */
+  function stepOut(M, A, x, z, facing) {
+    const h = G.Collide.openHeading(M.world.colliders, x, z, facing, FACE_REACH);
+    const k = M.agents.indexOf(A) % QUEUE_SLOTS;
+    const out = k * QUEUE_GAP;
+    const side = (k % 2 ? -1 : 1) * (k ? QUEUE_SWAY : 0);
+    const px = x + Math.sin(h) * out + Math.cos(h) * side;
+    const pz = z + Math.cos(h) * out - Math.sin(h) * side;
+    placeAt(A, px, pz, h, M.world);
   }
 
   /**
@@ -116,7 +169,7 @@
   function hideOrWalkHome(M, A, goal, instant) {
     if (instant || A.hidden) {
       A.hidden = true;
-      placeAt(A, goal.x, goal.z, goal.heading, M.world);
+      placeAt(A, goal.x, goal.z, goal.heading, M.world, true);
       return;
     }
     const pts = G.Path.toPoi(M.pathP, A.x, A.z, goal.home);
@@ -151,40 +204,64 @@
     if (near && A.hidden) {
       A.hidden = false;
       A.show = 0;
-      placeAt(A, g.x + 0.8, g.z + 0.6, g.heading, M.world);
+      stepOut(M, A, g.x, g.z, g.heading);
     } else if (!near && !A.hidden) {
       A.hidden = true;
     }
   }
 
   /**
-   * Nudge mobile agents apart from the hero and each other; seated, praying and cooking agents stay
-   * put.
+   * Keep characters off each other: agents that can move step away from the hero and from each
+   * other (stacked ones split along a fixed angle), are then pushed back out of walls and props,
+   * and an agent that could not give way (a wall behind it) nudges the hero instead. Seated,
+   * praying and cooking agents never move.
    */
   function separate(M, hero) {
-    const live = M.agents.filter((A) => !A.hidden);
+    const live = M.agents.filter((A) => !A.hidden && A.group.visible);
     live.forEach(function (A, i) {
-      const mobile = !(A.goal && (A.goal.kind === "sit" || A.goal.kind === "pray" || A.cook));
-      if (!mobile) return;
-      push(A, hero.x, hero.z, HERO_SPACE, 1);
-      for (let j = i + 1; j < live.length; j += 1) {
-        const B = live[j];
-        const bMobile = !(B.goal && (B.goal.kind === "sit" || B.goal.kind === "pray" || B.cook));
-        push(A, B.x, B.z, PERSONAL_SPACE, bMobile ? 0.5 : 1);
-        if (bMobile) push(B, A.x, A.z, PERSONAL_SPACE, 0.5);
-      }
+      const moves = !fixed(A);
+      if (moves) G.Collide.separate(A, hero, HERO_SPACE, 1, 0, i);
+      for (let j = i + 1; j < live.length; j += 1) crowd(A, live[j], moves, i + j * 0.7);
+    });
+    live.forEach(function (A) {
+      if (fixed(A)) return;
+      G.Collide.settle(nearColliders(M, A), A, G.NpcAgent.RADIUS);
+      G.Collide.separate(hero, A, HERO_MIN, 1, 0, 0);
     });
   }
 
-  /** Nudge A away from (x, z) when closer than `space`. */
-  function push(A, x, z, space, share) {
-    const dx = A.x - x;
-    const dz = A.z - z;
-    const d = Math.hypot(dx, dz);
-    if (d >= space || d < 1e-4) return;
-    const amt = (space - d) * share * 0.35;
-    A.x += (dx / d) * amt;
-    A.z += (dz / d) * amt;
+  /** Push two agents apart by share; a fixed one does not move and the other takes it all. */
+  function crowd(A, B, aMoves, angle) {
+    const bMoves = !fixed(B);
+    if (!aMoves && !bMoves) return;
+    const both = aMoves && bMoves;
+    G.Collide.separate(
+      A,
+      B,
+      PERSONAL_SPACE,
+      aMoves ? (both ? 0.5 : 1) : 0,
+      bMoves ? (both ? 0.5 : 1) : 0,
+      angle,
+    );
+  }
+
+  /**
+   * Give a stuck agent a fresh start: out of whatever it is wedged in, then a new route to its
+   * destination (a wanderer just picks another spot).
+   */
+  function replan(M, A) {
+    A.replan = false;
+    A.stuckHits = 0;
+    G.Collide.settle(nearColliders(M, A), A, G.NpcAgent.RADIUS);
+    A.path = [];
+    A.wp = 0;
+    const g = A.goal;
+    if (!g || g.kind === "wander" || !A.dest) {
+      A.idleT = 0;
+      return;
+    }
+    const pts = G.Path.toPoi(M.pathP, A.x, A.z, A.dest);
+    if (pts) G.NpcAgent.setPath(A, [{ x: A.x, z: A.z }].concat(pts), g.kind === "hide" ? null : g);
   }
 
   /**
@@ -213,6 +290,7 @@
       env.nearColliders = far ? [] : nearColliders(M, A);
       env.revealed = A.goal && A.goal.kind === "hide";
       G.NpcAgent.update(A, dt, env);
+      if (A.replan) replan(M, A);
     });
     separate(M, hero);
   }

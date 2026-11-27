@@ -14,6 +14,10 @@
   const PIVOT_H = 0.7;
   const MIN_DIST = 1.6;
   const MAX_DIST = 6.5;
+  /** The camera's body for wall tests, the shortest arm, and how much it rises as the arm shortens. */
+  const ARM_R = 0.28;
+  const MIN_ARM = 0.35;
+  const ARM_LIFT = 1.1;
 
   const C = {
     cam: null,
@@ -67,42 +71,34 @@
     C.dist = U.damp(C.dist, f.dist, 2.6, dt);
   }
 
-  /** Where the spring arm ends: walk from the pivot toward `want` and stop before a wall. */
-  function armLength(o, want, len) {
-    const dx = want.x - C.pivot.x;
-    const dz = want.z - C.pivot.z;
-    const steps = Math.ceil(len / 0.2);
-    for (let i = 1; i <= steps; i += 1) {
-      const t = i / steps;
-      if (G.Collide.camBlocked(o.colliders, C.pivot.x + dx * t, C.pivot.z + dz * t, 0.45)) {
-        return Math.max(0.9, ((i - 1) / steps) * len - 0.2);
-      }
-    }
-    return len;
-  }
-
   /**
-   * Put the camera behind the pivot at the current yaw, pitch and distance, pulling the arm in at
-   * once when a wall is in the way.
+   * Put the camera behind the pivot at the current yaw, pitch and distance. When a wall is in the
+   * way the arm pulls in at once (never so far that the camera is inside the wall) and the camera
+   * rises a little, so it looks down over the hero instead of through the wall.
    */
   function place(dt, o) {
     const cp = Math.cos(C.pitch);
     const fx = Math.sin(C.yaw);
     const fz = Math.cos(C.yaw);
-    const want = {
-      x: C.pivot.x - fx * C.dist * cp,
-      y: C.pivot.y + Math.sin(C.pitch) * C.dist,
-      z: C.pivot.z - fz * C.dist * cp,
-    };
-    const safe = armLength(o, want, C.dist * cp);
-    const target = Math.min(C.dist * cp, safe);
-    const k = target < C.armDist ? 20 : 3;
-    C.armDist = U.damp(C.armDist, target, k, dt);
-    const ratio = C.armDist / Math.max(0.01, C.dist * cp);
+    const horiz = C.dist * cp;
+    const safe = G.Collide.armLength(
+      o.colliders,
+      C.pivot.x,
+      C.pivot.z,
+      -fx,
+      -fz,
+      horiz,
+      ARM_R,
+      MIN_ARM,
+    );
+    const k = safe < C.armDist ? 20 : 3;
+    C.armDist = U.damp(C.armDist, Math.min(horiz, safe), k, dt);
+    const ratio = C.armDist / Math.max(0.01, horiz);
+    const lift = (1 - ratio) * ARM_LIFT;
     C.pos.set(
-      C.pivot.x + (want.x - C.pivot.x) * ratio,
-      Math.max(o.groundY + 0.35, C.pivot.y + (want.y - C.pivot.y) * ratio),
-      C.pivot.z + (want.z - C.pivot.z) * ratio,
+      C.pivot.x - fx * C.armDist,
+      Math.max(o.groundY + 0.35, C.pivot.y + Math.sin(C.pitch) * C.dist * ratio + lift),
+      C.pivot.z - fz * C.armDist,
     );
     C.cam.position.copy(C.pos);
     C.cam.lookAt(C.pivot);

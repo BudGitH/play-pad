@@ -127,6 +127,27 @@
     return stride(p, 0.85, 0.75, 0.9, -1.35, 0.18, 0.022);
   }
 
+  /**
+   * Mid-air hop: arms thrown up and out, one knee tucked, the other leg trailing. A held pose
+   * (the phase only adds a tiny sway), blended in and out by the animator.
+   */
+  function jump(p) {
+    const s = Math.sin(p * TAU);
+    return {
+      rootY: 0.02,
+      armL: [-2.5, 0, 0.35 + 0.04 * s],
+      armR: [-2.5, 0, -0.35 - 0.04 * s],
+      foreL: [-0.25, 0, 0],
+      foreR: [-0.25, 0, 0],
+      legL: [-0.75, 0, 0],
+      kneeL: [1.1, 0, 0],
+      legR: [0.15, 0, 0],
+      kneeR: [0.5, 0, 0],
+      torso: [-0.05, 0, 0],
+      head: [-0.1, 0, 0],
+    };
+  }
+
   /** The base sitting legs (hips and knees at 90 degrees) that the seated poses build on. */
   function seated() {
     return {
@@ -208,6 +229,7 @@
     idle: idle,
     walk: walk,
     run: run,
+    jump: jump,
     sit: sit,
     eat: eat,
     wave: wave,

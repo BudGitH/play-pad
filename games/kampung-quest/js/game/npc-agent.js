@@ -11,9 +11,14 @@
   "use strict";
   const G = (KQ.Game = KQ.Game || {});
   const U = G.U;
-  const RADIUS = 0.28;
+  /** Body radius for wall tests: the toy is ~0.26 m from its centre to its shoulders, plus a gap. */
+  const RADIUS = 0.31;
   const WALK_SPEED = 1.55;
   const STUCK_SECONDS = 1.2;
+  /** Waypoints skipped for being stuck before the agent asks the manager for a fresh route. */
+  const REPLAN_AFTER = 2;
+  /** Metres of real progress toward a waypoint that count as moving. */
+  const PROGRESS = 0.02;
   /** One congregation: every praying NPC follows the same posture clock (so they move together). */
   const PRAY_CYCLE = [
     ["qiyam", 4],
@@ -54,6 +59,9 @@
       hidden: true,
       show: 0,
       stuckT: 0,
+      bestD: Infinity,
+      stuckHits: 0,
+      replan: false,
       idleT: 0,
       talking: false,
       seat: null,
@@ -89,7 +97,10 @@
     return "qiyam";
   }
 
-  /** Move toward a point; returns true on arrival. */
+  /**
+   * Move toward a point; returns true on arrival. The heading is set by the caller from where the
+   * agent actually went, not from where it wanted to go.
+   */
   function stepToward(A, tx, tz, speed, dt) {
     const dx = tx - A.x;
     const dz = tz - A.z;
@@ -98,28 +109,61 @@
     const s = Math.min(d, speed * dt);
     A.x += (dx / d) * s;
     A.z += (dz / d) * s;
-    A.heading = U.dampAngle(A.heading, Math.atan2(dx, dz), 9, dt);
     A.speed = speed;
     return d - s < 0.12;
   }
 
   /**
+   * Turn toward the way the agent really moved this frame; when a wall stopped it (it barely
+   * moved) keep the old heading instead of staring into the wall.
+   */
+  function faceMotion(A, bx, bz, speed, dt) {
+    const mx = A.x - bx;
+    const mz = A.z - bz;
+    if (Math.hypot(mx, mz) < speed * dt * 0.35) return;
+    A.heading = U.dampAngle(A.heading, Math.atan2(mx, mz), 9, dt);
+  }
+
+  /**
+   * Track progress toward the current waypoint: true once the agent has made none for
+   * STUCK_SECONDS (sliding along a wall is movement, but not progress).
+   */
+  function noProgress(A, target, dt) {
+    const d = U.dist(A.x, A.z, target.x, target.z);
+    if (d < A.bestD - PROGRESS) {
+      A.bestD = d;
+      A.stuckT = 0;
+      return false;
+    }
+    A.stuckT += dt;
+    return A.stuckT > STUCK_SECONDS;
+  }
+
+  /** Move on to the next waypoint (or finish the path). */
+  function nextWaypoint(A) {
+    A.stuckT = 0;
+    A.bestD = Infinity;
+    A.wp += 1;
+    if (A.wp >= A.path.length) A.path = [];
+  }
+
+  /**
    * Walk toward the current waypoint with collision, and skip ahead when reached or stuck too long
-   * (never block a doorway).
+   * (never block a doorway). After REPLAN_AFTER stuck skips in a row it flags a fresh route.
    */
   function followPath(A, dt, env) {
     const target = A.path[A.wp];
     const bx = A.x;
     const bz = A.z;
-    const done = stepToward(A, target.x, target.z, A.goal && A.goal.hurry ? 2.1 : WALK_SPEED, dt);
-    if (!A.ghost) G.Collide.resolve(env.nearColliders, A, RADIUS);
-    const moved = U.dist(bx, bz, A.x, A.z);
-    A.stuckT = moved < 0.15 * dt ? A.stuckT + dt : 0;
-    if (done || A.stuckT > STUCK_SECONDS) {
-      A.stuckT = 0;
-      A.wp += 1;
-      if (A.wp >= A.path.length) A.path = [];
-    }
+    const speed = A.goal && A.goal.hurry ? 2.1 : WALK_SPEED;
+    const done = stepToward(A, target.x, target.z, speed, dt);
+    if (!A.ghost) G.Collide.settle(env.nearColliders, A, RADIUS);
+    faceMotion(A, bx, bz, speed, dt);
+    const stuck = !done && noProgress(A, target, dt);
+    if (!done && !stuck) return;
+    A.stuckHits = stuck ? A.stuckHits + 1 : 0;
+    if (A.stuckHits >= REPLAN_AFTER) A.replan = true;
+    nextWaypoint(A);
   }
 
   /** Settle into the goal once the path is walked: snap to seat / slot / cook spot. */
@@ -146,6 +190,7 @@
   function setPath(A, pts, goal) {
     A.path = pts.slice(1);
     A.wp = 0;
+    A.bestD = Infinity;
     A.ghost = false;
     if (goal && goal.ghostLeg) A.path.push({ x: goal.x, z: goal.z, last: true });
   }
@@ -206,6 +251,7 @@
     }
     A.path = [{ x: spot.x, z: spot.z }];
     A.wp = 0;
+    A.bestD = Infinity;
     A.ghost = false;
   }
 

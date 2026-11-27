@@ -111,6 +111,7 @@
     s.player = G.Player.create(s.scene);
     s.player.group.visible = false;
     s.npcs = G.Npcs.create(s.scene, s.world, null);
+    s.crowd = G.Crowd.create(s.scene, s.world, s.npcs, s.renderer, s.camera);
     s.markers = G.Markers.create(s.scene);
     s.collect = G.Collectibles.create(s.scene, s.world);
     G.Loop.studioShine(s);
@@ -128,8 +129,10 @@
     s.world.setQuality(tier);
     G.Loop.figureShadows(s);
     s.world.setShadowTarget(START_SPOT);
+    G.Crowd.showAll(s.crowd, true);
     s.renderer.compile(s.scene, s.camera);
     s.renderer.render(s.scene, s.camera);
+    G.Crowd.showAll(s.crowd, false);
   }
 
   /**

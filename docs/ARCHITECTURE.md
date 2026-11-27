@@ -6,7 +6,7 @@
 
 **Stack:** Vanilla HTML/CSS/JS, no build step (static; runs from file:// or any static host)
 
-_Last updated: 2026-11-26 (Kampung Quest, PLAY-013: first open-world 3D game, multi-file; earlier rounds are in `docs/DECISIONS.md` and git history)_
+_Last updated: 2026-11-27 (Kampung Quest, PLAY-013: first open-world 3D game, multi-file; QA and product gate passed; earlier rounds are in `docs/DECISIONS.md` and git history)_
 
 ---
 

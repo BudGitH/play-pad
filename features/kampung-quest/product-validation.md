@@ -59,7 +59,7 @@
 | Maya (phone, touch only, portrait + landscape + 360x640) | met      | met (real-phone perf unverified) | 4            | n         | The whole loop works by touch, including rotation mid-play. Footprints plus "Show me the way" carry the prayer flow. Opening HUD crowded in portrait; Talk floats far from the thumb; "Start" should read "Continue" after a save.  |
 | Sam (keyboard + captions / screen reader)                | met      | met                              | 3.5          | n         | Captions run as a live region even when muted; steps announced; focus trap, Esc and focus return work. Wayfinding is visual only; focus drops after "Show me the way"; eating, mute and stale live text need clearer announcements. |
 
-**Polish round after 5B (in progress, non-blocking):**
+**Polish round after 5B (done in 21671c3, non-blocking):**
 
 - next-tile cue and a short hint after a wrong prayer tap;
 - step states for assistive tech;

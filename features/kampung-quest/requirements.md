@@ -2,7 +2,7 @@
 
 > **Phase 1 of the workflow.** Define what "done" means _before_ writing code.
 
-**Status:** IN DESIGN (Phase 1b — awaiting HUD mockup choice)
+**Status:** BUILT — QA PASS (round 3), product gate PASS (2026-11-27); owner release checks pending (see `product-validation.md`)
 **Owner:** @BudGitH
 **Ticket:** PLAY-013
 **Created:** 2026-11-26
@@ -44,22 +44,22 @@ Happy path: the title shows → the player taps Start → the hero stands outsid
 
 ## Acceptance criteria
 
-- [ ] AC-1 **Boot:** `games/kampung-quest/index.html` loads with zero console errors over http and over `file://` (procedural texture stand-ins on file://). It is registered in `games.js` and passes `npm run smoke`.
-- [ ] AC-2 **Movement:** a third-person hero moves on WASD/arrows and on a touch joystick, runs with Shift or a run toggle, and is stopped by building/prop colliders. The camera orbits (mouse drag / two-finger) and never clips inside buildings.
-- [ ] AC-3 **World:** the map contains at least: 3 HDB blocks with void decks, a hawker centre (≥ 4 stalls), a mosque (dome, minaret, wudu area, prayer hall, separate entrances), a mini-mart, a barber, a clinic, a library, a playground, a bus stop, roads with zebra crossings, and trees. Ground, walls and roads use photographic PBR textures (CC0, credited).
-- [ ] AC-4 **Cast:** ≥ 12 distinct original NPC toy figures plus the hero, built to the toy-figure build (block torso, peg arms, C-hands, cylinder hips, square legs, oversized sculpted head piece) with a glossy plastic material (clearcoat). The hero meets business rule 4.
-- [ ] AC-5 **NPC life:** ≥ 12 NPCs follow schedule routines (walk sidewalks, sit and eat, queue, shop) and walk to the mosque at prayer times. They avoid the player and never block a doorway for more than 3 s.
-- [ ] AC-6 **Clock:** 1 game day = 48 real minutes (1 game minute = 2 real seconds). Day/night lighting follows the clock (sunrise ≈ Syuruk, sunset ≈ Maghrib).
-- [ ] AC-7 **Prayer times:** the 5 prayers trigger at the hard-coded MUIS 26 Nov 2026 times (source cited in `assets/CREDITS.md`). Each trigger plays the licensed azan once with on-screen captions (Arabic, transliteration, English). It plays only when the tab is visible and unmuted; otherwise captions only.
-- [ ] AC-8 **Prayer flow:** when a prayer is due, mission progress pauses (a mission already in hand is kept). The flow is: go to the mosque → wudu at the taps in the correct order (intention, hands ×3, mouth ×3, nose ×3, face ×3, arms to elbows R then L ×3, wipe head, ears, feet R then L ×3) → enter the hall → pray the correct raka'at count (Subuh 2, Zohor 4, Asar 4, Maghrib 3, Isyak 4) as guided steps (qiyam, ruku, i'tidal, sujud, julus, sujud, tasyahud on the right raka'at, salam). The hero figure takes each posture. No fail state: a wrong tap gives a gentle hint.
-- [ ] AC-9 **Late prayer:** if the player is away at a prayer's start, the prayer stays "due" until done or until its time window ends (the next prayer's start; for Subuh, Syuruk/sunrise, per the ruling). Then it is marked "missed — make it up (qada)", and a qada can be prayed any time with gentle copy and no penalty.
-- [ ] AC-10 **Needs & services:** a hunger meter and an energy meter drain over time. Eating at a hawker stall (≥ 8 halal dishes with prices) refills hunger. Resting at home refills energy. Mini-mart, barber (changes hair piece), clinic (a friendly check-up refills energy) and library (a story card) are each interactive. Coins are earned from missions and are never negative.
-- [ ] AC-11 **Missions:** ≥ 8 missions with a tracker, a world marker and a minimap arrow, each completable and each child-friendly (errands, helping neighbours, finding a lost cat, recycling, carrying groceries for an elder, delivering kuih, cleaning the playground, giving salam to the imam).
-- [ ] AC-12 **Interaction:** context prompts appear within 2 m of an interactable. Dialogue uses a speech-bubble UI with polite Malay/English greetings (Assalamualaikum / Waalaikumsalam).
-- [ ] AC-13 **Save:** progress (time, coins, needs, missions, prayers, stickers, outfit) persists to localStorage under `kampung-quest:v1` and survives reload. Corrupt or missing saves fall back to a new game without throwing.
-- [ ] AC-14 **Performance:** ≥ 50 fps median at 1280×720 on a 4×-CPU-throttled headless run, with quality tiers (low/med/high) and auto-downgrade. Phone layout ≤ 400 draw calls on the low tier.
-- [ ] AC-15 **Accessibility:** fully playable by keyboard; all HUD controls ≥ 48 px with visible focus; azan and dialogue captioned; respects prefers-reduced-motion (no camera shake or bob); mute and pause available; touch controls fit inside `--pp-app-h`.
-- [ ] AC-16 **Lifecycle:** a hidden tab pauses the sim and audio. Pause dialog. No sound plays while paused or hidden.
+- [x] AC-1 **Boot:** `games/kampung-quest/index.html` loads with zero console errors over http and over `file://` (procedural texture stand-ins on file://). It is registered in `games.js` and passes `npm run smoke`.
+- [x] AC-2 **Movement:** a third-person hero moves on WASD/arrows and on a touch joystick, runs with Shift or a run toggle, and is stopped by building/prop colliders. The camera orbits (mouse drag / two-finger) and never clips inside buildings.
+- [x] AC-3 **World:** the map contains at least: 3 HDB blocks with void decks, a hawker centre (≥ 4 stalls), a mosque (dome, minaret, wudu area, prayer hall, separate entrances), a mini-mart, a barber, a clinic, a library, a playground, a bus stop, roads with zebra crossings, and trees. Ground, walls and roads use photographic PBR textures (CC0, credited).
+- [x] AC-4 **Cast:** ≥ 12 distinct original NPC toy figures plus the hero, built to the toy-figure build (block torso, peg arms, C-hands, cylinder hips, square legs, oversized sculpted head piece) with a glossy plastic material (clearcoat). The hero meets business rule 4.
+- [x] AC-5 **NPC life:** ≥ 12 NPCs follow schedule routines (walk sidewalks, sit and eat, queue, shop) and walk to the mosque at prayer times. They avoid the player and never block a doorway for more than 3 s.
+- [x] AC-6 **Clock:** 1 game day = 48 real minutes (1 game minute = 2 real seconds). Day/night lighting follows the clock (sunrise ≈ Syuruk, sunset ≈ Maghrib).
+- [x] AC-7 **Prayer times:** the 5 prayers trigger at the hard-coded MUIS 26 Nov 2026 times (source cited in `assets/CREDITS.md`). Each trigger plays the licensed azan once with on-screen captions (Arabic, transliteration, English). It plays only when the tab is visible and unmuted; otherwise captions only.
+- [x] AC-8 **Prayer flow:** when a prayer is due, mission progress pauses (a mission already in hand is kept). The flow is: go to the mosque → wudu at the taps in the correct order (intention, hands ×3, mouth ×3, nose ×3, face ×3, arms to elbows R then L ×3, wipe head, ears, feet R then L ×3) → enter the hall → pray the correct raka'at count (Subuh 2, Zohor 4, Asar 4, Maghrib 3, Isyak 4) as guided steps (qiyam, ruku, i'tidal, sujud, julus, sujud, tasyahud on the right raka'at, salam). The hero figure takes each posture. No fail state: a wrong tap gives a gentle hint.
+- [x] AC-9 **Late prayer:** if the player is away at a prayer's start, the prayer stays "due" until done or until its time window ends (the next prayer's start; for Subuh, Syuruk/sunrise, per the ruling). Then it is marked "missed — make it up (qada)", and a qada can be prayed any time with gentle copy and no penalty.
+- [x] AC-10 **Needs & services:** a hunger meter and an energy meter drain over time. Eating at a hawker stall (≥ 8 halal dishes with prices) refills hunger. Resting at home refills energy. Mini-mart, barber (changes hair piece), clinic (a friendly check-up refills energy) and library (a story card) are each interactive. Coins are earned from missions and are never negative.
+- [x] AC-11 **Missions:** ≥ 8 missions with a tracker, a world marker and a minimap arrow, each completable and each child-friendly (errands, helping neighbours, finding a lost cat, recycling, carrying groceries for an elder, delivering kuih, cleaning the playground, giving salam to the imam).
+- [x] AC-12 **Interaction:** context prompts appear within 2 m of an interactable. Dialogue uses a speech-bubble UI with polite Malay/English greetings (Assalamualaikum / Waalaikumsalam).
+- [x] AC-13 **Save:** progress (time, coins, needs, missions, prayers, stickers, outfit) persists to localStorage under `kampung-quest:v1` and survives reload. Corrupt or missing saves fall back to a new game without throwing.
+- [ ] AC-14 _(phone draw calls ≤ 400 and auto-downgrade pass in CI; the frame-rate bar needs a real-GPU / phone run — owner check)_ **Performance:** ≥ 50 fps median at 1280×720 on a 4×-CPU-throttled headless run, with quality tiers (low/med/high) and auto-downgrade. Phone layout ≤ 400 draw calls on the low tier.
+- [x] AC-15 **Accessibility:** fully playable by keyboard; all HUD controls ≥ 48 px with visible focus; azan and dialogue captioned; respects prefers-reduced-motion (no camera shake or bob); mute and pause available; touch controls fit inside `--pp-app-h`.
+- [x] AC-16 **Lifecycle:** a hidden tab pauses the sim and audio. Pause dialog. No sound plays while paused or hidden.
 
 ## Edge cases & error states
 

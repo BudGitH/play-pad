@@ -44,7 +44,9 @@
       "📣",
       "gate",
       ["talbiyah"],
-      ["Say the talbiyah out loud on the way to the Haram. Keep saying it until you see the Kaaba."],
+      [
+        "Say the talbiyah out loud on the way to the Haram. Keep saying it until you see the Kaaba.",
+      ],
     ),
     step(
       "enter",
@@ -111,9 +113,14 @@
       ],
       { leave: { unwear: true, cut: true }, haircut: true },
     ),
-    step("done", "Umrah complete!", "🌟", null, [], [
-      "Alhamdulillah! You finished your Umrah. May Allah accept it.",
-    ]),
+    step(
+      "done",
+      "Umrah complete!",
+      "🌟",
+      null,
+      [],
+      ["Alhamdulillah! You finished your Umrah. May Allah accept it."],
+    ),
   ];
 
   const HAJJ = [
@@ -237,9 +244,14 @@
       ["Before leaving Makkah we say goodbye to the Kaaba with 7 rounds."],
       { counter: counter(7, "round"), walk: "tawaf" },
     ),
-    step("h_done", "Hajj complete!", "🌟", null, [], [
-      "Alhamdulillah! You finished the Hajj highlights. May Allah accept every Hajj.",
-    ]),
+    step(
+      "h_done",
+      "Hajj complete!",
+      "🌟",
+      null,
+      [],
+      ["Alhamdulillah! You finished the Hajj highlights. May Allah accept every Hajj."],
+    ),
   ];
 
   const ZIARAH = [
@@ -299,9 +311,14 @@
         "We never touch, kiss or pray to graves: we ask Allah alone.",
       ],
     ),
-    step("z_done", "Ziarah complete!", "🌟", null, [], [
-      "Alhamdulillah! You visited the blessed places of Madinah.",
-    ]),
+    step(
+      "z_done",
+      "Ziarah complete!",
+      "🌟",
+      null,
+      [],
+      ["Alhamdulillah! You visited the blessed places of Madinah."],
+    ),
   ];
 
   const STEPS = { umrah: UMRAH, hajj: HAJJ, ziarah: ZIARAH };

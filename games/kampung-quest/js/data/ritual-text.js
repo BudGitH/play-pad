@@ -54,7 +54,11 @@
     ikhlas: T("Al-Ikhlas", "Al-Ikhlas 112:1-4", [
       L("قُلْ هُوَ ٱللَّٰهُ أَحَدٌ", "Qul huwa Allahu ahad", "Say: He is Allah, the One."),
       L("ٱللَّٰهُ ٱلصَّمَدُ", "Allahu as-samad", "Allah, the One everyone needs."),
-      L("لَمْ يَلِدْ وَلَمْ يُولَدْ", "Lam yalid wa-lam yulad", "He has no child, and He was not born."),
+      L(
+        "لَمْ يَلِدْ وَلَمْ يُولَدْ",
+        "Lam yalid wa-lam yulad",
+        "He has no child, and He was not born.",
+      ),
       L(
         "وَلَمْ يَكُنْ لَهُ كُفُوًا أَحَدٌ",
         "Wa-lam yakun lahu kufuwan ahad",
@@ -62,8 +66,16 @@
       ),
     ]),
     kafirun: T("Al-Kafirun", "Al-Kafirun 109:1-6", [
-      L("قُلْ يَا أَيُّهَا ٱلْكَافِرُونَ", "Qul ya ayyuha al-kafirun", "Say: O you who disbelieve,"),
-      L("لَا أَعْبُدُ مَا تَعْبُدُونَ", "La a'budu ma ta'budun", "I do not worship what you worship,"),
+      L(
+        "قُلْ يَا أَيُّهَا ٱلْكَافِرُونَ",
+        "Qul ya ayyuha al-kafirun",
+        "Say: O you who disbelieve,",
+      ),
+      L(
+        "لَا أَعْبُدُ مَا تَعْبُدُونَ",
+        "La a'budu ma ta'budun",
+        "I do not worship what you worship,",
+      ),
       L(
         "وَلَا أَنْتُمْ عَابِدُونَ مَا أَعْبُدُ",
         "Wa-la antum 'abidun ma a'bud",
@@ -153,7 +165,11 @@
       ),
     ]),
     itidal: T("I'tidal (standing up)", "Dhikr of i'tidal", [
-      L("سَمِعَ ٱللَّٰهُ لِمَنْ حَمِدَهُ", "Sami'a Allahu liman hamidah", "Allah hears whoever praises Him."),
+      L(
+        "سَمِعَ ٱللَّٰهُ لِمَنْ حَمِدَهُ",
+        "Sami'a Allahu liman hamidah",
+        "Allah hears whoever praises Him.",
+      ),
       L("رَبَّنَا لَكَ ٱلْحَمْدُ", "Rabbana laka al-hamd", "Our Lord, all praise is for You."),
     ]),
     qunut: T("Doa qunut (Subuh)", "Doa qunut, Shafi'i practice for Subuh", [
@@ -162,7 +178,11 @@
         "Allahumma hdini fiman hadayt",
         "O Allah, guide me among those You have guided,",
       ),
-      L("وَعَافِنِي فِيمَنْ عَافَيْتَ", "Wa-'afini fiman 'afayt", "keep me well among those You have kept well,"),
+      L(
+        "وَعَافِنِي فِيمَنْ عَافَيْتَ",
+        "Wa-'afini fiman 'afayt",
+        "keep me well among those You have kept well,",
+      ),
       L(
         "وَتَوَلَّنِي فِيمَنْ تَوَلَّيْتَ",
         "Wa-tawallani fiman tawallayt",
@@ -173,7 +193,11 @@
         "Wa-barik li fima a'tayt",
         "bless me in what You have given,",
       ),
-      L("وَقِنِي شَرَّ مَا قَضَيْتَ", "Wa-qini sharra ma qadayt", "and protect me from the harm of what You decreed."),
+      L(
+        "وَقِنِي شَرَّ مَا قَضَيْتَ",
+        "Wa-qini sharra ma qadayt",
+        "and protect me from the harm of what You decreed.",
+      ),
       L(
         "فَإِنَّكَ تَقْضِي وَلَا يُقْضَىٰ عَلَيْكَ",
         "Fa-innaka taqdi wa-la yuqda 'alayk",
@@ -184,7 +208,11 @@
         "Wa-innahu la yadhillu man walayt",
         "The one You support is never put down,",
       ),
-      L("وَلَا يَعِزُّ مَنْ عَادَيْتَ", "Wa-la ya'izzu man 'adayt", "and the one You oppose is never mighty."),
+      L(
+        "وَلَا يَعِزُّ مَنْ عَادَيْتَ",
+        "Wa-la ya'izzu man 'adayt",
+        "and the one You oppose is never mighty.",
+      ),
       L(
         "تَبَارَكْتَ رَبَّنَا وَتَعَالَيْتَ",
         "Tabarakta rabbana wa-ta'alayt",
@@ -312,7 +340,11 @@
         "Nawaytu al-'umrata wa-ahramtu biha lillahi ta'ala",
         "I intend Umrah and I enter ihram for it, for Allah the Most High.",
       ),
-      L("لَبَّيْكَ ٱللَّٰهُمَّ عُمْرَةً", "Labbayka Allahumma 'umrah", "Here I am, O Allah, for Umrah."),
+      L(
+        "لَبَّيْكَ ٱللَّٰهُمَّ عُمْرَةً",
+        "Labbayka Allahumma 'umrah",
+        "Here I am, O Allah, for Umrah.",
+      ),
     ]),
     niyyahHajj: T("Niyyah for Hajj", "Niyyah of ihram for Hajj", [
       L(
@@ -320,7 +352,11 @@
         "Nawaytu al-hajja wa-ahramtu bihi lillahi ta'ala",
         "I intend Hajj and I enter ihram for it, for Allah the Most High.",
       ),
-      L("لَبَّيْكَ ٱللَّٰهُمَّ حَجًّا", "Labbayka Allahumma hajjan", "Here I am, O Allah, for Hajj."),
+      L(
+        "لَبَّيْكَ ٱللَّٰهُمَّ حَجًّا",
+        "Labbayka Allahumma hajjan",
+        "Here I am, O Allah, for Hajj.",
+      ),
     ]),
     talbiyah: T("Talbiyah", "The talbiyah of the Prophet (Sahih al-Bukhari and Muslim)", [
       L(
@@ -403,7 +439,11 @@
         "Lahu al-mulku wa-lahu al-hamdu wa-huwa 'ala kulli shay'in qadir",
         "His is the kingdom, His is the praise, and He has power over everything.",
       ),
-      L("لَا إِلَٰهَ إِلَّا ٱللَّٰهُ وَحْدَهُ", "La ilaha illa llahu wahdah", "There is no god but Allah alone."),
+      L(
+        "لَا إِلَٰهَ إِلَّا ٱللَّٰهُ وَحْدَهُ",
+        "La ilaha illa llahu wahdah",
+        "There is no god but Allah alone.",
+      ),
       L(
         "أَنْجَزَ وَعْدَهُ وَنَصَرَ عَبْدَهُ وَهَزَمَ ٱلْأَحْزَابَ وَحْدَهُ",
         "Anjaza wa'dahu wa-nasara 'abdahu wa-hazama al-ahzaba wahdah",

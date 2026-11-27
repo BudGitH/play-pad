@@ -212,6 +212,10 @@
 
   /** The twice-a-second job: decide who is here. */
   function reconcile(C, hero, minute) {
+    if (!C.pruned) {
+      C.slots = G.CrowdZones.prune(C.world, C.slots);
+      C.pruned = true;
+    }
     const cap = SC().capFor(C.tier);
     const target = SC().walkerTarget(minute, C.tier);
     reconcileSpots(C, hero, minute, Math.max(0, cap - target));

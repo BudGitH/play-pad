@@ -58,6 +58,15 @@
     });
   }
 
+  /** Pigeons, lamp halos and the invisible edge walls (added after the static batch is built). */
+  function extras(group, ctx, mats) {
+    const pigeons = P.HolyPigeons.build(group, mats);
+    const hl = halos(ctx);
+    if (hl) group.add(hl);
+    [P.HolyMakkah.BOUNDS, P.HolyMadinah.BOUNDS].forEach((b) => edges(ctx.colliders, b));
+    return { pigeons, hl };
+  }
+
   /** The scenery steps, in order; each is named so the debug hook can list what exists. */
   function steps(c, group, mats, out) {
     const list = [
@@ -267,10 +276,7 @@
     const sites = steps(ctx, group, kit.mats, out);
     instanced(group, kit.mats, out, ctx.colliders);
     B.build(kit.mats, group);
-    const pigeons = P.HolyPigeons.build(group, kit.mats);
-    const hl = halos(ctx);
-    if (hl) group.add(hl);
-    [P.HolyMakkah.BOUNDS, P.HolyMadinah.BOUNDS].forEach((b) => edges(ctx.colliders, b));
+    const { pigeons, hl } = extras(group, ctx, kit.mats);
     freeze(group);
     scene.add(group);
     P.Sky.fromPrayerTimes();

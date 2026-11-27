@@ -37,7 +37,7 @@
     // Haramain + planting beds (CC0, ambientCG; see assets/CREDITS.md)
     sand: { n: true, fb: { base: [206, 178, 134], amp: 16, ripples: true } },
     dirt: { n: true, fb: { base: [146, 120, 86], amp: 38, speck: 0.5 } },
-    rock: { n: true, fb: { base: [118, 100, 86], amp: 58, streaks: true, speck: 0.3 } },
+    rock: { n: true, fb: { base: [124, 108, 92], amp: 46, speck: 0.4 } },
     limestone: {
       n: true,
       fb: { base: [214, 200, 172], amp: 16, grid: [4, 4], grout: [150, 138, 116], speck: 0.1 },

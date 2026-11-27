@@ -90,7 +90,8 @@
         z1: dz,
         y1: 2.6,
         t: 0.7,
-        color: 0xe6dcc4,
+        key: "sandstone",
+        color: 0xf2e8cc,
         kind: "fence",
       });
     wl(x0, z0, x1, z0);

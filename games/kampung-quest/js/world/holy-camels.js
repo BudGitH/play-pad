@@ -23,7 +23,7 @@
     [CARAVAN.cx - 24, CARAVAN.cz - 18, CARAVAN.cx + 24, CARAVAN.cz + 18],
     [OASIS.x - 26, OASIS.z - 22, OASIS.x + 26, OASIS.z + 22],
   ];
-  const COATS = [0xffffff, 0xf0dcb8, 0xd8b890, 0xb89870, 0x9a7a58];
+  const COATS = [0xffffff, 0xf3e0be, 0xe4c9a0, 0xd4b48a, 0xc4a47c];
 
   /** The herd: mode "stand" | "rest" | "graze" | "walk"; saddle = a blanket tint or 0; `lap` = offset on the caravan track. */
   const HERD = [

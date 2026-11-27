@@ -130,5 +130,20 @@
     return out;
   }
 
-  P.Town = { plazas, carpark, park, treeList, shrubSpots, PLAZAS };
+  /** Mulch strips under the shrub rows: [x0, z0, x1, z1]. */
+  const BEDS = [
+    [-57, 13.4, -23, 14.9],
+    [-57, 55.9, -23, 57.4],
+    [33, 55.9, 65, 57.4],
+    [68, -57, 69.3, -41],
+    [11.8, 28.5, 28.8, 30],
+  ];
+
+  /** Bare-soil mulch (the CC0 soil photo) in a ring round every tree and in strips under the shrub rows. */
+  function treeBeds(B) {
+    treeList().forEach((t) => B.cyl("soil", t.x, 0.02, t.z, 0.8 * t.s + 0.45, 0.04, 16, 0xffffff));
+    BEDS.forEach(([x0, z0, x1, z1]) => B.aabb("soil", x0, 0, z0, x1, 0.04, z1, 0xffffff));
+  }
+
+  P.Town = { plazas, carpark, park, treeList, shrubSpots, treeBeds, PLAZAS };
 })((window.KQ = window.KQ || {}));

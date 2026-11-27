@@ -33,7 +33,7 @@
 
   /** One diamond leaf scar. */
   function scar(g, x, y) {
-    g.fillStyle = "rgba(58,40,24,0.55)";
+    g.fillStyle = "rgba(58,40,24,0.38)";
     g.beginPath();
     g.moveTo(x, y - 7);
     g.lineTo(x + 8, y);
@@ -81,7 +81,7 @@
     for (let i = 0; i < pos.count; i += 1) {
       const y = pos.getY(i);
       pos.setX(i, pos.getX(i) + Math.sin((y / TRUNK_H) * 1.6) * 0.35);
-      uv.setXY(i, uv.getX(i) * 2, uv.getY(i) * 7);
+      uv.setXY(i, uv.getX(i) * 2, uv.getY(i) * 11);
     }
     const bulge = new THREE.SphereGeometry(0.42, 8, 6).translate(
       0.35 * Math.sin(1.6),

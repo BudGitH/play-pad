@@ -1,7 +1,8 @@
 Photographic PBR textures from ambientCG (https://ambientcg.com), released under
 CC0 1.0 Universal (https://creativecommons.org/publicdomain/zero/1.0/).
-Assets used (16): Asphalt031, PavingStones146, Plaster002, Grass004, Concrete034, Tiles110,
+Assets used (23): Asphalt031, PavingStones146, Plaster002, Grass004, Concrete034, Tiles110,
 Marble012, RoofingTiles012A, Rubber001, Carpet012, Bark007, Terrazzo013, LeafSet024,
-LeafSet023, LeafSet014, Foliage001 (1K-JPG sets, resized to JPEG;
-rubber.jpg is desaturated and lifted so it can be tinted in code).
+LeafSet023, LeafSet014, Foliage001, Ground097, Ground102, Rock049, Tiles143, Bricks084,
+Wood049, Ground048 (1K-JPG sets, resized to JPEG; rubber.jpg and wood.jpg are desaturated
+and lifted so they can be tinted in code).
 Per-file mapping: see ../CREDITS.md.

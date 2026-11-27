@@ -61,6 +61,7 @@
     P.Town.plazas(B);
     P.Town.carpark(B, L.carpark);
     P.Town.park(B, L.park, ctx);
+    P.Town.treeBeds(B);
     P.Detail.roadWear(B, L);
     ctx.potSpots = [];
     P.Clutter.pots(B, ctx.colliders, ctx.potSpots);

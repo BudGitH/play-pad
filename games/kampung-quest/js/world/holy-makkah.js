@@ -214,7 +214,7 @@
     const j = KQ.HOLY.hajj.jamarat;
     [-12, 0, 12].forEach((dx) => {
       const x = j.x + dx;
-      c.B.aabb("concrete", x - 4.2, 0, j.z - 6.4, x + 4.2, 0.9, j.z + 6.4, 0xd7ccb4);
+      c.B.aabb("sandstone", x - 4.2, 0, j.z - 6.4, x + 4.2, 0.9, j.z + 6.4, 0xf0e4c8);
       c.B.aabb("tiles", x - 3.4, 0.9, j.z - 5.6, x + 3.4, 0.95, j.z + 5.6, 0xb9ad94);
       c.B.box("concrete", x, 3.4, j.z, 1.5, 6, 5.4, 0xcbbd9f);
       c.B.box("concrete", x, 6.6, j.z, 1.9, 0.4, 5.8, 0xb9ad94);

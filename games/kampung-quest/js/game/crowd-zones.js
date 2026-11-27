@@ -338,5 +338,20 @@
     return all;
   }
 
-  G.CrowdZones = { build, clear, segmentClear, openPoints };
+  /** Is a slot still usable now? (Seats and the circling pilgrims always are; the rest must have room.) */
+  function usable(world, s) {
+    if (s.sit || s.holy === "orbit" || s.holy === "lane") return true;
+    if (s.line) return segmentClear(world, s.line.x0, s.line.z0, s.line.x1, s.line.z1, 0.5);
+    return clear(world, s.x, s.z, 0.25);
+  }
+
+  /**
+   * Drop the slots that something built after the world has since taken (parked cars, bicycles and
+   * scooters are placed on the first frame, after the crowd is laid out).
+   */
+  function prune(world, slots) {
+    return slots.filter((s) => usable(world, s));
+  }
+
+  G.CrowdZones = { build, clear, segmentClear, openPoints, prune };
 })((window.KQ = window.KQ || {}));

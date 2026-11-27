@@ -208,12 +208,29 @@
     }
   }
 
+  /**
+   * Something parked on the way (a bicycle on the footway): do not walk into it. Wait where we were, and
+   * once nobody can see it happen, leave and let someone else take the walk.
+   */
+  function holdIfBlocked(C, m, from, dt) {
+    if (G.CrowdZones.clear(C.world, m.x, m.z, 0.25)) {
+      m.stuck = 0;
+      return;
+    }
+    m.x = from.x;
+    m.z = from.z;
+    m.stuck = (m.stuck || 0) + dt;
+    if (m.stuck > 1 && !C.visibleNear(m.x, m.z)) m.leaving = true;
+  }
+
   /** Step a stroller along its path by dt; make way for the hero as it passes. */
   function update(C, m, dt) {
     if (m.linger > 0) lingering(C, m, dt);
     else if (m.path.length) {
       const goal = m.path[m.wp];
+      const from = { x: m.x, z: m.z };
       if (G.CrowdMembers.stepToward(m, goal.x, goal.z, m.speed, dt)) m.wp += 1;
+      holdIfBlocked(C, m, from, dt);
       if (m.wp >= m.path.length) {
         m.path = [];
         arrived(C, m);

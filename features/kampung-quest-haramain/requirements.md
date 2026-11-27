@@ -4,6 +4,7 @@ Feature tier: Standard. Personas: young Muslim child (6-10) playing with a paren
 (Product step skipped by owner instruction, 2026-11-27.)
 
 ## Owner request (paraphrased)
+
 Add a Makkah / Madinah scenery: Masjid al-Haram (Kaaba, tawaf), Masjid Nabawi (interior as accurate as we can,
 representative), pilgrims praying. Tasks: Umrah step by step, Hajj highlights, ziarah. Enter cars, ride bicycles
 outside. Times of day. NPC voices play with speech bubbles. Make eating / praying tasks easy: a simple
@@ -12,12 +13,14 @@ step-by-step UI (frame by frame, item by item, word by word); surahs shown in fu
 Note: Masjid Nabawi is in **Madinah**, not Makkah — the region holds both cities with a bus between them.
 
 ## Region contract
+
 - `?region=haramain` (also a "Travel to Makkah & Madinah" title/pause option that saves the choice and reloads).
   Default stays `kampung`; existing tests must stay green.
 - Anchors: `js/data/holy-sites.js` (`KQ.HOLY`). Qibla in Makkah = toward the Kaaba.
 - Prayer times for the region: Umm al-Qura Makkah times (cite source in the data file or mark as approximate).
 
 ## Acceptance criteria
+
 - AC-H1 Haramain world loads with no console errors (http + file://), Kaaba + mataf + maqam + Zamzam + Safa/Marwa,
   Nabawi exterior (green dome, minarets, umbrellas) and interior (white columns with arches, red carpet rows,
   green-carpet Rawdah, mihrab, minbar, chandeliers). No depiction of the Prophet ﷺ or the Companions; no faces on

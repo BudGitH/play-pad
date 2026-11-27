@@ -81,7 +81,9 @@
   /** A wheel lying with its axle along x: a dark tyre, a pale hub and (for a bicycle) spokes. */
   function wheelGeo(r, tube, width, spokes) {
     const tyre = new THREE.TorusGeometry(r - tube, tube, 8, 18).rotateY(PI / 2);
-    const parts = [G.place(paint(tyre, "#26272c"), [0, 0, 0], [0, 0, 0], [width / (2 * tube), 1, 1])];
+    const parts = [
+      G.place(paint(tyre, "#26272c"), [0, 0, 0], [0, 0, 0], [width / (2 * tube), 1, 1]),
+    ];
     const rim = new THREE.CylinderGeometry(r * 0.62, r * 0.62, width * 0.7, 12).rotateZ(PI / 2);
     parts.push(paint(rim, spokes ? "#9aa0a8" : "#c9ccd2"));
     if (spokes) parts.push(...spokeBars(r));
@@ -99,7 +101,10 @@
   /** The steering wheel: a thin ring facing the driver. */
   function steerGeo() {
     const ring = new THREE.TorusGeometry(0.13, 0.018, 6, 16);
-    return G.merge([paint(ring, "#1f2024"), paint(new THREE.CylinderGeometry(0.03, 0.03, 0.03, 8).rotateX(PI / 2), "#c9ccd2")]);
+    return G.merge([
+      paint(ring, "#1f2024"),
+      paint(new THREE.CylinderGeometry(0.03, 0.03, 0.03, 8).rotateX(PI / 2), "#c9ccd2"),
+    ]);
   }
 
   /** The bicycle frame (tinted): top, down and seat tubes, chain and seat stays. */

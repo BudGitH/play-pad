@@ -21,6 +21,7 @@
     const o = d.o;
     U.clear(d.actions);
     d.text.textContent = d.lines[d.page];
+    G.Voice.line({ id: o.id, name: o.name, text: d.lines[d.page] });
     if (d.page < d.lines.length - 1) {
       const next = () => ((d.page += 1), showPage(d));
       d.actions.appendChild(G.UI.btn("Next", { cls: "primary", icon: "arrow", onClick: next }));
@@ -61,7 +62,10 @@
       label: "Talking to " + o.name,
       variant: "bubble",
       scrim: false,
-      onClose: o.onClose,
+      onClose() {
+        G.Voice.cancel("closed");
+        if (o.onClose) o.onClose();
+      },
     });
     showPage(d);
     return d.handle;

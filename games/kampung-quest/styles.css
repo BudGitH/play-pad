@@ -2264,3 +2264,255 @@ kbd {
 .kq-credits {
   max-height: 100%;
 }
+
+/* ---------- guided steppers: rituals, wudu, prayer, eating (ritual-ui.js) ---------- */
+.kq-sheet .kq-sheet-box:has(> .kq-stepper) {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  overflow: hidden;
+}
+.kq-sheet-bottom .kq-sheet-box:has(> .kq-stepper) {
+  max-height: calc(100% - 4px);
+}
+.kq-stepper {
+  flex: 1 1 auto;
+  min-height: 0;
+  gap: 8px;
+}
+.kq-stepper > .kq-sheet-head {
+  position: static;
+  margin-top: 0;
+  padding: 0;
+  background: none;
+}
+.kq-stepper-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  padding: 2px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.kq-stepper-foot-host {
+  flex: none;
+}
+.kq-step-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.kq-step-foot .kq-step-next {
+  width: 100%;
+  min-height: 60px;
+  font-size: 18px;
+}
+.kq-step-sub {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+.kq-step-sub:empty {
+  display: none;
+}
+.kq-step-back .kq-ic {
+  transform: rotate(-90deg);
+}
+.kq-step-art {
+  display: grid;
+  place-items: center;
+  min-height: 64px;
+  font-size: 52px;
+  line-height: 1.1;
+}
+.kq-step-art .kq-posture {
+  width: 112px;
+  height: 112px;
+}
+.kq-step-title {
+  margin: 0;
+  font-size: 20px;
+  text-align: center;
+}
+.kq-step-how {
+  margin: 0;
+  font-size: 15px;
+}
+.kq-progress {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.kq-progress-host:empty {
+  display: none;
+}
+.kq-pip {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--md-sys-color-outline-variant);
+}
+.kq-pip.is-done {
+  background: #1f9d4a;
+}
+.kq-pip.is-now {
+  background: var(--kq-gold);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--kq-gold) 40%, transparent);
+}
+.kq-recite {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.kq-words {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  justify-content: center;
+  padding: 8px;
+  border-radius: 14px;
+  background: var(--md-sys-color-surface-container-high);
+}
+.kq-word {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  min-width: 48px;
+  min-height: 48px;
+  padding: 2px 8px 4px;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  background: transparent;
+  color: inherit;
+}
+.kq-word.is-said {
+  opacity: 0.62;
+}
+.kq-word.is-now {
+  border-color: var(--kq-gold);
+  background: var(--md-sys-color-tertiary-container);
+  opacity: 1;
+}
+.kq-w-ar {
+  font-size: 28px;
+  line-height: 1.55;
+}
+.kq-w-tr {
+  font-size: 13px;
+  font-style: italic;
+  font-weight: 600;
+}
+.kq-meaning {
+  text-align: center;
+  min-height: 1.4em;
+}
+.kq-word-controls,
+.kq-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+}
+.kq-word-controls .kq-btn,
+.kq-chip-btn {
+  min-height: 48px;
+}
+.kq-word-prev .kq-ic {
+  transform: rotate(-90deg);
+}
+.kq-word-controls .kq-btn.is-on,
+.kq-chip-btn.is-on {
+  background: var(--md-sys-color-tertiary-container);
+  color: var(--md-sys-color-on-tertiary-container);
+  box-shadow: inset 0 0 0 2px var(--kq-gold);
+}
+.kq-chip-btn {
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--md-sys-color-surface-container-highest);
+  color: var(--md-sys-color-on-surface);
+  font-weight: 700;
+}
+.kq-full {
+  max-height: 34vh;
+  padding: 8px 10px;
+  overflow-y: auto;
+  border-radius: 12px;
+  background: var(--md-sys-color-surface-container);
+  scrollbar-width: thin;
+}
+.kq-full[hidden] {
+  display: none;
+}
+.kq-full-line {
+  padding: 4px 0 8px;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+  text-align: center;
+}
+.kq-full-line .kq-ar {
+  display: block;
+  font-size: 24px;
+}
+.kq-step-ref {
+  margin: 0;
+  text-align: center;
+  color: var(--md-sys-color-on-surface-variant);
+}
+.kq-step-counter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.kq-step-count {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 800;
+}
+.kq-step-dots {
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.kq-sheet-side .kq-stepper .kq-sheet-title {
+  font-size: 16px;
+}
+@media (max-height: 520px), (max-width: 700px) {
+  .kq-step-art {
+    min-height: 40px;
+    font-size: 34px;
+  }
+  .kq-step-art .kq-posture {
+    width: 72px;
+    height: 72px;
+  }
+  .kq-step-title {
+    font-size: 17px;
+  }
+  .kq-step-how {
+    font-size: 14px;
+  }
+  .kq-w-ar {
+    font-size: 24px;
+  }
+  .kq-full {
+    max-height: 26vh;
+  }
+  .kq-step-foot .kq-step-next {
+    min-height: 54px;
+  }
+}
+/* the minimised ritual chip: tap to bring the stepper back while you walk the rite yourself */
+.kq-ritual-chip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--kq-dock-h) + var(--kq-bot) + 12px);
+  z-index: 12;
+  transform: translateX(-50%);
+  max-width: min(92vw, 520px);
+  white-space: normal;
+}

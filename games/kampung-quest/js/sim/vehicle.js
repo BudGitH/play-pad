@@ -100,7 +100,8 @@
   function stepSpeed(v, throttle, dt) {
     const s = v.spec;
     const want = wantedSpeed(s, throttle);
-    const against = throttle !== 0 && Math.sign(want) !== Math.sign(v.speed) && Math.abs(v.speed) > 0.2;
+    const against =
+      throttle !== 0 && Math.sign(want) !== Math.sign(v.speed) && Math.abs(v.speed) > 0.2;
     let rate = s.accel;
     if (against) rate = s.brake;
     else if (throttle === 0 || Math.abs(want) < Math.abs(v.speed)) rate = s.coast;

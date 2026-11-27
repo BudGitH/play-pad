@@ -49,11 +49,19 @@
     let cars = 0;
     let bikes = 0;
     return list
-      .filter((s) => s && Number.isFinite(s.x) && Number.isFinite(s.z) && /^(car|bike)$/.test(s.kind))
+      .filter(
+        (s) => s && Number.isFinite(s.x) && Number.isFinite(s.z) && /^(car|bike)$/.test(s.kind),
+      )
       .map(function (s) {
         const pool = s.kind === "car" ? HOLY_CARS : HOLY_BIKES;
         const i = s.kind === "car" ? cars++ : bikes++;
-        return { kind: s.kind, x: s.x, z: s.z, heading: s.heading || 0, color: pool[i % pool.length] };
+        return {
+          kind: s.kind,
+          x: s.x,
+          z: s.z,
+          heading: s.heading || 0,
+          color: pool[i % pool.length],
+        };
       });
   }
 
@@ -86,14 +94,24 @@
     if (!H) return [];
     const zones = [];
     if (H.makkah) {
-      zones.push({ x: H.makkah.mataf.x, z: H.makkah.mataf.z, r: H.makkah.mataf.r + 4, say: MASJID });
+      zones.push({
+        x: H.makkah.mataf.x,
+        z: H.makkah.mataf.z,
+        r: H.makkah.mataf.r + 4,
+        say: MASJID,
+      });
       const m = H.makkah.masaLane;
       zones.push({ x0: m.x - m.w, x1: m.x + m.w, z0: m.z0 - 6, z1: m.z1 + 6, say: MASJID });
     }
     if (H.madinah) {
       const n = H.madinah.nabawi;
       zones.push({ x: n.x, z: n.z, w: n.w + 8, d: n.d + 8, say: MASJID });
-      zones.push({ x: H.madinah.umbrellas.x, z: H.madinah.umbrellas.z, r: H.madinah.umbrellas.r, say: MASJID });
+      zones.push({
+        x: H.madinah.umbrellas.x,
+        z: H.madinah.umbrellas.z,
+        r: H.madinah.umbrellas.r,
+        say: MASJID,
+      });
     }
     return zones;
   }

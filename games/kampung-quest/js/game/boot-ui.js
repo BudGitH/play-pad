@@ -12,13 +12,14 @@
   "use strict";
   const G = (KQ.Game = KQ.Game || {});
   const U = G.U;
-  const STEPS = [
+  const DEFAULT_STEPS = [
     "Streets and blocks",
     "Neighbours (16 figures)",
     "Photo textures",
     "Azan recording",
     "Pictures",
   ];
+  let STEPS = DEFAULT_STEPS;
   const B = {};
 
   /** Look up the title screen elements once and clear the placeholder load steps. */
@@ -35,6 +36,7 @@
       error: q("kqError"),
     });
     U.clear(B.list);
+    STEPS = G.Region.applyTitle(q("kqRegions"), q("kqLead")) || DEFAULT_STEPS;
     STEPS.forEach(function (name, i) {
       B.list.appendChild(
         U.el(

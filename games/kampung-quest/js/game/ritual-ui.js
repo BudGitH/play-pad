@@ -264,6 +264,34 @@
   function open(h) {
     const rs = { cursor: null, auto: false, full: false, textIndex: 0, key: null };
     const ctl = { rs, card: null, closed: false };
+    const parts = shell();
+    ctl.handle = G.UI.openSheet({
+      el: parts.box,
+      label: h.label,
+      variant: variant(),
+      scrim: false,
+      onClose(reason) {
+        ctl.closed = true;
+        if (G.RitualUI.active === ctl) G.RitualUI.active = null;
+        h.onClose(reason);
+      },
+      focus: ".kq-step-next",
+    });
+    rs.redraw = () => draw(ctl, h, parts);
+    ctl.show = function (card) {
+      if (ctl.closed) return;
+      if (rs.key !== card.key) Object.assign(rs, { key: card.key, cursor: null, textIndex: 0 });
+      ctl.card = card;
+      rs.redraw();
+    };
+    ctl.close = (reason) => ctl.handle.close(reason || "done");
+    ctl.tick = (dt) => tick(ctl, dt);
+    G.RitualUI.active = ctl;
+    return ctl;
+  }
+
+  /** The empty sheet content: header (title, progress, Not now), the scrolling body and the pinned footer. */
+  function shell() {
     const title = el("h2", { cls: "kq-sheet-title", text: "" });
     const prog = el("div", { cls: "kq-progress-host" });
     const head = el(
@@ -275,36 +303,8 @@
     );
     const body = el("div", { cls: "kq-stepper-body" });
     const foot = el("div", { cls: "kq-stepper-foot-host" });
-    const box = el(
-      "div",
-      { cls: "kq-menu kq-prayer-sheet kq-stepper " + (h.cls || "") },
-      head,
-      body,
-      foot,
-    );
-    ctl.handle = G.UI.openSheet({
-      el: box,
-      label: h.label,
-      variant: variant(),
-      scrim: false,
-      onClose(reason) {
-        ctl.closed = true;
-        if (G.RitualUI.active === ctl) G.RitualUI.active = null;
-        h.onClose(reason);
-      },
-      focus: ".kq-step-next",
-    });
-    rs.redraw = () => draw(ctl, h, { title, prog, body, foot });
-    ctl.show = function (card) {
-      if (ctl.closed) return;
-      if (rs.key !== card.key) Object.assign(rs, { key: card.key, cursor: null, textIndex: 0 });
-      ctl.card = card;
-      rs.redraw();
-    };
-    ctl.close = (reason) => ctl.handle.close(reason || "done");
-    ctl.tick = (dt) => tick(ctl, dt);
-    G.RitualUI.active = ctl;
-    return ctl;
+    const box = el("div", { cls: "kq-menu kq-prayer-sheet kq-stepper" }, head, body, foot);
+    return { box, title, prog, body, foot };
   }
 
   /** Redraw head, body and foot from the current card (keeps the reading state; refocuses Next). */

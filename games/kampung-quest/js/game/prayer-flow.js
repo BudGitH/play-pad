@@ -385,8 +385,8 @@
   }
 
   /**
-   * One tap on the wudu action: count it, play the sound, and complete the step once its count is
-   * reached.
+   * "Next" on a wudu card: the whole step is done (all its washes), the sound plays and the sim moves
+   * on. The last step finishes the wudu.
    */
   function wuduAct() {
     const prayer = S().sim.prayer;
@@ -394,14 +394,11 @@
     if (!step) return;
     F.wudu.tried = -1;
     F.wudu.hint = "";
-    F.wudu.taps += 1;
+    F.wudu.taps = 0;
     S().player.forcedPose = step.pose;
     G.Audio.play(step.pose === "idle" || step.pose === "doa" ? "tap" : "splash");
-    if (F.wudu.taps >= step.count) {
-      F.wudu.taps = 0;
-      const res = prayer.wuduStep(step.id);
-      if (res.ok && res.done) return finishWudu();
-    }
+    const res = prayer.wuduStep(step.id);
+    if (res.ok && res.done) return finishWudu();
     refreshWudu();
   }
 
@@ -431,21 +428,27 @@
     computeGuide();
   }
 
-  /** Lock the hero at the tap, open the wudu screen and frame the camera on them. */
-  function openWudu(tap) {
-    F.lastTap = tap;
-    const P = S().player;
-    const spot = {
+  /** Where the hero stands for wudu: at the tap, or (`here`) right where they are. */
+  function wuduSpot(tap, here) {
+    if (here) return here;
+    return {
       x: tap.pos.x,
       y: S().world.heightAt(tap.pos.x, tap.pos.z),
       z: tap.pos.z + 0.9,
       heading: Math.PI,
     };
-    G.Player.lock(P, spot, "idle");
+  }
+
+  /** Lock the hero at the tap (or `here`), open the wudu stepper and frame the camera on them. */
+  function openWudu(tap, here) {
+    F.lastTap = tap;
+    F.lastHere = here || null;
+    const spot = wuduSpot(tap, here);
+    G.Player.lock(S().player, spot, "idle");
     F.wudu = { taps: 0, tried: -1, hint: "" };
-    F.wui = G.PrayerUI.wudu({ onPick: wuduPick, onAct: wuduAct, onClose: closeWudu });
+    F.wui = G.PrayerUI.wudu({ onAct: wuduAct, onClose: closeWudu });
     refreshWudu();
-    frameHero({ x: spot.x, y: spot.y, z: spot.z, faceYaw: Math.PI }, 0.7, 2.3);
+    frameHero({ x: spot.x, y: spot.y, z: spot.z, faceYaw: spot.heading }, 0.7, 2.3);
   }
 
   /**
@@ -499,6 +502,7 @@
     return {
       name: flow.name,
       kind: flow.kind,
+      stepId: next ? next.id : "end",
       rakaat,
       total,
       choices: G.PrayerText.choices(valid, seed),
@@ -543,15 +547,21 @@
     return want ? G.PrayerText.nextHint(want.type) : "";
   }
 
-  /** Lock the hero at the hall's prayer spot, open the prayer screen and frame the camera. */
-  function openPray() {
+  /**
+   * Lock the hero at the hall's prayer spot (or `here`, facing the qibla), open the prayer stepper
+   * and frame the camera.
+   */
+  function openPray(here) {
     const P = S().player;
-    const y = S().world.heightAt(HALL_SPOT.x, HALL_SPOT.z);
-    G.Player.lock(P, { x: HALL_SPOT.x, y, z: HALL_SPOT.z, heading: HALL_SPOT.heading }, "idle");
+    const spot = here || { x: HALL_SPOT.x, z: HALL_SPOT.z, heading: HALL_SPOT.heading };
+    const y = S().world.heightAt(spot.x, spot.z);
+    F.praySpot = { x: spot.x, z: spot.z, heading: spot.heading };
+    F.lastHere = here || null;
+    G.Player.lock(P, { x: spot.x, y, z: spot.z, heading: spot.heading }, "idle");
     F.pray = { tried: null, cue: null, hint: "", seed: 0 };
     F.pui = G.PrayerUI.pray({ onPick: prayPick, onClose: closePray });
     refreshPray();
-    frameHero({ x: HALL_SPOT.x, y, z: HALL_SPOT.z, faceYaw: Math.PI }, 0.55, 2.3);
+    frameHero({ x: spot.x, y, z: spot.z, faceYaw: spot.heading }, 0.55, 2.3);
   }
 
   /**
@@ -592,7 +602,8 @@
         if (!voluntary) G.UI.toast("Missions can carry on now.", "good");
       },
     });
-    frameHero({ x: HALL_SPOT.x, y: S().player.pos.y, z: HALL_SPOT.z, faceYaw: Math.PI }, 0.55, 2.3);
+    const at = F.praySpot || HALL_SPOT;
+    frameHero({ x: at.x, y: S().player.pos.y, z: at.z, faceYaw: at.heading }, 0.55, 2.3);
   }
 
   /* ------------------------------ entry points ------------------------------ */
@@ -766,8 +777,8 @@
     const isSide = Boolean(box && box.parentElement.classList.contains("kq-sheet-side"));
     if (isSide === G.PrayerUI.wantsSide()) return frameAgain();
     G.UI.closeSheet("refit");
-    if (open === "wudu") openWudu(F.lastTap);
-    else openPray();
+    if (open === "wudu") openWudu(F.lastTap, F.lastHere);
+    else openPray(F.lastHere);
   }
 
   /** Re-apply the last prayer framing after a resize or rotation that kept the same panel layout. */
@@ -775,7 +786,7 @@
     const f = G.Camera.state.frame;
     if (f)
       frameHero(
-        { x: f.target.x, y: f.target.y, z: f.target.z, faceYaw: Math.PI },
+        { x: f.target.x, y: f.target.y, z: f.target.z, faceYaw: F.lastFace },
         F.lastYawOff,
         F.lastDist,
       );

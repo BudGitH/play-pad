@@ -100,7 +100,8 @@
     const g = v.mesh.group;
     g.position.set(v.sim.x, v.y, v.sim.z);
     g.rotation.y = v.sim.heading;
-    g.rotation.z = v.kind === "bike" ? -v.sim.steer * Math.min(1, Math.abs(v.sim.speed) / 4) * 0.22 : 0;
+    g.rotation.z =
+      v.kind === "bike" ? -v.sim.steer * Math.min(1, Math.abs(v.sim.speed) / 4) * 0.22 : 0;
   }
 
   /**
@@ -306,7 +307,10 @@
     const h = v.sim.heading;
     const fx = Math.sin(h);
     const fz = Math.cos(h);
-    const at = (fwd, lat) => ({ x: v.sim.x + fx * fwd + fz * lat, z: v.sim.z + fz * fwd - fx * lat });
+    const at = (fwd, lat) => ({
+      x: v.sim.x + fx * fwd + fz * lat,
+      z: v.sim.z + fz * fwd - fx * lat,
+    });
     return [at(0, side), at(0, -side), at(-end, 0), at(end, 0), at(0, side + 1)];
   }
 

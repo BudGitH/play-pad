@@ -71,6 +71,9 @@
       setRead: (v) => (
         (G.Settings.prefs.readToMe = v), G.Settings.save(S().storage), G.Speech.cancel()
       ),
+      setVoices: (v) => (
+        (G.Settings.prefs.voices = v), G.Settings.save(S().storage), !v && G.Voice.cancel("off")
+      ),
       setAmbience: (v) => ((G.Settings.prefs.ambience = v), G.Settings.save(S().storage)),
       getQuality: () => (G.Settings.prefs.autoQuality ? "auto" : S().quality),
       setQuality: setQualityChoice,
@@ -85,6 +88,7 @@
         location.href = "../../index.html";
       },
       onStartOver: confirmStartOver,
+      onChangeRegion: () => G.Region.openSheet({ onClose: (why) => why === "same" && openPause() }),
       onClose: () => G.Loop.setPaused(false),
     };
   }
@@ -167,7 +171,10 @@
     if (G.UI.modalOpen() && name !== "mute") return;
     if (name === "interact") return G.Interact.activate(S().target);
     if (name === "mute") return setMuted(!G.Audio.isMuted());
-    if (name === "jump") return canJump() && G.Player.jump(S().player, G.Audio);
+    if (name === "jump")
+      return G.Vehicles.mounted()
+        ? G.Vehicles.horn()
+        : canJump() && G.Player.jump(S().player, G.Audio);
     if (["missions", "map", "pray", "bag"].indexOf(name) !== -1) dock(name);
   }
 

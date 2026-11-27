@@ -63,13 +63,15 @@
     const P = s.player;
     const free = !G.UI.modalOpen() && !s.paused;
     const move = free ? G.Input.move() : { x: 0, y: 0, mag: 0, run: false };
-    G.Player.update(P, dt, move, {
-      yaw: G.Camera.state.yaw,
-      speedFactor: s.sim.needs.speedFactor(),
-      colliders: s.world.colliders,
-      heightAt: s.world.heightAt,
-      audio: G.Audio,
-    });
+    if (!G.Vehicles.update(dt, move, free)) {
+      G.Player.update(P, dt, move, {
+        yaw: G.Camera.state.yaw,
+        speedFactor: s.sim.needs.speedFactor(),
+        colliders: s.world.colliders,
+        heightAt: s.world.heightAt,
+        audio: G.Audio,
+      });
+    }
     G.Npcs.update(s.npcs, dt, P.pos);
     G.Collide.settle(s.world.colliders, P.pos, G.Player.RADIUS);
     G.Player.sync(P);
@@ -83,6 +85,7 @@
     });
     G.Crowd.update(s.crowd, dt, { x: P.pos.x, z: P.pos.z }, crowdContext(s));
     G.Greetings.update(s, dt, P);
+    G.Voice.update(dt);
     return move;
   }
 

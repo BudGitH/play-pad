@@ -82,6 +82,7 @@
   function offer(A, mission) {
     const m = mission;
     G.Dialogue.open({
+      id: A.id,
       name: A.name,
       muslim: KQ.Sim.NPC_PROFILE[A.id].muslim,
       lines: m.intro,
@@ -112,6 +113,7 @@
   /** Open a plain dialogue with an NPC and release them from the talk when it closes. */
   function say(A, lines) {
     G.Dialogue.open({
+      id: A.id,
       name: A.name,
       muslim: KQ.Sim.NPC_PROFILE[A.id].muslim,
       lines,

@@ -190,6 +190,8 @@
     npc,
     crowd: () => (S() && S().crowd ? G.Crowd.debug(S().crowd) : null),
     greetings: () => G.Greetings.debug(),
+    vehicles: () => G.Vehicles.debug(),
+    voice: () => G.Voice.debug(),
     greetChance: (p) => G.Greetings.setChance(p),
     crowdPeople: () => (S() && S().crowd ? G.Crowd.positions(S().crowd) : []),
     step: (ms) => (started() ? G.Loop.step(ms) : 0),

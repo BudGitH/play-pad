@@ -175,9 +175,12 @@
   function onGo() {
     const st = umrah().view(RF.rite).step;
     if (!st.site || !canGo()) return;
-    KQ.Holy.goTo(st.site);
-    G.UI.toast("Here we are: " + st.title + ".", "good", 2600);
-    refresh();
+    KQ.Holy.goTo(st.site, {
+      onDone() {
+        G.UI.toast("Here we are: " + st.title + ".", "good", 2600);
+        refresh();
+      },
+    });
   }
 
   /** The extra buttons: ihram, walk for me, walk myself, trim, shave. */

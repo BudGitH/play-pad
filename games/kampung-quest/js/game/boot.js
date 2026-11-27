@@ -295,12 +295,14 @@
     G.Loop.frame(0);
     G.PrayerFlow.restoreDue();
     G.PrayerFlow.resume();
-    if (!s.sim.pos)
+    const welcome = G.Region.welcome(KQ.region === "haramain" ? KQ.Holy.cityOf(pos.x) : null);
+    if (welcome) G.UI.toast(welcome, "good", 7000, "holy-welcome");
+    else if (!s.sim.pos)
       G.UI.toast(
-        G.Region.welcome() || "Nenek is waiting by your block. Walk to her and press Talk.",
+        "Nenek is waiting by your block. Walk to her and press Talk.",
         "good",
         7000,
-        KQ.region === "haramain" ? undefined : "nenek",
+        "nenek",
       );
     document.getElementById("kqTalk").focus({ preventScroll: true });
     if (!s.loopStarted) {

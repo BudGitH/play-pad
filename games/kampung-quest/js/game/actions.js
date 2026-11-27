@@ -21,7 +21,7 @@
   function openMap() {
     const h = G.Screens.map(
       ctxFor({
-        mapView: () => G.Loop.mapView(G.Minimap.fullSpan(), { labels: true }),
+        mapView: () => G.Loop.mapView(G.Minimap.fullSpan(), G.Minimap.fullOpts()),
       }),
     );
     return h;

@@ -237,7 +237,7 @@
     return round ? Math.hypot(p.x - cw / 2, p.y - cw / 2) <= lim : p.x > 0 && p.x < cw;
   }
 
-  /** Draw one marker: a blip in view; else a rim arrow (objective), a rim blip (big) or nothing. */
+  /** Draw one marker: a blip in view; else a rim arrow (objective), a rim blip (big, or a landmark) or nothing. */
   function drawMarker(ctx, f, m, cw, round) {
     const p = project(f, m.x, m.z);
     const r = cw * (m.big ? 0.075 : 0.058);
@@ -245,7 +245,7 @@
       blipAt(ctx, p, m, r);
       if (f.view.labels && m.label) blipLabel(ctx, p, m, cw);
     } else if (m.arrow && round) edgeArrow(ctx, f, m, cw);
-    else if (m.big) blipAt(ctx, clampRim(p, cw), m, r);
+    else if (m.big || m.rim) blipAt(ctx, clampRim(p, cw), m, r * (m.big ? 1 : 0.85));
   }
 
   /** Pin a projected point to the rim of the map. */
@@ -338,5 +338,9 @@
   const radarSpan = () => SPANS[region()].radar;
   const fullSpan = () => SPANS[region()].full;
 
-  G.Minimap = { draw, radarSpan, fullSpan };
+  /** The full map's view options: word labels, and in the Kampung centred on the whole town (not on the hero). */
+  const fullOpts = () =>
+    region() === "kampung" ? { labels: true, cx: 0, cz: 0 } : { labels: true };
+
+  G.Minimap = { draw, radarSpan, fullSpan, fullOpts };
 })((window.KQ = window.KQ || {}));

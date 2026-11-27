@@ -107,11 +107,12 @@
     return { x: pos.x, z: pos.z, heading: simPos ? 0 : 0, fresh: !simPos };
   }
 
-  /** The first-visit line for a region (null = the kampung's own Nenek line stays). */
-  function welcome() {
-    return KQ.region === "haramain"
-      ? "Welcome to Makkah. Walk to the Kaaba, or open the map. Take your time."
-      : null;
+  /** The welcome line for a region and, in Haramain, for the city the hero is in (null = the kampung's own Nenek line stays). */
+  function welcome(city) {
+    if (KQ.region !== "haramain") return null;
+    return city === "madinah"
+      ? "Welcome to Madinah. Walk into the Prophet's Mosque, or open the map. Take your time."
+      : "Welcome to Makkah. Walk to the Kaaba, or open the map. Take your time.";
   }
 
   /** Title-screen camera (orbit angle a) for a region, or null for the kampung's own. */

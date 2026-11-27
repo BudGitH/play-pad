@@ -85,6 +85,9 @@ async function pressToEnd() {
 test("Umrah: the dock button opens the rites; Next alone reaches done, in order, in ihram and out of it", async () => {
   await reset();
   await expect(page.locator("#kqDock-rites")).toBeVisible();
+  // no cast of neighbours here: no Missions button, and the mission card says how to begin a rite
+  await expect(page.locator("#kqDock-missions")).toHaveCount(0);
+  await expect(page.getByText("Tap Umrah below to begin: Umrah, Hajj or Ziarah.")).toBeVisible();
   await openFromDock("umrah");
   expect((await ritual()).step).toBe("ihram");
   await expect(page.locator(".kq-step-next")).toBeVisible();
@@ -321,20 +324,22 @@ test("sa'i by hand: reaching Marwa from Safa counts leg 1, Safa again leg 2", as
   await expect(page.locator(".kq-step-count")).toHaveText("Legs: 2 of 7");
 });
 
+/** Distance from the hero to a KQ.HOLY anchor of Makkah. */
+const distTo = (key) =>
+  ev((k) => {
+    const a = window.KQ.HOLY.makkah[k];
+    const p = window.KQ.Game.S.player.pos;
+    return Math.hypot(p.x - a.x, p.z - a.z);
+  }, key);
+
 test("Go there moves the hero (KQ.Holy.goTo) and the button hides when the region cannot", async () => {
   await reset();
   await openFromDock("umrah");
-  await page.getByRole("button", { name: "Go there" }).click(); // the miqat
-  await step(200);
-  const miqat = await ev(() => window.KQ.HOLY.makkah.miqat);
-  const pos = await ev(() => window.KQ.Game.S.player.pos);
-  expect(Math.hypot(pos.x - miqat.x, pos.z - miqat.z)).toBeLessThan(8);
+  await page.getByRole("button", { name: "Go there" }).click(); // the miqat (a short fade first)
+  await expect.poll(() => distTo("miqat"), { timeout: 10_000 }).toBeLessThan(8);
   await advanceTo("sai");
   await page.getByRole("button", { name: "Go there" }).click();
-  await step(200);
-  const safa = await ev(() => window.KQ.HOLY.makkah.safa);
-  const at = await ev(() => window.KQ.Game.S.player.pos);
-  expect(Math.hypot(at.x - safa.x, at.z - safa.z)).toBeLessThan(5);
+  await expect.poll(() => distTo("safa"), { timeout: 10_000 }).toBeLessThan(5);
   await ev(() => {
     window.__goTo = window.KQ.Holy.goTo;
     window.KQ.Holy.goTo = undefined;

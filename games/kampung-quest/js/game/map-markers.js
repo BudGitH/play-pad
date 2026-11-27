@@ -2,10 +2,11 @@
  * FILE: map-markers.js
  * PURPOSE: Decides which blips the radar and the full map show: the objective (pink, with a rim
  *          arrow), the mosque (green; big + arrow while a prayer is due), the hawker centre
- *          (orange; big while the first-meal nudge is on), neighbours with a mission to give
+ *          (orange; big while the first-meal nudge is on; the mosque, food and the holy sites also
+ *          ride the rim of the radar when they are out of range), neighbours with a mission to give
  *          (gold star), home, and in the Haramain region the Kaaba and the Prophet's Mosque.
  * BUSINESS CONTEXT: AC-11 (a radar arrow for the active mission; the hawker beacon while nudged).
- *   Marker shape: { x, z, color, big, kind, icon, arrow, label } (minimap.js draws it).
+ *   Marker shape: { x, z, color, big, kind, icon, arrow, rim, label } (minimap.js draws it).
  * DEPENDENCIES: mission-flow.js (targetPos), nudge.js (markerPos), KQ.HOLY. No DOM.
  * ========================================================================== */
 (function (KQ) {
@@ -24,7 +25,7 @@
   /** Make one marker of a kind at a position; `extra` overrides (big, arrow, label, ink). */
   function mark(kind, icon, pos, extra) {
     return Object.assign(
-      { x: pos.x, z: pos.z, color: COLORS[kind], big: false, kind, icon, arrow: false },
+      { x: pos.x, z: pos.z, color: COLORS[kind], big: false, kind, icon, arrow: false, rim: false },
       extra || {},
     );
   }
@@ -52,7 +53,9 @@
     if (!pos) return;
     const ps = s.sim.prayer.state();
     const urgent = Boolean(ps.due || ps.flow);
-    out.push(mark("mosque", "mosque", pos, { big: urgent, arrow: urgent, label: "Mosque" }));
+    out.push(
+      mark("mosque", "mosque", pos, { big: urgent, arrow: urgent, rim: true, label: "Mosque" }),
+    );
   }
 
   /** Kampung places: mosque, hawker centre (big during the first-meal nudge) and home. */
@@ -62,7 +65,7 @@
     const home = poiPos(s, "home");
     if (hawker) {
       const nudge = Boolean(G.Nudge.markerPos());
-      out.push(mark("food", "bowl", hawker, { big: nudge, label: "Hawker centre" }));
+      out.push(mark("food", "bowl", hawker, { big: nudge, rim: true, label: "Hawker centre" }));
     }
     if (home) out.push(mark("home", "home", home, { label: "Home" }));
   }
@@ -71,8 +74,8 @@
   function haramain(s, out) {
     const k = KQ.HOLY.makkah.kaaba;
     const n = KQ.HOLY.madinah.nabawi;
-    out.push(mark("kaaba", "star", k, { label: "Kaaba" }));
-    out.push(mark("nabawi", "mosque", n, { label: "Prophet's Mosque" }));
+    out.push(mark("kaaba", "star", k, { rim: true, label: "Kaaba" }));
+    out.push(mark("nabawi", "mosque", n, { rim: true, label: "Prophet's Mosque" }));
     mosque(s, out);
   }
 

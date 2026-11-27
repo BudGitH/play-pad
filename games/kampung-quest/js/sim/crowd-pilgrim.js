@@ -17,7 +17,20 @@
   const TAU = Math.PI * 2;
 
   /** The Haramain activity kinds (a slot's `kind`), added to KQ.Sim.Crowd.KINDS in that region. */
-  const KINDS = ["tawaf", "sai", "prayer", "read", "dua"];
+  const KINDS = [
+    "tawaf",
+    "sai",
+    "prayer",
+    "read",
+    "dua",
+    "rest",
+    "clean",
+    "guard",
+    "photo",
+    "vendor",
+  ];
+  /** The crowd is bigger in the holy cities: how many extras each quality tier keeps alive. */
+  const HOLY_CAPS = { low: 90, med: 140, high: 200 };
   /** Tawaf lanes (metres from the Kaaba's centre) and the walking speed range in m/s. */
   const RING = { rMin: 12.5, rMax: 24.5, vMin: 0.8, vMax: 1.05 };
   /** The sa'i lane: x lanes, and the z extent between Safa and Marwa. */
@@ -49,8 +62,8 @@
   /** How full the prayer halls are: busiest just after each prayer time (minutes list), never empty. */
   function prayerLoad(minute, times) {
     const hour = (((minute % 1440) + 1440) % 1440) / 60;
-    let v = 0.22;
-    (times || []).forEach((t) => (v = Math.max(v, 0.22 + 0.78 * bump(hour, t / 60 + 0.2, 0.55))));
+    let v = 0.12;
+    (times || []).forEach((t) => (v = Math.max(v, 0.12 + 0.88 * bump(hour, t / 60 + 0.2, 0.55))));
     return v;
   }
 
@@ -80,6 +93,17 @@
     if (kind === "prayer") return prayerLoad(minute, prayerMinutes());
     if (kind === "read") return 0.45 + 0.4 * Math.max(bump(hour, 6, 1.5), bump(hour, 19.5, 1.5));
     if (kind === "dua") return 0.75;
+    return restOccupancy(kind, hour);
+  }
+
+  /** Rest, cleaners, guards, photo groups and vendors: busy by day, fewer at night, never none. */
+  function restOccupancy(kind, hour) {
+    const day = Math.max(bump(hour, 11, 6), bump(hour, 17, 3), 0.1);
+    if (kind === "rest") return 0.35 + 0.4 * day;
+    if (kind === "clean") return 0.5;
+    if (kind === "guard") return 1;
+    if (kind === "photo") return 0.12 + 0.75 * day;
+    if (kind === "vendor") return 0.25 + 0.65 * day;
     return 0;
   }
 
@@ -94,13 +118,25 @@
     };
   }
 
+  /** A cleaner on a patrol line {x0, z0, x1, z1, v, phase}: out and back, with its heading. */
+  function patrolAt(line, t) {
+    const dx = line.x1 - line.x0;
+    const dz = line.z1 - line.z0;
+    const len = Math.hypot(dx, dz) || 1;
+    const d = (line.phase * 2 * len + line.v * t) % (2 * len);
+    const out = d < len;
+    const f = (out ? d : 2 * len - d) / len;
+    const h = Math.atan2(dx, dz);
+    return { x: line.x0 + dx * f, z: line.z0 + dz * f, heading: out ? h : h + Math.PI };
+  }
+
   /** A sa'i walker on its lane at time t: ping-pong between Safa (z min) and Marwa, with its heading. */
   function saiAt(lane, t) {
     const span = SAI.zMax - SAI.zMin;
     const d = (lane.phase * 2 * span + lane.v * t) % (2 * span);
     const south = d < span;
     return {
-      x: lane.x,
+      x: lane.x + (lane.dx || 0) * (south ? -1 : 1),
       z: south ? SAI.zMin + d : SAI.zMax - (d - span),
       heading: south ? 0 : Math.PI,
       south,
@@ -124,48 +160,9 @@
     return Math.atan2(-x, -z);
   }
 
-  // ---------- outfits ----------
-  const SKIN = ["#f0c7a0", "#e3a97c", "#d49a6c", "#b87a52", "#8a5537", "#6f4630"];
-  const WHITE = "#f6f4ee";
-  const ABAYA = ["#17171c", "#17171c", "#1d2230", "#2b2b30"];
-  const THOBE = ["#f6f4ee", "#efe9dc", "#d9d6cf", "#c9c2b0"];
+  // ---------- outfits (the profiles are in crowd-pilgrim-dress.js) ----------
 
-  /** What a man in ihram wears: two white cloths, arms and shoulder bare, head bare. */
-  function ihramMan(o, next) {
-    Object.assign(o, { top: WHITE, legs: WHITE, long: false, skirt: true, shorts: false });
-    o.head = next() < 0.6 ? "hair" : "none";
-    o.headColour = next() < 0.8 ? "#141012" : "#3a2416";
-  }
-
-  /** A modest woman: a long abaya and a scarf, mostly black, some white. */
-  function modestWoman(o, next) {
-    const white = next() < 0.28;
-    const col = white ? WHITE : ABAYA[Math.floor(next() * ABAYA.length) % ABAYA.length];
-    Object.assign(o, { top: col, legs: col, long: true, skirt: true, shorts: false, female: true });
-    o.head = "tudung";
-    o.headColour = white ? WHITE : next() < 0.7 ? "#17171c" : "#3a3f4d";
-  }
-
-  /** A man in a long thobe with a white head cap (ghutra-like), or bare-headed. */
-  function thobeMan(o, next) {
-    const col = THOBE[Math.floor(next() * THOBE.length) % THOBE.length];
-    Object.assign(o, { top: col, legs: col, long: true, skirt: true, shorts: false });
-    const r = next();
-    o.head = r < 0.55 ? "kopiah" : r < 0.75 ? "songkok" : "hair";
-    o.headColour = o.head === "kopiah" ? WHITE : o.head === "songkok" ? "#1c1c22" : "#141012";
-  }
-
-  /** A child: white clothes (ihram) near the Kaaba, light everyday clothes elsewhere. */
-  function child(o, ihram) {
-    o.kid = true;
-    o.shorts = false;
-    o.skirt = false;
-    o.long = !ihram;
-    o.top = ihram ? WHITE : o.top;
-    o.legs = ihram ? WHITE : o.legs;
-  }
-
-  /** Which dress code a seed asks for: ihram at the tawaf and sa'i, mixed elsewhere. */
+  /** Which dress code a seed asks for: ihram at the tawaf and sa'i, thobes in Madinah, mixed elsewhere. */
   function codeOf(seed) {
     if (seed.indexOf("tawaf:") === 0 || seed.indexOf("sai:") === 0) return "ihram";
     if (seed.indexOf("nabawi") !== -1 || seed.indexOf("quba") !== -1) return "thobe";
@@ -174,24 +171,7 @@
 
   /** Dress an outfit (made by the base outfit()) as a pilgrim, deterministically from the seed. */
   function dress(o, seed) {
-    let n = 0;
-    const next = () => {
-      n += 1;
-      return SC.hash01(seed + ":pilgrim:" + n);
-    };
-    const code = codeOf(seed);
-    const mix = next();
-    const ihram = code === "ihram" || (code === "mix" && mix < 0.3);
-    o.skin = SKIN[Math.floor(next() * SKIN.length) % SKIN.length];
-    if (o.kid) {
-      child(o, ihram);
-      return o;
-    }
-    if (o.female) modestWoman(o, next);
-    else if (ihram) ihramMan(o, next);
-    else thobeMan(o, next);
-    o.group = "pilgrim";
-    return o;
+    return SC.PilgrimDress.dress(o, seed, codeOf(seed));
   }
 
   /**
@@ -215,18 +195,20 @@
     SC.occupancy = function (kind, minute) {
       if (KINDS.indexOf(kind) !== -1) return occupancy(kind, minute);
       const v = base.occupancy(kind, minute);
-      return kind === "chat" || kind === "queue" ? Math.max(v, 0.45) : v;
+      return kind === "chat" || kind === "queue" ? Math.max(v, 0.7) : v;
     };
     SC.outfit = (seed, role, female) => dress(base.outfit(seed, role, female), String(seed));
+    SC.capFor = (tier) => HOLY_CAPS[tier] || HOLY_CAPS.med;
     SC.walkerTarget = function (minute, tier) {
       const cap = SC.capFor(tier);
-      return Math.round(cap * 0.22 * (0.7 + 0.3 * bump((((minute / 60) % 24) + 24) % 24, 12, 7)));
+      return Math.round(cap * 0.3 * (0.7 + 0.3 * bump((((minute / 60) % 24) + 24) % 24, 12, 7)));
     };
   }
 
   const Pilgrim = {
     KINDS,
     RING,
+    HOLY_CAPS,
     SAI,
     PRAYER_CYCLE,
     CYCLE_LEN,
@@ -234,6 +216,7 @@
     prayerLoad,
     tawafAt,
     saiAt,
+    patrolAt,
     prayerPose,
     rowGroup,
     qiblaHeading,

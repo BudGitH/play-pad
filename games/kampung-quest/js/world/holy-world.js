@@ -179,11 +179,13 @@
       update(dt, clock) {
         s.minute = clock && typeof clock.minute === "number" ? clock.minute : s.minute;
         applyTime(s, s.minute);
+        s.pigeons.update(dt || 0, s.hero);
       },
       setQuality: (tier) => setQuality(s, tier),
       setShadowTarget(v) {
         s.rig.target.set(v.x, 0, v.z);
         P.Lighting.placeSun(s.rig);
+        s.hero = { x: v.x, z: v.z };
         setCity(s, Holy.cityOf(v.x));
         followHall(s, v);
       },
@@ -191,6 +193,7 @@
       city: () => s.city,
       setCity: (c) => setCity(s, c),
       sites: s.sites,
+      pigeons: s.pigeons.count,
     };
     return Object.assign(api, sunApi(s));
   }
@@ -204,6 +207,8 @@
       nav: o.nav,
       sites: o.sites,
       halos: o.hl,
+      pigeons: o.pigeons,
+      hero: null,
       minute: 420,
       tier: o.opts.quality || "high",
       colliders: o.ctx.colliders,
@@ -245,6 +250,7 @@
     const sites = steps(ctx, group, kit.mats, out);
     instanced(group, kit.mats, out, ctx.colliders);
     B.build(kit.mats, group);
+    const pigeons = P.HolyPigeons.build(group, kit.mats);
     const hl = halos(ctx);
     if (hl) group.add(hl);
     [P.HolyMakkah.BOUNDS, P.HolyMadinah.BOUNDS].forEach((b) => edges(ctx.colliders, b));
@@ -253,7 +259,7 @@
     P.Sky.fromPrayerTimes();
     const rig = makeRig(scene, opts, kit.mats);
     const nav = P.HolyNav.build();
-    const s = makeState({ scene, group, rig, nav, sites, ctx, B, opts, hl });
+    const s = makeState({ scene, group, rig, nav, sites, ctx, B, opts, hl, pigeons });
     setCity(s, "makkah");
     const api = runtime(s);
     applyTime(s, s.minute);

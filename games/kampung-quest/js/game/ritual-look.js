@@ -26,16 +26,18 @@
   function wear(on) {
     S().sim.umrah.setIhram(on);
     sync();
+    if (on) puff(7, ["✨", "🤍"]);
   }
 
   /** A few clippings flying down the middle of the screen (skipped when the player asked for less motion). */
-  function puff(count) {
+  function puff(count, marks) {
     if (G.Settings.reduced() || !S().hudHost) return;
+    const set = marks || SPECKS;
     for (let i = 0; i < count; i += 1) {
       const spark = G.U.el("span", {
         cls: "kq-snip",
         "aria-hidden": "true",
-        text: SPECKS[i % SPECKS.length],
+        text: set[i % set.length],
         style:
           "--dx:" + Math.round((i - count / 2) * 22) + "px;--dy:" + (28 + (i % 3) * 14) + "px;",
       });

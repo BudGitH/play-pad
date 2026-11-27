@@ -158,6 +158,52 @@
 
   /* ------------------------------ walk graph ------------------------------ */
 
+  /** A grid of footpaths: a line along every x in `xs` through all the z in `zs`, and along every z through all the x. */
+  function grid(xs, zs) {
+    const lines = [];
+    xs.forEach((x) => lines.push(zs.map((z) => [x, z])));
+    zs.forEach((z) => lines.push(xs.map((x) => [x, z])));
+    return lines;
+  }
+
+  /** The Nabawi courtyard grid: aisles midway between the umbrella poles, joined to the spine at x = 600. */
+  function courtyardGrid() {
+    const zs = [-77, -63, -49];
+    const lines = grid([563, 577, 591, 605, 619, 633], zs);
+    zs.forEach((z) =>
+      lines.push(
+        [
+          [600, z],
+          [605, z],
+        ],
+        [
+          [600, z],
+          [591, z],
+        ],
+      ),
+    );
+    return lines;
+  }
+
+  /** The Makkah plaza grid between the palms, joined to the gate spine at x = 0. */
+  function plazaGrid() {
+    const zs = [-90, -80, -72];
+    const lines = grid([-24, -12, 12, 24], zs);
+    zs.forEach((z) =>
+      lines.push(
+        [
+          [0, z],
+          [12, z],
+        ],
+        [
+          [0, z],
+          [-12, z],
+        ],
+      ),
+    );
+    return lines;
+  }
+
   /** The fixed walk polylines of Makkah: [x, z, poiId?, facing?] (a shared point merges into one node). */
   const MAKKAH_FIXED = [
     [
@@ -167,7 +213,10 @@
     ],
     [
       [0, -98.25],
+      [0, -90],
+      [0, -80],
       [0, -76],
+      [0, -72],
       [0, -56, "gate", 0],
       [1.85, -50],
       [1.85, -44],
@@ -266,7 +315,7 @@
     const s1 = [-250, -180, -150, -77.25, -60, 0, 71.25, 118].map((x) => [x, -98.25]);
     const s2 = [-250, -180, -150, -77.25, -60, 0, 71.25, 118].map((x) => [x, -113.75]);
     s2[5] = [0, -113.75, "clock", N];
-    return [ring, s1, s2].concat(MAKKAH_FIXED);
+    return [ring, s1, s2].concat(MAKKAH_FIXED, plazaGrid());
   }
 
   /** The Madinah walk polylines (same format as Makkah's). */
@@ -275,7 +324,10 @@
       [600, -112.75],
       [600, -97.25],
       [600, -90, "busStop", 0],
+      [600, -77],
+      [600, -63],
       [600, -60],
+      [600, -49],
       [600, -33],
       [597, -33, "nabGate", 0],
       [595, -31],
@@ -471,7 +523,7 @@
 
   /** Build the walk graph and per-city tables once for the world. */
   function build() {
-    const g = graphFrom(makkahLines().concat(MADINAH_LINES));
+    const g = graphFrom(makkahLines().concat(MADINAH_LINES, courtyardGrid()));
     return {
       graph: { nodes: g.nodes, edges: g.edges },
       pois: { makkah: poisFor(g.pois, "makkah"), madinah: poisFor(g.pois, "madinah") },

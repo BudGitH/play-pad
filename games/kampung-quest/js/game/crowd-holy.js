@@ -20,46 +20,6 @@
   /** People make way for the hero and each other inside this distance. */
   const WAY = 0.85;
 
-  /** The tawaf ring: six lanes, people every ~4 m, each on its own speed. */
-  function ringSlots() {
-    const R = PL().RING;
-    const out = [];
-    for (let lane = 0; lane < 6; lane += 1) {
-      const r = R.rMin + ((R.rMax - R.rMin) * lane) / 5;
-      const n = Math.floor((TAU * r) / 4.2);
-      for (let i = 0; i < n; i += 1) {
-        const id = "tawaf:" + lane + ":" + i;
-        const ring = {
-          r,
-          th0: (i / n) * TAU + lane * 0.37,
-          v: R.vMin + (R.vMax - R.vMin) * SC().hash01(id),
-        };
-        const p = PL().tawafAt(ring, 0);
-        out.push({ id, kind: "tawaf", holy: "orbit", ring, x: p.x, z: p.z, heading: p.heading });
-      }
-    }
-    return out;
-  }
-
-  /** The sa'i lane: five lanes of walkers going between Safa and Marwa. */
-  function saiSlots() {
-    const S = PL().SAI;
-    const out = [];
-    S.xs.forEach(function (x, l) {
-      for (let i = 0; i < 5; i += 1) {
-        const id = "sai:" + l + ":" + i;
-        const lane = {
-          x,
-          v: S.vMin + (S.vMax - S.vMin) * SC().hash01(id),
-          phase: (i + SC().hash01(id + "p") * 0.6) / 5,
-        };
-        const p = PL().saiAt(lane, 0);
-        out.push({ id, kind: "sai", holy: "lane", lane, x: p.x, z: p.z, heading: p.heading });
-      }
-    });
-    return out;
-  }
-
   /** Candidate rows in a rectangle: x every `dx`, z every `dz`, kept where a person fits. */
   function rowSlots(world, o) {
     const out = [];
@@ -127,118 +87,31 @@
     return out;
   }
 
-  /** Dua at Arafah: people standing in a loose ring around Jabal Rahmah, hands open, facing the Kaaba. */
-  function duaSlots(world) {
-    const a = KQ.HOLY.hajj.arafah;
-    const out = [];
-    for (let i = 0; i < 40; i += 1) {
-      const ang = (i / 40) * TAU + SC().hash01("dua" + i);
-      const r = 11 + 8 * SC().hash01("duar" + i);
-      const x = a.x + Math.cos(ang) * r;
-      const z = a.z + Math.sin(ang) * r;
-      if (G.CrowdZones.clear(world, x, z, 0.4))
-        out.push({
-          id: "dua:arafah:" + i,
-          kind: "dua",
-          holy: "dua",
-          x,
-          z,
-          heading: PL().qiblaHeading(x, z),
-        });
-    }
-    return out;
-  }
-
-  /** Where small groups stand and talk (centres), and how many people each holds. */
-  const CHAT_SPOTS = [
-    [12, -66, 3],
-    [-14, -72, 2],
-    [26, -84, 3],
-    [-28, -88, 4],
-    [8, 38, 3],
-    [20, 30, 2],
-    [-8, 34, 2],
-    [-62, -138, 3],
-    [-72, -102, 2],
-    [60, -102, 3],
-    [-170, -30, 3],
-    [-190, -48, 2],
-    [-148, -86, 3],
-    [592, -62, 3],
-    [612, -72, 4],
-    [574, -50, 2],
-    [628, -48, 3],
-    [598, -88, 3],
-    [580, -36, 2],
-    [620, -38, 3],
-    [654, -92, 2],
-    [560, -96, 3],
-    [563, 104, 3],
-    [600, -186, 3],
-  ];
-
-  /** Chat circles at the listed spots (kind "chat", the existing standing-talk poses). */
-  function chatSlots(world) {
-    const out = [];
-    CHAT_SPOTS.forEach(function (c, j) {
-      if (!G.CrowdZones.clear(world, c[0], c[1], 1.2)) return;
-      const gid = "chat:holy:" + j;
-      SC()
-        .circleSlots(c[0], c[1], c[2], 0.5 + 0.08 * c[2], j)
-        .forEach((q, i) =>
-          out.push({
-            id: gid + ":" + i,
-            kind: "chat",
-            x: q.x,
-            z: q.z,
-            heading: q.heading,
-            group: gid,
-            index: i,
-            size: c[2],
-          }),
-        );
-    });
-    return out;
-  }
-
-  /** A short queue at the Zamzam taps. */
-  function queueSlots(world) {
-    const z = KQ.HOLY.makkah.zamzam;
-    return SC()
-      .queueSlots(z.x - 2, z.z + 1.6, 5, 1.0, 1, Math.PI)
-      .filter((q) => G.CrowdZones.clear(world, q.x, q.z))
-      .map((q, i) => ({
-        id: "queue:zamzam:" + i,
-        kind: "queue",
-        x: q.x,
-        z: q.z,
-        heading: q.heading,
-        index: i,
-        group: "queue:zamzam",
-      }));
-  }
-
   /** Every fixed or analytic spot of the Haramain crowd. */
   function build(world) {
+    G.CrowdHolyUnits.reset();
     const nab = KQ.WorldParts.HolyNabawiInside.CHAMBER;
     const readers = readerSlots(world);
-    const near = (x, z) => readers.some((r) => Math.abs(r.x - x) < 0.9 && Math.abs(r.z - z) < 0.9);
+    const spots = G.CrowdHolySpots.build(world);
+    const taken = readers.concat(spots);
+    const near = (x, z) => taken.some((r) => Math.abs(r.x - x) < 0.9 && Math.abs(r.z - z) < 0.9);
     const aisle = (x) => x > 599.3 && x < 601.7;
     const chamber = (x, z) => x > nab.x0 - 2 && x < nab.x1 + 2 && z > nab.z0 - 2 && z < nab.z1 + 4;
+    const rows = rowSlots(world, {
+      name: "nabawi",
+      x0: 569.5,
+      x1: 632,
+      dx: 1.25,
+      z0: -25.5,
+      z1: 27,
+      dz: 1.7,
+      skip: (x, z) => aisle(x) || near(x, z) || chamber(x, z),
+    });
     const all = [].concat(
-      ringSlots(),
-      saiSlots(),
-      haramRows(world),
-      rowSlots(world, {
-        name: "nabawi",
-        x0: 569.5,
-        x1: 632,
-        dx: 1.25,
-        z0: -25.5,
-        z1: 27,
-        dz: 1.7,
-        skip: (x, z) => aisle(x) || near(x, z) || chamber(x, z),
-      }),
+      G.CrowdHolyUnits.ringSlots(),
+      G.CrowdHolyUnits.saiSlots(),
+      haramRows(world).filter((r) => !near(r.x, r.z)),
+      rows,
       rowSlots(world, {
         name: "quba",
         x0: 549.5,
@@ -247,25 +120,35 @@
         z0: 113.5,
         z1: 126.5,
         dz: 1.7,
+        skip: near,
       }),
       readers,
-      duaSlots(world),
-      chatSlots(world),
-      queueSlots(world),
+      spots,
     );
     all.forEach((s) => (s.y = s.y === undefined ? world.heightAt(s.x, s.z) : s.y));
     return all;
   }
 
-  /** Move the analytic slots (tawaf, sa'i) to where their people are now, so the nearest-spot logic stays true. */
+  /** The outfit of a holy-slot person: age from the slot's role, dressed by the pilgrim profiles. */
+  function outfitFor(slot, seed) {
+    const look = slot.look || {};
+    const o = SC().outfit(seed, look.role || "any");
+    if (look.bag) o.bag = look.bag;
+    return o;
+  }
+
+  /** Where a slot's person is now when the slot moves (tawaf, sa'i, cleaner patrol), else null. */
+  function pathAt(s, clock) {
+    if (s.holy === "orbit") return PL().tawafAt(s.ring, clock);
+    if (s.holy === "lane") return PL().saiAt(s.lane, clock);
+    if (s.holy === "patrol") return PL().patrolAt(s.line, clock);
+    return null;
+  }
+
+  /** Move the analytic slots to where their people are now, so the nearest-spot logic stays true. */
   function tick(slots, clock) {
     slots.forEach(function (s) {
-      const p =
-        s.holy === "orbit"
-          ? PL().tawafAt(s.ring, clock)
-          : s.holy === "lane"
-            ? PL().saiAt(s.lane, clock)
-            : null;
+      const p = pathAt(s, clock);
       if (!p) return;
       s.x = p.x;
       s.z = p.z;
@@ -289,34 +172,48 @@
     m.z = m.bz + m.oz;
   }
 
-  /** One step of a moving pilgrim (tawaf or sa'i): follow the analytic path, walking. */
+  /** One step of a moving person (tawaf, sa'i, patrol): follow the analytic path with the slot's walking pose and prop. */
   function walk(m, dt, C, p, speed) {
+    const look = m.slot.look || {};
     m.bx = p.x;
     m.bz = p.z;
     m.heading = U.dampAngle(m.heading, p.heading, 8, dt);
-    m.pose = "walk";
+    m.pose = look.pose || "walk";
+    m.prop = look.prop || null;
     m.rate = 0.78 * speed;
     easeAside(m, dt, C.others);
   }
 
-  /** The pose and fixed spot of a person who stands, prays, reads or makes dua. */
-  function hold(m, C) {
+  /** The pose of a person at a spot: prayer, reading and the drink-and-wait cycle are special, the rest use `look`. */
+  function holdPose(m, C) {
     const s = m.slot;
-    m.heading = s.heading;
-    if (s.holy === "prayer") m.pose = PL().prayerPose(C.clock, s.offset);
-    else if (s.holy === "read") m.pose = "quran";
-    else if (s.holy === "dua") m.pose = "dua_stand";
-    m.prop = s.holy === "read" ? "quran" : null;
-    m.rate = s.holy === "prayer" ? 0.1 : 0.12;
+    const look = s.look || {};
+    if (s.holy === "prayer") return [PL().prayerPose(C.clock, s.offset), null];
+    if (s.holy === "read") return ["quran", "quran"];
+    if (look.pose === "drink") {
+      const drinking = (C.clock + (s.index || 0) * 3.7) % 9 < 5.5;
+      return drinking ? ["drink", "cup"] : ["wait", null];
+    }
+    return [look.pose || "wait", look.prop || null];
+  }
+
+  /** The pose and fixed spot of a person who stands, prays, reads, drinks, rests or poses. */
+  function hold(m, C) {
+    const pp = holdPose(m, C);
+    m.heading = m.slot.heading;
+    m.pose = pp[0];
+    m.prop = pp[1];
+    m.rate = m.slot.holy === "prayer" ? 0.1 : 0.14;
   }
 
   /** Step one holy-slot person by dt (the common ease-in / ease-out lives in CrowdMembers.update). */
   function step(m, dt, C) {
     const s = m.slot;
-    if (s.holy === "orbit") walk(m, dt, C, PL().tawafAt(s.ring, C.clock), s.ring.v);
-    else if (s.holy === "lane") walk(m, dt, C, PL().saiAt(s.lane, C.clock), s.lane.v);
-    else hold(m, C);
+    const p = pathAt(s, C.clock);
+    if (!p) return hold(m, C);
+    const v = s.ring ? s.ring.v : s.lane ? s.lane.v : s.line.v;
+    walk(m, dt, C, p, v);
   }
 
-  G.CrowdHoly = { build, tick, step };
+  G.CrowdHoly = { build, tick, step, outfitFor };
 })((window.KQ = window.KQ || {}));

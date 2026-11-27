@@ -26,7 +26,7 @@ function load(region, files) {
   return sandbox.KQ;
 }
 
-const KQ = load("haramain", ["sim/crowd.js", "sim/crowd-pilgrim.js"]);
+const KQ = load("haramain", ["sim/crowd.js", "sim/crowd-pilgrim-dress.js", "sim/crowd-pilgrim.js"]);
 const C = KQ.Sim.Crowd;
 const P = C.Pilgrim;
 const angle = (x, z) => Math.atan2(-z, x);
@@ -90,9 +90,9 @@ test("the Haram never sleeps: tawaf, sa'i, prayer rows, readers and dua are busy
       const v = C.occupancy(k, m);
       assert.ok(v >= 0 && v <= 1, k + " at " + m);
     }
-    assert.ok(C.occupancy(k, 180) > 0.2, k + " at 03:00 = " + C.occupancy(k, 180));
+    assert.ok(C.occupancy(k, 180) >= 0.12, k + " at 03:00 = " + C.occupancy(k, 180));
   }
-  assert.ok(C.occupancy("chat", 180) >= 0.45, "chat circles stay at night in this region");
+  assert.ok(C.occupancy("chat", 180) >= 0.7, "chat circles stay at night in this region");
   assert.ok(C.walkerTarget(180, "med") > 0, "strollers at night too");
   assert.ok(
     P.KINDS.every((k) => C.KINDS.includes(k)),
@@ -108,7 +108,7 @@ test("men at the tawaf wear ihram (two white cloths, arms bare), women a modest 
     if (o.kid) continue;
     if (o.female) {
       women += 1;
-      assert.ok(o.long && o.skirt && o.head === "tudung", "woman " + i + " is covered");
+      assert.ok(o.long && ["tudung", "wrap"].includes(o.head), "woman " + i + " is covered");
     } else {
       men += 1;
       assert.equal(o.top, "#f6f4ee");
@@ -120,11 +120,10 @@ test("men at the tawaf wear ihram (two white cloths, arms bare), women a modest 
   assert.ok(men > 15 && women > 15, "both genders appear: " + men + "/" + women);
 });
 
-test("Madinah people wear thobes; outfits are deterministic", () => {
+test("outfits are deterministic, and Madinah dress codes are a thobe, kurta, baju Melayu and more", () => {
   const a = C.outfit("pray:nabawi:3:120@5", "adult", false);
   const b = C.outfit("pray:nabawi:3:120@5", "adult", false);
   assert.deepEqual(JSON.parse(JSON.stringify(a)), JSON.parse(JSON.stringify(b)));
-  assert.ok(a.long && a.skirt, "a long thobe");
   assert.equal(P.codeOf("read:nabawi:4"), "thobe");
   assert.equal(P.codeOf("sai:1:2"), "ihram");
   assert.equal(P.codeOf("walker:7"), "mix");
@@ -138,7 +137,11 @@ test("prayer-row spots in one stretch of a row fill together", () => {
 });
 
 test("without the Haramain region the kampung crowd is untouched", () => {
-  const plain = load("kampung", ["sim/crowd.js", "sim/crowd-pilgrim.js"]).Sim.Crowd;
+  const plain = load("kampung", [
+    "sim/crowd.js",
+    "sim/crowd-pilgrim-dress.js",
+    "sim/crowd-pilgrim.js",
+  ]).Sim.Crowd;
   assert.equal(plain.occupancy("tawaf", 700), 0, "the holy kinds are not registered");
   assert.equal(plain.KINDS.includes("tawaf"), false);
   assert.equal(plain.occupancy("diner", 180), 0, "the kampung still sleeps at 03:00");
@@ -182,4 +185,116 @@ test("region.js: the list is data, ids are valid and the default is the kampung"
   });
   assert.deepEqual([...R.Region.IDS.slice(0, 2)], ["kampung", "haramain"]);
   assert.equal(R.region, "kampung");
+});
+
+const people = (prefix, n, role = "any") =>
+  Array.from({ length: n }, (_, i) => C.outfit(prefix + i, role));
+
+test("variety: many skin tones, all ages, body sizes and outfits across the crowd", () => {
+  const all = people("pray:haram:", 400);
+  const skins = new Set(all.map((o) => o.skin));
+  assert.ok(skins.size >= 12, "skin tones: " + skins.size);
+  const groups = new Set(all.map((o) => o.group));
+  assert.ok(groups.size >= 7, "nationality groups: " + [...groups]);
+  const ages = new Set(people("walker:", 600).map((o) => (o.kid ? "kid" : o.age)));
+  ["kid", "adult", "elder"].forEach((a) => assert.ok(ages.has(a), a));
+  assert.ok(new Set(people("x", 80, "teen").map((o) => o.age)).has("teen"));
+  assert.ok(
+    people("x", 60, "teen").every((o) => o.scale < 0.95),
+    "teens are shorter than adults",
+  );
+  const girths = all.map((o) => o.girth);
+  assert.ok(Math.min(...girths) < 1 && Math.max(...girths) > 1.15, "body sizes vary");
+  const heads = new Set(all.map((o) => o.head));
+  ["tudung", "kopiah", "ghutra", "songkok", "wrap", "doppi"].forEach((h) =>
+    assert.ok(heads.has(h), "headwear " + h),
+  );
+  const outfits = new Set(all.map((o) => o.top + "/" + o.legs + "/" + o.long + o.skirt));
+  assert.ok(outfits.size > 40, "outfit variety: " + outfits.size);
+});
+
+test("men in ihram in Makkah, thobes and other national dress in Madinah", () => {
+  const madinah = people("pray:nabawi:5:", 300).filter((o) => !o.female && !o.kid);
+  const looks = new Set(
+    madinah.map((o) => (o.long ? "long" : "short") + (o.skirt ? "-skirt" : "-trousers")),
+  );
+  assert.ok(looks.has("long-skirt") && looks.has("long-trousers"), [...looks].join());
+  assert.ok(
+    madinah.some((o) => o.head === "songkok"),
+    "baju Melayu with songkok",
+  );
+  assert.ok(
+    madinah.some((o) => o.head === "ghutra"),
+    "Gulf head cloth",
+  );
+  assert.ok(
+    madinah.filter((o) => o.top === "#f6f4ee" && !o.long).length < madinah.length * 0.1,
+    "few ihram in Madinah",
+  );
+  const makkah = people("tawaf:2:", 200).filter((o) => !o.female && !o.kid);
+  assert.ok(makkah.every((o) => o.top === "#f6f4ee" && !o.long));
+});
+
+test("a tour group wears one colour: scarves and caps match inside a tour and differ between tours", () => {
+  const tour = (n) =>
+    Array.from({ length: 6 }, (_, k) => C.outfit("tawaf:tour" + n + ":" + k + "@3", "adult"));
+  const colours = (n) =>
+    new Set(
+      tour(n)
+        .filter((o) => o.head === "cap" || (o.female && o.head === "tudung"))
+        .map((o) => o.headColour)
+        .filter((c) => c !== "#f6f4ee" && c !== "#17171c"),
+    );
+  const a = colours(1);
+  assert.ok(a.size === 1, "one tour colour: " + [...a]);
+  assert.notDeepEqual([...a], [...colours(2)]);
+  assert.equal(P.PRAYER_CYCLE.length > 5, true);
+});
+
+test("staff dress for the job: guards in dark uniform, cleaners in orange", () => {
+  const g = C.outfit("guard:3@1", "adult");
+  assert.equal(g.head, "cap");
+  assert.equal(g.top, "#1f2a44");
+  const c = C.outfit("clean:2@1", "adult");
+  assert.equal(c.top, "#f08a24");
+  assert.equal(c.kid, false);
+});
+
+test("elders have grey hair and are a little shorter; kids use the kid body", () => {
+  const elders = people("e", 120, "elder").filter((o) => o.head === "hair");
+  assert.ok(
+    elders.length > 5 &&
+      elders.every((o) => ["#a8a49d", "#c9c6c0", "#e0ddd6"].includes(o.headColour)),
+  );
+  assert.ok(people("k", 40, "kid").every((o) => o.kid));
+});
+
+test("cleaners patrol a line out and back; sa'i children keep to the parent's right in both directions", () => {
+  const line = { x0: 0, z0: -10, x1: 0, z1: 10, v: 1, phase: 0 };
+  assert.deepEqual(
+    [P.patrolAt(line, 0).z, P.patrolAt(line, 10).z, P.patrolAt(line, 20).z],
+    [-10, 0, 10],
+  );
+  assert.ok(Math.abs(P.patrolAt(line, 30).z) < 1e-9, "back at the middle going to the start");
+  assert.equal(P.patrolAt(line, 5).heading, 0, "heading south on the way out");
+  assert.ok(Math.abs(P.patrolAt(line, 25).heading - Math.PI) < 1e-9, "north on the way back");
+  const child = { x: 43, v: 1, phase: 0, dx: 0.62 };
+  assert.ok(P.saiAt(child, 1).x < 43, "heading south the right-hand side is west");
+  assert.ok(P.saiAt(child, 80).x > 43, "heading north it is east");
+});
+
+test("the holy cities keep a bigger crowd and a busier day: caps, strollers, rests, photos, vendors, guards", () => {
+  assert.deepEqual({ ...P.HOLY_CAPS }, { low: 90, med: 140, high: 200 });
+  assert.equal(C.capFor("low"), 90);
+  const plain = load("kampung", [
+    "sim/crowd.js",
+    "sim/crowd-pilgrim-dress.js",
+    "sim/crowd-pilgrim.js",
+  ]).Sim.Crowd;
+  assert.equal(plain.capFor("low"), 56, "the kampung cap is unchanged");
+  for (const k of ["rest", "clean", "guard", "photo", "vendor"]) {
+    assert.ok(C.occupancy(k, 180) > 0, k + " at night");
+    assert.ok(C.occupancy(k, 700) >= C.occupancy(k, 180), k + " busier by day");
+  }
+  assert.equal(C.occupancy("guard", 180), 1);
 });

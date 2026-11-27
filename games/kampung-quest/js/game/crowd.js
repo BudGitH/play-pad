@@ -21,7 +21,7 @@
   const POP_NEAR = 30;
   const RENDER_R = { low: 46, med: 60, high: 74 };
   const RECONCILE_S = 0.4;
-  const MAX_PEOPLE = 130;
+  const MAX_PEOPLE = KQ.region === "haramain" ? 210 : 130;
   const CROWD_SEAT = "crowd";
 
   /**
@@ -222,6 +222,7 @@
         pose: m.pose,
         phase: m.phase,
         kid: m.kid,
+        girth: m.outfit.girth,
         outfit: m.outfit,
         prop: m.prop,
       });

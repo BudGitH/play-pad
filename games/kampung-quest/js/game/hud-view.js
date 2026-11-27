@@ -192,8 +192,30 @@
     );
   }
 
+  /**
+   * In Makkah and Madinah there are no neighbours with missions: the card shows the rite under way
+   * (the Umrah / Hajj / Ziarah step) or how to begin one.
+   */
+  function renderRites(sim) {
+    const R = H().refs;
+    const rite = sim.umrah ? sim.umrah.summary() : null;
+    const sig = "rites|" + rite;
+    if (R.missionSig === sig) return;
+    R.missionSig = sig;
+    const msg = rite || "Tap Umrah below to begin: Umrah, Hajj or Ziarah.";
+    U.clear(R.missionBody);
+    R.mission.classList.remove("is-paused");
+    R.missionTitle.textContent = rite ? "Your journey" : "Makkah and Madinah";
+    R.missionText = R.missionTitle.textContent + ". " + msg;
+    R.missionBody.appendChild(U.el("p", { cls: "kq-small kq-ritual-line", text: msg }));
+    setChip(G.Pictures.icon("mosque"), rite || "Tap Umrah to begin");
+    if (rite) G.HudLayout.peek("mission");
+    nameMissionToggle();
+  }
+
   /** Redraw the mission card only when its signature (mission, step, count, paused) changes; peek only when the mission or step changes. */
   function renderMission(sim) {
+    if (KQ.region === "haramain") return renderRites(sim);
     const R = H().refs;
     const prog = sim.missions.progress();
     const mission = sim.missions.active();
@@ -263,6 +285,7 @@
    */
   function updateMissions(sim) {
     const R = H().refs;
+    if (!R.dockBtns.missions) return; // Makkah and Madinah have no missions: the dock has no Missions button
     const active = Boolean(sim.missions.active());
     const waiting = sim.missions.available().length;
     const shown = active ? 1 : waiting;

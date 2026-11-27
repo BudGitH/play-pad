@@ -44,6 +44,7 @@
   /** The outfit for a slot's person (stable: the same slot and block always dresses the same). */
   function outfitFor(slot, block) {
     const seed = slot.id + "@" + block;
+    if (slot.holy) return G.CrowdHoly.outfitFor(slot, seed);
     if (slot.kind === "sweep") return cleanerOutfit(seed);
     return SC().outfit(seed, ROLE[slot.kind] || "any");
   }

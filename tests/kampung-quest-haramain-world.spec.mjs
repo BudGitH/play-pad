@@ -149,7 +149,7 @@ test("AC-H2: tawaf walkers in ihram circle the Kaaba anticlockwise", async ({ br
       ).length,
       covered: members
         .filter((m) => m.outfit.female && !m.outfit.kid)
-        .every((m) => m.outfit.long && m.outfit.head === "tudung"),
+        .every((m) => m.outfit.long && ["tudung", "wrap"].includes(m.outfit.head)),
     };
   });
   expect(dress.men).toBeGreaterThan(3);
@@ -220,6 +220,154 @@ test("AC-H2: Quran readers sit in Nabawi; the crowd stays inside its cap, out of
     return window.__kq.stats().calls;
   });
   expect(calls).toBeLessThan(450);
+});
+
+/** Browser-side: visit several busy places and return everyone seen (by person id). */
+function collectCrowd() {
+  const G = window.KQ.Game;
+  const seen = new Map();
+  const spots = [
+    [0, -20, 660],
+    [42, -30, 660],
+    [0, -85, 660],
+    [-22, -14, 660],
+    [-30, -40, 700],
+    [600, -60, 660],
+    [601, -8, 700],
+    [20, -22, 900],
+  ];
+  spots.forEach(function (s) {
+    window.__kq.setMinute(s[2]);
+    window.__kq.place(s[0], s[1], 0);
+    for (let i = 0; i < 240; i += 1) {
+      G.Loop.frame(1 / 30, true);
+      if (i % 40 !== 0) continue;
+      G.S.crowd.members.forEach((m) =>
+        seen.set(m.id, { kind: m.kind, prop: m.prop, pose: m.pose, o: m.outfit, h: m.heading }),
+      );
+    }
+  });
+  return [...seen.values()];
+}
+
+/** Browser-side: what the crowd is made of (counts by age, prop, pose, headwear, skin, body size). */
+function surveyCrowd() {
+  const all = window.__collect();
+  const count = (f) => all.filter(f).length;
+  const sai = all.filter((p) => p.kind === "sai");
+  return {
+    people: all.length,
+    skins: new Set(all.map((p) => p.o.skin)).size,
+    kids: count((p) => p.o.kid),
+    teens: count((p) => p.o.age === "teen"),
+    elders: count((p) => p.o.age === "elder"),
+    adults: count((p) => !p.o.kid && p.o.age !== "teen" && p.o.age !== "elder"),
+    wheelchairs: count((p) => p.prop === "wheelchair"),
+    sticks: count((p) => p.prop === "stick"),
+    babies: count((p) => p.prop === "baby"),
+    guides: count((p) => p.prop === "flag" || p.prop === "umbrella"),
+    holdingHands: count((p) => p.pose === "walk_hold_kid"),
+    heads: [...new Set(all.map((p) => p.o.head))],
+    girths: [Math.min(...all.map((p) => p.o.girth)), Math.max(...all.map((p) => p.o.girth))],
+    kinds: [...new Set(all.map((p) => p.kind))],
+    drinking: count((p) => p.pose === "drink"),
+    sitting: count((p) => p.pose === "sit_legs" || p.pose === "julus"),
+    saiSouth: sai.filter((p) => Math.abs(p.h) < 1).length,
+    saiNorth: sai.filter((p) => Math.abs(p.h) > 2).length,
+  };
+}
+
+/** Survey the crowd once per test run (it takes a few seconds): the page keeps the collection. */
+async function survey(page) {
+  await page.evaluate(
+    `window.__collect = (${collectCrowd.toString()}); window.__collected = window.__collect();`,
+  );
+  return page.evaluate(
+    `(function(){ const all = window.__collected; window.__collect = () => all; return (${surveyCrowd.toString()})(); })()`,
+  );
+}
+
+test("owner follow-up: a varied crowd (skin tones, ages, body sizes, wheelchairs, sticks, babies, tour guides)", async ({
+  browser,
+}) => {
+  const page = await shared(browser);
+  const c = await survey(page);
+  expect(c.people).toBeGreaterThan(150);
+  expect(c.skins).toBeGreaterThanOrEqual(5);
+  expect(c.kids).toBeGreaterThan(3);
+  expect(c.teens).toBeGreaterThan(0);
+  expect(c.elders).toBeGreaterThan(3);
+  expect(c.adults).toBeGreaterThan(20);
+  expect(c.wheelchairs).toBeGreaterThan(0);
+  expect(c.sticks).toBeGreaterThan(0);
+  expect(c.babies).toBeGreaterThan(0);
+  expect(c.guides).toBeGreaterThan(0);
+  expect(c.holdingHands).toBeGreaterThan(0);
+  expect(c.girths[1] - c.girths[0]).toBeGreaterThan(0.2);
+  for (const h of ["tudung", "ghutra", "songkok", "kopiah", "wrap", "doppi"])
+    expect(c.heads).toContain(h);
+});
+
+test("owner follow-up: more happening: sa'i both ways, Zamzam drinkers, rests, photo groups, vendors, guards, cleaners, pigeons", async ({
+  browser,
+}) => {
+  const page = await shared(browser);
+  const c = await survey(page);
+  for (const k of [
+    "tawaf",
+    "sai",
+    "prayer",
+    "read",
+    "dua",
+    "rest",
+    "clean",
+    "guard",
+    "photo",
+    "vendor",
+    "queue",
+  ]) {
+    expect(c.kinds, k).toContain(k);
+  }
+  expect(c.saiSouth).toBeGreaterThan(0);
+  expect(c.saiNorth).toBeGreaterThan(0);
+  expect(c.drinking).toBeGreaterThan(0);
+  expect(c.sitting).toBeGreaterThan(0);
+  const h = await kq(page, () => window.__kq.holy());
+  expect(h.meshes.holyPigeons).toBe(true);
+  expect(h.pigeons).toBeGreaterThan(40);
+});
+
+test("owner follow-up: the holy cities keep a bigger crowd than the kampung, inside the cap and the draw-call budget", async ({
+  browser,
+}) => {
+  const page = await shared(browser);
+  const crowd = await kq(page, visit, { x: 0, z: -20, minute: 660 });
+  expect(crowd.cap).toBeGreaterThan(56);
+  expect(crowd.active).toBeGreaterThan(70);
+  expect(crowd.active).toBeLessThanOrEqual(crowd.cap);
+  expect(crowd.byKind.tawaf).toBeGreaterThan(40);
+  const calls = await kq(page, () => {
+    window.KQ.Game.Loop.frame(1 / 30, false);
+    return window.__kq.stats().calls;
+  });
+  expect(calls).toBeLessThan(450);
+});
+
+test("owner follow-up: the welcome line names the city the hero is in (Makkah, then Madinah, then Makkah)", async ({
+  browser,
+}) => {
+  const page = await shared(browser);
+  const toasts = () => kq(page, () => document.getElementById("kqToasts").textContent);
+  await kq(page, () => window.KQ.Holy.goTo("kaaba", { instant: true }));
+  expect(await kq(page, () => window.KQ.Game.Region.welcome("makkah"))).toContain("Makkah");
+  await kq(page, () => window.KQ.Holy.goTo("rawdah", { instant: true }));
+  const inMadinah = await toasts();
+  expect(inMadinah).toContain("Welcome to Madinah");
+  expect(inMadinah).not.toContain("Welcome to Makkah");
+  await kq(page, () => window.KQ.Holy.travel("makkah", { instant: true }));
+  const back = await toasts();
+  expect(back).not.toContain("Welcome to Madinah");
+  expect(back).toContain("Makkah");
 });
 
 test("the Sa'i lane has walkers between Safa and Marwa; Arafah has people in dua", async ({

@@ -2754,3 +2754,28 @@ kbd {
 .kq-stepper > .kq-sheet-head .kq-btn {
   order: 2;
 }
+/* the posture picture never overlaps the title on a phone */
+.kq-step-art:has(.kq-posture) {
+  min-height: 78px;
+}
+/* a phone held sideways is short: keep the words and the big Next on screen */
+@media (max-height: 520px) {
+  .kq-stepper .kq-step-art {
+    display: none;
+  }
+  .kq-stepper .kq-step-dots {
+    display: none;
+  }
+  .kq-stepper .kq-step-how {
+    font-size: 13px;
+  }
+  .kq-stepper .kq-step-foot .kq-step-next {
+    min-height: 52px;
+  }
+  .kq-stepper .kq-step-foot {
+    gap: 6px;
+  }
+  .kq-stepper .kq-step-count {
+    font-size: 15px;
+  }
+}

@@ -31,10 +31,12 @@
   /** Put the hero at a {x, z, yaw} spot (nudged off colliders), face the camera behind them, settle one step. */
   function moveHero(spot) {
     const s = G.S;
+    const before = s.world.city ? s.world.city() : null;
     const free = G.Collide.freeSpot(s.world.colliders, spot.x, spot.z, G.Player.RADIUS);
     G.Player.place(s.player, free.x, free.z, spot.yaw, s.world.heightAt);
     G.Camera.snapBehind(spot.yaw);
     if (s.world.setCity) s.world.setCity(Holy.cityOf(free.x));
+    if (before && before !== Holy.cityOf(free.x)) G.UI.dismissToast("holy-welcome");
     s.world.setShadowTarget(free);
     G.Loop.step(100);
   }
@@ -56,7 +58,10 @@
     if (!ready() || !spot) return false;
     const o = opts || {};
     fadeThen(function () {
+      const before = G.S.world.city();
       moveHero(spot);
+      const after = G.S.world.city();
+      if (after !== before) G.UI.toast(G.Region.welcome(after), "good", 6000, "holy-welcome");
       if (o.onDone) o.onDone(key);
     }, o.instant);
     return true;
@@ -92,6 +97,7 @@
       "holyUmbrellaTop",
       "holyHills1",
       "holyHalos",
+      "holyPigeons",
     ];
     const meshes = {};
     names.forEach((n) => (meshes[n] = Boolean(s.world.group.getObjectByName(n))));
@@ -102,6 +108,7 @@
       meshes,
       batches: s.world.group.children.filter((c) => c.name.indexOf("batch:") === 0).length,
       colliders: s.world.colliders.length,
+      pigeons: s.world.pigeons || 0,
       pois: Object.keys(s.world.pois).length,
       crowd: s.crowd ? G.Crowd.debug(s.crowd) : null,
       vehicleSpots: Holy.vehicleSpots.length,

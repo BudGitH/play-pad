@@ -148,10 +148,24 @@
   /** Stop the auto-walk and give the hero back (the manual counter keeps watching). */
   function stopAuto() {
     if (!T.auto) return;
+    G.Camera.clearShot();
     T.auto = null;
     if (T.mode === "auto") T.mode = "manual";
     G.Player.release(S().player);
     if (T.kind && T.tracker === null) T.tracker = makeTracker(T.kind, T.target - T.base);
+  }
+
+  /** A scripted shot that follows the walking hero from the outer side and a little behind, so the rite is easy to watch. */
+  function followShot() {
+    const P = S().player;
+    G.Camera.shot({
+      target: { x: P.pos.x, y: P.pos.y, z: P.pos.z },
+      yaw: P.heading + 0.9,
+      pitch: 0.2,
+      dist: 3.6,
+      lift: 0.65,
+      rate: 4,
+    });
   }
 
   /** Advance the auto-walk by dt seconds and tell the counter how far it got. */
@@ -160,6 +174,7 @@
     const speed = r.speed(r.pos);
     r.pos = Math.min(r.end, r.pos + (speed * dt) / (r.kind === "tawaf" ? r.unit : 1));
     put(r.at(r.pos));
+    followShot();
     S().player.forcedPose = r.brisk(r.pos) ? "run" : "walk";
     const walked = r.kind === "tawaf" ? r.pos : r.pos / r.unit;
     const total =

@@ -86,11 +86,9 @@
     shave: { type: "hair_bald", colour: "#e3a97c" },
   };
 
-  /** The head piece after tahallul for any look: the cap loses its hair tuft, hair becomes a trim or a shave. */
+  /** The head piece after tahallul: the cap stays off so the short hair (or the shaved head) shows, until the barber gives a new look. */
   F.cutHead = function (spec, cut) {
     if (!cut || cut === "none") return spec;
-    if (spec.type === "cap" || spec.type === "songkok")
-      return Object.assign({}, spec, { hair: null });
     return F.IHRAM_HEAD[cut === "shave" ? "shave" : "trim"];
   };
 })((window.KQ = window.KQ || {}));

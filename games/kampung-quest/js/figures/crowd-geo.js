@@ -270,6 +270,7 @@
       bikeWheel: bikeWheel(),
     };
     Object.keys(HATS).forEach((k) => (geo["hat_" + k] = G.merge(HATS[k]())));
+    if (F.crowdExtraGeometries) Object.assign(geo, F.crowdExtraGeometries());
     F._crowdGeo = geo;
     return geo;
   };

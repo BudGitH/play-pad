@@ -169,16 +169,17 @@
   function buildDock(on) {
     R.dockBtns = {};
     R.badge = U.el("i", { cls: "kq-badge", hidden: true, text: "" });
-    const mis = dockButton("missions", "Missions", "missions", on);
-    mis.appendChild(R.badge);
+    const haramain = KQ.region === "haramain";
+    const mis = haramain ? null : dockButton("missions", "Missions", "missions", on);
+    if (mis) mis.appendChild(R.badge);
     // Umrah, Hajj and Ziarah live in one dock button, only in Makkah and Madinah
     const rites = KQ.region === "haramain" ? [dockButton("rites", "Umrah", "hand", on)] : [];
     R.dock = U.el(
       "div",
       { cls: "kq-dock", role: "group", "aria-label": "Menu" },
       mis,
-      dockButton("bag", "Bag", "backpack", on),
       rites,
+      dockButton("bag", "Bag", "backpack", on),
     );
     return R.dock;
   }

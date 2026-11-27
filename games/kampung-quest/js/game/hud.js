@@ -273,7 +273,19 @@
       P().icon("run", "kq-ic-lg"),
       U.el("span", { text: "Run" }),
     );
-    return U.el("div", { cls: "kq-touch" }, R.joy, R.run);
+    R.jump = U.el(
+      "button",
+      {
+        type: "button",
+        cls: "kq-jumpbtn",
+        id: "kqJump",
+        "aria-label": "Jump",
+        on: { click: () => on("jump") },
+      },
+      P().icon("jump", "kq-ic-lg"),
+      U.el("span", { text: "Jump" }),
+    );
+    return U.el("div", { cls: "kq-touch" }, R.joy, R.run, R.jump);
   }
 
   /** Build the keyboard hint strip (WASD, Shift, E, drag, Esc) shown to keyboard players. */
@@ -284,6 +296,7 @@
       { cls: "kq-glass kq-keys", "aria-hidden": "true" },
       U.el("span", {}, k("W"), k("A"), k("S"), k("D"), " move"),
       U.el("span", {}, k("Shift"), " run"),
+      U.el("span", {}, k("Space"), " jump"),
       U.el("span", {}, k("E"), " interact"),
       U.el("span", {}, k("Drag"), " look"),
       U.el("span", {}, k("Esc"), " pause"),

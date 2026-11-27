@@ -31,6 +31,7 @@
     Digit2: "tile2",
     Digit3: "tile3",
     Digit4: "tile4",
+    Space: "jump",
     Comma: "camLeft",
     Period: "camRight",
   };
@@ -42,6 +43,8 @@
   const pointers = new Map();
   let handler = null;
   let lastKeyboard = false;
+  /** True while a Space press was taken as a jump (so its key-up must not click a focused button). */
+  let spaceTaken = false;
 
   /** Combine two opposing inputs into -1, 0 or 1. */
   function axis(neg, pos) {
@@ -75,11 +78,12 @@
    */
   function onKeyDown(e) {
     if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.code === "Space" && !spaceFree(e)) return;
     lastKeyboard = true;
     document.body.classList.add("kq-kbd");
     keys.add(e.code);
     const name = SHORTCUTS[e.code];
-    if (MOVE_KEYS[e.code] || name === "interact") {
+    if (MOVE_KEYS[e.code] || name === "interact" || name === "jump") {
       if (!(e.target && e.target.closest && e.target.closest("input, select, textarea"))) {
         e.preventDefault();
       }
@@ -87,9 +91,23 @@
     if (name && !e.repeat && handler) handler(name, e);
   }
 
-  /** Forget a released key. */
+  /**
+   * Does Space mean "jump" right now? Only while the world is in play (no sheet, prayer screen or
+   * flow holding the hero) and not while typing; otherwise it keeps its normal job (pressing the
+   * focused button).
+   */
+  function spaceFree(e) {
+    const typing = e.target && e.target.closest && e.target.closest("input, select, textarea");
+    spaceTaken = !typing && Boolean(G.Actions && G.Actions.canJump());
+    return spaceTaken;
+  }
+
+  /** Forget a released key (and swallow the Space key-up that would click a focused button). */
   function onKeyUp(e) {
     keys.delete(e.code);
+    if (e.code !== "Space" || !spaceTaken) return;
+    spaceTaken = false;
+    e.preventDefault();
   }
 
   /** Start tracking a pointer for camera look (primary or right mouse button, any touch). */

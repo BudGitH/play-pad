@@ -13,7 +13,10 @@
   const U = G.U;
   const WALK = 2.3;
   const RUN = 4.4;
-  const RADIUS = 0.3;
+  /** Body radius for wall tests: the toy is ~0.24 m from its centre to its elbows, plus a visible gap. */
+  const RADIUS = 0.33;
+  /** The longest move tested against walls at once (a run step on a slow frame is split). */
+  const MAX_MOVE = 0.2;
   const STEP_LEN = 0.62;
 
   /** Head-piece specs for the barber's outfit options (default = the hero's own blue cap). */
@@ -56,6 +59,8 @@
       forcedPose: null,
       stepAcc: 0,
       moving: false,
+      jump: KQ.Sim.Jump.create(),
+      base: 0,
     };
     return P;
   }
@@ -68,6 +73,8 @@
   /** Put the hero on the ground at x,z, stop all motion and optionally set the heading. */
   function place(P, x, z, heading, heightAt) {
     P.pos.set(x, heightAt(x, z), z);
+    P.base = P.pos.y;
+    KQ.Sim.Jump.reset(P.jump);
     P.vx = P.vz = P.speed = 0;
     if (heading !== undefined) P.heading = heading;
     sync(P);
@@ -97,6 +104,9 @@
     if (P.forcedPose) {
       P.anim.play(P.forcedPose, 0.35);
       P.anim.setRate(1);
+    } else if (!P.jump.grounded) {
+      P.anim.play("jump", 0.08);
+      P.anim.setRate(1);
     } else if (P.speed < 0.15) {
       P.anim.play("idle", 0.2);
       P.anim.setRate(1);
@@ -122,6 +132,37 @@
   }
 
   /**
+   * Walk the hero by (dx, dz), split into short legs so a fast step cannot jump over a thin wall,
+   * sliding along whatever is in the way.
+   */
+  function moveSliding(P, dx, dz, colliders) {
+    const legs = Math.max(1, Math.ceil(Math.hypot(dx, dz) / MAX_MOVE));
+    for (let i = 0; i < legs; i += 1) {
+      P.pos.x += dx / legs;
+      P.pos.z += dz / legs;
+      G.Collide.settle(colliders, P.pos, RADIUS);
+    }
+  }
+
+  /** Height: follow the terrain, add the jump arc, and thud on landing. */
+  function vertical(P, dt, env) {
+    P.base = U.damp(P.base, env.heightAt(P.pos.x, P.pos.z), 18, dt);
+    const landed = KQ.Sim.Jump.step(P.jump, dt);
+    if (landed && env.audio) env.audio.play("land");
+    P.pos.y = P.base + P.jump.h;
+  }
+
+  /**
+   * Jump if standing on the ground (never in the air: no double jump, never while a flow holds
+   * the hero). Returns true when the hero left the ground.
+   */
+  function jump(P, audio) {
+    if (P.locked || !KQ.Sim.Jump.press(P.jump)) return false;
+    if (audio) audio.play("jump");
+    return true;
+  }
+
+  /**
    * Move the hero one frame.
    * @param {object} P player
    * @param {number} dt seconds
@@ -131,6 +172,7 @@
   function update(P, dt, move, env) {
     if (P.locked) {
       P.speed = 0;
+      KQ.Sim.Jump.reset(P.jump);
       animate(P, dt, move);
       sync(P);
       return;
@@ -141,15 +183,16 @@
     P.vx = U.damp(P.vx, want.x, k, dt);
     P.vz = U.damp(P.vz, want.z, k, dt);
     const before = { x: P.pos.x, z: P.pos.z };
-    P.pos.x += P.vx * dt;
-    P.pos.z += P.vz * dt;
-    G.Collide.resolve(env.colliders, P.pos, RADIUS);
+    moveSliding(P, P.vx * dt, P.vz * dt, env.colliders);
     const moved = U.dist(before.x, before.z, P.pos.x, P.pos.z);
     P.speed = dt > 0 ? moved / dt : 0;
-    if (P.speed > 0.3) P.heading = U.dampAngle(P.heading, Math.atan2(P.vx, P.vz), 12, dt);
-    P.pos.y = U.damp(P.pos.y, env.heightAt(P.pos.x, P.pos.z), 18, dt);
+    if (P.speed > 0.3) {
+      const face = Math.atan2(P.pos.x - before.x, P.pos.z - before.z);
+      P.heading = U.dampAngle(P.heading, face, 12, dt);
+    }
+    vertical(P, dt, env);
     P.moving = P.speed > 0.3;
-    footsteps(P, moved, env.audio);
+    if (P.jump.grounded) footsteps(P, moved, env.audio);
     animate(P, dt, move);
     sync(P);
   }
@@ -160,8 +203,10 @@
     P.forcedPose = pose || null;
     if (spot) {
       P.pos.set(spot.x, spot.y, spot.z);
+      P.base = spot.y;
       P.heading = spot.heading;
     }
+    KQ.Sim.Jump.reset(P.jump);
     P.vx = P.vz = 0;
     sync(P);
   }
@@ -175,6 +220,7 @@
   G.Player = {
     create,
     update,
+    jump,
     place,
     lock,
     release,

@@ -5,7 +5,7 @@
 **Feature:** Kampung Quest (`games/kampung-quest/`)
 **Ticket:** PLAY-013
 **Run at:** 2026-11-26 (5A round 1), 2026-11-27 (5A round 2, 5B)
-**Overall product gate:** ☐ PASS ☐ BLOCKED ☐ BLOCKED — ESCALATED
+**Overall product gate:** ☑ PASS ☐ BLOCKED ☐ BLOCKED — ESCALATED (owner release conditions below)
 
 ---
 
@@ -49,16 +49,36 @@
 
 ## 5B — Persona panel (usability & value)
 
-**Evaluation mode:** ☐ artifacts (requirements + code + screenshots) ☐ live (one driver captured the running app)
-☐ **Unverified — no live run** (no preview/browser available this session)
+**Evaluation mode:** ☐ artifacts ☑ live: each persona drove headless Chromium (SwiftShader) with real taps or keys. The `__kq` hooks were used only to skip time or read state. Real-phone frame rate is not measured (owner release condition).
 
 > Only the feature's **target personas** (from `requirements.md` → _Target personas_) are spawned — not the whole roster.
 
-| Persona | Baseline    | Value                   | Satisfaction | Critical? | Key feedback |
-| ------- | ----------- | ----------------------- | ------------ | --------- | ------------ |
-| _name_  | _met / not_ | _met / partial / unmet_ | _1–5_        | _y/n_     | _..._        |
+| Persona                                                  | Baseline | Value                            | Satisfaction | Critical? | Key feedback                                                                                                                                                                                                                        |
+| -------------------------------------------------------- | -------- | -------------------------------- | ------------ | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Priya & kid (tablet, 1180x820 touch)                     | met      | met                              | 4            | n         | Safe, local, respectful; prayer and wudu accuracy hold. The prayer panel has no next-tile cue and the hint is long for a 7-year-old. One Zohor is about 60 taps. Barber and Missions sheets run off the bottom.                     |
+| Maya (phone, touch only, portrait + landscape + 360x640) | met      | met (real-phone perf unverified) | 4            | n         | The whole loop works by touch, including rotation mid-play. Footprints plus "Show me the way" carry the prayer flow. Opening HUD crowded in portrait; Talk floats far from the thumb; "Start" should read "Continue" after a save.  |
+| Sam (keyboard + captions / screen reader)                | met      | met                              | 3.5          | n         | Captions run as a live region even when muted; steps announced; focus trap, Esc and focus return work. Wayfinding is visual only; focus drops after "Show me the way"; eating, mute and stale live text need clearer announcements. |
 
-**Non-blocking feedback → `docs/IDEAS.md`:** _list the value/satisfaction improvements parked for later._
+**Polish round after 5B (in progress, non-blocking):**
+
+- next-tile cue and a short hint after a wrong prayer tap;
+- step states for assistive tech;
+- focus after "Show me the way";
+- food / mute announcements and clearing stale live text;
+- the double full stop, an unnamed azan button and a lingering coach toast;
+- "Continue" on the title after a save;
+- barber / Missions sheets that scroll inside the sheet.
+
+**Non-blocking feedback → `docs/IDEAS.md`:**
+
+- spoken wayfinding (goal, distance and bearing on a key, and a text list in the Map);
+- a shorter wudu or prayer mode for little ones;
+- NPCs praying in step with the hero;
+- a livelier opening street;
+- Talk in the thumb zone and a lighter opening HUD on portrait phones;
+- a short-session "quick day" or a "since you left" recap;
+- earned / unearned stickers in the Bag;
+- a "Start wudu" shortcut on the azan card at the mosque.
 
 ---
 
@@ -66,20 +86,20 @@
 
 > One block per **blocking** critical. Attendees: Senior PM + Senior UX Designer + the persona(s) who raised it.
 
-### RT-1 — <the blocking item>
-
-- **Raised by:** _persona(s)._
-- **Problem:** _the baseline/value miss, concretely._
-- **Plan:** _the agreed change._
-- **Implemented:** _what was done (back through Phase 3)._
-- **Re-validation:** _persona / PM verdict after the fix._
-- **Status:** OPEN / RESOLVED / ESCALATED (after 3 rounds)
+_None needed: no persona raised a baseline- or value-blocking critical._
 
 ---
 
 ## Human summary
 
-_2–3 plain sentences: does it meet the business goal, would the target users value it and keep using it, what (if anything) blocks, and what's next. Written so a non-engineer understands the state._
+Kampung Quest meets its business goal. A new player finishes a mission, a meal and a full guided prayer on a tablet, a phone (touch only) or a keyboard. The parent, phone and keyboard personas all judged it worth playing (satisfaction 4, 4 and 3.5). Nothing blocks.
+
+Before release, the owner still holds four checks:
+
+- reading through the religious content;
+- auditioning the azan on a real phone;
+- checking frame rate on a real phone or GPU (AC-14);
+- accepting that phones narrower than 667 px keep more than 25 % HUD (already accepted).
 
 ---
 

@@ -133,4 +133,18 @@ window.GAMES = [
     added: "2026-11-22",
     best: { key: "playpad.brickBuddies.v1", field: "bestOverall", label: "Housed" },
   },
+  {
+    id: "kampung-quest",
+    title: "Kampung Quest",
+    tagline: "A day in the kampung: help, eat, pray.",
+    description:
+      "Wander a 3D Singapore HDB neighbourhood as a toy-figure kid: say salam to your neighbours, eat at the hawker centre, run errands and visit the barber, clinic and library. When the azan sounds, missions wait while you walk to the mosque, take wudu and pray with guided steps. A 48-minute day with real MUIS prayer times.",
+    tags: ["Solo", "3D", "Adventure"],
+    path: "games/kampung-quest/",
+    accent: "#2f9e6e",
+    icon: "🕌",
+    players: "1",
+    status: "live",
+    added: "2026-11-26",
+  },
 ];

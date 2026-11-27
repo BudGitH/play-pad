@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Kampung Quest — figure showcase (dev)</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #1a1410;
+        color: #f4efe6;
+        font:
+          14px/1.4 system-ui,
+          sans-serif;
+        overflow: hidden;
+      }
+      canvas {
+        display: block;
+      }
+      #hud {
+        position: fixed;
+        left: 12px;
+        top: 10px;
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        max-width: calc(100% - 24px);
+      }
+      #hud button,
+      #hud select {
+        font: inherit;
+        padding: 6px 10px;
+        border-radius: 8px;
+        border: 1px solid #6b5a48;
+        background: rgba(30, 22, 16, 0.75);
+        color: inherit;
+      }
+      #stats {
+        position: fixed;
+        right: 12px;
+        bottom: 10px;
+        opacity: 0.8;
+      }
+      body.clean #hud,
+      body.clean #stats {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="hud">
+      <select id="view" aria-label="View">
+        <option value="lineup">Line-up</option>
+        <option value="hero">Hero close-up</option>
+        <option value="side">Hero side (prayer)</option>
+        <option value="turntable">Turntable</option>
+        <option value="macro">Macro (like the photos)</option>
+      </select>
+      <select id="pose" aria-label="Pose"></select>
+      <button id="cycle" type="button">Cycle poses</button>
+    </div>
+    <div id="stats"></div>
+    <script src="../../../games/kampung-quest/three.min.js"></script>
+    <script src="../../../games/kampung-quest/js/figures/materials.js"></script>
+    <script src="../../../games/kampung-quest/js/figures/prints.js"></script>
+    <script src="../../../games/kampung-quest/js/figures/faces.js"></script>
+    <script src="../../../games/kampung-quest/js/figures/geometry.js"></script>
+    <script src="../../../games/kampung-quest/js/figures/parts.js"></script>
+    <script src="../../../games/kampung-quest/js/figures/headpieces.js"></script>
+    <script src="../../../games/kampung-quest/js/figures/build.js"></script>
+    <script src="../../../games/kampung-quest/js/figures/cast.js"></script>
+    <script src="../../../games/kampung-quest/js/figures/poses.js"></script>
+    <script src="../../../games/kampung-quest/js/figures/prayer-poses.js"></script>
+    <script src="../../../games/kampung-quest/js/figures/animator.js"></script>
+    <script src="table.js"></script>
+    <script src="showcase.js"></script>
+  </body>
+</html>

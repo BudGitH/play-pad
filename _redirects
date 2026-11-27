@@ -26,6 +26,7 @@
 /.env.example      /  302
 /eslint.config.mjs /  302
 /games/sunset-stride/CLAUDE.md /  302
+/games/kampung-quest/CLAUDE.md /  302
 
 # Renamed in PLAY-007 (Neon Rush -> Sunset Stride): keep old bookmarks and shared links working.
 /games/neon-rush           /games/sunset-stride/        301

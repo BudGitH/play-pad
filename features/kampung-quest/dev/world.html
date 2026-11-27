@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Kampung Quest — world dev</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #111;
+        color: #eee;
+        font:
+          13px system-ui,
+          sans-serif;
+        overflow: hidden;
+      }
+      #c {
+        display: block;
+        width: 100vw;
+        height: 100vh;
+      }
+      #ui {
+        position: fixed;
+        left: 8px;
+        top: 8px;
+        background: rgba(0, 0, 0, 0.55);
+        padding: 8px 10px;
+        border-radius: 8px;
+        display: grid;
+        gap: 6px;
+      }
+      #ui.hidden {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="c"></canvas>
+    <div id="ui">
+      <label
+        >Time <input id="time" type="range" min="0" max="1439" value="540" /> <span id="hhmm"></span
+      ></label>
+      <label
+        >Quality
+        <select id="q">
+          <option>low</option>
+          <option>med</option>
+          <option selected>high</option>
+        </select></label
+      >
+      <label
+        >POI
+        <select id="poi"></select
+      ></label>
+      <div id="stats"></div>
+      <small>Drag: look · WASD/QE: fly · Shift: fast · H: hide panel</small>
+    </div>
+    <script>
+      window.KQ = window.KQ || {};
+      window.KQ.ASSET_BASE = "../../../games/kampung-quest/assets/";
+    </script>
+    <script src="../../../games/kampung-quest/three.min.js"></script>
+    <script src="../../../games/kampung-quest/js/data/prayer-times.js"></script>
+    <script src="../../../games/kampung-quest/js/world/geo.js"></script>
+    <script src="../../../games/kampung-quest/js/world/textures.js"></script>
+    <script src="../../../games/kampung-quest/js/world/canvas.js"></script>
+    <script src="../../../games/kampung-quest/js/world/patterns.js"></script>
+    <script src="../../../games/kampung-quest/js/world/patterns2.js"></script>
+    <script src="../../../games/kampung-quest/js/world/patterns3.js"></script>
+    <script src="../../../games/kampung-quest/js/world/materials.js"></script>
+    <script src="../../../games/kampung-quest/js/world/layout.js"></script>
+    <script src="../../../games/kampung-quest/js/world/sky.js"></script>
+    <script src="../../../games/kampung-quest/js/world/lighting.js"></script>
+    <script src="../../../games/kampung-quest/js/world/roads.js"></script>
+    <script src="../../../games/kampung-quest/js/world/hdb.js"></script>
+    <script src="../../../games/kampung-quest/js/world/hawker.js"></script>
+    <script src="../../../games/kampung-quest/js/world/mosque.js"></script>
+    <script src="../../../games/kampung-quest/js/world/mosque-shell.js"></script>
+    <script src="../../../games/kampung-quest/js/world/mosque-yard.js"></script>
+    <script src="../../../games/kampung-quest/js/world/mosque-inside.js"></script>
+    <script src="../../../games/kampung-quest/js/world/ornament.js"></script>
+    <script src="../../../games/kampung-quest/js/world/shops.js"></script>
+    <script src="../../../games/kampung-quest/js/world/services.js"></script>
+    <script src="../../../games/kampung-quest/js/world/foliage.js"></script>
+    <script src="../../../games/kampung-quest/js/world/trees.js"></script>
+    <script src="../../../games/kampung-quest/js/world/props.js"></script>
+    <script src="../../../games/kampung-quest/js/world/town.js"></script>
+    <script src="../../../games/kampung-quest/js/world/detail.js"></script>
+    <script src="../../../games/kampung-quest/js/world/clutter.js"></script>
+    <script src="../../../games/kampung-quest/js/world/life.js"></script>
+    <script src="../../../games/kampung-quest/js/world/nav.js"></script>
+    <script src="../../../games/kampung-quest/js/world/grunge.js"></script>
+    <script src="../../../games/kampung-quest/js/world/aofield.js"></script>
+    <script src="../../../games/kampung-quest/js/world/surface.js"></script>
+    <script src="../../../games/kampung-quest/js/world/world.js"></script>
+    <script src="../../../games/kampung-quest/js/world/world-runtime.js"></script>
+    <script src="../../../games/kampung-quest/js/world/world-build.js"></script>
+    <script>
+      (function () {
+        "use strict";
+        const canvas = document.getElementById("c");
+        const params = new URLSearchParams(location.search);
+        const tier = params.get("q") || "high";
+        const renderer = new THREE.WebGLRenderer({
+          canvas,
+          antialias: tier !== "low",
+          preserveDrawingBuffer: true,
+        });
+        renderer.outputEncoding = THREE.sRGBEncoding;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 0.95;
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 600);
+        const clock = {
+          minute: 540,
+          sunFactor() {
+            return 1 - world.night();
+          },
+        };
+        const world = window.KQ.World.build(scene, { quality: tier, renderer });
+        const hints = world.qualityHints(tier);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, hints.pixelRatio));
+        document.getElementById("q").value = tier;
+
+        /* --- free-fly camera: yaw/pitch drag, WASD/QE --- */
+        const cam = { pos: new THREE.Vector3(26, 1.6, 6), yaw: Math.PI, pitch: 0.05 };
+        const keys = new Set();
+        function aim() {
+          camera.position.copy(cam.pos);
+          const d = new THREE.Vector3(
+            Math.sin(cam.yaw) * Math.cos(cam.pitch),
+            Math.sin(cam.pitch),
+            Math.cos(cam.yaw) * Math.cos(cam.pitch),
+          );
+          camera.lookAt(cam.pos.clone().add(d));
+          world.setShadowTarget(cam.pos.clone().addScaledVector(d, 12));
+        }
+        function fly(dt) {
+          const sp = (keys.has("shift") ? 30 : 8) * dt;
+          const f = new THREE.Vector3(Math.sin(cam.yaw), 0, Math.cos(cam.yaw));
+          const r = new THREE.Vector3(-f.z, 0, f.x);
+          if (keys.has("w")) cam.pos.addScaledVector(f, sp);
+          if (keys.has("s")) cam.pos.addScaledVector(f, -sp);
+          if (keys.has("d")) cam.pos.addScaledVector(r, sp);
+          if (keys.has("a")) cam.pos.addScaledVector(r, -sp);
+          if (keys.has("e")) cam.pos.y += sp;
+          if (keys.has("q")) cam.pos.y = Math.max(0.3, cam.pos.y - sp);
+        }
+        let drag = null;
+        canvas.addEventListener("pointerdown", (e) => (drag = { x: e.clientX, y: e.clientY }));
+        window.addEventListener("pointerup", () => (drag = null));
+        window.addEventListener("pointermove", (e) => {
+          if (!drag) return;
+          cam.yaw -= (e.clientX - drag.x) * 0.005;
+          cam.pitch = Math.max(-1.4, Math.min(1.4, cam.pitch - (e.clientY - drag.y) * 0.005));
+          drag = { x: e.clientX, y: e.clientY };
+        });
+        window.addEventListener("keydown", (e) => {
+          keys.add(e.key.toLowerCase());
+          if (e.key.toLowerCase() === "h") document.getElementById("ui").classList.toggle("hidden");
+        });
+        window.addEventListener("keyup", (e) => keys.delete(e.key.toLowerCase()));
+
+        function resize() {
+          const w = window.innerWidth;
+          const h = window.innerHeight;
+          renderer.setSize(w, h, false);
+          camera.aspect = w / h;
+          camera.updateProjectionMatrix();
+        }
+        window.addEventListener("resize", resize);
+        resize();
+
+        /** Third-person-ish view of a POI: behind the spot, eye height ~1.6 m. */
+        function goto(id, o) {
+          o = o || {};
+          const p = world.pois[id];
+          if (!p) return false;
+          const back = o.dist !== undefined ? o.dist : 4.5;
+          const yaw = p.facing + (o.turn || 0);
+          const fx = Math.sin(yaw);
+          const fz = Math.cos(yaw);
+          cam.pos.set(
+            p.pos.x - fx * back + (o.side || 0) * fz,
+            o.h || 1.6,
+            p.pos.z - fz * back - (o.side || 0) * fx,
+          );
+          cam.yaw = yaw;
+          cam.pitch = o.pitch !== undefined ? o.pitch : 0.04;
+          aim();
+          return true;
+        }
+
+        const timeEl = document.getElementById("time");
+        function setMinute(m) {
+          clock.minute = m;
+          timeEl.value = m;
+          const hh = String(Math.floor(m / 60)).padStart(2, "0");
+          const mm = String(Math.floor(m % 60)).padStart(2, "0");
+          document.getElementById("hhmm").textContent = hh + ":" + mm;
+          world.update(0, clock);
+        }
+        timeEl.addEventListener("input", () => setMinute(Number(timeEl.value)));
+        document
+          .getElementById("q")
+          .addEventListener("change", (e) => world.setQuality(e.target.value));
+        const sel = document.getElementById("poi");
+        Object.keys(world.pois).forEach((id) => sel.add(new Option(id, id)));
+        sel.addEventListener("change", () => goto(sel.value));
+
+        function render() {
+          aim();
+          renderer.render(scene, camera);
+          const i = renderer.info.render;
+          document.getElementById("stats").textContent =
+            "calls " + i.calls + " · tris " + i.triangles;
+        }
+        function stats() {
+          render();
+          const i = renderer.info;
+          return {
+            calls: i.render.calls,
+            triangles: i.render.triangles,
+            geometries: i.memory.geometries,
+            textures: i.memory.textures,
+            programs: i.programs.length,
+          };
+        }
+        /** Dev check: walk-graph edges / POIs clear of colliders (NPC radius r), graph connected. */
+        function validate(r) {
+          r = r || 0.28;
+          const C = world.colliders;
+          const hit = (x, z) =>
+            C.find((c) => x > c.minX - r && x < c.maxX + r && z > c.minZ - r && z < c.maxZ + r);
+          const g = world.walkGraph;
+          const bad = [];
+          g.edges.forEach(([a, b]) => {
+            const A = g.nodes[a];
+            const B = g.nodes[b];
+            const n = Math.ceil(Math.hypot(B.x - A.x, B.z - A.z) / 0.2);
+            for (let i = 0; i <= n; i++) {
+              const x = A.x + ((B.x - A.x) * i) / n;
+              const z = A.z + ((B.z - A.z) * i) / n;
+              const c = hit(x, z);
+              if (c)
+                return bad.push({
+                  edge: [A.x, A.z, B.x, B.z],
+                  at: [x.toFixed(2), z.toFixed(2)],
+                  kind: c.kind,
+                });
+            }
+          });
+          const seen = new Set([0]);
+          const adj = g.nodes.map(() => []);
+          g.edges.forEach(([a, b]) => (adj[a].push(b), adj[b].push(a)));
+          const q = [0];
+          while (q.length) adj[q.pop()].forEach((m) => !seen.has(m) && (seen.add(m), q.push(m)));
+          const pois = Object.keys(world.pois).filter((id) => !seen.has(world.pois[id].node));
+          return {
+            nodes: g.nodes.length,
+            edges: g.edges.length,
+            colliders: C.length,
+            badEdges: bad,
+            unreachablePois: pois,
+            disconnected: g.nodes.length - seen.size,
+          };
+        }
+        let last = performance.now();
+        function loop(t) {
+          const dt = Math.min(0.1, (t - last) / 1000);
+          last = t;
+          fly(dt);
+          world.update(dt, clock);
+          render();
+          requestAnimationFrame(loop);
+        }
+        setMinute(540);
+        aim();
+        window.__world = {
+          ready: true,
+          world,
+          scene,
+          camera,
+          renderer,
+          setMinute,
+          goto,
+          stats,
+          validate,
+          render,
+          view(x, y, z, yaw, pitch) {
+            cam.pos.set(x, y, z);
+            cam.yaw = yaw;
+            cam.pitch = pitch || 0;
+            aim();
+          },
+          setQuality: (q) => world.setQuality(q),
+          tick: (dt) => world.update(dt, clock),
+        };
+        if (!params.has("still")) requestAnimationFrame(loop);
+      })();
+    </script>
+  </body>
+</html>

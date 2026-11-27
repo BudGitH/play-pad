@@ -21,12 +21,12 @@
 > Phase 4 QA **runs** these to validate (not just read code). Fill them once the app exists; leave `TBD` until then — QA falls back to static review and never blocks on a missing command.
 
 - **Run the app:** open `index.html` in a browser (or `npx serve .` / VS Code Live Server for a localhost)
-- **Run tests:** `npm run smoke` (Playwright smoke test: hub + every live game load with no page/console errors or broken requests). One-time: `npx playwright install chromium`. A new game is covered automatically once it's `live` in `games.js`.
+- **Run tests:** `npm run smoke` (Playwright, everything except `@slow`: the hub, every live game, the Sparkle Salon / Brick Buddies / viewport specs and Kampung Quest's two specs). One-time: `npx playwright install chromium`. A new game is covered automatically by `tests/smoke.spec.mjs` once it's `live` in `games.js`. It is split into two Playwright projects, the same split CI uses: `npm run smoke:core` (everything but Kampung Quest, about 4-5 min) and `npm run smoke:kq` (`tests/kampung-quest-ac.spec.mjs` + `tests/kampung-quest-mobile.spec.mjs`, software-GL 3D; `smoke:kq:ac` / `smoke:kq:mobile` run one file). Kampung Quest also has `npm run test:kq` (Node unit tests of the pure sim layer, under a second, no browser) and `npm run perf:kq` (the `@slow` AC-14 probe: main-thread frame time at 4x CPU throttle; about 1 min). `PW_CHROMIUM_PATH=<chromium>` is optional.
 - **Lint / format:** `npm run lint` (ESLint) · `npm run format` (Prettier, gated) · `npm run secrets` (secret scan) · all: `npm run check` (lint + the PLAY-010 lint ratchet `npm run ratchet` + format check). One-time: `npm install` (dev tooling only — the site has no runtime deps).
 - **Type check:** N/A (vanilla JS)
 - **Hooks:** `git config core.hooksPath .githooks` once per clone (secret scan + lint on commit)
 - **Deep probes:** `node tools/serve.mjs 5599 &` then `node tests/probes/stride-probe.mjs` (Sunset Stride, ~2.5 min); `node features/sparkle-salon/probe.mjs` and `node features/brick-buddies/probe.mjs` (each starts its own server, ~3-4 min). Each exits 1 on any FAIL.
-- **CI:** `.github/workflows/ci.yml` runs secrets + lint + `npm audit` + smoke on every PR; `.github/workflows/probes.yml` runs the three deep probes (one matrix leg per game) on PRs touching `games/**`, `features/**/probe.mjs`, `tests/probes/**`, `tools/serve.mjs`, `styles/**`, `scripts/**`, `package*.json` or the workflow itself, on push to `main` with the same paths, nightly, and on `workflow_dispatch`. Do not mark it a required check (path-filtered)
+- **CI:** `.github/workflows/ci.yml` runs on every PR: job `check` (secrets, lint + format + ratchet, `npm run test:kq`, `npm audit`), job `smoke` (`npm run smoke:core`) and job `Kampung Quest` (a matrix of two legs, `smoke:kq:ac` and `smoke:kq:mobile`, each on its own runner with its own timeout). `.github/workflows/probes.yml` runs the deep probes (Sunset Stride, Sparkle Salon, Brick Buddies and Kampung Quest's `npm run perf:kq`, one matrix leg per game) on PRs touching `games/**`, `features/**/probe.mjs`, `tests/probes/**`, the Kampung Quest specs, `tools/serve.mjs`, `styles/**`, `scripts/**`, `package*.json` or the workflow itself, on push to `main` with the same paths, nightly, and on `workflow_dispatch`. Do not mark it a required check (path-filtered)
 - **Deploy:** automatic — Cloudflare Pages Git integration deploys `main`; preview deployments are off. There is no manual deploy path — to ship, merge a PR.
 - **Build:** `TBD` (none — static, no build step)
 
@@ -45,4 +45,4 @@
 
 ---
 
-_Last reviewed: 2026-11-24_
+_Last reviewed: 2026-11-26_

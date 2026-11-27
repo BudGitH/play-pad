@@ -32,14 +32,18 @@ jobs:
         run: npm run secrets
       - name: Lint + format check
         run: npm run check
+      - name: Kampung Quest sim unit tests (no browser needed)
+        run: npm run test:kq
       - name: Dependency audit (CODE_QUALITY.md #24)
         run: npm audit --audit-level=high
 
   smoke:
     # Opens the hub and every live game in headless Chromium; fails on any
-    # page error, console error or broken same-origin request (tests/smoke.spec.mjs).
+    # page error, console error or broken same-origin request (tests/smoke.spec.mjs), plus the
+    # Sparkle Salon / Brick Buddies / viewport specs. Kampung Quest's two (much slower, software-GL
+    # 3D) browser specs run in their own job below so this one stays well inside its budget (R2-Q-01).
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
@@ -51,5 +55,36 @@ jobs:
       - run: npm ci
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
-      - name: Smoke test
-        run: npm run smoke
+      - name: Smoke test (everything except Kampung Quest and @slow)
+        run: npm run smoke:core
+
+  kampung-quest:
+    # Kampung Quest's browser specs, on every PR: the acceptance criteria (tests/kampung-quest-ac.spec.mjs)
+    # and the phone / touch layouts (tests/kampung-quest-mobile.spec.mjs). One runner per file so each
+    # has its own time budget and a red check names the part. Headless Chromium renders the 3D world
+    # in software (SwiftShader), hence the long timeout. The @slow 4x-CPU frame probe is NOT run
+    # here: it lives in probes.yml (npm run perf:kq).
+    name: Kampung Quest (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false # an AC failure must not hide the phone result
+      matrix:
+        include:
+          - name: AC
+            run: npm run smoke:kq:ac
+          - name: Phone
+            run: npm run smoke:kq:mobile
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Kampung Quest browser specs (${{ matrix.name }})
+        run: ${{ matrix.run }}

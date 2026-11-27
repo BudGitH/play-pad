@@ -9,7 +9,13 @@
     "format:check": "prettier --check .",
     "check": "npm run lint && npm run ratchet && npm run format:check",
     "secrets": "node tools/secret-scan.mjs",
-    "smoke": "playwright test",
+    "smoke": "playwright test --grep-invert @slow",
+    "smoke:core": "playwright test --project=core --grep-invert @slow",
+    "smoke:kq": "playwright test --project=kampung-quest --grep-invert @slow",
+    "smoke:kq:ac": "playwright test tests/kampung-quest-ac.spec.mjs --project=kampung-quest --grep-invert @slow",
+    "smoke:kq:mobile": "playwright test tests/kampung-quest-mobile.spec.mjs --project=kampung-quest --grep-invert @slow",
+    "perf:kq": "playwright test tests/kampung-quest-ac.spec.mjs --project=kampung-quest --grep @slow",
+    "test:kq": "node --test \"tests/kampung-quest/*.test.mjs\"",
     "ratchet": "node tools/lint-ratchet.mjs"
   },
   "devDependencies": {

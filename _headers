@@ -48,6 +48,22 @@
 /games/brick-buddies/index.html
   Cache-Control: public, max-age=0, must-revalidate
 
+/games/kampung-quest/
+  Cache-Control: public, max-age=0, must-revalidate
+/games/kampung-quest/index.html
+  Cache-Control: public, max-age=0, must-revalidate
+/games/kampung-quest/styles.css
+  Cache-Control: public, max-age=0, must-revalidate
+# Kampung Quest code is split across ~100 un-hashed files that ship in lock-step with index.html,
+# so they always revalidate (a stale file against new HTML would break the game). Vendored three.js
+# and the assets are cached long: a changed asset gets a new filename.
+/games/kampung-quest/js/*
+  Cache-Control: public, max-age=0, must-revalidate
+/games/kampung-quest/three.min.js
+  Cache-Control: public, max-age=604800
+/games/kampung-quest/assets/*
+  Cache-Control: public, max-age=604800
+
 # Vendored Three.js (version-pinned r147) + GLTFLoader + CC0 assets — safe to cache long
 /games/sunset-stride/three.min.js
   Cache-Control: public, max-age=604800

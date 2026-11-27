@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <title>Kampung Quest — PlayPad</title>
+
+    <link rel="icon" href="../../icons/favicon.svg" type="image/svg+xml" />
+    <meta name="theme-color" content="#0b1018" />
+
+    <!-- Applies the player's saved light/dark choice before first paint (classic script, no defer).
+         Kampung Quest pins the dark roles on its HUD (a bright 3D scene needs dark chrome). -->
+    <script src="../../scripts/theme.js"></script>
+
+    <!-- Shared PlayPad design system + the visible-height fix (--pp-app-h) -->
+    <script src="../../scripts/viewport.js"></script>
+    <link rel="stylesheet" href="../../styles/tokens.css" />
+    <link rel="stylesheet" href="../../styles/base.css" />
+    <link rel="stylesheet" href="styles.css" />
+
+    <!--
+    Kampung Quest — a 3D third-person open-neighbourhood life game (PlayPad game, PLAY-013).
+    Build-free classic scripts under window.KQ (works from file://). Layers, in load order:
+      data (prayer times, azan captions) -> sim (pure logic, unit-tested) -> figures (toy cast + poses)
+      -> world (the neighbourhood) -> game (this game's controller, HUD and prayer flow).
+    three.js r147 is vendored (UMD); every fetched asset has a procedural stand-in (KQ.CAN_FETCH).
+    Notes for contributors: games/kampung-quest/CLAUDE.md. Feature docs: features/kampung-quest/.
+    -->
+  </head>
+  <body>
+    <div id="kq" class="kq-root">
+      <canvas
+        id="kqStage"
+        class="kq-stage"
+        tabindex="-1"
+        aria-label="3D view of the kampung"
+      ></canvas>
+      <div id="kqHud" class="kq-hud" hidden></div>
+      <div id="kqSheetLayer" class="kq-sheet-layer"></div>
+      <div id="kqToasts" class="kq-toasts"></div>
+      <div id="kqLive" class="kq-sr" role="status" aria-live="polite"></div>
+      <div id="kqLiveCaption" class="kq-sr" role="status" aria-live="polite"></div>
+      <div id="kqFade" class="kq-fade" aria-hidden="true"></div>
+
+      <section
+        id="kqTitle"
+        class="kq-title"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="kqTitleH"
+      >
+        <div class="kq-title-card">
+          <h1 id="kqTitleH">Kampung Quest</h1>
+          <p class="kq-lead">A day in the neighbourhood: help, eat, pray.</p>
+          <div
+            class="kq-progress"
+            role="progressbar"
+            aria-label="Loading"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            aria-valuenow="0"
+          >
+            <i id="kqBar"></i>
+          </div>
+          <p id="kqLoadStatus" class="kq-load-status" role="status">
+            Building the neighbourhood... 0%
+          </p>
+          <ol id="kqLoadSteps" class="kq-load-steps"></ol>
+          <div class="kq-title-actions">
+            <button id="kqStart" class="kq-btn primary kq-big" type="button" disabled>
+              <span>Start</span>
+            </button>
+            <button id="kqNew" class="kq-btn" type="button" hidden><span>New game</span></button>
+          </div>
+          <p id="kqLoadNote" class="kq-small"></p>
+          <p class="kq-small kq-credit">
+            Azan: "The Adhan - Muslim Call to Prayer - Aaqib Azeez" by Atcovi,
+            <a
+              href="https://creativecommons.org/licenses/by-sa/4.0/"
+              target="_blank"
+              rel="noopener noreferrer"
+              >CC BY-SA 4.0</a
+            >, via Wikimedia Commons (volume-adjusted, re-encoded). Photo textures: ambientCG, CC0.
+            <a href="assets/CREDITS.md">All credits</a>
+          </p>
+          <p class="kq-small"><a href="../../index.html">Back to PlayPad</a></p>
+        </div>
+      </section>
+
+      <section id="kqError" class="kq-title kq-error" role="alert" hidden>
+        <div class="kq-title-card">
+          <h2>This device can't show the 3D neighbourhood</h2>
+          <p>
+            Kampung Quest needs WebGL, and this browser has it turned off or doesn't support it.
+            Nothing is broken and nothing was lost.
+          </p>
+          <p class="kq-small">
+            Try another browser, or turn on "hardware acceleration" in the browser settings.
+          </p>
+          <div class="kq-title-actions">
+            <a class="kq-btn primary kq-big" href="../../index.html">Back to PlayPad</a>
+            <button id="kqRetry" class="kq-btn" type="button">Try again</button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <noscript>
+      <p style="padding: 24px; color: #fff">
+        Kampung Quest needs JavaScript. Please turn it on and reload.
+      </p>
+    </noscript>
+
+    <script>
+      window.KQ = window.KQ || {};
+      window.KQ.ASSET_BASE = "assets/";
+      window.KQ.CAN_FETCH = location.protocol !== "file:";
+    </script>
+    <script src="three.min.js"></script>
+    <!-- data -->
+    <script src="js/data/prayer-times.js"></script>
+    <script src="js/data/azan.js"></script>
+    <!-- sim -->
+    <script src="js/sim/ids.js"></script>
+    <script src="js/sim/clock.js"></script>
+    <script src="js/sim/prayer.js"></script>
+    <script src="js/sim/needs.js"></script>
+    <script src="js/sim/hints.js"></script>
+    <script src="js/sim/economy.js"></script>
+    <script src="js/sim/missions-data.js"></script>
+    <script src="js/sim/missions.js"></script>
+    <script src="js/sim/schedule.js"></script>
+    <script src="js/sim/save.js"></script>
+    <!-- figures -->
+    <script src="js/figures/materials.js"></script>
+    <script src="js/figures/prints.js"></script>
+    <script src="js/figures/faces.js"></script>
+    <script src="js/figures/geometry.js"></script>
+    <script src="js/figures/parts.js"></script>
+    <script src="js/figures/headpieces.js"></script>
+    <script src="js/figures/build.js"></script>
+    <script src="js/figures/cast.js"></script>
+    <script src="js/figures/poses.js"></script>
+    <script src="js/figures/prayer-poses.js"></script>
+    <script src="js/figures/animator.js"></script>
+    <!-- world (prayer-times.js above is loaded first so the sun follows Syuruk / Maghrib) -->
+    <script src="js/world/geo.js"></script>
+    <script src="js/world/textures.js"></script>
+    <script src="js/world/canvas.js"></script>
+    <script src="js/world/patterns.js"></script>
+    <script src="js/world/patterns2.js"></script>
+    <script src="js/world/patterns3.js"></script>
+    <script src="js/world/materials.js"></script>
+    <script src="js/world/layout.js"></script>
+    <script src="js/world/sky.js"></script>
+    <script src="js/world/lighting.js"></script>
+    <script src="js/world/roads.js"></script>
+    <script src="js/world/hdb.js"></script>
+    <script src="js/world/hawker.js"></script>
+    <script src="js/world/mosque.js"></script>
+    <script src="js/world/mosque-shell.js"></script>
+    <script src="js/world/mosque-yard.js"></script>
+    <script src="js/world/mosque-inside.js"></script>
+    <script src="js/world/ornament.js"></script>
+    <script src="js/world/shops.js"></script>
+    <script src="js/world/services.js"></script>
+    <script src="js/world/foliage.js"></script>
+    <script src="js/world/trees.js"></script>
+    <script src="js/world/props.js"></script>
+    <script src="js/world/town.js"></script>
+    <script src="js/world/detail.js"></script>
+    <script src="js/world/clutter.js"></script>
+    <script src="js/world/life.js"></script>
+    <script src="js/world/nav.js"></script>
+    <script src="js/world/grunge.js"></script>
+    <script src="js/world/aofield.js"></script>
+    <script src="js/world/surface.js"></script>
+    <script src="js/world/world.js"></script>
+    <script src="js/world/world-runtime.js"></script>
+    <script src="js/world/world-build.js"></script>
+    <!-- game -->
+    <script src="js/game/util.js"></script>
+    <script src="js/game/settings.js"></script>
+    <script src="js/game/sim-setup.js"></script>
+    <script src="js/game/collide.js"></script>
+    <script src="js/game/input.js"></script>
+    <script src="js/game/camera.js"></script>
+    <script src="js/game/player.js"></script>
+    <script src="js/game/pathing.js"></script>
+    <script src="js/game/seats.js"></script>
+    <script src="js/game/npc-agent.js"></script>
+    <script src="js/game/npc-goals.js"></script>
+    <script src="js/game/npc-manager.js"></script>
+    <script src="js/game/audio.js"></script>
+    <script src="js/game/speech.js"></script>
+    <script src="js/game/pictures.js"></script>
+    <script src="js/game/names.js"></script>
+    <script src="js/game/ui-core.js"></script>
+    <script src="js/game/minimap.js"></script>
+    <script src="js/game/hud.js"></script>
+    <script src="js/game/hud-layout.js"></script>
+    <script src="js/game/hud-view.js"></script>
+    <script src="js/game/ui-dialogue.js"></script>
+    <script src="js/game/ui-menus.js"></script>
+    <script src="js/game/ui-screens.js"></script>
+    <script src="js/game/collectibles.js"></script>
+    <script src="js/game/markers.js"></script>
+    <script src="js/game/prayer-text.js"></script>
+    <script src="js/game/prayer-ui.js"></script>
+    <script src="js/game/prayer-flow.js"></script>
+    <script src="js/game/mission-flow.js"></script>
+    <script src="js/game/services.js"></script>
+    <script src="js/game/nudge.js"></script>
+    <script src="js/game/interact.js"></script>
+    <script src="js/game/loop.js"></script>
+    <script src="js/game/actions.js"></script>
+    <script src="js/game/boot-ui.js"></script>
+    <script src="js/game/hooks.js"></script>
+    <script src="js/game/boot.js"></script>
+    <script>
+      window.KQ.Game.Boot.init();
+    </script>
+  </body>
+</html>

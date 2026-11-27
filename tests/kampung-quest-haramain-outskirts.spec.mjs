@@ -132,7 +132,7 @@ test("camels and outskirts keep the draw-call budget on the low tier", async ({ 
     });
     return max;
   });
-  expect(worst).toBeLessThan(450);
+  expect(worst).toBeLessThan(400);
 });
 
 test("outskirts: the Haramain world still has no console errors after all of that", async () => {

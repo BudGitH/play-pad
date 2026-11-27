@@ -133,7 +133,8 @@ async function checkLookAndPinch(page, cdp) {
   await kq(page, () => window.__kq.step(100));
   expect(await kq(page, () => window.__kq.state().cam.yaw)).not.toBe(yaw0);
   const d0 = await kq(page, () => window.__kq.state().cam.dist);
-  const mid = { x: vw.width * 0.6, y: vw.height * 0.4 };
+  // mid-screen: in portrait the radar column, the "turn sideways" chip and the toast sit above 45 %
+  const mid = { x: vw.width * 0.6, y: vw.height * 0.55 };
   const pair = (gap) => [
     { x: mid.x - gap, y: mid.y },
     { x: mid.x + gap, y: mid.y },

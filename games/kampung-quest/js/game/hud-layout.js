@@ -72,10 +72,10 @@
     c.left >= b.left && c.right <= b.right && c.top >= b.top && c.bottom <= b.bottom;
   const shift = (a, b) => Math.abs(a.left - b.left) + Math.abs(a.top - b.top);
 
-  /** Left / top values worth trying: the current one, and just beside every keep-out box. */
-  function stops(r, outs, w, h) {
-    const xs = [r.left];
-    const ys = [r.top];
+  /** Left / top values worth trying: the current one, the screen's edges, and just beside every keep-out box. */
+  function stops(r, outs, w, h, bounds) {
+    const xs = [r.left, bounds.left, bounds.right - w];
+    const ys = [r.top, bounds.top, bounds.bottom - h];
     outs.forEach(function (o) {
       xs.push(o.left - GAP - w, o.right + GAP);
       ys.push(o.top - GAP - h, o.bottom + GAP);
@@ -88,7 +88,7 @@
     if (!outs.some((o) => touches(r, o))) return r;
     const w = r.right - r.left;
     const h = r.bottom - r.top;
-    const { xs, ys } = stops(r, outs, w, h);
+    const { xs, ys } = stops(r, outs, w, h, bounds);
     let best = null;
     xs.forEach(function (x) {
       ys.forEach(function (y) {
@@ -144,11 +144,19 @@
     setVar("--kq-lane-top", px(laneTop()));
   }
 
-  /** On a portrait phone the coins chip lives in the status card's clock row; elsewhere top right. */
+  /**
+   * Where the coins chip and the needs bars live. Portrait phone: coins in the status card's clock
+   * row, the needs bars under the mission card (the radar column stays short). Phone landscape:
+   * coins sit in the bottom dock (the top-right column stays narrow and short, clear of Jump).
+   * Elsewhere: coins in the top-right row, the needs bars under the radar.
+   */
   function placeCoins() {
     const R = G.Hud.refs;
     if (isPortraitPhone()) R.clockrow.appendChild(R.coins);
+    else if (isCompact()) R.dock.appendChild(R.coins);
     else R.trRow.insertBefore(R.coins, R.trRow.firstChild);
+    if (isPortraitPhone()) R.tl.appendChild(R.needs);
+    else R.topright.appendChild(R.needs);
     measure();
   }
 
@@ -218,6 +226,7 @@
     L.compactMq = window.matchMedia(COMPACT_QUERY);
     if (L.portraitMq.addEventListener) L.portraitMq.addEventListener("change", placeCoins);
     if (L.compactMq.addEventListener) L.compactMq.addEventListener("change", syncCompact);
+    if (L.compactMq.addEventListener) L.compactMq.addEventListener("change", placeCoins);
     window.addEventListener("resize", measure);
     if (window.ResizeObserver) {
       const ro = new ResizeObserver(measure);

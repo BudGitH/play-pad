@@ -32,9 +32,9 @@
     const look = G.Menus.LOOKS.find(
       (l) => l.hair === S().sim.outfit.hair && l.hat === S().sim.outfit.hat,
     );
-    G.Screens.bag(
-      ctxFor({ carrying: G.MissionFlow.carrying(), outfitName: look ? look.name : "Blue cap" }),
-    );
+    const clothes = KQ.Sim.Wardrobe.nameOf(S().sim.wardrobe);
+    const hair = look && look.id !== "classic" ? look.name + ", " : "";
+    G.Screens.bag(ctxFor({ carrying: G.MissionFlow.carrying(), outfitName: hair + clothes }));
   }
 
   /** Mute / unmute sound, keep the saved setting and the HUD in step, and say so politely. */

@@ -130,7 +130,9 @@
     }
     const shoeH = spec.band ? 0.032 : 0.0;
     const legH = d.shin - d.footH - shoeH - (spec.band ? 0.02 : 0);
-    list.push(G.place(box(d.legW, legH + 0.002, d.legD, 0.012, 1, spec.legs), [0, -legH / 2, 0]));
+    const bare = Boolean(spec.bareShins); // shorts: the shin is skin, not trouser
+    const shin = box(d.legW, legH + 0.002, d.legD, 0.012, 1, bare ? spec.skin : spec.legs, bare);
+    list.push(G.place(shin, [0, -legH / 2, 0]));
     if (!spec.band) return G.merge(list);
     list.push(G.place(box(d.legW, 0.02, d.legD, 0.004, 1, spec.band), [0, -legH - 0.01, 0]));
     list.push(

@@ -1,7 +1,8 @@
 /* Kampung Quest — the detail layer (KQ.WorldParts.Detail): contact shadows (soft AO blobs
-   under every prop/pillar from the collider list), road wear (tyre tracks, patches, kerb dirt,
-   drains, manholes), a distant skyline ring, and street clutter (bicycles, motorbikes, potted
-   plants, bollards, hedges). Each kind is one draw call. */
+   under every prop/pillar from the collider list; parked vehicles are runtime meshes with their
+   own cast shadow, not part of this list), road wear (tyre tracks, patches, kerb dirt, drains,
+   manholes) and a distant skyline ring. Street clutter (pots, bollards, hedges) lives in
+   clutter.js. Each kind is one draw call. */
 (function (KQ) {
   "use strict";
   const P = (KQ.WorldParts = KQ.WorldParts || {});
@@ -43,7 +44,7 @@
       const w = c.maxX - c.minX;
       const d = c.maxZ - c.minZ;
       if (w * d > 60) return;
-      const pad = c.kind === "tree" ? 1.6 : c.kind === "car" ? 0.5 : 0.7;
+      const pad = c.kind === "tree" ? 1.6 : 0.7;
       const x = (c.minX + c.maxX) / 2;
       const z = (c.minZ + c.maxZ) / 2;
       list.push({ x, y: heightAt(x, z) + 0.025, z, sx: w + pad, sy: 1, sz: d + pad });

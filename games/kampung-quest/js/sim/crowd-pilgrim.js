@@ -28,9 +28,16 @@
     "guard",
     "photo",
     "vendor",
+    "hotel",
+    "stop",
+    "stroll",
+    "brief",
   ];
-  /** The crowd is bigger in the holy cities: how many extras each quality tier keeps alive. */
-  const HOLY_CAPS = { low: 90, med: 140, high: 200 };
+  /**
+   * The crowd is bigger in the holy cities: how many extras each quality tier keeps alive. About 1.9x to 2.1x
+   * the first crowd (90 / 140 / 200): owner feedback "a lot more individuals", dense pilgrims around the mataf.
+   */
+  const HOLY_CAPS = { low: 170, med: 290, high: 420 };
   /** Tawaf lanes (metres from the Kaaba's centre) and the walking speed range in m/s. */
   const RING = { rMin: 12.5, rMax: 24.5, vMin: 0.8, vMax: 1.05 };
   /** The sa'i lane: x lanes, and the z extent between Safa and Marwa. */
@@ -104,6 +111,15 @@
     if (kind === "guard") return 1;
     if (kind === "photo") return 0.12 + 0.75 * day;
     if (kind === "vendor") return 0.25 + 0.65 * day;
+    return moreOccupancy(kind, hour, day);
+  }
+
+  /** Hotel doorways (check-out and check-in rushes), bus stops, people strolling between places, tour briefings. */
+  function moreOccupancy(kind, hour, day) {
+    if (kind === "hotel") return 0.3 + 0.55 * Math.max(bump(hour, 10, 2), bump(hour, 15, 2.5), 0);
+    if (kind === "stop") return 0.35 + 0.5 * day;
+    if (kind === "stroll") return 0.4 + 0.5 * day;
+    if (kind === "brief") return 0.15 + 0.7 * Math.max(bump(hour, 9, 2.5), bump(hour, 16, 2.5), 0);
     return 0;
   }
 
@@ -127,7 +143,14 @@
     const out = d < len;
     const f = (out ? d : 2 * len - d) / len;
     const h = Math.atan2(dx, dz);
-    return { x: line.x0 + dx * f, z: line.z0 + dz * f, heading: out ? h : h + Math.PI };
+    const heading = out ? h : h + Math.PI;
+    // `lane` keeps to the right of the way it goes (so two walkers passing each other do not overlap)
+    const side = line.lane || 0;
+    return {
+      x: line.x0 + dx * f + Math.cos(heading) * side,
+      z: line.z0 + dz * f - Math.sin(heading) * side,
+      heading,
+    };
   }
 
   /** A sa'i walker on its lane at time t: ping-pong between Safa (z min) and Marwa, with its heading. */
@@ -186,6 +209,22 @@
     );
   }
 
+  /** The stroller mix in the holy cities: pilgrims, families, elders and friends; no joggers or cyclists. */
+  function walkerWeights(minute) {
+    const hour = (((minute % 1440) + 1440) % 1440) / 60;
+    return {
+      commuter: 2.5,
+      aunty: 1.6 + bump(hour, 10, 3),
+      elder: 1.2,
+      jogger: 0,
+      kid: 0.3,
+      stroller: 1.6,
+      cyclist: 0,
+      student: 0,
+      family: 1.4 + bump(hour, 17, 3),
+    };
+  }
+
   /** Turn the crowd wrappers on for the Haramain region (called once at load). */
   function install() {
     const base = { occupancy: SC.occupancy, outfit: SC.outfit, slotActive: SC.slotActive };
@@ -199,6 +238,8 @@
     };
     SC.outfit = (seed, role, female) => dress(base.outfit(seed, role, female), String(seed));
     SC.capFor = (tier) => HOLY_CAPS[tier] || HOLY_CAPS.med;
+    SC.walkerWeights = walkerWeights;
+    SC.walkerType = (minute, r) => SC.pickWeighted(walkerWeights(minute), r);
     SC.walkerTarget = function (minute, tier) {
       const cap = SC.capFor(tier);
       return Math.round(cap * 0.3 * (0.7 + 0.3 * bump((((minute / 60) % 24) + 24) % 24, 12, 7)));
@@ -220,6 +261,7 @@
     prayerPose,
     rowGroup,
     qiblaHeading,
+    walkerWeights,
     dress,
     codeOf,
     install,

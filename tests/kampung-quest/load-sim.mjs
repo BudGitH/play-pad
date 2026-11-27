@@ -19,6 +19,7 @@ export const SIM_FILES = [
   "needs",
   "hints",
   "economy",
+  "wardrobe",
   "missions-data",
   "missions",
   "schedule",
@@ -48,9 +49,10 @@ function runAll(sandbox, dir, files) {
   }
 }
 
+/** @param {string|null} region optional KQ.region to set first ("haramain" selects that region's save slot) */
 /** @returns {object} the KQ namespace populated by the sim scripts */
-export function loadSim(files = SIM_FILES) {
-  const sandbox = {};
+export function loadSim(files = SIM_FILES, region = null) {
+  const sandbox = region ? { KQ: { region } } : {};
   vm.createContext(sandbox);
   runAll(sandbox, SIM_DIR, files);
   return sandbox.KQ;

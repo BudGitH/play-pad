@@ -17,10 +17,14 @@
 
   /** Game minutes per occupancy block: a slot's state only changes at a block boundary. */
   const BLOCK_MIN = 20;
-  /** How many extras each quality tier may keep alive at once (fixed spots + strollers). */
-  const TIER_CAPS = { low: 56, med: 84, high: 120 };
-  /** Strollers as a share of the cap, and the most strollers any tier may have. */
-  const WALKER_SHARE = 0.34;
+  /**
+   * How many extras each quality tier may keep alive at once (fixed spots + strollers). About 2.2x the
+   * first crowd (56 / 84 / 120): the owner asked for "a lot more individuals". Only the people in front of the
+   * camera are drawn, and all of them share ~25 instanced draw calls, so the cost is vertices, not calls.
+   */
+  const TIER_CAPS = { low: 120, med: 195, high: 280 };
+  /** Strollers as a share of the cap. */
+  const WALKER_SHARE = 0.36;
   /** The kinds of fixed activity, with a baseline (night) and peaks in hours: [centre, half-width, height]. */
   const CURVES = {
     diner: {
@@ -95,6 +99,34 @@
         [7, 1, 0.8],
         [14.2, 0.8, 0.6],
         [20.5, 0.7, 0.5],
+      ],
+    },
+    // browsing and waiting outside the shops, clinic and library: busy mornings, lunch and the evening
+    shop: {
+      base: 0.1,
+      peaks: [
+        [10, 1.8, 0.55],
+        [13.5, 1.4, 0.45],
+        [18.4, 2, 0.8],
+      ],
+    },
+    // picnics and sitting about on the grass: after school and at the weekend-feeling golden hour
+    picnic: {
+      base: 0,
+      peaks: [
+        [9.5, 1.4, 0.3],
+        [17.2, 1.8, 0.85],
+        [19.6, 0.9, 0.5],
+      ],
+    },
+    // people standing about on the pavements: on the phone, waiting for a friend, looking around
+    loiter: {
+      base: 0.08,
+      peaks: [
+        [8, 1.4, 0.4],
+        [12.8, 1.4, 0.4],
+        [18.3, 1.8, 0.6],
+        [20.6, 1.2, 0.35],
       ],
     },
   };
@@ -176,6 +208,10 @@
     kid: { speed: [2.0, 2.6], pose: "run", cycles: 0.95, prop: null },
     stroller: { speed: [1.1, 1.4], pose: "walk", cycles: 0.78, prop: null },
     cyclist: { speed: [3.4, 4.4], pose: "pedal", cycles: 0.5, prop: "bike" },
+    // pupils in school uniform with a bag, often in a gang of two or three friends
+    student: { speed: [1.5, 2.1], pose: "walkbag", cycles: 0.9, prop: "bag" },
+    // a parent holding a little one's hand (the first person is the adult, the rest are children)
+    family: { speed: [0.9, 1.15], pose: "walk_hold", cycles: 0.78, prop: null },
   };
   const WALKER_TYPES = Object.keys(WALKERS);
 
@@ -190,7 +226,21 @@
       kid: bump(hour, 7.2, 0.7, 2) + bump(hour, 13.4, 0.8, 2) + bump(hour, 17, 1.5, 3),
       stroller: 1.2,
       cyclist: 0.5 + bump(hour, 17.5, 1.5, 1),
+      student: bump(hour, 7, 0.8, 4) + bump(hour, 13.2, 1, 3) + bump(hour, 16.5, 1.5, 1.5),
+      family: 0.5 + bump(hour, 9.5, 1.5, 1.5) + bump(hour, 17.6, 1.6, 2.5),
     };
+  }
+
+  /**
+   * How many people walk together for a stroller type and a draw r in [0, 1): friends in twos and threes,
+   * a parent with one or two children, pupils in gangs; everybody else on their own now and then in pairs.
+   */
+  function walkerGroup(type, r) {
+    if (type === "family") return r < 0.7 ? 2 : 3;
+    if (type === "student") return r < 0.35 ? 1 : r < 0.7 ? 2 : 3;
+    if (type === "stroller") return r < 0.4 ? 1 : r < 0.8 ? 2 : 3;
+    if (type === "commuter" || type === "elder") return r < 0.7 ? 1 : 2;
+    return 1;
   }
 
   /** Pick one key of a { key: weight } table with a random number r in [0, 1). */
@@ -212,12 +262,22 @@
   }
 
   // ---------- outfits ----------
-  const SKIN = ["#f0c7a0", "#e3a97c", "#d49a6c", "#b87a52", "#8a5537"];
+  const SKIN = [
+    "#f6dcc0",
+    "#f0c7a0",
+    "#e3a97c",
+    "#d49a6c",
+    "#c68863",
+    "#b87a52",
+    "#94603d",
+    "#8a5537",
+    "#74462f",
+  ];
   const SKIN_BY_GROUP = {
-    malay: [1, 2, 2, 3],
-    chinese: [0, 0, 1],
-    indian: [3, 4, 3],
-    mixed: [0, 1, 2, 3, 4],
+    malay: [2, 3, 3, 4, 5, 2],
+    chinese: [0, 1, 1, 0, 2],
+    indian: [5, 6, 7, 4, 8, 6],
+    mixed: [0, 1, 2, 3, 4, 5, 6, 7, 8],
   };
   const TOPS = [
     "#d27aa6",
@@ -239,6 +299,11 @@
     "#f4f1e8",
     "#8fb8d8",
     "#b4533a",
+    "#a8c8a0",
+    "#c9a0dc",
+    "#1f4e79",
+    "#ff7a59",
+    "#7a1f3d",
   ];
   const BOTTOMS = [
     "#3b3f4a",
@@ -249,6 +314,8 @@
     "#5b2a1e",
     "#3f4c6b",
     "#6b6258",
+    "#8a7a5c",
+    "#1f2a44",
   ];
   const SKIRTS = ["#5d3a86", "#22694f", "#3f4c6b", "#7a2e3a", "#2b2d42", "#8a5a2b", "#2f7466"];
   const TUDUNG = [
@@ -261,21 +328,54 @@
     "#2f7466",
     "#f0c0d0",
     "#4b4b52",
+    "#5fa8a0",
+    "#8a4b6b",
+    "#c9b8a0",
   ];
-  const HAIR = ["#141012", "#1d1410", "#2a1c14", "#3a2416", "#a8a49d", "#c9c6c0"];
-  const BAGS = ["#e23b3b", "#2a63b0", "#f2c230", "#3f9a5a", "#f4f1e8"];
+  /** Dark to brown hair (a few dyed or sun-lightened), and the greys of the elders. */
+  const HAIR = ["#141012", "#1d1410", "#2a1c14", "#3a2416", "#4a2c1a", "#6b3f22", "#5a1f2a"];
+  const GREYS = ["#a8a49d", "#c9c6c0", "#e0ddd6"];
+  const BAGS = ["#e23b3b", "#2a63b0", "#f2c230", "#3f9a5a", "#f4f1e8", "#e07a2f", "#8a3fa0"];
+  /** Turbans (a few men in the Indian group) and school uniform bottoms. */
+  const TURBANS = ["#1f3a6e", "#e6a33a", "#f4f1e8", "#17171c", "#8a1f2b", "#2f7466"];
+  const UNIFORM_LEGS = ["#243a78", "#3b4660", "#4a4f5a"];
+  const WHITE = "#f4f1e8";
 
   /** Take one entry of a list by a stable random draw. */
   function pick(list, r) {
     return list[Math.floor(r * list.length) % list.length];
   }
 
-  /** A deterministic stream of draws in [0, 1) for a seed text. */
+  /**
+   * A hex colour lightened (k > 0) or darkened (k < 0) by a fraction |k|, as a new hex. This is how the crowd
+   * gets thousands of looks from a few dozen colours: every part's instance colour is its own shade.
+   */
+  function shade(hex, k) {
+    const n = parseInt(String(hex).slice(1), 16);
+    const out = [n >> 16, (n >> 8) & 255, n & 255].map(function (c) {
+      const v = k >= 0 ? c + (255 - c) * k : c * (1 + k);
+      return Math.max(0, Math.min(255, Math.round(v)));
+    });
+    return "#" + out.map((c) => c.toString(16).padStart(2, "0")).join("");
+  }
+
+  /** Scramble 32 bits (the murmur3 finaliser), so draws from similar seeds are not correlated. */
+  function scramble(x) {
+    let h = x >>> 0;
+    h ^= h >>> 16;
+    h = Math.imul(h, 0x85ebca6b);
+    h ^= h >>> 13;
+    h = Math.imul(h, 0xc2b2ae35);
+    h ^= h >>> 16;
+    return (h >>> 0) / 4294967296;
+  }
+
+  /** A deterministic stream of well-mixed draws in [0, 1) for a seed text. */
   function stream(seed) {
     let n = 0;
     return function next() {
       n += 1;
-      return hash01(seed + ":" + n);
+      return scramble(hashString(seed + ":" + n) + Math.imul(n, 0x9e3779b9));
     };
   }
 
@@ -304,7 +404,7 @@
     o.headColour = o.head === "tudung" ? pick(TUDUNG, next()) : pick(HAIR, next());
   }
 
-  /** What a man wears: a collared shirt and trousers, a baju melayu with songkok, or a tee. */
+  /** What a man wears: a collared shirt and trousers, a baju melayu with songkok, a turban, a cap or a tee. */
   function manOutfit(o, next, group) {
     o.top = pick(TOPS, next());
     o.long = next() < 0.45;
@@ -313,6 +413,10 @@
     if (prayerCap) {
       o.head = next() < 0.65 ? "songkok" : "kopiah";
       o.headColour = o.head === "songkok" ? "#1c1c22" : "#fbfaf5";
+    } else if (group === "indian" && next() < 0.16) {
+      o.head = "turban";
+      o.headColour = pick(TURBANS, next());
+      o.long = true;
     } else if (next() < 0.2) {
       o.head = "cap";
       o.headColour = pick(TOPS, next());
@@ -326,41 +430,89 @@
   function kidOutfit(o, next, group, girl) {
     o.kid = true;
     o.shorts = !(girl && group === "malay");
-    o.top = next() < 0.3 ? "#f4f1e8" : pick(TOPS, next());
-    o.legs = o.top === "#f4f1e8" ? "#243a78" : pick(BOTTOMS, next());
+    o.top = next() < 0.3 ? WHITE : pick(TOPS, next());
+    o.legs = o.top === WHITE ? pick(UNIFORM_LEGS, next()) : pick(BOTTOMS, next());
     o.long = !o.shorts;
     o.skirt = !o.shorts;
     o.female = girl;
-    o.head = girl && group === "malay" ? "tudung_kid" : "hair";
-    o.headColour = o.head === "tudung_kid" ? pick(TUDUNG, next()) : pick(HAIR.slice(0, 4), next());
+    o.head = girl && group === "malay" ? "tudung_kid" : next() < 0.15 ? "cap" : "hair";
+    if (o.head === "tudung_kid") o.headColour = pick(TUDUNG, next());
+    else o.headColour = o.head === "cap" ? pick(TOPS, next()) : pick(HAIR.slice(0, 4), next());
+  }
+
+  /** A pupil's school uniform (white top, navy or grey bottoms): kids in shorts, teens in trousers, girls modest. */
+  function uniformOutfit(o, next, group) {
+    const modest = o.female && group === "malay";
+    o.top = WHITE;
+    o.legs = pick(UNIFORM_LEGS, next());
+    o.long = !o.kid || modest;
+    o.shorts = o.kid && !modest;
+    o.skirt = o.female && (!o.kid || modest);
+    o.head = modest ? (o.kid ? "tudung_kid" : "tudung") : "hair";
+    o.headColour = modest ? "#fbfaf5" : pick(HAIR.slice(0, 4), next());
+  }
+
+  /** Height and girth: kids and teens are smaller, adults vary a good deal, a few are stocky or slight. */
+  function bodySize(o, next) {
+    const g = next();
+    if (o.kid) {
+      o.scale = 0.88 + next() * 0.2;
+      o.girth = 0.92 + next() * 0.14;
+    } else if (o.age === "teen") {
+      o.scale = 0.84 + next() * 0.1;
+      o.girth = 0.9 + next() * 0.12;
+    } else {
+      o.scale = (o.age === "elder" ? 0.92 : 0.95) + next() * 0.14;
+      o.girth =
+        g < 0.15 ? 0.88 + next() * 0.06 : g < 0.7 ? 0.95 + next() * 0.1 : 1.08 + next() * 0.14;
+    }
+  }
+
+  /** The age band a role asks for (a draw decides for "any", and for a pupil's kid or teen). */
+  function ageOf(role, next) {
+    if (role === "student") return next() < 0.55 ? "kid" : "teen";
+    if (role === "any" || !role) {
+      const r = next();
+      return r < 0.13 ? "kid" : r < 0.2 ? "teen" : r < 0.36 ? "elder" : "adult";
+    }
+    return role;
+  }
+
+  /** Per-person colour variation: each garment a touch lighter or darker, so no two people look alike. */
+  function varyColours(o, next) {
+    o.skin = shade(o.skin, (next() - 0.5) * 0.1);
+    const same = o.legs === o.top;
+    o.top = shade(o.top, (next() - 0.5) * 0.2);
+    o.legs = same ? o.top : shade(o.legs, (next() - 0.5) * 0.2);
+    if (o.head === "tudung" || o.head === "cap")
+      o.headColour = shade(o.headColour, (next() - 0.5) * 0.16);
   }
 
   /**
-   * A whole outfit for an extra, from a seed text. `role` steers the age: "adult", "elder", "kid" or "any";
-   * `female` (optional boolean) fixes the gender.
+   * A whole outfit for an extra, from a seed text. `role` steers the age: "adult", "elder", "teen", "kid",
+   * "student" (a kid or teen in school uniform) or "any"; `female` (optional boolean) fixes the gender.
    * @returns {{kid:boolean, female:boolean, skin:string, top:string, legs:string, long:boolean,
    *   skirt:boolean, shorts:boolean, head:string, headColour:string, bag:string, bike:string,
-   *   scale:number, group:string}}
+   *   scale:number, girth:number, group:string, age:string}}
    */
   function outfit(seed, role, female) {
     const next = stream(seed);
     const group = groupOf(next());
     const o = { kid: false, female: false, skirt: false, shorts: false, long: false, group };
-    const age =
-      role === "any" || !role ? (next() < 0.14 ? "kid" : next() < 0.18 ? "elder" : "adult") : role;
+    o.age = ageOf(role, next);
     o.skin = SKIN[pick(SKIN_BY_GROUP[group], next())];
     const drawn = next() < 0.5;
-    female = female === undefined ? drawn : female;
-    if (age === "kid") kidOutfit(o, next, group, female);
-    else if (female) womanOutfit(o, next, group);
+    o.female = female === undefined ? drawn : female;
+    if (o.age === "kid") kidOutfit(o, next, group, o.female);
+    else if (o.female) womanOutfit(o, next, group);
     else manOutfit(o, next, group);
-    if (age === "elder")
-      o.headColour =
-        o.head === "hair" || o.head === "bun" ? pick(HAIR.slice(4), next()) : o.headColour;
-    o.age = age;
+    if (role === "student") uniformOutfit(o, next, group);
+    if (o.age === "elder" && (o.head === "hair" || o.head === "bun"))
+      o.headColour = pick(GREYS, next());
     o.bag = pick(BAGS, next());
     o.bike = pick(TOPS, next());
-    o.scale = 0.95 + next() * 0.1;
+    varyColours(o, next);
+    bodySize(o, next);
     return o;
   }
 
@@ -431,8 +583,10 @@
     walkerTarget,
     walkerWeights,
     walkerType,
+    walkerGroup,
     pickWeighted,
     outfit,
+    shade,
     headingTo,
     circleSlots,
     queueSlots,

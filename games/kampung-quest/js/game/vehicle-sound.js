@@ -1,7 +1,7 @@
 /* ============================================================================
  * FILE: vehicle-sound.js
- * PURPOSE: The sounds of the toy car and the bicycle: a soft synthesised engine hum that follows
- *          the speed (car only), the car's "pip-pip" and the bicycle's bell. No audio files.
+ * PURPOSE: The sounds of the toy car, scooter and bicycle: a soft synthesised engine hum that follows
+ *          the speed (car and scooter), the "pip-pip" horn and the bicycle's bell. No audio files.
  * BUSINESS CONTEXT: AC-H6 (vehicles) with business rule 1 and AC-16: nothing sounds under the azan
  *   or a prayer flow, and nothing while muted, paused or in a hidden tab. Quiet by design (the
  *   hum peaks well under the footsteps' loudness) and there is never any music.
@@ -17,6 +17,8 @@
   /** Hum pitch (Hz) when idling and the extra per m/s, and its loudness at idle and at full speed. */
   const IDLE_HZ = 46;
   const HZ_PER_MS = 9;
+  /** A scooter's engine hums higher than a car's. */
+  const MOTO_PITCH = 2.2;
   const GAIN_IDLE = 0.012;
   const GAIN_FULL = 0.034;
   /** How quickly the hum follows (1/s) and fades out when silenced. */
@@ -90,14 +92,14 @@
   /**
    * One step of the engine hum.
    * @param {number} dt seconds
-   * @param {string} kind "car" or "bike" (a bicycle has no engine)
+   * @param {string} kind "car", "moto" or "bike" (a bicycle has no engine)
    * @param {number} speed m/s (absolute)
    * @param {number} top the vehicle's top speed
    */
   function update(dt, kind, speed, top) {
     E.quietBy = quietReason();
     const bus = G.Audio.bus();
-    const quiet = Boolean(E.quietBy) || !bus || !bus.ok || kind !== "car";
+    const quiet = Boolean(E.quietBy) || !bus || !bus.ok || kind === "bike";
     if (quiet && !E.nodes) return;
     if (quiet) return fade(dt);
     if (!ensureHum()) return;
@@ -106,8 +108,9 @@
     const N = E.nodes;
     const now = N.ctx.currentTime;
     N.out.gain.setTargetAtTime(E.level, now, 0.05);
-    N.a.frequency.setTargetAtTime(IDLE_HZ + speed * HZ_PER_MS, now, 0.08);
-    N.b.frequency.setTargetAtTime((IDLE_HZ + speed * HZ_PER_MS) * 2, now, 0.08);
+    const hz = (IDLE_HZ + speed * HZ_PER_MS) * (kind === "moto" ? MOTO_PITCH : 1);
+    N.a.frequency.setTargetAtTime(hz, now, 0.08);
+    N.b.frequency.setTargetAtTime(hz * 2, now, 0.08);
   }
 
   /** Fade the hum out when something silences it, then drop it. */
@@ -123,7 +126,7 @@
       E.refused += 1;
       return false;
     }
-    const ok = G.Audio.play(kind === "car" ? "honk" : "ring");
+    const ok = G.Audio.play(kind === "bike" ? "ring" : "honk");
     if (ok) E.honks += 1;
     else E.refused += 1;
     return ok;

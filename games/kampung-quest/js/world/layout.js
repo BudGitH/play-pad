@@ -86,6 +86,7 @@
       { id: "clinic", x0: 59, x1: 68, text: "KLINIK", sub: "Family clinic", bg: "#1a8c7a" },
     ],
     library: { x0: 46, x1: 66, z0: -60, z1: -40, h: 6 },
+    tailor: { x: 58, z: 11.9, face: -1 }, // the Butik stall at the park edge, front looking at the road
     mosque: {
       x0: -58,
       x1: -12,

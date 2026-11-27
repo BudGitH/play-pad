@@ -96,6 +96,7 @@
       prayer: sim.prayer.state(),
       hints: Object.assign(sim.hints.snapshot(), { foodMarker: Boolean(G.Nudge.markerPos()) }),
       outfit: sim.outfit,
+      wardrobe: sim.wardrobe,
       muted: G.Audio.isMuted(),
       quality: s.quality,
       target: targetInfo(s.target),
@@ -212,6 +213,8 @@
     forcePrayer,
     ritual: () => G.RitualFlow.debug(),
     openRite: (rite) => G.RitualFlow.open(rite),
+    wardrobe: () => G.Wardrobe.debug(),
+    openWardrobe: () => G.Wardrobe.open(),
     freeze(on) {
       S().frozen = Boolean(on);
     },

@@ -2,8 +2,8 @@
  * FILE: vehicle-spots.js
  * PURPOSE: Where the toy cars and bicycles are parked, in each region, and where they may not go
  *          (the no-drive zones: mosques, the mataf, the hawker centre, the flats' void decks...).
- * BUSINESS CONTEXT: AC-H6. In the kampung the spots are chosen here (a kerbside car, a carpark
- *   bay, two bicycles); in Makkah / Madinah they come from the world code (KQ.Holy.vehicleSpots,
+ * BUSINESS CONTEXT: AC-H6. In the kampung the spots are chosen here (the kerbside and carpark
+ *   cars, the bicycles and scooters by the paths); in Makkah / Madinah they come from the world code (KQ.Holy.vehicleSpots,
  *   KQ.Holy.noDrive) with the anchors in KQ.HOLY as the fallback for the zones.
  * DEPENDENCIES: KQ.WorldParts.LAYOUT (the kampung plan), KQ.HOLY / KQ.Holy (optional: the
  *   Haramain data and world), KQ.Sim.Vehicle (zone shapes). Everything is read lazily and
@@ -14,11 +14,41 @@
   const G = (KQ.Game = KQ.Game || {});
   const PI = Math.PI;
   const MASJID = "Let's walk inside the masjid";
-  /** Body colours: a kampung mix, and the white / silver / gold cars of Makkah and Madinah. */
-  const KAMPUNG_CARS = [0xd0453a, 0x2f9d8f];
-  const KAMPUNG_BIKES = [0x2f8f5b, 0xe8a21a];
-  const HOLY_CARS = [0xf1f0ea, 0xc9ccd2, 0xd9c28a, 0xf1f0ea, 0x8fa4b8];
-  const HOLY_BIKES = [0x2f8f5b, 0x2f6fb0, 0xe8a21a];
+  /**
+   * Car looks: a body style and a colour. The kampung mixes bright hatchbacks, sedans, taxis, an SUV and an MPV;
+   * Makkah and Madinah are mostly white, silver and black (white taxis, SUVs, family MPVs) with the odd gold car.
+   */
+  const KAMPUNG_LOOKS = [
+    { style: "hatch", color: 0xd0453a },
+    { style: "sedan", color: 0xc8ccd0 },
+    { style: "hatch", color: 0x2a3c5c },
+    { style: "suv", color: 0xb02a2a },
+    { style: "taxi", color: 0xf2f2f0 },
+    { style: "sedan", color: 0x1d1d1f },
+    { style: "mpv", color: 0x5a7d9a },
+    { style: "hatch", color: 0x2f9d8f },
+    { style: "taxi", color: 0xe8b818 },
+    { style: "sedan", color: 0x2f6fb0 },
+  ];
+  const HOLY_LOOKS = [
+    { style: "taxi", color: 0xf4f3ee },
+    { style: "suv", color: 0xf1f0ea },
+    { style: "sedan", color: 0xc9ccd2 },
+    { style: "mpv", color: 0xf1f0ea },
+    { style: "sedan", color: 0x23262b },
+    { style: "taxi", color: 0xf4f3ee },
+    { style: "suv", color: 0xc9ccd2 },
+    { style: "sedan", color: 0xd9c28a },
+    { style: "hatch", color: 0xf1f0ea },
+    { style: "suv", color: 0x2a2d33 },
+    { style: "mpv", color: 0xc9ccd2 },
+    { style: "sedan", color: 0x8fa4b8 },
+  ];
+  /** Bicycle and scooter colours (the kampung's, which the Haramain streets share). */
+  const BIKE_COLOURS = [
+    0x2f6fb0, 0xd94f4f, 0x2b2b2b, 0xf2c230, 0x3f9a5a, 0xe8e8e8, 0x8a4fbf, 0xd9773a,
+  ];
+  const MOTO_COLOURS = [0xd94f4f, 0xf2c230, 0x2f6fb0, 0xe8e8e8, 0x3f9a5a, 0x2b2b2b];
 
   /** The region this page runs: "haramain" or "kampung" (the default). */
   function region() {
@@ -33,35 +63,89 @@
     return r === "haramain" ? "haramain" : "kampung";
   }
 
-  /** Parked in the kampung: a kerbside car on the E-W road, a carpark bay, two bicycles by the paths. */
-  function kampungSpots() {
-    return [
-      { kind: "car", x: -22, z: 2.1, heading: PI / 2, color: KAMPUNG_CARS[0] },
-      { kind: "car", x: -17.5, z: 34.25, heading: PI / 2, color: KAMPUNG_CARS[1] },
-      { kind: "bike", x: -33, z: 8.4, heading: PI / 2, color: KAMPUNG_BIKES[0] },
-      { kind: "bike", x: 40, z: 8.6, heading: PI / 2, color: KAMPUNG_BIKES[1] },
-    ];
+  /**
+   * Parked in the kampung: every car, bicycle and scooter the town shows. The cars stand along the E-W road and in
+   * the carpark, the bicycles and scooters by the paths, the shops and the flats. Heading PI / 2 faces +x.
+   */
+  const KAMPUNG_CARS = [
+    [-22, 2.1, PI / 2],
+    [-17.5, 34.25, PI / 2],
+    [-17.5, 29.25, PI / 2],
+    [-17.5, 31.75, PI / 2],
+    [-17.5, 36.75, PI / 2],
+    [-10.5, 29.25, -PI / 2],
+    [-10.5, 34.25, -PI / 2],
+    [-10.5, 41.75, -PI / 2],
+    [60, 2, PI / 2],
+    [-62, -2, -PI / 2],
+  ];
+  const KAMPUNG_BIKES = [
+    [-33, 8.4, PI / 2],
+    [40, 8.6, PI / 2],
+    [-31, 12, PI],
+    [-29.8, 12, PI],
+    [-28.6, 12, PI],
+    [13.2, -8.4, PI],
+    [13.2, -7.6, PI],
+    [36.5, 43.2, PI / 2],
+    [37.3, 43.2, PI / 2],
+    [25.4, 7.6, PI / 2],
+  ];
+  const KAMPUNG_MOTOS = [
+    [-19.2, 41.2, PI],
+    [-19.2, 42.2, PI],
+    [-19.2, 43.2, PI],
+    [61, -7.3, PI / 2],
+    [63, -7.3, PI / 2],
+    [-21.5, 50.5, PI / 2],
+  ];
+
+  /** Rows of [x, z, heading] into kampung spots of one kind with colours / looks taken round the pool. */
+  function kampungOf(kind, rows, look) {
+    return rows.map((r, i) => Object.assign({ kind, x: r[0], z: r[1], heading: r[2] }, look(i)));
   }
 
-  /** The spots the Haramain world lists ({x, z, heading, kind}), given body colours; [] when it lists none. */
+  /** The spots of the kampung. */
+  function kampungSpots() {
+    return kampungOf("car", KAMPUNG_CARS, (i) => KAMPUNG_LOOKS[i % KAMPUNG_LOOKS.length])
+      .concat(
+        kampungOf("bike", KAMPUNG_BIKES, (i) => ({ color: BIKE_COLOURS[i % BIKE_COLOURS.length] })),
+      )
+      .concat(
+        kampungOf("moto", KAMPUNG_MOTOS, (i) => ({ color: MOTO_COLOURS[i % MOTO_COLOURS.length] })),
+      );
+  }
+
+  /** The look of the nth spot of a kind in Makkah and Madinah (the spot's own `style` / `color` win). */
+  function holyLook(s, n) {
+    if (s.kind === "car") return Object.assign({}, HOLY_LOOKS[n % HOLY_LOOKS.length], pick(s));
+    const pool = s.kind === "bike" ? BIKE_COLOURS : MOTO_COLOURS;
+    return Object.assign({ color: pool[n % pool.length] }, pick(s));
+  }
+
+  /** A spot's own look overrides, if it has any. */
+  function pick(s) {
+    const o = {};
+    if (typeof s.style === "string") o.style = s.style;
+    if (Number.isFinite(s.color)) o.color = s.color;
+    return o;
+  }
+
+  /** The spots the Haramain world lists ({x, z, heading, kind}), given looks; [] when it lists none. */
   function haramainSpots() {
     const list = KQ.Holy && Array.isArray(KQ.Holy.vehicleSpots) ? KQ.Holy.vehicleSpots : [];
-    let cars = 0;
-    let bikes = 0;
+    const count = { car: 0, bike: 0, moto: 0 };
     return list
       .filter(
-        (s) => s && Number.isFinite(s.x) && Number.isFinite(s.z) && /^(car|bike)$/.test(s.kind),
+        (s) =>
+          s && Number.isFinite(s.x) && Number.isFinite(s.z) && /^(car|bike|moto)$/.test(s.kind),
       )
       .map(function (s) {
-        const pool = s.kind === "car" ? HOLY_CARS : HOLY_BIKES;
-        const i = s.kind === "car" ? cars++ : bikes++;
-        return {
-          kind: s.kind,
-          x: s.x,
-          z: s.z,
-          heading: s.heading || 0,
-          color: pool[i % pool.length],
-        };
+        const look = holyLook(s, count[s.kind]++);
+        return Object.assign(
+          { kind: s.kind, x: s.x, z: s.z, heading: s.heading || 0, lhd: true },
+          look,
+        );
       });
   }
 

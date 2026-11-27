@@ -437,6 +437,18 @@
     }
   }
 
+  /** A touch of shade per person on skin and garments, so the same cloth is never quite the same twice. */
+  function vary(o, next, tour) {
+    // plain white cloth (the ihram, white thobes) stays exactly white
+    const lo = (c, k) => (c === WHITE ? c : SC.shade(c, k));
+    o.skin = SC.shade(o.skin, (next() - 0.5) * 0.1);
+    const same = o.legs === o.top;
+    o.top = lo(o.top, (next() - 0.5) * 0.2);
+    o.legs = same ? o.top : lo(o.legs, (next() - 0.5) * 0.2);
+    if (!tour && (o.head === "tudung" || o.head === "cap"))
+      o.headColour = lo(o.headColour, (next() - 0.5) * 0.16);
+  }
+
   /**
    * Dress a base outfit (from KQ.Sim.Crowd outfit) as a pilgrim, from the seed text.
    * @param {object} o the base outfit (mutated and returned)
@@ -475,6 +487,7 @@
     else if (o.head === "hair") o.headColour = o.hair;
     o.bag = tour || pick(BRIGHT, next());
     o.group = group;
+    vary(o, next, tour);
     body(o, next);
     return o;
   }

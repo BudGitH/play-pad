@@ -1,5 +1,5 @@
 /* Kampung Quest — town fill (KQ.WorldParts.Town): paved plazas joining buildings to the
-   sidewalks, the park (paths, benches, gazebo), the carpark and parked cars, and the
+   sidewalks, the park (paths, benches, gazebo), the carpark (its cars are drivable vehicles now), and the
    placement lists for trees and shrubs. */
 (function (KQ) {
   "use strict";
@@ -35,60 +35,6 @@
       B.box("marking", cp.x0 + 2.5, 0.04, z, 5, 0.01, 0.1, 0xffffff);
       B.box("marking", cp.x1 - 2.5, 0.04, z, 5, 0.01, 0.1, 0xffffff);
     }
-  }
-
-  /** Parked cars: [x, z, rotY, colour]. Static props, never driven. */
-  const CARS = [
-    [-17.5, 29.25, Math.PI / 2, 0xc8ccd0],
-    [-17.5, 31.75, Math.PI / 2, 0x2a3c5c],
-    [-17.5, 36.75, Math.PI / 2, 0xb02a2a],
-    [-10.5, 29.25, -Math.PI / 2, 0xf2f2f0],
-    [-10.5, 34.25, -Math.PI / 2, 0x1d1d1f],
-    [-10.5, 41.75, -Math.PI / 2, 0x5a7d9a],
-    [60, 2, Math.PI / 2, 0x2f6fb0],
-    [-62, -2, -Math.PI / 2, 0xe8b818],
-  ];
-
-  /** Car parts as three instanced meshes (body, glasshouse, wheels). */
-  const WHEELS = [-0.85, -0.58, 0.85, -0.58, -0.85, 0.58, 0.85, 0.58];
-  /** Instance lists for the parked cars (+ their colliders). */
-  function carLists(colliders) {
-    const L = { body: [], cabin: [], wheels: [] };
-    CARS.forEach(([x, z, ry, c]) => {
-      const fx = Math.sin(ry);
-      const fz = Math.cos(ry);
-      L.body.push({ x, y: 0.52, z, ry, color: c });
-      L.cabin.push({ x: x - fx * 0.15, y: 0.98, z: z - fz * 0.15, ry, color: c });
-      for (let i = 0; i < 8; i += 2) {
-        const a = WHEELS[i];
-        const b = WHEELS[i + 1];
-        const rot = [0, ry + Math.PI / 2, Math.PI / 2];
-        L.wheels.push({ x: x + fx * a + fz * b, y: 0.3, z: z + fz * a - fx * b, rot });
-      }
-      const hx = Math.abs(fx) * 1.45 + Math.abs(fz) * 0.7;
-      const hz = Math.abs(fz) * 1.45 + Math.abs(fx) * 0.7;
-      P.collide(colliders, x - hx, x + hx, z - hz, z + hz, "car");
-    });
-    return L;
-  }
-  /** Build the parked cars as instanced meshes (body, cabin, wheels) and add their colliders. */
-  function cars(group, mats, colliders) {
-    const L = carLists(colliders);
-    const paint = new THREE.MeshPhysicalMaterial({ roughness: 0.32, metalness: 0.4, clearcoat: 1 });
-    paint.clearcoatRoughness = 0.08;
-    const glass = new THREE.MeshStandardMaterial({
-      color: 0x1c252e,
-      roughness: 0.08,
-      metalness: 0.6,
-    });
-    const ims = [
-      P.instanced(new THREE.BoxGeometry(1.22, 0.52, 2.75), paint, L.body),
-      P.instanced(new THREE.BoxGeometry(1.08, 0.46, 1.5), glass, L.cabin),
-      P.instanced(new THREE.CylinderGeometry(0.3, 0.3, 0.2, 16), mats.dark, L.wheels),
-    ];
-    ims[1].instanceColor = null;
-    ims.forEach((m, i) => (m.name = ["carBodies", "carGlass", "carWheels"][i]));
-    group.add(...ims);
   }
 
   /** Park: benches along the paths, a gazebo, grassy mounds left to the default ground. */
@@ -184,5 +130,20 @@
     return out;
   }
 
-  P.Town = { plazas, carpark, cars, park, treeList, shrubSpots, PLAZAS };
+  /** Mulch strips under the shrub rows: [x0, z0, x1, z1]. */
+  const BEDS = [
+    [-57, 13.4, -23, 14.9],
+    [-57, 55.9, -23, 57.4],
+    [33, 55.9, 65, 57.4],
+    [68, -57, 69.3, -41],
+    [11.8, 28.5, 28.8, 30],
+  ];
+
+  /** Bare-soil mulch (the CC0 soil photo) in a ring round every tree and in strips under the shrub rows. */
+  function treeBeds(B) {
+    treeList().forEach((t) => B.cyl("soil", t.x, 0.02, t.z, 0.8 * t.s + 0.45, 0.04, 16, 0xffffff));
+    BEDS.forEach(([x0, z0, x1, z1]) => B.aabb("soil", x0, 0, z0, x1, 0.04, z1, 0xffffff));
+  }
+
+  P.Town = { plazas, carpark, park, treeList, shrubSpots, treeBeds, PLAZAS };
 })((window.KQ = window.KQ || {}));

@@ -327,6 +327,13 @@
     return tex;
   };
 
+  /** Free a spec's atlas (a repainted hero draws a new one each time). */
+  F.releaseAtlas = function (id) {
+    if (!atlasCache[id]) return;
+    atlasCache[id].dispose();
+    delete atlasCache[id];
+  };
+
   F.INK = INK;
   F.EYE_COLOUR = EYE;
 })((window.KQ = window.KQ || {}));

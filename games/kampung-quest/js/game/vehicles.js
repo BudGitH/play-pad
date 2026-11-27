@@ -27,12 +27,16 @@
   const REACH = 1.5;
   /** A vehicle left this far from the hero goes back to where it was parked (m), checked every second. */
   const HOME_FAR = 45;
+  /** Parked vehicles farther than this from the hero are not drawn (m); checked twice a second. */
+  const DRAW_FAR = 85;
   /** The longest move tested against walls at once (m), like the hero's own legs. */
   const MAX_LEG = 0.2;
   /** Seconds between two "let's walk" notes. */
   const NOTE_GAP = 4;
-  const POSE = { car: "drive", bike: "pedal" };
-  const NOUN = { car: "car", bike: "bicycle" };
+  const POSE = { car: "drive", bike: "pedal", moto: "drive" };
+  const NOUN = { car: "car", bike: "bicycle", moto: "scooter" };
+  /** The Jump button's word while mounted, per kind. */
+  const HORN_WORD = { car: "Honk", bike: "Ring", moto: "Beep" };
   const IDLE = { x: 0, y: 0, mag: 0, run: false };
   const V = {
     list: [],
@@ -40,6 +44,7 @@
     ready: false,
     t: 0,
     homeT: 0,
+    cullT: 0,
     zones: [],
     zonesT: -99,
     noteAt: -99,
@@ -110,12 +115,13 @@
    */
   function spawn(spot) {
     const sim = SV().create(spot.kind, spot.x, spot.z, spot.heading);
-    const mesh = KQ.Figures.Vehicles.build(spot.kind, spot.color);
+    const mesh = KQ.Figures.Vehicles.build(spot.kind, spot.color, spot);
     if (!sim || !mesh) return null;
     const free = G.Collide.freeSpot(S().world.colliders, sim.x, sim.z, sim.spec.ring.r + 0.1);
     sim.x = free.x;
     sim.z = free.z;
     const v = { id: spot.kind + (V.list.length + 1), kind: spot.kind, sim, mesh, y: 0 };
+    v.style = mesh.style;
     v.home = { x: sim.x, z: sim.z, heading: sim.heading };
     v.y = groundAt(sim.x, sim.z);
     S().scene.add(mesh.group);
@@ -235,10 +241,11 @@
   function seatOf(v) {
     const seat = KQ.Figures.Vehicles.SEAT[v.kind];
     const h = v.sim.heading;
+    const lat = v.mesh.seatX;
     return {
-      x: v.sim.x + Math.sin(h) * seat.z,
+      x: v.sim.x + Math.sin(h) * seat.z + Math.cos(h) * lat,
       y: v.y + seat.y,
-      z: v.sim.z + Math.cos(h) * seat.z,
+      z: v.sim.z + Math.cos(h) * seat.z - Math.sin(h) * lat,
     };
   }
 
@@ -277,7 +284,7 @@
   function labelHorn(kind) {
     const R = G.Hud && G.Hud.refs;
     if (!R || !R.jump) return;
-    const word = kind === "car" ? "Honk" : kind === "bike" ? "Ring" : "Jump";
+    const word = HORN_WORD[kind] || "Jump";
     R.jump.setAttribute("aria-label", word);
     const span = R.jump.querySelector("span");
     if (span) span.textContent = word;
@@ -290,6 +297,7 @@
     V.mounted = v;
     V.exiting = false;
     V.posed = false;
+    KQ.Figures.Vehicles.setOccupied(v.mesh, true);
     V.cam = { eased: false, dist: G.Camera.state.dist, pitch: G.Camera.state.pitch };
     s.player.group.visible = true;
     G.Player.place(s.player, v.sim.x, v.sim.z, v.sim.heading, groundAt);
@@ -303,7 +311,7 @@
 
   /** Candidate places beside a vehicle for the hero to step out to: left, right, behind, ahead (x, z). */
   function exitSpots(v) {
-    const side = v.kind === "car" ? 1.45 : 0.85;
+    const side = v.kind === "car" ? 1.55 : 0.85;
     const end = v.sim.spec.halfLen + 0.9;
     const h = v.sim.heading;
     const fx = Math.sin(h);
@@ -330,6 +338,7 @@
     V.mounted = null;
     V.exiting = false;
     v.sim.speed = 0;
+    KQ.Figures.Vehicles.setOccupied(v.mesh, false);
     if (placeHero) {
       const p = pickExit(v);
       G.Player.place(s.player, p.x, p.z, v.sim.heading, groundAt);
@@ -401,11 +410,21 @@
       z: v.sim.z,
       dist,
       enabled: true,
-      h: v.kind === "car" ? 1.7 : 1.4,
+      h: v.kind === "car" ? 1.9 : 1.4,
     };
   }
 
   /* ------------------------------ per frame ------------------------------ */
+
+  /** Hide the parked vehicles far from the hero (a street of 30 cars would cost hundreds of draw calls). */
+  function cull(hero, dt) {
+    V.cullT -= dt;
+    if (V.cullT > 0) return;
+    V.cullT = 0.5;
+    V.list.forEach(function (v) {
+      v.mesh.group.visible = v === V.mounted || U.dist(v.sim.x, v.sim.z, hero.x, hero.z) < DRAW_FAR;
+    });
+  }
 
   /** A parked vehicle left far behind goes back to its spot (nobody sees it jump). */
   function sendHome(hero, dt) {
@@ -465,6 +484,7 @@
     V.t += dt;
     const P = S().player;
     sendHome(P.pos, dt);
+    cull(P.pos, dt);
     if (!V.mounted) return false;
     if (displaced(P)) {
       finishExit(false);
@@ -499,6 +519,7 @@
       list: V.list.map((v) => ({
         id: v.id,
         kind: v.kind,
+        style: v.style,
         x: Number(v.sim.x.toFixed(2)),
         z: Number(v.sim.z.toFixed(2)),
         heading: Number(v.sim.heading.toFixed(2)),

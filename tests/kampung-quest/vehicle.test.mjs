@@ -28,10 +28,45 @@ test("a car accelerates gently to its top speed and never beyond", () => {
   assert.equal(v.speed, v.spec.maxFwd);
 });
 
-test("the bicycle is faster than the hero can run, the car faster still", () => {
+test("the bicycle is faster than the hero can run, the scooter faster still, the car fastest", () => {
   const RUN = 4.4;
   assert.ok(Veh.SPECS.bike.maxFwd > RUN);
-  assert.ok(Veh.SPECS.car.maxFwd > Veh.SPECS.bike.maxFwd);
+  assert.ok(Veh.SPECS.moto.maxFwd > Veh.SPECS.bike.maxFwd);
+  assert.ok(Veh.SPECS.car.maxFwd > Veh.SPECS.moto.maxFwd);
+});
+
+test("every kind of vehicle is known, labelled Drive / Ride and has a body that fits its two rings", () => {
+  assert.deepEqual(Object.keys(Veh.SPECS).sort(), ["bike", "car", "moto"]);
+  Object.entries(Veh.SPECS).forEach(([kind, spec]) => {
+    assert.equal(spec.label, kind === "car" ? "Drive" : "Ride");
+    assert.ok(spec.ring.off + spec.ring.r >= spec.halfLen - 0.1, kind + ": rings cover the length");
+    assert.ok(spec.ring.r >= spec.halfWid - 0.05, kind + ": rings cover the width");
+  });
+});
+
+test("a scooter accelerates, turns even when slow, reverses gently and is never faster than the car", () => {
+  const v = Veh.create("moto", 0, 0, 0);
+  drive(v, { x: 0, y: 1 }, 8);
+  assert.equal(v.speed, v.spec.maxFwd);
+  const h = v.heading;
+  drive(v, { x: 1, y: 1 }, 1);
+  assert.ok(v.heading < h, "pushing right turns right");
+  const w = Veh.create("moto", 0, 0, 0);
+  drive(w, { x: 0, y: -1 }, 4);
+  assert.equal(w.speed, -w.spec.maxRev);
+});
+
+test("whatever the kind, a person in the road is never reached (car, scooter, bicycle)", () => {
+  ["car", "moto", "bike"].forEach((kind) => {
+    const v = Veh.create(kind, 0, 0, 0);
+    let closest = Infinity;
+    drive(v, { x: 0, y: 1 }, 12, (m) => {
+      closest = Math.min(closest, 25 - (m.z + m.spec.halfLen));
+      return [{ x: 0.1, z: 25 }];
+    });
+    assert.ok(closest > 0.3, kind + ": bumper stayed clear: " + closest.toFixed(2) + " m");
+    assert.ok(v.speed < 0.05, kind + ": came to a stop");
+  });
 });
 
 test("heading 0 faces +z and a push to the right turns right (the heading shrinks)", () => {

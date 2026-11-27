@@ -79,32 +79,136 @@
   /** Arrival spot of the bus per city (KQ.Holy.travel). */
   const ARRIVE = { makkah: STAND.spawn, madinah: STAND.busStop };
 
-  /** Cars on the streets (lane centres) and bikes on the broad footways; heading is a yaw. */
+  /**
+   * Cars on the streets (lane centres), bikes and scooters on the broad footways; heading is a yaw (0 faces +z, PI / 2
+   * faces +x). Every one can be driven or ridden (vehicles.js); none may stand in a noDrive zone (tests check).
+   * An optional `style` picks a car body (hatch | sedan | taxi | suv | mpv), else vehicle-spots.js cycles them.
+   */
+  const E = N / 2;
+  const W = -N / 2;
+  /** Rows of [x, z, heading] into spots of one kind. */
+  const spotsOf = (kind, rows) => rows.map((r) => ({ x: r[0], z: r[1], heading: r[2], kind }));
+  // Makkah streets: z -106, -175, 85, 10 east-west; x -60, 80, -85, -120 north-south
+  const MAKKAH_CARS = [
+    [-150, -103, E],
+    [-40, -109, W],
+    [40, -103, E],
+    [100, -109, W],
+    [-250, -103, E],
+    [-200, -109, W],
+    [-100, -103, E],
+    [-75, -109, W],
+    [65, -109, W],
+    [110, -103, E],
+    [-100, -172, E],
+    [-30, -178, W],
+    [30, -172, E],
+    [100, -178, W],
+    [0, 82, E],
+    [-60, 88, W],
+    [60, 82, E],
+    [110, 88, W],
+    [-110, 82, E],
+    [-230, 7, E],
+    [-280, 13, W],
+    [-150, 13, W],
+    [-63, -190, 0],
+    [-57, -150, N],
+    [-63, -125, 0],
+    [76.5, -40, 0],
+    [83.5, 30, N],
+    [76.5, -150, 0],
+    [83.5, -120, N],
+    [76.5, 110, 0],
+    [83.5, -190, N],
+    [-82, -20, N],
+    [-88, 40, 0],
+    [-88, -80, 0],
+    [-82, 65, N],
+    [-122.5, -60, 0],
+    [-117.5, -30, N],
+  ];
+  const MAKKAH_BIKES = [
+    [50, -99.6, E],
+    [-40, -115, W],
+    [-200, -99.5, E],
+    [-120, -115.3, W],
+    [70, -115.3, E],
+    [110, -99.5, W],
+    [-30, 93.7, E],
+    [40, 74.9, W],
+    [0, -168.5, E],
+    [60, -181.7, W],
+    [88.7, -60, 0],
+    [69.8, 40, N],
+    [-93.7, 0, 0],
+    [-76.3, 50, N],
+    [69.9, 20, 0],
+    [-76, 30, N],
+  ];
+  const MAKKAH_MOTOS = [
+    [-160, -115.3, E],
+    [30, -168.4, W],
+    [-95, 60, 0],
+    [100, 76.3, E],
+    [-40, -181.5, E],
+  ];
+  // Madinah streets: z -105 and 60 east-west; x 530, 700, 560 and 600 north-south
+  const MADINAH_CARS = [
+    [560, -108, E],
+    [640, -102, W],
+    [697, -20, 0],
+    [533, 30, N],
+    [620, 63, E],
+    [560, 80, 0],
+    [505, -102, E],
+    [590, -108, W],
+    [670, -102, E],
+    [715, -108, W],
+    [540, -108, W],
+    [545, 63, E],
+    [660, 63, E],
+    [580, 57, W],
+    [680, 57, W],
+    [597.5, -150, 0],
+    [602.5, -130, N],
+    [597.5, -165, 0],
+    [527.5, -60, 0],
+    [532.5, -30, N],
+    [527.5, 120, 0],
+    [532.5, 85, N],
+    [702.5, 30, N],
+    [702.5, 110, N],
+    [558, 70, 0],
+  ];
+  const MADINAH_BIKES = [
+    [580, -98.6, E],
+    [535.4, 10, 0],
+    [520, -113.8, E],
+    [640, -113.8, W],
+    [690, -113.8, E],
+    [570, 69.7, E],
+    [650, 69.7, W],
+    [690, 69.7, E],
+    [538, -58.4, 0],
+    [522, 40, 0],
+    [522, 100, N],
+    [709.5, 0, 0],
+    [709.5, 70, N],
+  ];
+  const MADINAH_MOTOS = [
+    [606, -113.8, E],
+    [550, 69.7, W],
+    [709.5, -60, 0],
+    [522, -30, N],
+  ];
   const vehicleSpots = [
-    { x: -150, z: -103, heading: N / 2, kind: "car" },
-    { x: -40, z: -109, heading: -N / 2, kind: "car" },
-    { x: 40, z: -103, heading: N / 2, kind: "car" },
-    { x: 100, z: -109, heading: -N / 2, kind: "car" },
-    { x: 76.5, z: -40, heading: 0, kind: "car" },
-    { x: 83.5, z: 30, heading: N, kind: "car" },
-    { x: 0, z: 82, heading: N / 2, kind: "car" },
-    { x: -60, z: 88, heading: -N / 2, kind: "car" },
-    { x: -82, z: -20, heading: N, kind: "car" },
-    { x: -88, z: 40, heading: 0, kind: "car" },
-    { x: -63, z: -190, heading: 0, kind: "car" },
-    { x: -230, z: 7, heading: N / 2, kind: "car" },
-    { x: 20, z: -99.6, heading: N / 2, kind: "bike" },
-    { x: -40, z: -115, heading: -N / 2, kind: "bike" },
-    { x: 69.9, z: 20, heading: 0, kind: "bike" },
-    { x: -76, z: 30, heading: N, kind: "bike" },
-    { x: 560, z: -108, heading: N / 2, kind: "car" },
-    { x: 640, z: -102, heading: -N / 2, kind: "car" },
-    { x: 697, z: -20, heading: 0, kind: "car" },
-    { x: 533, z: 30, heading: N, kind: "car" },
-    { x: 620, z: 63, heading: N / 2, kind: "car" },
-    { x: 560, z: 80, heading: 0, kind: "car" },
-    { x: 580, z: -98.6, heading: N / 2, kind: "bike" },
-    { x: 535.4, z: 10, heading: 0, kind: "bike" },
+    ...spotsOf("car", MAKKAH_CARS),
+    ...spotsOf("bike", MAKKAH_BIKES),
+    ...spotsOf("moto", MAKKAH_MOTOS),
+    ...spotsOf("car", MADINAH_CARS),
+    ...spotsOf("bike", MADINAH_BIKES),
+    ...spotsOf("moto", MADINAH_MOTOS),
   ];
 
   const rect = (name, x0, z0, x1, z1) => ({ kind: "rect", name, x0, z0, x1, z1 });
@@ -206,6 +310,11 @@
 
   /** The fixed walk polylines of Makkah: [x, z, poiId?, facing?] (a shared point merges into one node). */
   const MAKKAH_FIXED = [
+    [
+      [-60, -98.25],
+      [-60, -78.7],
+      [-50, -78.7, "tailor", N], // the tailor's stall (KQ.HOLY.makkah.tailor, stand 1.3 m in front)
+    ],
     [
       [0, -95, "forecourt", 0],
       [0, -98.25],
@@ -320,6 +429,11 @@
 
   /** The Madinah walk polylines (same format as Makkah's). */
   const MADINAH_LINES = [
+    [
+      [600, -97.25],
+      [610, -97.25],
+      [610, -99.7, "tailorMad", N], // the tailor's stall (KQ.HOLY.madinah.tailor)
+    ],
     [
       [600, -112.75],
       [600, -97.25],
@@ -453,6 +567,7 @@
       barber: "busStop",
       clinic: "busStop",
       recycling: "busStop",
+      tailor: "tailorMad",
     },
   };
   const CITY_IDS = {
@@ -467,6 +582,7 @@
       "safa",
       "marwa",
       "salon",
+      "tailor",
       "miqat",
       "mina",
       "arafah",
@@ -476,6 +592,7 @@
     ],
     madinah: [
       "busStop",
+      "tailorMad",
       "nabGate",
       "nabHall",
       "nabHall_w",
@@ -518,6 +635,13 @@
     const h = HALL[city];
     out.push({ id: "prayer_spot", poi: "mosque_hall", pos: V(h.x, h.z), label: "Pray" });
     out.push({ id: "prayer_spot_women", poi: "mosque_hall", pos: V(h.x - 8, h.z), label: "Pray" });
+    const stand = city === "makkah" ? [-50, -78.7] : [610, -99.7]; // 1.3 m in front of the tailor's stall
+    out.push({
+      id: "wardrobe_stall",
+      poi: "tailor",
+      pos: V(stand[0], stand[1]),
+      label: "Change clothes",
+    });
     return out;
   }
 

@@ -58,6 +58,15 @@
     });
   }
 
+  /** Pigeons, lamp halos and the invisible edge walls (added after the static batch is built). */
+  function extras(group, ctx, mats) {
+    const pigeons = P.HolyPigeons.build(group, mats);
+    const hl = halos(ctx);
+    if (hl) group.add(hl);
+    [P.HolyMakkah.BOUNDS, P.HolyMadinah.BOUNDS].forEach((b) => edges(ctx.colliders, b));
+    return { pigeons, hl };
+  }
+
   /** The scenery steps, in order; each is named so the debug hook can list what exists. */
   function steps(c, group, mats, out) {
     const list = [
@@ -75,11 +84,24 @@
     return done;
   }
 
-  /** Palms and hills as instanced meshes (both cities). */
+  /** Palms, mountains, desert dressing and dust as instanced / merged meshes (both cities). */
   function instanced(group, mats, out, colliders) {
     const palms = out.palms.concat(out.mad.palms);
-    P.HolyKit.palms(group, mats, palms, colliders);
-    P.HolyKit.hills(group, mats, out.hills.concat(out.mad.hills));
+    P.HolyPalms.build(group, palms, colliders);
+    P.HolyRocks.mountains(group, mats, out.hills.concat(out.mad.hills));
+    const ctx = { colliders };
+    const mk = P.HolyMakkah.BOUNDS;
+    const md = P.HolyMadinah.BOUNDS;
+    out.desert = [
+      P.HolyDesert.dress(ctx, group, mats, out.free, mk, 501),
+      P.HolyDesert.dress(ctx, group, mats, out.mad.free, md, 601),
+    ];
+    P.HolyGround.dust(
+      group,
+      mats.dust,
+      P.HolyGround.patches(mk, 71, 110).concat(P.HolyGround.patches(md, 72, 70)),
+    );
+    out.herd = P.CamelHerd.create(group, colliders);
   }
 
   /** Interior point lights that follow the hero inside the Prophet's Mosque hall (cheap warm light). */
@@ -142,6 +164,7 @@
     P.Lighting.applyShadowTier(s.rig.sun, s.tier);
     P.Lighting.placeSun(s.rig);
     P.Lighting.maybeBakeEnv(s.rig, s.minute, false);
+    P.CamelHerd.setTier(s.herd, s.tier);
     return hints[s.tier];
   }
 
@@ -180,6 +203,7 @@
         s.minute = clock && typeof clock.minute === "number" ? clock.minute : s.minute;
         applyTime(s, s.minute);
         s.pigeons.update(dt || 0, s.hero);
+        P.CamelHerd.update(s.herd, dt || 0, s.hero);
       },
       setQuality: (tier) => setQuality(s, tier),
       setShadowTarget(v) {
@@ -194,6 +218,7 @@
       setCity: (c) => setCity(s, c),
       sites: s.sites,
       pigeons: s.pigeons.count,
+      camels: () => P.CamelHerd.describe(s.herd),
     };
     return Object.assign(api, sunApi(s));
   }
@@ -208,6 +233,7 @@
       sites: o.sites,
       halos: o.hl,
       pigeons: o.pigeons,
+      herd: o.herd,
       hero: null,
       minute: 420,
       tier: o.opts.quality || "high",
@@ -245,21 +271,30 @@
     B.floors = [];
     const group = new THREE.Group();
     group.name = "holyWorld";
-    const ctx = { B, colliders: [], lamps: [], mats: kit.mats };
+    const ctx = { B, colliders: [], lamps: [], mats: kit.mats, atlas: kit.atlas };
     const out = {};
     const sites = steps(ctx, group, kit.mats, out);
     instanced(group, kit.mats, out, ctx.colliders);
     B.build(kit.mats, group);
-    const pigeons = P.HolyPigeons.build(group, kit.mats);
-    const hl = halos(ctx);
-    if (hl) group.add(hl);
-    [P.HolyMakkah.BOUNDS, P.HolyMadinah.BOUNDS].forEach((b) => edges(ctx.colliders, b));
+    const { pigeons, hl } = extras(group, ctx, kit.mats);
     freeze(group);
     scene.add(group);
     P.Sky.fromPrayerTimes();
     const rig = makeRig(scene, opts, kit.mats);
     const nav = P.HolyNav.build();
-    const s = makeState({ scene, group, rig, nav, sites, ctx, B, opts, hl, pigeons });
+    const s = makeState({
+      scene,
+      group,
+      rig,
+      nav,
+      sites,
+      ctx,
+      B,
+      opts,
+      hl,
+      pigeons,
+      herd: out.herd,
+    });
     setCity(s, "makkah");
     const api = runtime(s);
     applyTime(s, s.minute);

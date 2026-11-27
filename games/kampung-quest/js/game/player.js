@@ -35,11 +35,26 @@
     buzz: { type: "hair_short", colour: "#7a6048" },
   };
 
-  /** The head spec for an outfit {hair, hat}. classic + no hat is the hero's own cap. */
-  function headSpecFor(outfit) {
+  /** The head that belongs to the clothes: the hero's own cap in the default look, else the tailor's. */
+  function clothesHead(wardrobe) {
+    const W = KQ.Sim.Wardrobe;
+    return !wardrobe || W.isDefault(wardrobe) ? KQ.Figures.CAST.hero.head : W.headFor(wardrobe);
+  }
+
+  /**
+   * The head spec for an outfit {hair, hat}. classic + no hat is the head that goes with the
+   * clothes (the hero's blue cap in the default look, a songkok with a baju Melayu ...).
+   */
+  function headSpecFor(outfit, wardrobe) {
     if (outfit.hat !== "none") return HEAD_STYLES[outfit.hat];
-    if (outfit.hair === "classic") return KQ.Figures.CAST.hero.head;
-    return HEAD_STYLES[outfit.hair] || KQ.Figures.CAST.hero.head;
+    if (outfit.hair === "classic") return clothesHead(wardrobe);
+    return HEAD_STYLES[outfit.hair] || clothesHead(wardrobe);
+  }
+
+  /** The wardrobe choice now (the saved one on the live sim, else the hero's own look). */
+  function currentWardrobe() {
+    const sim = G.S && G.S.sim;
+    return (sim && sim.wardrobe) || KQ.Sim.Wardrobe.DEFAULT;
   }
 
   /** The ritual look now: in ihram or not, and the haircut after tahallul ("none", "trim", "shave"). */
@@ -78,16 +93,21 @@
   }
 
   /**
-   * Put the hair / hat choice from the barber (or a save) on the hero's head. In ihram the hero wears
-   * the two white cloths and sandals and no cap; after tahallul the haircut shows (shorter hair).
-   * `look` is { ihram, cut }; by default it is read from the ritual tracker.
+   * Put the barber's hair / hat and the tailor's clothes on the hero (from the save, or a preview).
+   * In ihram the hero wears the two white cloths and sandals and no cap, on the hero's own bare
+   * arms (so the tailor's clothes come off for it and go back on after); after tahallul the haircut
+   * shows (shorter hair). `look` is { ihram, cut } and `wardrobe` { wear, tone }; by default both
+   * are read from the live game.
    */
-  function applyOutfit(P, outfit, look) {
+  function applyOutfit(P, outfit, look, wardrobe) {
     const l = look || ritualLook();
+    const w = wardrobe || currentWardrobe();
+    const W = KQ.Sim.Wardrobe;
+    KQ.Figures.dressHero(P.rig, l.ihram || W.isDefault(w) ? null : W.specFor(w));
     KQ.Figures.setIhram(P.rig, l.ihram);
     const spec = l.ihram
       ? KQ.Figures.IHRAM_HEAD[l.cut === "none" ? "none" : l.cut]
-      : KQ.Figures.cutHead(headSpecFor(outfit), l.cut);
+      : KQ.Figures.cutHead(headSpecFor(outfit, w), l.cut);
     KQ.Figures.setHeadPiece(P.rig, spec);
   }
 

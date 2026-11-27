@@ -104,10 +104,11 @@ test.beforeAll(async ({ browser }) => {
 test.afterAll(async () => page && (await page.close()));
 test.afterEach(async () => reset(page));
 
-test("the kampung has two parked cars and two bicycles, each in a free spot", async () => {
+test("the kampung's cars, bicycles and scooters are all vehicles, each in a free spot", async () => {
   const d = await veh(page);
   expect(d.region).toBe("kampung");
-  expect(d.list.map((v) => v.kind).sort()).toEqual(["bike", "bike", "car", "car"]);
+  const count = (k) => d.list.filter((v) => v.kind === k).length;
+  expect([count("car"), count("bike"), count("moto")]).toEqual([10, 10, 6]);
   const stuck = await kq(page, () => {
     const G = window.KQ.Game;
     return G.Vehicles.debug().list.filter((v) => {
@@ -122,7 +123,7 @@ test("the kampung has two parked cars and two bicycles, each in a free spot", as
     page,
     () => window.KQ.Game.S.world.colliders.filter((c) => c.vehicle).length,
   );
-  expect(solid).toBe(8);
+  expect(solid).toBe(52);
 });
 
 test("beside a car the prompt says Drive, beside a bicycle Ride, and far away there is none", async () => {
@@ -131,7 +132,7 @@ test("beside a car the prompt says Drive, beside a bicycle Ride, and far away th
     label: "Drive",
   });
   expect(await standAt(page, -33, 7.2, Math.PI)).toMatchObject({
-    id: "vehicle:bike3",
+    id: "vehicle:bike11",
     label: "Ride",
   });
   const far = await standAt(page, -22, 12, Math.PI);
@@ -176,7 +177,7 @@ test("a bicycle: pedal pose, faster than running, bell on the Jump button", asyn
   await expect(page.locator("#kqJump")).toHaveAttribute("aria-label", "Ring");
   await input(page, "up", true);
   await step(page, 2500);
-  const bike = (await veh(page)).list.find((v) => v.id === "bike3");
+  const bike = (await veh(page)).list.find((v) => v.id === "bike11");
   expect(bike.speed).toBeGreaterThan(4.6); // the hero runs at 4.4
   await orbit(page, Math.PI + 0.1);
   await shot(page, "hero-riding");
@@ -333,26 +334,31 @@ test("a vehicle left far away goes back to its parking spot", async () => {
   expect(home.z).toBeCloseTo(2.1, 0);
 });
 
-test("a vehicle adds only a few draw calls", async () => {
+test("one vehicle adds only a few draw calls, and the whole street stays inside the budget", async () => {
   await standAt(page, -22, 4.1, Math.PI);
-  const calls = (visible) =>
+  const calls = (only) =>
     kq(
       page,
-      (on) => {
-        window.KQ.Game.S.scene.traverse((o) => {
-          if (o.name && o.name.indexOf("vehicle-") === 0) o.visible = on;
+      (keep) => {
+        const G = window.KQ.Game;
+        G.S.scene.traverse((o) => {
+          if (o.name && o.name.indexOf("vehicle-") === 0) o.visible = keep === "all";
         });
+        const car = G.S.scene.children.find(
+          (o) => o.name === "vehicle-car" && Math.abs(o.position.x + 22) < 0.1,
+        );
+        if (keep === "one" && car) car.visible = true;
         window.__kq.step(100);
         return window.__kq.stats().calls;
       },
-      visible,
+      only,
     );
-  const without = await calls(false);
-  const withCar = await calls(true);
-  expect(withCar - without, "the car and bicycle in view, shadows included").toBeLessThanOrEqual(
-    30,
-  );
-  expect(withCar).toBeLessThan(400);
+  const without = await calls("none");
+  const oneCar = await calls("one");
+  expect(oneCar - without, "one car, shadows included").toBeLessThanOrEqual(24);
+  const all = await calls("all");
+  expect(all, "every vehicle in view").toBeLessThan(420);
+  await kq(page, () => window.__kq.step(600)); // the distance culling puts the far ones back
 });
 
 test("phone landscape (touch): Drive, Exit and Honk fit, and the joystick drives the car", async ({

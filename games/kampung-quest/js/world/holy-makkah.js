@@ -1,9 +1,10 @@
 /* ============================================================================
  * FILE: holy-makkah.js
- * PURPOSE: Makkah outside the Haram (KQ.WorldParts.HolyMakkah): the sandy ground, streets with
- *          pavements and lane marks, the gate plaza and hotel forecourt, the clock-tower hotel
- *          and the hotel skyline, palms, the miqat bus stop, and the Hajj zones (Mina tents,
- *          Arafah with Jabal Rahmah, Muzdalifah, the three Jamarat pillars) plus a hill ring.
+ * PURPOSE: Makkah outside the Haram (KQ.WorldParts.HolyMakkah): the photo desert sand, streets
+ *          (holy-ground.js), the gate plaza and hotel forecourt, the clock-tower hotel and the
+ *          hotel skyline, the filled city blocks and backdrop skyline (holy-city.js), palms, the
+ *          miqat bus stop, the Hajj zones (Mina tents, Arafah with Jabal Rahmah, Muzdalifah, the
+ *          three Jamarat pillars), camel yard (holy-camels.js), desert scrub and a hill ring.
  * BUSINESS CONTEXT: AC-H1 (scenery), AC-H4 (Hajj highlights places). Simplified, play-scale.
  * DEPENDENCIES: holy-kit.js, geo.js (Batch, instanced), KQ.HOLY anchors.
  * ========================================================================== */
@@ -25,37 +26,18 @@
     { axis: "z", at: -120, from: -106, to: 10, w: 10 },
   ];
 
-  /** One street: asphalt, two paved footways and a dashed centre line. */
+  /** One street (see holy-ground.js); kept here because Madinah builds its streets through it. */
   function road(c, r) {
-    const B = c.B;
-    const h = r.w / 2;
-    const run = (a0, a1, b0, b1, key, y0, y1, col) => {
-      if (r.axis === "x") B.aabb(key, a0, y0, b0, a1, y1, b1, col);
-      else B.aabb(key, b0, y0, a0, b1, y1, a1, col);
-    };
-    run(r.from, r.to, r.at - h, r.at + h, "asphalt", 0, 0.04, 0xffffff);
-    run(r.from, r.to, r.at - h - 3.5, r.at - h, "paving", 0, 0.12, 0xe2d8c2);
-    run(r.from, r.to, r.at + h, r.at + h + 3.5, "paving", 0, 0.12, 0xe2d8c2);
-    for (let t = r.from + 4; t < r.to - 4; t += 9) {
-      const x = r.axis === "x" ? t : r.at;
-      const z = r.axis === "x" ? r.at : t;
-      B.decal(
-        "marking",
-        x,
-        0.05,
-        z,
-        r.axis === "x" ? 3.5 : 0.25,
-        r.axis === "x" ? 0.25 : 3.5,
-        0,
-        0xf2f0e6,
-      );
-    }
+    P.HolyGround.road(c, r);
   }
 
-  /** The sandy ground under everything and the paved plazas. */
+  /** The sand under everything, the zebra crossings on the main street and the paved plazas. */
   function ground(c) {
     const B = c.B;
-    B.aabb("concrete", -330, -0.4, -235, 150, 0, 150, 0xd6c29c);
+    P.HolyGround.sand(c, { x0: -560, z0: -430, x1: 330, z1: 320 });
+    ROADS.slice(0, 1).forEach((r) =>
+      [0, -60, 71.25, -77.25].forEach((t) => P.HolyGround.zebra(c, r, t)),
+    );
     B.aabb("marble", -34, 0, -96.5, 34, 0.1, -58, 0xd5cdb8);
     B.aabb("marble", -8, 0, -116, 8, 0.08, -96, 0xf4efe2);
     B.aabb("tiles", -34, 0.1, -96.5, 34, 0.12, -95.9, 0xb8aa84);
@@ -66,8 +48,8 @@
   function clockTower(c) {
     const B = c.B;
     const t = KQ.HOLY.makkah.clockTower;
-    B.aabb("hotel", t.x - 17, 0, t.z - 15, t.x + 17, 42, t.z + 15, 0xf0e8d8);
-    B.aabb("hotel", t.x - 11, 42, t.z - 11, t.x + 11, 104, t.z + 11, 0xf6efe0);
+    B.aabb("stoneHotel", t.x - 17, 0, t.z - 15, t.x + 17, 43.2, t.z + 15, 0xf0e8d8);
+    B.aabb("stoneHotel", t.x - 11, 43.2, t.z - 11, t.x + 11, 104, t.z + 11, 0xf6efe0);
     B.aabb("paint", t.x - 13.5, 104, t.z - 13.5, t.x + 13.5, 122, t.z + 13.5, 0xe3d6b4);
     [
       [0, 13.6, 0],
@@ -107,25 +89,20 @@
     [96, 14, 124, 72, 78],
   ];
 
-  /** The hotel skyline: every block gets a podium and a tower of the `hotel` facade material. */
-  function hotels(c) {
-    HOTELS.forEach((h) => {
-      const w = h[2] - h[0];
-      const d = h[3] - h[1];
-      const inset = Math.min(w, d) * 0.14;
-      c.B.aabb("hotel", h[0], 0, h[1], h[2], 16, h[3], 0xf0e8d8);
-      c.B.aabb("hotel", h[0] + inset, 16, h[1] + inset, h[2] - inset, h[4], h[3] - inset, 0xeee6d4);
-      c.B.aabb(
-        "paint",
-        h[0] + inset - 0.3,
-        h[4],
-        h[1] + inset - 0.3,
-        h[2] - inset + 0.3,
-        h[4] + 1,
-        h[3] - inset + 0.3,
-        0xcdbf9a,
-      );
-      K().solid(c.colliders, h[0], h[1], h[2], h[3], "tower");
+  /** The hotel skyline: every listed block becomes a podium and a tower (glass and stone alternate). */
+  function hotels(c, free) {
+    HOTELS.forEach((h, i) => {
+      P.HolyCity.block(c, {
+        x0: h[0],
+        z0: h[1],
+        x1: h[2],
+        z1: h[3],
+        h: P.HolyCity.floors(h[4]),
+        style: i % 3 === 1 ? "stoneHotel" : "hotel",
+        seed: 100 + i,
+        solid: true,
+      });
+      free.addBuilt(h[0] - 3, h[1] - 3, h[2] + 3, h[3] + 3);
     });
   }
 
@@ -171,11 +148,18 @@
     K().solid(c.colliders, s.x - 3.2, s.z - 4.7, s.x + 3.2, s.z - 1.0, "shop-wall");
   }
 
+  /** The tailor's stall (KQ.HOLY.makkah.tailor): clothes to choose from, outside the no-drive plaza. */
+  function tailor(c) {
+    const t = KQ.HOLY.makkah.tailor;
+    const s = { x: t.x, z: t.z, face: 1 };
+    P.Tailor.build(c.B, c, s, { title: "TAILOR", sub: "Thobes · Kufis · Clothes" });
+  }
+
   /** Mina: a grid of white tents with a gravel yard and aisles. */
   function mina(c) {
     const B = c.B;
     const m = KQ.HOLY.hajj.mina;
-    B.cyl("concrete", m.x, 0.04, m.z, 26, 0.1, 40, 0xcdbfa4);
+    B.cyl("dirt", m.x, 0.04, m.z, 26, 0.1, 40, 0xe6d6b4);
     for (let i = -3; i <= 3; i += 1) {
       for (let j = -3; j <= 3; j += 1) {
         if (i === 0 || j === 0) continue;
@@ -196,7 +180,7 @@
   /** Arafah: open ground with Jabal Rahmah (a rocky hill with steps and a white marker pillar). */
   function arafah(c, hills) {
     const a = KQ.HOLY.hajj.arafah;
-    c.B.cyl("concrete", a.x, 0.04, a.z, 30, 0.1, 40, 0xd2bfa0);
+    c.B.cyl("dirt", a.x, 0.04, a.z, 30, 0.1, 40, 0xe6d6b4);
     hills.push({ x: a.x, z: a.z, w: 12, h: 10, seed: 2 });
     for (let i = 0; i < 6; i += 1) {
       c.B.aabb(
@@ -218,7 +202,7 @@
   /** Muzdalifah: an open pebbly plain under floodlights. */
   function muzdalifah(c) {
     const m = KQ.HOLY.hajj.muzdalifah;
-    c.B.cyl("concrete", m.x, 0.05, m.z, 20, 0.12, 36, 0xbca98a);
+    c.B.cyl("dirt", m.x, 0.05, m.z, 20, 0.12, 36, 0xd9c7a2);
     for (let i = 0; i < 6; i += 1) {
       const a = (i / 6) * Math.PI * 2;
       K().lamp(c.B, c, m.x + Math.cos(a) * 13, m.z + Math.sin(a) * 13, 10);
@@ -230,7 +214,7 @@
     const j = KQ.HOLY.hajj.jamarat;
     [-12, 0, 12].forEach((dx) => {
       const x = j.x + dx;
-      c.B.aabb("concrete", x - 4.2, 0, j.z - 6.4, x + 4.2, 0.9, j.z + 6.4, 0xd7ccb4);
+      c.B.aabb("sandstone", x - 4.2, 0, j.z - 6.4, x + 4.2, 0.9, j.z + 6.4, 0xf0e4c8);
       c.B.aabb("tiles", x - 3.4, 0.9, j.z - 5.6, x + 3.4, 0.95, j.z + 5.6, 0xb9ad94);
       c.B.box("concrete", x, 3.4, j.z, 1.5, 6, 5.4, 0xcbbd9f);
       c.B.box("concrete", x, 6.6, j.z, 1.9, 0.4, 5.8, 0xb9ad94);
@@ -255,23 +239,81 @@
     }
   }
 
-  /** Build all of Makkah outside the Haram. Returns what the world needs (palms, hills, vehicle spots). */
+  /** The inner city (inside the play bounds) and the backdrop ring of taller blocks outside them. */
+  function cityFill(c, free) {
+    const cfg = {
+      seed: 311,
+      cell: [34, 30],
+      density: 0.95,
+      origin: [0, 0],
+      hBase: 105,
+      hFall: 0.2,
+      hMax: 100,
+      solid: true,
+      pads: true,
+    };
+    const inner = P.HolyCity.fill(c, cfg, free, {
+      x0: BOUNDS.x0,
+      z0: BOUNDS.z0,
+      x1: BOUNDS.x1,
+      z1: BOUNDS.z1,
+    });
+    const ring = Object.assign({}, cfg, {
+      seed: 312,
+      solid: false,
+      pads: false,
+      density: 0.95,
+      cell: [48, 44],
+      hBase: 125,
+    });
+    const inEllipse = (x, z) => ((x + 90) / 285) ** 2 + ((z + 50) / 205) ** 2 < 1;
+    const outside = (x, z) => x < BOUNDS.x0 || x > BOUNDS.x1 || z < BOUNDS.z0 || z > BOUNDS.z1;
+    const back = P.HolyCity.fill(
+      c,
+      ring,
+      free,
+      { x0: -380, z0: -280, x1: 200, z1: 190 },
+      (x, z) => outside(x, z) && inEllipse(x, z),
+    );
+    P.HolyCity.stats = { inner, back };
+    return { inner, back };
+  }
+
+  /** Build all of Makkah outside the Haram. Returns what the world needs (palms, hills, lot test). */
   function build(c) {
     const hills = [];
+    const free = P.HolyLots.make("makkah");
     ground(c);
     ROADS.forEach((r) => road(c, r));
     clockTower(c);
-    hotels(c);
+    hotels(c, free);
     busStop(c);
     salon(c);
+    tailor(c);
     mina(c);
     arafah(c, hills);
     muzdalifah(c);
     jamarat(c);
     hillRing(hills);
+    P.HolyCamels.yard(c);
+    P.HolyCamels.AREAS.forEach((a) => free.addBuilt(a[0], a[1], a[2], a[3]));
+    cityFill(c, free);
     for (let x = -100; x <= 110; x += 30) K().lamp(c.B, c, x, -96, 8);
-    return { palms: palmSpots(), hills };
+    const palms = palmSpots().concat(oasisPalms());
+    return { palms, hills, free };
   }
 
-  P.HolyMakkah = { build, BOUNDS, ROADS, road };
+  /** A ring of date palms round the oasis pond (the camels rest in their shade). */
+  function oasisPalms() {
+    const o = P.HolyCamels.OASIS;
+    const out = [];
+    for (let i = 0; i < 11; i += 1) {
+      const a = (i / 11) * Math.PI * 2 + 0.3;
+      const r = 10.5 + (i % 3) * 1.8;
+      out.push({ x: o.x + Math.cos(a) * r, z: o.z + Math.sin(a) * r, s: 0.9 + (i % 4) * 0.1 });
+    }
+    return out;
+  }
+
+  P.HolyMakkah = { build, BOUNDS, ROADS, HOTELS, road };
 })((window.KQ = window.KQ || {}));

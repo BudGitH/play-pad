@@ -284,14 +284,14 @@ test("cleaners patrol a line out and back; sa'i children keep to the parent's ri
 });
 
 test("the holy cities keep a bigger crowd and a busier day: caps, strollers, rests, photos, vendors, guards", () => {
-  assert.deepEqual({ ...P.HOLY_CAPS }, { low: 90, med: 140, high: 200 });
-  assert.equal(C.capFor("low"), 90);
+  assert.deepEqual({ ...P.HOLY_CAPS }, { low: 170, med: 290, high: 420 });
+  assert.equal(C.capFor("low"), 170);
   const plain = load("kampung", [
     "sim/crowd.js",
     "sim/crowd-pilgrim-dress.js",
     "sim/crowd-pilgrim.js",
   ]).Sim.Crowd;
-  assert.equal(plain.capFor("low"), 56, "the kampung cap is unchanged");
+  assert.equal(plain.capFor("low"), 120, "the kampung cap is its own (120 / 195 / 280)");
   for (const k of ["rest", "clean", "guard", "photo", "vendor"]) {
     assert.ok(C.occupancy(k, 180) > 0, k + " at night");
     assert.ok(C.occupancy(k, 700) >= C.occupancy(k, 180), k + " busier by day");

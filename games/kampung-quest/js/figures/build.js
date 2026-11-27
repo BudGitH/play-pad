@@ -24,6 +24,15 @@
     return partCache[spec.id];
   }
 
+  /** Free the cached parts of a spec (a repainted hero builds its parts anew each time). */
+  F.releaseParts = function (id) {
+    const parts = partCache[id];
+    if (!parts) return;
+    Object.keys(parts).forEach((k) => parts[k].dispose());
+    delete partCache[id];
+  };
+  F.partsFor = partsFor;
+
   /**
    * Create a named mesh (or an empty group when there is no geometry) at a position under a parent;
    * meshes cast and receive shadows.

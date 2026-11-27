@@ -20,7 +20,16 @@
   const RATES = { idle: 0.22, sit: 0.22, eat: 0.4, talk: 0.55, walk: 1.2, run: 2.6 };
 
   /** The age group each kind of spot draws its people from. */
-  const ROLE = { play: "kid", exercise: "elder", bench: "any", sweep: "adult" };
+  const ROLE = { play: "kid", exercise: "elder", bench: "any", sweep: "adult", picnic: "any" };
+
+  /** The age role of a slot's person: playgrounds also get a few teens, benches lean towards the elderly. */
+  function roleFor(slot, seed) {
+    const r = SC().hash01(seed + ":role");
+    if (slot.kind === "play") return r < 0.8 ? "kid" : "teen";
+    if (slot.kind === "bench") return r < 0.4 ? "elder" : "any";
+    if (slot.kind === "shop" || slot.kind === "loiter") return r < 0.1 ? "elder" : "any";
+    return ROLE[slot.kind] || "any";
+  }
 
   /** Loop speed (cycles per second) of a pose. */
   function rateOf(pose) {
@@ -46,7 +55,7 @@
     const seed = slot.id + "@" + block;
     if (slot.holy) return G.CrowdHoly.outfitFor(slot, seed);
     if (slot.kind === "sweep") return cleanerOutfit(seed);
-    return SC().outfit(seed, ROLE[slot.kind] || "any");
+    return SC().outfit(seed, roleFor(slot, seed));
   }
 
   /**
@@ -112,7 +121,8 @@
   function waitingPose(m, clock) {
     if (m.kind === "queue" && m.slot.index === 0) return "order";
     const k = SC().hash01(m.id + ":" + Math.floor((clock + m.t) / 14));
-    if (m.kind === "bus" && k > 0.8) return "browse";
+    if ((m.kind === "bus" || m.kind === "shop") && k > 0.8) return "browse";
+    if (m.kind === "loiter" && k > 0.9) return "browse";
     return m.phoner && k > 0.25 ? "phone" : "wait";
   }
 
@@ -124,6 +134,7 @@
       return SC().speakerAt(s.group, s.size, clock, 5) === s.index ? "talk" : "listen";
     }
     if (m.kind === "exercise") return "taiji";
+    if (m.kind === "picnic") return SC().hash01(m.id) < 0.6 ? "sit_legs" : "julus";
     return waitingPose(m, clock);
   }
 
@@ -163,7 +174,7 @@
       const d = 1.5 + m.draw() * r.r;
       const gx = r.x + Math.cos(a) * d;
       const gz = r.z + Math.sin(a) * d;
-      m.goal = G.CrowdZones.segmentClear(C.world, m.x, m.z, gx, gz, 0.3) ? { x: gx, z: gz } : null;
+      m.goal = G.CrowdZones.segmentClear(C.world, m.x, m.z, gx, gz, 0.4) ? { x: gx, z: gz } : null;
       m.wait = m.goal ? 0 : 0.4;
       return;
     }

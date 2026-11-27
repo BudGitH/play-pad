@@ -89,7 +89,7 @@
       .forEach(function (id) {
         const p = world.pois[id].pos;
         C()
-          .queueSlots(p.x + 0.95, p.z + 0.12, 3, 0.74, 1, Math.PI)
+          .queueSlots(p.x + 0.95, p.z + 0.12, 5, 0.74, 1, Math.PI)
           .forEach(function (q, i) {
             if (!clear(world, q.x, q.z)) return;
             out.push({
@@ -124,6 +124,10 @@
         [-1.7, 1.6],
         [0.5, 1.7],
         [1.9, 1.5],
+        [-2.5, 0.9],
+        [2.6, 0.9],
+        [-0.7, 2.3],
+        [1.3, 2.5],
       ].forEach(function (o, i) {
         const x = xc + o[0];
         const z = fz + s * o[1];
@@ -145,22 +149,33 @@
   function busSlots(world) {
     const B = KQ.WorldParts.LAYOUT.busStop;
     const out = [];
-    [17.2, 18.5, 19.8, 21.2, 22.4, 23.3].forEach(function (x, i) {
-      const z = B.z0 + 0.6;
-      if (clear(world, x, z))
-        out.push({ id: "bus:stand:" + i, kind: "bus", x, z, heading: Math.PI, group: "bus:stand" });
+    [17.2, 18.5, 19.8, 21.2, 22.4, 23.3, 25, 26.3, 27.6, 28.9].forEach(function (x, i) {
+      [0.6, 1.6].forEach(function (dz, row) {
+        const z = B.z0 + dz;
+        if (!clear(world, x, z)) return;
+        const id = "bus:stand:" + row + ":" + i;
+        out.push({ id, kind: "bus", x, z, heading: Math.PI, group: "bus:stand" });
+      });
     });
     return out;
   }
 
   /** Rectangles to look for open floor in, with how many chat circles each should hold. */
   const CHAT_AREAS = [
-    { name: "hawker", x0: 14, x1: 38, z0: -27, z1: -11, groups: 3 },
-    { name: "voidA", x0: -55, x1: -25, z0: 16.5, z1: 24.5, groups: 2 },
-    { name: "voidB", x0: -55, x1: -25, z0: 46.5, z1: 54.5, groups: 2 },
-    { name: "voidC", x0: 35, x1: 63, z0: 46.5, z1: 54.5, groups: 2 },
-    { name: "playground", x0: 12, x1: 29, z0: 12, z1: 29, groups: 2 },
-    { name: "park", x0: 34, x1: 70, z0: 10, z1: 38, groups: 3 },
+    { name: "hawker", x0: 14, x1: 38, z0: -27, z1: -11, groups: 5 },
+    { name: "hawkerFront", x0: 14, x1: 40, z0: -11.5, z1: -6.8, groups: 3 },
+    { name: "shopFront", x0: 42, x1: 70, z0: -11.5, z1: -6.8, groups: 3 },
+    { name: "mosqueYard", x0: -30, x1: -14, z0: -44, z1: -12, groups: 3 },
+    { name: "libraryFront", x0: 46, x1: 66, z0: -39, z1: -28, groups: 2 },
+    { name: "voidA", x0: -55, x1: -25, z0: 16.5, z1: 24.5, groups: 3 },
+    { name: "voidB", x0: -55, x1: -25, z0: 46.5, z1: 54.5, groups: 3 },
+    { name: "voidC", x0: 35, x1: 63, z0: 46.5, z1: 54.5, groups: 3 },
+    { name: "blockAFront", x0: -55, x1: -26, z0: 8, z1: 14.5, groups: 3 },
+    { name: "blockABLawn", x0: -55, x1: -26, z0: 27, z1: 44, groups: 3 },
+    { name: "blockCFront", x0: 34, x1: 64, z0: 38, z1: 45, groups: 3 },
+    { name: "carpark", x0: -20, x1: -8, z0: 28, z1: 44, groups: 2 },
+    { name: "playground", x0: 12, x1: 29, z0: 12, z1: 29, groups: 3 },
+    { name: "park", x0: 34, x1: 70, z0: 10, z1: 38, groups: 6 },
   ];
 
   /** Candidate points on a jittered grid in an area, the open ones first in a seeded random order. */
@@ -186,7 +201,7 @@
         if (taken.length >= area.groups || taken.some((q) => U.dist(p.x, p.z, q.x, q.z) < 6))
           return;
         taken.push(p);
-        const size = p.r < 0.55 ? 2 : p.r < 0.88 ? 3 : 4;
+        const size = p.r < 0.4 ? 2 : p.r < 0.75 ? 3 : p.r < 0.93 ? 4 : 5;
         const gid = "chat:" + area.name + ":" + taken.length;
         C()
           .circleSlots(p.x, p.z, size, 0.5 + 0.08 * size, p.r * 6)
@@ -213,11 +228,11 @@
     const park = { name: "taiji", x0: 36, x1: 68, z0: 12, z1: 36 };
     const taken = [];
     openPoints(world, park, 3.2, 3).forEach(function (p) {
-      if (taken.length >= 2 || taken.some((q) => U.dist(p.x, p.z, q.x, q.z) < 12)) return;
+      if (taken.length >= 4 || taken.some((q) => U.dist(p.x, p.z, q.x, q.z) < 9)) return;
       taken.push(p);
       const gid = "exercise:" + taken.length;
       C()
-        .gridSlots(p.x, p.z, 3, 2, 1.35, Math.PI * (taken.length === 1 ? 1 : 0.5))
+        .gridSlots(p.x, p.z, 3, 2, 1.35, Math.PI * (taken.length % 2 ? 1 : 0.5))
         .forEach((q, i) =>
           out.push({
             id: gid + ":" + i,
@@ -235,10 +250,13 @@
 
   /** Where kids run and play: a centre and radius, validated per target at run time. */
   const PLAY_AREAS = [
-    { id: "playground", x: 21.5, z: 22, r: 7, n: 5 },
-    { id: "park", x: 50, z: 24, r: 9, n: 3 },
-    { id: "voidA", x: -40, z: 22.8, r: 4.5, n: 2 },
-    { id: "voidC", x: 49, z: 50.5, r: 4.5, n: 2 },
+    { id: "playground", x: 21.5, z: 22, r: 7, n: 10 },
+    { id: "park", x: 52, z: 24, r: 9, n: 7 },
+    { id: "parkW", x: 40, z: 31, r: 5, n: 3 },
+    { id: "voidA", x: -40, z: 22.8, r: 4.5, n: 4 },
+    { id: "voidB", x: -40, z: 50.5, r: 4.5, n: 4 },
+    { id: "voidC", x: 49, z: 50.5, r: 4.5, n: 4 },
+    { id: "lawnAB", x: -40, z: 35, r: 6, n: 3 },
   ];
 
   /** Roaming kids' slots. */
@@ -273,6 +291,11 @@
     { id: "voidA", x0: -50, z0: 22.6, x1: -45, z1: 22.6 },
     { id: "voidB", x0: -50, z0: 48.4, x1: -45, z1: 48.4 },
     { id: "hawkerFront", x0: 16, z0: -10, x1: 30, z1: -10 },
+    { id: "shopFront", x0: 46, z0: -10, x1: 66, z1: -10 },
+    { id: "mosqueYard", x0: -26, z0: -40, x1: -26, z1: -20 },
+    { id: "busStop", x0: 15, z0: 9.5, x1: 31, z1: 9.5 },
+    { id: "voidC", x0: 40, z0: 48.4, x1: 46, z1: 48.4 },
+    { id: "parkPath", x0: 38, z0: 12, x1: 38, z1: 22 },
   ];
 
   /** Sweepers: a line to pace along, kept only when the whole line is clear. */
@@ -293,10 +316,11 @@
    * Every fixed spot in the world.
    * @param {object} world the built neighbourhood
    * @param {Array} seats the shared seat list (G.Seats.build)
+   * @param {object} [pathP] the walk graph (loners stand beside its nodes)
    * @returns {Array<object>} slots: { id, kind, x, z, heading, y?, sit?, seat?, group?, index?, ... }
    */
-  function build(world, seats) {
-    if (KQ.region === "haramain") return G.CrowdHoly.build(world);
+  function build(world, seats, pathP) {
+    if (KQ.region === "haramain") return G.CrowdHoly.build(world, pathP);
     const all = [].concat(
       seatSlots(world, seats),
       queueSlots(world),
@@ -306,6 +330,7 @@
       exerciseSlots(world),
       playSlots(world),
       sweepSlots(world),
+      G.CrowdZonesMore.build(world, pathP),
     );
     all.forEach(function (s) {
       if (s.y === undefined) s.y = world.heightAt(s.x, s.z);
@@ -313,5 +338,20 @@
     return all;
   }
 
-  G.CrowdZones = { build, clear, segmentClear };
+  /** Is a slot still usable now? (Seats and the circling pilgrims always are; the rest must have room.) */
+  function usable(world, s) {
+    if (s.sit || s.holy === "orbit" || s.holy === "lane") return true;
+    if (s.line) return segmentClear(world, s.line.x0, s.line.z0, s.line.x1, s.line.z1, 0.5);
+    return clear(world, s.x, s.z, 0.25);
+  }
+
+  /**
+   * Drop the slots that something built after the world has since taken (parked cars, bicycles and
+   * scooters are placed on the first frame, after the crowd is laid out).
+   */
+  function prune(world, slots) {
+    return slots.filter((s) => usable(world, s));
+  }
+
+  G.CrowdZones = { build, clear, segmentClear, openPoints, prune };
 })((window.KQ = window.KQ || {}));

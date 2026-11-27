@@ -2792,3 +2792,75 @@ kbd {
     font-size: 15px;
   }
 }
+
+/* the tailor's wardrobe: outfit tiles, colour swatches, Save / Cancel (all targets >= 48 px) */
+.kq-wd {
+  gap: 8px;
+}
+.kq-wd .kq-h3 {
+  margin: 4px 0 0;
+}
+.kq-wd-outfits {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+.kq-wd-tile {
+  min-height: 88px;
+  padding: 6px 4px;
+  gap: 2px;
+  justify-content: center;
+}
+.kq-wd-tile b {
+  font-size: 13px;
+  line-height: 1.15;
+}
+.kq-wd-pic {
+  width: 44px;
+  height: 44px;
+}
+.kq-wd-swatches {
+  display: grid;
+  grid-template-columns: repeat(4, 48px);
+  justify-content: space-between;
+  gap: 8px;
+}
+.kq-wd-swatch {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border: 3px solid var(--md-sys-color-outline);
+  border-radius: 50%;
+  background: var(--sw);
+  color: #111;
+}
+.kq-wd-swatch.is-on {
+  border-color: var(--md-sys-color-primary);
+  box-shadow:
+    0 0 0 2px var(--kq-hud-strong),
+    0 0 0 5px var(--md-sys-color-primary);
+}
+.kq-wd-tick {
+  width: 24px;
+  height: 24px;
+  filter: drop-shadow(0 0 1.5px #fff) drop-shadow(0 0 1.5px #fff);
+}
+.kq-wd-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+@media (max-height: 520px) {
+  .kq-wd-tile {
+    min-height: 64px;
+  }
+  .kq-wd-pic {
+    width: 30px;
+    height: 30px;
+  }
+  .kq-wd .kq-h3 {
+    display: none;
+  }
+}

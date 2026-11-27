@@ -6,7 +6,7 @@
  * BUSINESS CONTEXT: "bustling" world. People appear and vanish only where the hero cannot see
  *   it (behind the camera or far away); the headcount follows the time of day and the quality
  *   tier, and nobody beyond range is simulated or drawn, so the cost stays flat as the town grows.
- * DEPENDENCIES: crowd-zones.js, crowd-members.js, crowd-walkers.js, npc-manager.js (seats, cast
+ * DEPENDENCIES: crowd-zones.js, crowd-zones-more.js, crowd-members.js, crowd-walkers.js, npc-manager.js (seats, cast
  *   positions), KQ.Sim.Crowd, KQ.Figures.CrowdKit.
  * ========================================================================== */
 (function (KQ) {
@@ -20,8 +20,14 @@
   /** Nobody pops in or out of existence closer than this when the hero could see it. */
   const POP_NEAR = 30;
   const RENDER_R = { low: 46, med: 60, high: 74 };
+  /**
+   * The most people drawn in one frame per tier (the nearest ones win). The headcount can be much higher
+   * than this (people behind the camera or far away are simulated, not drawn); this is the vertex budget:
+   * about 2.3k triangles a person, so the low tier stays near 220k triangles of crowd on a phone.
+   */
+  const DRAW_CAP = { low: 96, med: 170, high: 320 };
   const RECONCILE_S = 0.4;
-  const MAX_PEOPLE = KQ.region === "haramain" ? 210 : 130;
+  const MAX_PEOPLE = KQ.region === "haramain" ? 480 : 320;
   const CROWD_SEAT = "crowd";
 
   /**
@@ -37,10 +43,11 @@
       pathP: npcs.pathP,
       camera,
       kit,
-      slots: G.CrowdZones.build(world, npcs.seats),
+      slots: G.CrowdZones.build(world, npcs.seats, npcs.pathP),
       members: [],
       byId: new Map(),
       others: [],
+      vis: [],
       clock: 0,
       accT: RECONCILE_S,
       spawnT: 0,
@@ -115,6 +122,14 @@
     return slot.sit ? C.npcs.seats[slot.seat] : null;
   }
 
+  /**
+   * Is there still room to stand at a standing slot? (Things parked after the crowd was laid out, a car
+   * or a bicycle, may have taken the spot. Seats and the moving pilgrim slots are exempt.)
+   */
+  function roomAt(C, slot) {
+    return slot.sit || slot.holy || G.CrowdZones.clear(C.world, slot.x, slot.z, 0.25);
+  }
+
   /** Put a new person at a slot (claiming its seat). */
   function admit(C, slot, minute) {
     const m = G.CrowdMembers.create(slot, SC().blockOf(minute), C.instant);
@@ -148,6 +163,15 @@
     return list.slice(0, budget);
   }
 
+  /**
+   * How many people count against the cap. Normally everyone still on screen, including people fading out, so
+   * the headcount never exceeds the cap; after a jump (teleport, clock leap) the old crowd is on its way out
+   * at once, so only the people staying count and the new town fills in straight away.
+   */
+  function liveCount(C) {
+    return C.instant ? C.members.filter((m) => !m.leaving).length : C.members.length;
+  }
+
   /** Bring the fixed-spot population in line with what is wanted (only popping where nobody looks). */
   function reconcileSpots(C, hero, minute, budget) {
     const want = wantedSlots(C, hero, minute, budget);
@@ -157,22 +181,24 @@
       const far = U.dist(m.x, m.z, hero.x, hero.z) > DESPAWN_R;
       m.leaving = far || mayPop(C, m.x, m.z) || m.leaving;
     });
+    let live = liveCount(C);
     want.forEach(function (w) {
       const have = C.byId.get(w.s.id);
       if (have) have.leaving = false;
-      else if (mayPop(C, w.s.x, w.s.z)) admit(C, w.s, minute);
+      else if (live < SC().capFor(C.tier) && mayPop(C, w.s.x, w.s.z) && roomAt(C, w.s)) {
+        admit(C, w.s, minute);
+        live += 1;
+      }
     });
   }
 
   /** Add one stroller (or a pair) on a pavement out of sight. */
   function addStroller(C, hero, minute) {
-    G.CrowdWalkers.spawn(C, hero, minute, SC().capFor(C.tier) - C.members.length >= 2).forEach(
-      function (m) {
-        if (C.instant) m.show = 1;
-        C.members.push(m);
-        C.byId.set(m.id, m);
-      },
-    );
+    G.CrowdWalkers.spawn(C, hero, minute, SC().capFor(C.tier) - liveCount(C)).forEach(function (m) {
+      if (C.instant) m.show = 1;
+      C.members.push(m);
+      C.byId.set(m.id, m);
+    });
   }
 
   /** Spawn and retire strollers to follow the time-of-day target. */
@@ -188,13 +214,18 @@
         .sort((a, b) => U.dist(b.x, b.z, hero.x, hero.z) - U.dist(a.x, a.z, hero.x, hero.z))[0];
       if (far && mayPop(C, far.x, far.z)) far.leaving = true;
     }
-    const room = Math.min(target - live, SC().capFor(C.tier) - C.members.length);
-    for (let i = 0; i < (C.instant ? room : Math.min(1, room)); i += 1)
+    const room = Math.min(target - live, SC().capFor(C.tier) - liveCount(C));
+    // a group counts as several strollers, so a busy hour fills up at up to three spawns per half second
+    for (let i = 0; i < (C.instant ? room : Math.min(3, room)); i += 1)
       addStroller(C, hero, minute);
   }
 
   /** The twice-a-second job: decide who is here. */
   function reconcile(C, hero, minute) {
+    if (!C.pruned) {
+      C.slots = G.CrowdZones.prune(C.world, C.slots);
+      C.pruned = true;
+    }
     const cap = SC().capFor(C.tier);
     const target = SC().walkerTarget(minute, C.tier);
     reconcileSpots(C, hero, minute, Math.max(0, cap - target));
@@ -204,30 +235,40 @@
     });
   }
 
-  /** Step every person and draw the ones in view. */
+  /** Add one person to the kit. */
+  function drawMember(kit, m) {
+    const grow = m.show * m.show * (3 - 2 * m.show);
+    KQ.Figures.CrowdKit.add(kit, {
+      x: m.x,
+      y: m.y,
+      z: m.z,
+      heading: m.heading,
+      scale: m.scale * Math.max(0.01, grow),
+      pose: m.pose,
+      phase: m.phase,
+      kid: m.kid,
+      girth: m.outfit.girth,
+      outfit: m.outfit,
+      prop: m.prop,
+    });
+  }
+
+  /** Step every person and draw the nearest of the ones in view (up to the tier's draw cap). */
   function stepAndDraw(C, dt, hero) {
-    const kit = C.kit;
-    KQ.Figures.CrowdKit.begin(kit);
+    const vis = C.vis;
+    vis.length = 0;
     C.members.forEach(function (m) {
       if (m.walker) G.CrowdWalkers.update(C, m, dt);
       else G.CrowdMembers.update(m, dt, C);
       if (m.show < 0.03 || !canSee(C, m.x, m.z)) return;
-      const grow = m.show * m.show * (3 - 2 * m.show);
-      KQ.Figures.CrowdKit.add(kit, {
-        x: m.x,
-        y: m.y,
-        z: m.z,
-        heading: m.heading,
-        scale: m.scale * Math.max(0.01, grow),
-        pose: m.pose,
-        phase: m.phase,
-        kid: m.kid,
-        girth: m.outfit.girth,
-        outfit: m.outfit,
-        prop: m.prop,
-      });
+      m.d2 = U.dist2(m.x, m.z, C.view.x, C.view.z);
+      vis.push(m);
     });
-    KQ.Figures.CrowdKit.end(kit);
+    const cap = DRAW_CAP[C.tier] || DRAW_CAP.med;
+    if (vis.length > cap) vis.sort((a, b) => a.d2 - b.d2);
+    KQ.Figures.CrowdKit.begin(C.kit);
+    for (let i = 0; i < vis.length && i < cap; i += 1) drawMember(C.kit, vis[i]);
+    KQ.Figures.CrowdKit.end(C.kit);
     return hero;
   }
 

@@ -54,6 +54,7 @@
       duaRing(world, "haram", 22, 31, 8, 1.5, 3.5),
       duaRing(world, "haramw", -34, -12, 7, 1.5, 3.2),
       duaRing(world, "nabawi", 600, -50, 9, 2, 4.5),
+      duaRing(world, "mataf", 0, 0, 26, 27, 30.5),
     );
   }
 
@@ -255,11 +256,11 @@
     return out;
   }
 
-  /** The Zamzam queue: the first two people are drinking from cups, the rest wait their turn. */
+  /** The Zamzam queue: the first three people are drinking from cups, the rest wait their turn. */
   function queueSlots(world) {
     const z = KQ.HOLY.makkah.zamzam;
     return SC()
-      .queueSlots(z.x - 2, z.z + 1.6, 6, 1.0, 1, Math.PI)
+      .queueSlots(z.x - 2, z.z + 1.6, 10, 0.95, 1, Math.PI)
       .filter((q) => G.CrowdZones.clear(world, q.x, q.z))
       .map((q, i) =>
         slot(

@@ -252,7 +252,7 @@ test("tawaf by Walk for me: the hero circles anticlockwise with the Kaaba on the
   expect(b.kaabaOnLeft && a.kaabaOnLeft, "the Kaaba is on the hero's left").toBe(true);
   expect(RW_wrap(b.angle - a.angle), "the angle grows: anticlockwise").toBeGreaterThan(0);
   expect(a).toMatchObject({ pose: "walk", locked: true });
-  for (let i = 0; i < 70 && (await ritual()).auto; i += 1) await step(2000);
+  for (let i = 0; i < 160 && (await ritual()).auto; i += 1) await step(2000);
   expect(await ritual()).toMatchObject({ auto: false, count: 7, step: "tawaf" });
   expect(await ev(() => window.KQ.Game.S.player.locked), "the hero is free again").toBe(false);
   await next();
@@ -282,7 +282,7 @@ test("sa'i starts at Safa and ends at Marwa: 7 legs, brisk only between the gree
   const safa = await ev(() => window.KQ.HOLY.makkah.safa);
   expect(Math.hypot(start.x - safa.x, start.z - safa.z), "the walk starts at Safa").toBeLessThan(3);
   const poses = [];
-  for (let i = 0; i < 90 && (await ritual()).auto; i += 1) {
+  for (let i = 0; i < 160 && (await ritual()).auto; i += 1) {
     const s = await ev(() => ({
       z: window.KQ.Game.S.player.pos.z,
       pose: window.KQ.Game.S.player.forcedPose,

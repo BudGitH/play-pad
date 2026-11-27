@@ -50,6 +50,10 @@
     const barber = P.Services.barber(B, L.shopUnits[1], S, ctx, group);
     const clinic = P.Services.clinic(B, L.shopUnits[2], S, ctx);
     const library = P.Services.library(B, L.library, ctx);
+    const tailor = P.Tailor.build(B, ctx, L.tailor, {
+      title: "BUTIK",
+      sub: "Baju & kain · Clothes",
+    });
     P.Props.playground(B, L.playground, ctx);
     L.linkways.forEach((lw) => P.Props.linkway(B, lw, ctx));
     P.Props.busStop(B, L.busStop, ctx);
@@ -57,27 +61,26 @@
     P.Town.plazas(B);
     P.Town.carpark(B, L.carpark);
     P.Town.park(B, L.park, ctx);
+    P.Town.treeBeds(B);
     P.Detail.roadWear(B, L);
     ctx.potSpots = [];
     P.Clutter.pots(B, ctx.colliders, ctx.potSpots);
     P.Clutter.bollards(B, ctx.colliders);
     P.Clutter.hedges(B, ctx.colliders);
-    return { blocks, hawker, mosque, mart, barber, clinic, library, bins };
+    return { blocks, hawker, mosque, mart, barber, clinic, library, bins, tailor };
   }
 
-  /** Instanced vegetation, furniture and cars. */
+  /** Instanced vegetation and furniture (the cars and bikes are drivable vehicles: game/vehicles.js). */
   function buildInstanced(group, kit, ctx) {
     const trees = P.Trees.build(group, kit.mats, P.Town.treeList(), ctx.colliders);
     const potPlants = ctx.potSpots.map((p) => ({ x: p.x, z: p.z, y: 1.0, s: 0.75 }));
     const shrubs = P.Trees.shrubs(group, kit.mats, potPlants.concat(P.Town.shrubSpots()));
-    P.Clutter.vehicles(group, kit.mats, ctx.colliders);
     P.Detail.skyline(group, kit.mats);
     P.Trees.tables(group, kit.mats, ctx.tables, ctx.colliders);
     if (P.Life) {
       P.Life.tableTops(group, kit.mats, ctx.tables);
       P.Life.pigeons(group, kit.mats, ctx.L);
     }
-    P.Town.cars(group, kit.mats, ctx.colliders);
     return { trees, shrubs };
   }
 
@@ -100,6 +103,7 @@
     add("barber_chair", "barber", a.barber.chair.x, a.barber.chair.z - 0.7, "Sit for a haircut");
     add("clinic_desk", "clinic", a.clinic.desk.x, a.clinic.desk.z - 0.5, "Clinic check-up");
     add("library_desk", "library", a.library.desk.x, a.library.desk.z - 0.5, "Borrow a story");
+    add("wardrobe_stall", "tailor", a.tailor.stand.x, a.tailor.stand.z, "Change clothes");
     const lift = a.blocks[0].lift;
     add("home_door", "home", lift.x, lift.z - 0.6, "Go home and rest");
     add("recycling_bins", "recycling", a.bins.x, a.bins.z - 0.5, "Recycle");

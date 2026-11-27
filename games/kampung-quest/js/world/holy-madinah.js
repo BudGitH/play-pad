@@ -1,6 +1,6 @@
 /* ============================================================================
  * FILE: holy-madinah.js
- * PURPOSE: Madinah outside Masjid Nabawi (KQ.WorldParts.HolyMadinah): sandy ground, streets,
+ * PURPOSE: Madinah outside Masjid Nabawi (KQ.WorldParts.HolyMadinah): photo sand ground, streets,
  *          hotels, palms, Masjid Quba (white, four minarets), Jabal Uhud, the Baqi' (a plain
  *          walled yard with no graves shown) and the ring of dark hills.
  * BUSINESS CONTEXT: AC-H1 (scenery), AC-H5 (ziarah places). Qibla is +z (south) in this city.
@@ -81,7 +81,7 @@
     const x1 = b.x + 15;
     const z0 = b.z - 15;
     const z1 = b.z + 15;
-    c.B.aabb("concrete", x0, 0, z0, x1, 0.06, z1, 0xc9b48f);
+    c.B.aabb("dirt", x0, 0, z0, x1, 0.06, z1, 0xe0d0ae);
     const wl = (a, bz, cx, dz) =>
       K().wall(c.B, c, {
         x0: a,
@@ -90,7 +90,8 @@
         z1: dz,
         y1: 2.6,
         t: 0.7,
-        color: 0xe6dcc4,
+        key: "sandstone",
+        color: 0xf2e8cc,
         kind: "fence",
       });
     wl(x0, z0, x1, z0);
@@ -113,14 +114,47 @@
     return out.filter((p) => !(p.z > -35 && p.z < 52 && p.x > 545 && p.x < 650));
   }
 
-  /** Hotels: a podium and tower of the hotel facade material, as colliders. */
-  function hotels(c) {
-    HOTELS.forEach((h) => {
-      const inset = Math.min(h[2] - h[0], h[3] - h[1]) * 0.12;
-      c.B.aabb("hotel", h[0], 0, h[1], h[2], 14, h[3], 0xf0e8d8);
-      c.B.aabb("hotel", h[0] + inset, 14, h[1] + inset, h[2] - inset, h[4], h[3] - inset, 0xeee6d4);
-      K().solid(c.colliders, h[0], h[1], h[2], h[3], "tower");
+  /** Hotels: a podium and tower in the facade styles (stone and glass alternate), as colliders. */
+  function hotels(c, free) {
+    HOTELS.forEach((h, i) => {
+      P.HolyCity.block(c, {
+        x0: h[0],
+        z0: h[1],
+        x1: h[2],
+        z1: h[3],
+        h: P.HolyCity.floors(h[4]),
+        style: i % 2 ? "hotel" : "stoneHotel",
+        seed: 200 + i,
+        solid: true,
+      });
+      free.addBuilt(h[0] - 3, h[1] - 3, h[2] + 3, h[3] + 3);
     });
+  }
+
+  /** Madinah is lower than Makkah: inner blocks and a backdrop ring of mid-rise blocks inside the hills. */
+  function cityFill(c, free) {
+    const cfg = {
+      seed: 411,
+      cell: [34, 30],
+      density: 0.95,
+      origin: [600, -20],
+      hBase: 62,
+      hFall: 0.08,
+      hMax: 54,
+      solid: true,
+      pads: true,
+    };
+    P.HolyCity.fill(c, cfg, free, { x0: BOUNDS.x0, z0: BOUNDS.z0, x1: BOUNDS.x1, z1: BOUNDS.z1 });
+    const ring = Object.assign({}, cfg, { seed: 412, solid: false, pads: false, cell: [48, 44] });
+    const inEllipse = (x, z) => ((x - 600) / 255) ** 2 + ((z + 40) / 215) ** 2 < 1;
+    const outside = (x, z) => x < BOUNDS.x0 || x > BOUNDS.x1 || z < BOUNDS.z0 || z > BOUNDS.z1;
+    P.HolyCity.fill(
+      c,
+      ring,
+      free,
+      { x0: 420, z0: -300, x1: 790, z1: 230 },
+      (x, z) => outside(x, z) && inEllipse(x, z),
+    );
   }
 
   /** Hills: Uhud (a big rocky range, behind a small viewing plaza) and a ring of hills. */
@@ -147,18 +181,23 @@
 
   /** Build Madinah outside the mosque. Returns what the world needs (palms, hills). */
   function build(c) {
-    c.B.aabb("concrete", 460, -0.4, -260, 745, 0, 175, 0xd2bf99);
+    P.HolyGround.sand(c, { x0: 360, z0: -440, x1: 950, z1: 340 });
+    const free = P.HolyLots.make("madinah");
     ROADS.forEach((r) => P.HolyMakkah.road(c, r));
     c.B.aabb("marble", 585, 0, -200, 615, 0.1, -180, 0xe9e3d2);
     c.B.aabb("marble", 590, 0, -116, 610, 0.1, -88, 0xe9e3d2);
-    hotels(c);
+    hotels(c, free);
     quba(c);
     baqi(c);
+    const tl = KQ.HOLY.madinah.tailor;
+    const sign = { title: "TAILOR", sub: "Thobes · Kufis · Clothes" };
+    P.Tailor.build(c.B, c, { x: tl.x, z: tl.z, face: 1 }, sign);
     const bs = KQ.HOLY.madinah.busStop;
     c.B.aabb("paint", bs.x - 3, 2.8, bs.z - 1.2, bs.x + 3, 3, bs.z + 1.6, 0x1f7a4d);
     [-2.6, 2.6].forEach((dx) => c.B.cyl("metal", bs.x + dx, 1.4, bs.z + 1, 0.07, 2.8, 6, 0x8e959b));
     for (let x = 500; x <= 700; x += 40) K().lamp(c.B, c, x, -96, 8);
-    return { palms: palmSpots(), hills: hillsList() };
+    cityFill(c, free);
+    return { palms: palmSpots(), hills: hillsList(), free };
   }
 
   P.HolyMadinah = { build, BOUNDS, ROADS };

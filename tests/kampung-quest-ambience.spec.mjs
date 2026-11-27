@@ -40,9 +40,9 @@ async function stepUntil(page, done, timeout = 20_000) {
 
 /** Let `ms` of real time pass (events are spaced in real time), as a poll on the page clock. */
 async function elapse(page, ms) {
-  const t0 = await kq(page, () => performance.now());
+  const t0 = await kq(page, () => Date.now());
   await expect
-    .poll(() => kq(page, () => performance.now()), { intervals: [50] })
+    .poll(() => kq(page, () => Date.now()), { intervals: [50], timeout: 10_000 })
     .toBeGreaterThan(t0 + ms);
 }
 

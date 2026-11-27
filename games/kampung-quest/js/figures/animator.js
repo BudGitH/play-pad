@@ -54,6 +54,16 @@
   }
 
   /**
+   * The pose function for a name: only the pose table's own entries count (never an inherited
+   * property such as "constructor"); anything else falls back to idle.
+   */
+  function poseFn(name) {
+    const own = Object.prototype.hasOwnProperty.call(F.POSES, name);
+    const fn = own ? F.POSES[name] : null;
+    return typeof fn === "function" ? fn : F.POSES.idle;
+  }
+
+  /**
    * Pose a rig.
    * @param {object} rig figure rig (group.userData.rig)
    * @param {string} name a name from POSE_NAMES (unknown names fall back to idle)
@@ -61,7 +71,7 @@
    * @param {number} [weight=1] 0..1 blend from the rig's current state toward the pose
    */
   F.pose = function (rig, name, phase01, weight) {
-    const fn = F.POSES[name] || F.POSES.idle;
+    const fn = poseFn(name);
     const P = fn(phase01 || 0, rig.dims);
     const w = weight === undefined ? 1 : Math.max(0, Math.min(1, weight));
     const parts = F.POSE_PARTS;

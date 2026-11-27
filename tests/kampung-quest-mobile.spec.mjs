@@ -686,7 +686,7 @@ test.describe("accessibility: pause dialog and credits (A11Y-08, COMP-002)", () 
     ]) {
       await expect(credits).toContainText(text);
     }
-    await expect(credits.getByRole("link", { name: /commons.wikimedia.org/ })).toBeVisible();
+    await expect(credits.getByRole("link", { name: /commons\.wikimedia\.org/ })).toBeVisible();
     await expectTouchTargets(page);
     expect(await kq(page, () => window.__kq.state().paused)).toBe(true);
     await page.getByRole("button", { name: "Close" }).tap();

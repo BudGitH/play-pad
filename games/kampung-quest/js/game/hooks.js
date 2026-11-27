@@ -59,6 +59,9 @@
       },
       heading: Number(s.player.heading.toFixed(2)),
       speed: Number(s.player.speed.toFixed(2)),
+      airborne: !s.player.jump.grounded,
+      jumpHeight: Number(s.player.jump.h.toFixed(2)),
+      running: G.Input.move().run,
       locked: s.player.locked,
       pose: s.player.anim.current(),
       cam: {
@@ -186,6 +189,8 @@
     stats,
     npc,
     crowd: () => (S() && S().crowd ? G.Crowd.debug(S().crowd) : null),
+    greetings: () => G.Greetings.debug(),
+    greetChance: (p) => G.Greetings.setChance(p),
     crowdPeople: () => (S() && S().crowd ? G.Crowd.positions(S().crowd) : []),
     step: (ms) => (started() ? G.Loop.step(ms) : 0),
     setMinute: (m) => (started() ? setMinute(m) : undefined),

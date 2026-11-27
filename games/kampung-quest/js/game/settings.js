@@ -16,6 +16,7 @@
     readToMe: true,
     lessMotion: "follow",
     autoQuality: true,
+    ambience: true,
   };
   const CHOICES = {
     captionSize: ["normal", "large"],
@@ -47,6 +48,7 @@
     });
     if (typeof raw.readToMe === "boolean") out.readToMe = raw.readToMe;
     if (typeof raw.autoQuality === "boolean") out.autoQuality = raw.autoQuality;
+    if (typeof raw.ambience === "boolean") out.ambience = raw.ambience;
     return out;
   }
 

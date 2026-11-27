@@ -71,6 +71,7 @@
       rng: U.rng(U.hash(id)),
       pose: "idle",
       star: null,
+      greetT: 0,
     };
   }
 
@@ -78,6 +79,7 @@
   function restPose(A) {
     if (A.talking) return "talk";
     const g = A.goal;
+    if (A.greetT > 0 && (!g || (g.kind !== "sit" && g.kind !== "pray"))) return "wave";
     if (!g) return "idle";
     if (g.kind === "sit") return g.activity === "eat" ? "eat" : "sit";
     if (g.kind === "pray") return prayPose();
@@ -202,6 +204,7 @@
   function update(A, dt, env) {
     if (A.hidden) return;
     A.speed = 0;
+    if (A.greetT > 0) A.greetT -= dt;
     if (A.talking) {
       faceToward(A, env.hero, dt);
     } else if (A.path.length) {

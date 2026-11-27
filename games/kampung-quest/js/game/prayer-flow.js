@@ -17,6 +17,11 @@
   const U = G.U;
   const HALL_SPOT = { x: -45, z: -33, heading: -Math.PI / 2 };
   const NAMES = () => KQ.Sim.Prayer.DISPLAY;
+  const SUNAT = () => KQ.Sim.Prayer.SUNAT;
+  /** A sunat prayer the hero wandered away from (this far from the hall, no screen open) is dropped. */
+  const STRAY_M = 50;
+  /** Sheet-close reasons that are not a "Not now": the sunat flow carries on. */
+  const KEEP_FLOW = ["done", "refit", "replaced"];
 
   const F = {
     name: null,
@@ -28,6 +33,8 @@
     hideAt: 0,
     guide: false,
     guideT: 0,
+    wayTo: null,
+    strayT: 0,
     card: null,
     wui: null,
     pui: null,
@@ -42,6 +49,18 @@
    */
   function flowState() {
     return S().sim.prayer.state().flow;
+  }
+
+  /** Is a FARD prayer flow running? A sunat flow does not hold back the azan of a prayer that falls due. */
+  function fardFlowRunning() {
+    const flow = flowState();
+    return Boolean(flow) && flow.kind !== "sunat";
+  }
+
+  /** Is a sunat flow running (open or not)? */
+  function sunatFlowRunning() {
+    const flow = flowState();
+    return Boolean(flow) && flow.kind === "sunat";
   }
 
   /** Is a wudu or prayer screen showing? Cards and guidance hold back while one is. */
@@ -128,7 +147,7 @@
    */
   function maybeShowCard() {
     if (!F.pending) return;
-    if (G.UI.modalOpen() || screenOpen() || flowState()) return;
+    if (G.UI.modalOpen() || screenOpen() || fardFlowRunning()) return;
     showCardNow();
   }
 
@@ -153,13 +172,14 @@
    * captions hint when sound is off.
    */
   function onDue(name) {
+    dropIdleSunat();
     F.name = name;
     F.t = 0;
     F.cueIdx = -1;
     F.expanded = true;
     F.guide = false;
     F.azanLive = true;
-    const busy = Boolean(flowState());
+    const busy = fardFlowRunning();
     if (busy) {
       G.Audio.stopAzan();
     } else {
@@ -168,6 +188,15 @@
     F.pending = true;
     if (G.Audio.azanActive() === false && G.Audio.debug().muted)
       G.UI.toast("Sound is off, so you can read the azan here.", "hint");
+  }
+
+  /**
+   * A fard prayer falling due always takes over from a sunat flow nobody is looking at (its wudu
+   * screen / prayer screen is closed): drop the flow, keep the wudu clean. A sunat screen that is
+   * still open is left alone; the azan card shows once it closes.
+   */
+  function dropIdleSunat() {
+    if (sunatFlowRunning() && !screenOpen()) S().sim.prayer.cancelFlow();
   }
 
   /** A prayer window has passed: tell the child, kindly, that it can be made up (qada) any time. */
@@ -187,11 +216,29 @@
     G.UI.toast("A new day in the kampung! New missions are ready.", "good", 5200);
   }
 
+  /**
+   * The one `due` event that should start an azan: the last prayer to fall due in this batch whose
+   * window has not already closed in the same batch. A long clock jump (rest, a menu, a test hook)
+   * can cross several start times at once; the azan sounds for the prayer that is actually due
+   * now, once, not for every start time that was stepped over.
+   */
+  function liveDue(events) {
+    let live = null;
+    events.forEach(function (ev) {
+      if (ev.type === "due") live = ev;
+      else if (ev.type === "qada" && live && live.name === ev.name && live.day === ev.day)
+        live = null;
+    });
+    return live;
+  }
+
   /** Route the sim's prayer events (due, qada, newday) to their handlers. */
   function onEvents(events) {
+    const live = liveDue(events);
     events.forEach(function (ev) {
-      if (ev.type === "due") onDue(ev.name);
-      else if (ev.type === "qada") onQada(ev.name);
+      if (ev.type === "due") {
+        if (ev === live) onDue(ev.name);
+      } else if (ev.type === "qada") onQada(ev.name);
       else if (ev.type === "newday") onNewDay();
     });
   }
@@ -204,8 +251,9 @@
    */
   function destination() {
     const ps = S().sim.prayer.state();
-    if (!ps.flow && !ps.due && !ps.qada.length) return null;
-    return ps.flow && ps.flow.phase === "pray" ? "mosque_hall" : "mosque_wudu";
+    if (ps.flow) return ps.flow.phase === "pray" ? "mosque_hall" : "mosque_wudu";
+    if (ps.due || ps.qada.length) return "mosque_wudu";
+    return F.wayTo;
   }
 
   /**
@@ -219,6 +267,7 @@
     if (!dest || U.dist(hero.x, hero.z, world.pois[dest].pos.x, world.pois[dest].pos.z) < 4) {
       G.Markers.showTrail(S().markers, null, world.heightAt);
       F.guideDest = null;
+      F.wayTo = null;
       return;
     }
     F.guideDest = dest;
@@ -266,6 +315,7 @@
   function clearGuide() {
     F.guide = false;
     F.guideDest = null;
+    F.wayTo = null;
     if (S().markers) G.Markers.showTrail(S().markers, null, S().world.heightAt);
   }
 
@@ -398,9 +448,21 @@
     frameHero({ x: spot.x, y: spot.y, z: spot.z, faceYaw: Math.PI }, 0.7, 2.3);
   }
 
+  /**
+   * "Not now" (button, Escape, backdrop, dock) on a sunat screen ends the optional prayer (the wudu
+   * stays clean), so the clock, the ambience and the HUD do not stay in prayer mode. A finished
+   * step ("done"), a re-layout ("refit") or a sheet swap ("replaced") keeps the flow.
+   */
+  function letSunatGo(reason) {
+    if (KEEP_FLOW.indexOf(reason) !== -1 || !sunatFlowRunning()) return;
+    S().sim.prayer.cancelFlow();
+    S().hudDirty = true;
+  }
+
   /** The wudu screen closed: release the hero and the camera. */
-  function closeWudu() {
+  function closeWudu(reason) {
     F.wui = null;
+    letSunatGo(reason);
     G.UI.announce("", "caption");
     G.Player.release(S().player);
     leaveScreen();
@@ -429,7 +491,7 @@
     const prayer = S().sim.prayer;
     const flow = prayer.state().flow;
     const next = prayer.nextPrayStep();
-    const total = KQ.Sim.Prayer.RAKAAT[flow.name];
+    const total = KQ.Sim.Prayer.rakaatOf(flow.name);
     const valid = validTypes(prayer);
     const rakaat =
       next && next.rakaat ? next.rakaat : next && next.type.indexOf("salam") === 0 ? total : 1;
@@ -495,8 +557,9 @@
   /**
    * The prayer screen closed: release the hero unless the completion card is about to take over.
    */
-  function closePray() {
+  function closePray(reason) {
     F.pui = null;
+    letSunatGo(reason);
     G.UI.announce("", "caption");
     if (!F.completing) G.Player.release(S().player);
     leaveScreen();
@@ -507,8 +570,8 @@
    * the hero when it closes.
    */
   function completePrayer(result) {
-    const sim = S().sim;
-    const award = sim.missions.awardPrayer(result.name);
+    const voluntary = result.kind === "sunat";
+    const award = voluntary ? { newSticker: false } : S().sim.missions.awardPrayer(result.name);
     F.completing = true;
     G.UI.closeSheet("done");
     F.completing = false;
@@ -518,7 +581,7 @@
     const lines = [result.praise];
     if (award.newSticker) lines.push("You got a " + NAMES()[result.name] + " star sticker.");
     G.Menus.card({
-      title: "You prayed " + NAMES()[result.name] + "!",
+      title: voluntary ? "You prayed a sunat prayer!" : "You prayed " + NAMES()[result.name] + "!",
       variant: "bubble",
       paragraphs: lines,
       buttons: [{ label: "Alhamdulillah", primary: true, icon: "check" }],
@@ -526,7 +589,7 @@
         G.Player.release(S().player);
         leaveScreen();
         S().hudDirty = true;
-        G.UI.toast("Missions can carry on now.", "good");
+        if (!voluntary) G.UI.toast("Missions can carry on now.", "good");
       },
     });
     frameHero({ x: HALL_SPOT.x, y: S().player.pos.y, z: HALL_SPOT.z, faceYaw: Math.PI }, 0.55, 2.3);
@@ -535,17 +598,22 @@
   /* ------------------------------ entry points ------------------------------ */
 
   /**
-   * Name of the prayer the child can start now (running flow, due prayer, or the oldest qada), or
-   * null.
+   * Name of the FARD prayer the child can start now (running fard flow, due prayer, or the oldest
+   * qada), or null when none is owed. Then the Pray action offers the voluntary sunat prayer.
    */
   function startable() {
     const ps = S().sim.prayer.state();
-    if (ps.flow) return ps.flow.name;
+    if (ps.flow && ps.flow.kind !== "sunat") return ps.flow.name;
     if (ps.due) return ps.due;
     return ps.qada.length ? ps.qada[0].name : null;
   }
 
-  /** Nothing to pray right now: say so kindly and name the next prayer and its time. */
+  /** True when the Pray action would start the voluntary sunat prayer (no fard prayer is owed). */
+  function isVoluntary() {
+    return !startable();
+  }
+
+  /** Nothing could start: say so kindly and name the next prayer and its time. */
   function notNow(extra) {
     const ps = S().sim.prayer.state();
     const next = ps.next
@@ -558,10 +626,9 @@
     );
   }
 
-  /** The hero used a wudu tap. */
+  /** The hero used a wudu tap: wudu for the due, qada or (when none is owed) sunat prayer. */
   function atTaps() {
-    const name = startable();
-    if (!name) return notNow();
+    const name = startable() || SUNAT();
     const prayer = S().sim.prayer;
     const res = prayer.startFlow(name);
     if (!res.ok) return notNow();
@@ -580,20 +647,57 @@
     if (tap) openWudu(tap);
   }
 
-  /** The hero used the prayer spot in the hall. */
-  function atHall() {
-    const flow = flowState();
-    if (!flow) {
-      const name = startable();
-      if (!name) return notNow("Prayer is for prayer time.");
-      G.UI.toast("Let's take wudu at the taps first, then come into the hall.", "hint", 5000);
-      return;
-    }
-    if (flow.phase !== "pray") {
-      G.UI.toast("Let's take wudu at the taps first, then come into the hall.", "hint", 5000);
+  /** A sunat prayer from the hall: straight to the prayer steps when still clean, else wudu first. */
+  function sunatAtHall() {
+    if (!S().sim.prayer.state().wuduClean) {
+      G.UI.toast(
+        G.PrayerText.SUNAT_LABEL + " begins with wudu. Let's go to the taps first.",
+        "hint",
+        5000,
+      );
+      F.wayTo = "mosque_wudu";
       F.guide = true;
       return computeGuide();
     }
+    if (!S().sim.prayer.startFlow(SUNAT()).ok) return notNow();
+    clearGuide();
+    openPray();
+  }
+
+  /**
+   * The flow the hall's Pray action works on, with a fard prayer always winning: a sunat flow is
+   * replaced by the owed prayer, and with no flow but a clean wudu (carried over from a dropped
+   * sunat flow) the owed prayer starts straight at its prayer phase.
+   */
+  function hallFlow() {
+    const flow = flowState();
+    const owed = startable();
+    const prayer = S().sim.prayer;
+    if (flow && flow.kind !== "sunat") return flow;
+    if (!owed) return flow;
+    if (flow || prayer.state().wuduClean) prayer.startFlow(owed);
+    return flowState();
+  }
+
+  /** Say, kindly, that wudu comes first, and lead the hero to the taps. */
+  function wuduFirst() {
+    G.UI.toast("Let's take wudu at the taps first, then come into the hall.", "hint", 5000);
+    F.guide = true;
+    computeGuide();
+  }
+
+  /** The hero used the prayer spot in the hall (or the Pray button anywhere inside it). */
+  function atHall() {
+    const flow = hallFlow();
+    if (!flow) {
+      if (!startable()) return sunatAtHall();
+      return G.UI.toast(
+        "Let's take wudu at the taps first, then come into the hall.",
+        "hint",
+        5000,
+      );
+    }
+    if (flow.phase !== "pray") return wuduFirst();
     clearGuide();
     quietCard();
     openPray();
@@ -624,12 +728,18 @@
       G.Player.place(S().player, HALL_SPOT.x, HALL_SPOT.z, HALL_SPOT.heading, world.heightAt);
       openPray();
     }
-    G.UI.toast("Let's finish your " + NAMES()[flow.name] + " prayer.", "good");
+    G.UI.toast(
+      "Let's finish your " +
+        G.PrayerText.flowLabel(flow.name, flow.kind) +
+        (flow.kind === "sunat" ? "." : " prayer."),
+      "good",
+    );
   }
 
   /** After loading a save with a prayer already due: show its card quietly (no second azan). */
   function restoreDue() {
     const due = S().sim.prayer.due();
+    if (due) dropIdleSunat(); // a saved sunat never hides the owed fard's card on reload
     if (!due || flowState()) return;
     F.name = due;
     F.t = 0;
@@ -672,6 +782,27 @@
   }
 
   /**
+   * A sunat prayer is optional: if the hero starts one and then wanders far from the mosque with no
+   * screen open, quietly let it go (their wudu stays clean) so the clock does not stay slowed.
+   */
+  function dropStraySunat(dt) {
+    const flow = flowState();
+    if (!flow || flow.kind !== "sunat" || screenOpen() || G.UI.modalOpen()) {
+      F.strayT = 0;
+      return;
+    }
+    F.strayT += dt;
+    if (F.strayT < 1) return;
+    F.strayT = 0;
+    const hero = S().player.pos;
+    const hall = S().world.pois.mosque_hall.pos;
+    if (U.dist(hero.x, hero.z, hall.x, hall.z) <= STRAY_M) return;
+    S().sim.prayer.cancelFlow();
+    clearGuide();
+    S().hudDirty = true;
+  }
+
+  /**
    * Per-frame tick: advance the azan captions, hide a finished bar, show a queued card and refresh
    * the guidance trail.
    */
@@ -686,6 +817,7 @@
     )
       hideCard();
     maybeShowCard();
+    dropStraySunat(dt);
     if (!F.guide) return;
     F.guideT += dt;
     if (F.guideT > 1) {
@@ -724,6 +856,7 @@
       return Boolean(tile);
     },
     destination,
+    isVoluntary,
     dueNow: () => Boolean(S().sim.prayer.due()),
   };
 })((window.KQ = window.KQ || {}));

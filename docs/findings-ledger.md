@@ -102,3 +102,8 @@ Add a `RECURRENCE` comment at the fix site documenting root cause + the systemic
 # RECURRENCE(PLAY-123, count=3): <root cause>. Systemic fix: <what now prevents it>.
 # Codebase scan: <command run> found <N> other sites, all verified.
 ```
+
+| prayer-state-precedence @ games/kampung-quest/js/game/prayer-flow.js | 2026-11-27 | 2026-11-27 | 1 | NEW | accuracy | fixed | — | HIGH; an idle sunat flow shadowed a due fard prayer (card hidden, Pray resumed sunat). Fard now always outranks sunat (`dropIdleSunat`, `hallFlow`). |
+| audio-gate-resume @ games/kampung-quest/js/game/audio.js | 2026-11-27 | 2026-11-27 | 1 | NEW | accuracy | fixed | — | MED; `setGate` resumed the context right after suspending, so mute never silenced. |
+| fixed-sleep-in-spec @ tests/kampung-quest-ambience.spec.mjs | 2026-11-27 | 2026-11-27 | 1 | NEW | quality | fixed | — | MED; `waitForTimeout` replaced with `expect.poll`. |
+| pure-logic-in-game-layer @ games/kampung-quest/js/game/ambience.js | 2026-11-27 | 2026-11-27 | 1 | NEW | quality | fixed | — | MED; mix maths moved to `js/sim/ambience-mix.js` with unit tests. |

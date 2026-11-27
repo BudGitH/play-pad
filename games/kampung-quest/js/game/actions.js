@@ -1,7 +1,7 @@
 /* ============================================================================
  * FILE: actions.js
- * PURPOSE: Routes every button and shortcut to what it does: interact (E), the dock (Missions,
- *          Map, Pray, Bag, Pause), mute, run, number keys for picture tiles, Escape.
+ * PURPOSE: Routes every button and shortcut to what it does: interact (E), jump, the dock
+ *          (Missions, Map, Pray, Bag, Pause), mute, number keys for picture tiles, Escape.
  * BUSINESS CONTEXT: AC-15 (fully keyboard-playable; shortcuts E, 1-4, M, J, P, B, Esc; pause and
  *   mute always available), AC-16 (pause dialog stops the sim and all sound).
  * DEPENDENCIES: ui-screens.js, prayer-flow.js, interact.js, loop.js, audio.js, settings.js.
@@ -71,6 +71,7 @@
       setRead: (v) => (
         (G.Settings.prefs.readToMe = v), G.Settings.save(S().storage), G.Speech.cancel()
       ),
+      setAmbience: (v) => ((G.Settings.prefs.ambience = v), G.Settings.save(S().storage)),
       getQuality: () => (G.Settings.prefs.autoQuality ? "auto" : S().quality),
       setQuality: setQualityChoice,
       setMotion: (v) => (
@@ -166,7 +167,6 @@
     if (G.UI.modalOpen() && name !== "mute") return;
     if (name === "interact") return G.Interact.activate(S().target);
     if (name === "mute") return setMuted(!G.Audio.isMuted());
-    if (name === "run") return toggleRun();
     if (name === "jump") return canJump() && G.Player.jump(S().player, G.Audio);
     if (["missions", "map", "pray", "bag"].indexOf(name) !== -1) dock(name);
   }
@@ -191,13 +191,5 @@
     G.Camera.state.idle = 0;
   }
 
-  /** Flip run mode and mirror it on the Run button (pressed state and style). */
-  function toggleRun() {
-    const on = G.Input.toggleRun();
-    const b = G.Hud.refs.run;
-    b.setAttribute("aria-pressed", String(on));
-    b.classList.toggle("is-on", on);
-  }
-
-  G.Actions = { handle, dock, openPause, setMuted, toggleRun, canJump };
+  G.Actions = { handle, dock, openPause, setMuted, canJump };
 })((window.KQ = window.KQ || {}));

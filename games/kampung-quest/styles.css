@@ -49,7 +49,9 @@ body {
   --md-sys-color-outline-variant: #44444e;
   --kq-green: #30d158;
   --kq-gold: #f4c26b;
-  --kq-hud: color-mix(in srgb, #15151c 92%, transparent);
+  /* one translucent backdrop for every HUD surface (cards, dock, round buttons, joystick, Jump): dark
+     enough for 7:1 text, light enough to read the scene behind it */
+  --kq-hud: color-mix(in srgb, #15151c 88%, transparent);
   --kq-hud-strong: color-mix(in srgb, #15151c 97%, transparent);
   --kq-pad: max(12px, env(safe-area-inset-left, 0px));
   --kq-padr: max(12px, env(safe-area-inset-right, 0px));
@@ -61,7 +63,8 @@ body {
   --kq-tl-w: 254px;
   --kq-right-w: 150px;
   --kq-joy: 124px;
-  --kq-run: 64px;
+  --kq-jump: 76px;
+  --kq-rim: rgba(255, 255, 255, 0.3);
   --kq-joy-x: calc(max(18px, env(safe-area-inset-left, 0px)) + var(--kq-joy) + 12px);
   /* measured by hud.js (Hud.measure): where the top HUD ends and where the toast lane starts */
   --kq-status-h: 98px;
@@ -501,7 +504,6 @@ kbd {
   position: relative;
   width: var(--kq-map);
   height: var(--kq-map);
-  cursor: pointer;
 }
 .kq-minimap {
   position: absolute;
@@ -599,8 +601,24 @@ kbd {
   height: var(--kq-joy);
   border-radius: 50%;
   background: color-mix(in srgb, #15151c 55%, transparent);
-  border: 2px solid rgba(255, 255, 255, 0.35);
+  border: 2px solid var(--kq-rim);
   touch-action: none;
+}
+/* the run zone: pushing the knob out to this rim runs (no Run button); it lights up while running */
+.kq-joy::after {
+  content: "";
+  position: absolute;
+  inset: 14%; /* where the knob's centre stops: push to here to run */
+  border-radius: 50%;
+  border: 2px dashed rgba(244, 194, 107, 0.55);
+  pointer-events: none;
+}
+.kq-joy.is-run {
+  border-color: var(--kq-gold);
+  background: color-mix(in srgb, #5a4300 60%, transparent);
+}
+.kq-joy.is-run .kq-knob {
+  box-shadow: 0 0 0 4px var(--kq-gold);
 }
 .kq-knob {
   position: absolute;
@@ -613,7 +631,6 @@ kbd {
   background: rgba(255, 255, 255, 0.9);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
 }
-.kq-runbtn,
 .kq-jumpbtn {
   position: absolute;
   right: max(18px, env(safe-area-inset-right, 0px));
@@ -622,23 +639,16 @@ kbd {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: var(--kq-run);
-  height: var(--kq-run);
-  border: 2px solid transparent;
+  width: var(--kq-jump);
+  height: var(--kq-jump);
+  border: 2px solid var(--kq-rim);
   border-radius: 50%;
   background: var(--kq-hud);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
-}
-/* Jump sits straight above Run (the right thumb corner); the portrait phone puts it beside Run */
-.kq-jumpbtn {
-  bottom: calc(max(18px, env(safe-area-inset-bottom, 0px)) + var(--kq-run) + 12px);
+  touch-action: none; /* a second finger on Jump never scrolls or zooms while the other thumb steers */
 }
 .kq-jumpbtn:active {
-  background: var(--md-sys-color-tertiary-container);
-}
-.kq-runbtn.is-on {
-  border-color: var(--kq-gold);
   background: var(--md-sys-color-tertiary-container);
 }
 @media (pointer: coarse) {
@@ -657,7 +667,7 @@ kbd {
   gap: 4px 12px;
   grid-template-columns: auto auto;
   padding: 8px 12px;
-  font-size: 12px;
+  font-size: 13px;
   pointer-events: none !important;
 }
 .kq-keys span {
@@ -717,7 +727,7 @@ kbd {
   z-index: 7;
 }
 @media (pointer: coarse) {
-  /* the azan card stays clear of the joystick and Run */
+  /* the azan card stays clear of the joystick and Jump */
   .kq-azan {
     width: min(560px, calc(100% - 2 * var(--kq-joy-x)));
   }
@@ -1662,8 +1672,8 @@ kbd {
 
 /* ---------- phone landscape ----------
    Status card + chip (top left), coins / mute / minimap (top right), the toast lane between them,
-   joystick + Run at the bottom corners, the dock at the bottom centre and the azan card / pill in the
-   band above the dock between the joystick and Run: that band is clear of the cards, of the Talk button
+   joystick + Jump at the bottom corners, the dock at the bottom centre and the azan card / pill in the
+   band above the dock between the joystick and Jump: that band is clear of the cards, of the Talk button
    (which floats mid-screen) and of the toast lane (A11Y2-01, 06, 08). */
 @media (max-height: 520px) {
   .kq-root {
@@ -1850,7 +1860,7 @@ kbd {
 @media (max-height: 360px) {
   .kq-root {
     --kq-joy: 104px;
-    --kq-run: 60px;
+    --kq-jump: 64px;
     --kq-map: 92px;
   }
   .kq-azan .kq-azan-title,
@@ -1905,7 +1915,7 @@ kbd {
 
 /* ---------- portrait phone ----------
    A wide status card (clock, next prayer, coins, the five prayers), then the mission chip beside the minimap,
-   the toast lane below them, joystick + Run above the dock; the azan card sits above the joystick. */
+   the toast lane below them, joystick + Jump above the dock; the azan card sits above the joystick. */
 @media (orientation: portrait) and (max-width: 700px) {
   .kq-root {
     --kq-map: 96px;
@@ -1956,12 +1966,8 @@ kbd {
   .kq-joy {
     bottom: var(--kq-ctl-bot);
   }
-  .kq-runbtn,
   .kq-jumpbtn {
     bottom: var(--kq-ctl-bot);
-  }
-  .kq-jumpbtn {
-    right: calc(max(18px, env(safe-area-inset-right, 0px)) + var(--kq-run) + 12px);
   }
   .kq-toasts {
     left: var(--kq-pad);
@@ -2257,16 +2263,4 @@ kbd {
 }
 .kq-credits {
   max-height: 100%;
-}
-
-/* very short landscape phones (up to 310 px high): the needs chips fill the right edge above Run, so
-   Jump sits beside Run (both 52 px, still over 48) in the gap between the dock and the right edge */
-@media (max-height: 310px) {
-  .kq-root {
-    --kq-run: 52px;
-  }
-  .kq-jumpbtn {
-    bottom: max(18px, env(safe-area-inset-bottom, 0px));
-    right: calc(max(18px, env(safe-area-inset-right, 0px)) + var(--kq-run) + 8px);
-  }
 }

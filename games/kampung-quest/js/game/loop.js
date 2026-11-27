@@ -82,6 +82,7 @@
       colliders: s.world.colliders,
     });
     G.Crowd.update(s.crowd, dt, { x: P.pos.x, z: P.pos.z }, crowdContext(s));
+    G.Greetings.update(s, dt, P);
     return move;
   }
 
@@ -253,6 +254,7 @@
     stepActors(dt);
     stepUi(dt);
     autosaveTick(dt);
+    G.Ambience.update(dt); // atmosphere (ambience.js); gated here with the rest of the frame
     if (!skipRender) renderFrame(dt);
   }
 

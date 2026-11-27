@@ -3,7 +3,9 @@
  * PURPOSE: The in-game HUD of design option D ("Kid dock and needs ring"): clock + five-prayer
  *          strip (icons only on a phone), picture mission card (a one-line chip on a phone), dock
  *          (Missions, Map, Pray, Bag, Pause), coins, mute, minimap wrapped in the food / energy
- *          ring, joystick + Run, and the floating Talk button.
+ *          ring, joystick (push to the rim to run) + Jump, and the floating Talk button.
+ *          One control per action: the minimap is a picture, not a second Map button; there is no
+ *          Run button; the keyboard hints do not repeat the Pause button.
  * BUSINESS CONTEXT: AC-10 (needs meters), AC-11 (tracker, minimap), AC-12 (context prompt within
  *   2 m), AC-15 (>= 48 px targets, DOM order = the keyboard focus order of the design: nearest
  *   action, clock and prayers, mission card, dock, mute, needs ring).
@@ -197,7 +199,7 @@
   }
 
   /** Build the minimap canvas wrapped in the needs ring, with food and energy number chips. */
-  function buildMap(on) {
+  function buildMap() {
     R.canvas = U.el("canvas", { cls: "kq-minimap", width: "200", height: "200" });
     R.foodChip = U.el(
       "span",
@@ -227,7 +229,6 @@
     );
     R.north = U.el("span", { cls: "kq-north", "aria-hidden": "true", text: "N" });
     R.ring.appendChild(R.north);
-    R.ring.addEventListener("click", () => on("map"));
     return R.ring;
   }
 
@@ -252,27 +253,18 @@
       },
       P().icon("sound"),
     );
-    R.topright = U.el("div", { cls: "kq-topright" }, R.coins, R.mute, buildMap(on));
+    R.topright = U.el("div", { cls: "kq-topright" }, R.coins, R.mute, buildMap());
     return R.topright;
   }
 
-  /** Build the touch controls: the joystick with its knob and the Run toggle. */
+  /**
+   * Build the touch controls: the joystick with its knob and the Jump button. Jump fires on
+   * pointer-down (not on click) so a tap with the right thumb is instant and never waits on, or
+   * interrupts, the left thumb steering; a keyboard "click" (detail 0) still works.
+   */
   function buildTouch(on) {
     R.knob = U.el("span", { cls: "kq-knob" });
     R.joy = U.el("div", { cls: "kq-joy", id: "kqJoy", "aria-hidden": "true" }, R.knob);
-    R.run = U.el(
-      "button",
-      {
-        type: "button",
-        cls: "kq-runbtn",
-        id: "kqRun",
-        "aria-pressed": "false",
-        "aria-label": "Run",
-        on: { click: () => on("run") },
-      },
-      P().icon("run", "kq-ic-lg"),
-      U.el("span", { text: "Run" }),
-    );
     R.jump = U.el(
       "button",
       {
@@ -280,15 +272,18 @@
         cls: "kq-jumpbtn",
         id: "kqJump",
         "aria-label": "Jump",
-        on: { click: () => on("jump") },
+        on: {
+          pointerdown: (e) => (e.preventDefault(), on("jump")),
+          click: (e) => e.detail === 0 && on("jump"),
+        },
       },
       P().icon("jump", "kq-ic-lg"),
       U.el("span", { text: "Jump" }),
     );
-    return U.el("div", { cls: "kq-touch" }, R.joy, R.run, R.jump);
+    return U.el("div", { cls: "kq-touch" }, R.joy, R.jump);
   }
 
-  /** Build the keyboard hint strip (WASD, Shift, E, drag, Esc) shown to keyboard players. */
+  /** Build the keyboard hint strip (WASD, Shift, Space, E, drag) shown to keyboard players. */
   function buildHints() {
     const k = (t) => U.el("kbd", { text: t });
     return U.el(
@@ -299,7 +294,6 @@
       U.el("span", {}, k("Space"), " jump"),
       U.el("span", {}, k("E"), " interact"),
       U.el("span", {}, k("Drag"), " look"),
-      U.el("span", {}, k("Esc"), " pause"),
     );
   }
 

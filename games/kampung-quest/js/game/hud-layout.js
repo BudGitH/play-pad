@@ -52,7 +52,7 @@
     const R = G.Hud.refs;
     const azan = document.getElementById("kqAzan");
     const keys = L.root.querySelector(".kq-keys");
-    const list = [R.status, R.mission, R.coins, R.mute, R.ring, R.dock, R.joy, R.run, R.jump];
+    const list = [R.status, R.mission, R.coins, R.mute, R.ring, R.dock, R.joy, R.jump];
     list.push(azan, R.lane, R.portraitChip, keys);
     L.root.querySelectorAll(".kq-needchip").forEach((c) => list.push(c));
     return list.map(rectOf).filter(Boolean);

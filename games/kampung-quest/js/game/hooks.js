@@ -185,6 +185,8 @@
     state,
     stats,
     npc,
+    crowd: () => (S() && S().crowd ? G.Crowd.debug(S().crowd) : null),
+    crowdPeople: () => (S() && S().crowd ? G.Crowd.positions(S().crowd) : []),
     step: (ms) => (started() ? G.Loop.step(ms) : 0),
     setMinute: (m) => (started() ? setMinute(m) : undefined),
     teleport,

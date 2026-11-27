@@ -52,6 +52,11 @@
     scheduleTimers(dt);
   }
 
+  /** What the crowd needs to know about the moment: the clock minute, quality tier and how dark it is. */
+  function crowdContext(s) {
+    return { minute: s.sim.clock.minute, tier: s.quality, night: s.world.night() };
+  }
+
   /** Move the hero from input (blocked while a menu is open), then the NPCs, Mimi the cat and the camera by dt. */
   function stepActors(dt) {
     const s = S();
@@ -74,6 +79,7 @@
       groundY: P.pos.y,
       colliders: s.world.colliders,
     });
+    G.Crowd.update(s.crowd, dt, { x: P.pos.x, z: P.pos.z }, crowdContext(s));
     return move;
   }
 

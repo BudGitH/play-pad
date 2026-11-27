@@ -2,7 +2,8 @@
  * FILE: audio.js
  * PURPOSE: All sound for Kampung Quest: soft synthesised UI / footstep / splash sounds
  *          (Web Audio), the licensed azan recording (an <audio> element, so it also works from
- *          file://) and a synth bell fallback when the recording cannot load.
+ *          file://) and a synth bell fallback when the recording cannot load. The atmosphere
+ *          (birds, traffic, crickets ...) lives in ambience.js and plays through bus() / ambient().
  * BUSINESS CONTEXT: AC-7 (the azan plays once, only when the tab is visible and unmuted; captions
  *   otherwise), AC-16 (a hidden tab or the pause dialog silences everything), business rule 1
  *   (NO music during the azan; there is no music at all).
@@ -22,6 +23,10 @@
     hidden: false,
     played: 0,
     refused: 0,
+    ambient: 0,
+    surface: "paving",
+    foot: false,
+    lastStep: -1,
   };
   const azan = { el: null, active: false, ended: false, failed: false, fallback: false };
   let noiseBuf = null;
@@ -47,7 +52,7 @@
       A.master.connect(comp);
       comp.connect(A.ctx.destination);
     }
-    if (A.ctx.state === "suspended" && !A.paused && !A.hidden) A.ctx.resume();
+    if (A.ctx.state === "suspended" && !A.muted && !A.paused && !A.hidden) A.ctx.resume();
     return true;
   }
 
@@ -64,6 +69,26 @@
     } catch (err) {
       return false;
     }
+  }
+
+  /**
+   * The ambience's gate: like voice(), but counted apart (`ambient`) so the atmosphere never
+   * disguises a lifecycle bug in the UI sounds. Returns whether it was scheduled.
+   */
+  function ambient(make) {
+    if (!canSound()) return false;
+    try {
+      make(A.ctx, A.ctx.currentTime);
+      A.ambient += 1;
+      return true;
+    } catch (err) {
+      return false;
+    }
+  }
+
+  /** The shared output for ambience.js: the context and master gain, plus whether sound is allowed now. */
+  function bus() {
+    return A.ctx && A.master ? { ctx: A.ctx, master: A.master, ok: canSound() } : null;
   }
 
   /**
@@ -106,8 +131,49 @@
     src.connect(filt);
     filt.connect(g);
     g.connect(A.master);
-    src.start(t);
+    src.start(t, Math.random() * 0.25); // a different slice each time, so no two footfalls match
     src.stop(t + o.d + 0.02);
+  }
+
+  /** Footfall shapes: a filtered-noise scuff plus a low body thump. */
+  const FOOT = {
+    walk: { f: 420, d: 0.06, g: 0.05, thump: 95, tg: 0.03 },
+    run: { f: 520, d: 0.07, g: 0.07, thump: 115, tg: 0.045 },
+    land: { f: 300, d: 0.12, g: 0.09, thump: 70, tg: 0.09 },
+  };
+  /** What the ground does to a footfall: duller and softer on grass and on the mosque carpet. */
+  const SURFACE = {
+    paving: { f: 1, g: 1 },
+    grass: { f: 0.6, g: 0.75 },
+    carpet: { f: 0.45, g: 0.55 },
+  };
+  /** Footstep kinds the player code may ask for; `true` (the old "running" flag) means run. */
+  const STEP_SOUND = { walk: "step", step: "step", run: "run", land: "land", jump: "jump" };
+  /** Two walk / run footfalls closer than this (seconds of audio time) are one step called twice. */
+  const MIN_STEP_GAP = 0.1;
+
+  /** One footfall of a kind on the current surface; each differs a little and the feet alternate. */
+  function footfall(c, t, kind) {
+    const p = FOOT[kind];
+    const s = SURFACE[A.surface] || SURFACE.paving;
+    const v = 0.92 + Math.random() * 0.16;
+    A.foot = !A.foot;
+    noise(c, t, { f: p.f * s.f * v * (A.foot ? 1 : 0.9), d: p.d, g: p.g * s.g });
+    tone(c, t, { f: p.thump * v, to: p.thump * 0.6, d: p.d + 0.04, g: p.tg * s.g });
+    if (A.surface === "grass") noise(c, t, { type: "bandpass", f: 2400, d: 0.09, g: 0.02 });
+  }
+
+  /**
+   * Hero footstep sound: kind is "walk", "run", "land" (soft thud after a jump) or "jump"; a
+   * boolean is the old "running?" flag. Goes through the same gate as every sound; returns
+   * whether it sounded.
+   */
+  function footstep(kind) {
+    const name = kind === true ? "run" : STEP_SOUND[kind] || "step";
+    const cadence = name === "step" || name === "run";
+    if (cadence && A.ctx && A.ctx.currentTime - A.lastStep < MIN_STEP_GAP) return false;
+    if (cadence && A.ctx) A.lastStep = A.ctx.currentTime;
+    return voice(SOUNDS[name]);
   }
 
   const SOUNDS = {
@@ -131,10 +197,13 @@
       });
     },
     pose: (c, t) => noise(c, t, { type: "bandpass", f: 500, d: 0.18, g: 0.04 }),
-    step: (c, t) => noise(c, t, { f: 420, d: 0.06, g: 0.05 }),
-    run: (c, t) => noise(c, t, { f: 520, d: 0.07, g: 0.07 }),
-    jump: (c, t) => tone(c, t, { f: 300, to: 620, d: 0.14, g: 0.06 }),
-    land: (c, t) => noise(c, t, { f: 300, d: 0.09, g: 0.07 }),
+    step: (c, t) => footfall(c, t, "walk"),
+    run: (c, t) => footfall(c, t, "run"),
+    jump: (c, t) => {
+      tone(c, t, { f: 300, to: 620, d: 0.14, g: 0.05 });
+      noise(c, t, { type: "bandpass", f: 900, d: 0.1, g: 0.025 });
+    },
+    land: (c, t) => footfall(c, t, "land"),
   };
 
   /**
@@ -219,6 +288,7 @@
    */
   function startAzan() {
     azan.ended = false;
+    if (G.Ambience) G.Ambience.silence(); // nothing else sounds under the azan
     azan.active = canSound();
     if (!azan.active) return "silent";
     const el = loadAzan();
@@ -256,15 +326,22 @@
    */
   function setGate(key, value) {
     A[key] = value;
+    if (value && G.Ambience) G.Ambience.silence(); // no tail of the atmosphere while the context stops
     if (value && A.ctx && A.ctx.state === "running") A.ctx.suspend();
-    if (!A.paused && !A.hidden && A.ctx && A.ctx.state === "suspended") A.ctx.resume();
+    const open = !A.muted && !A.paused && !A.hidden;
+    if (open && A.ctx && A.ctx.state !== "closed") A.ctx.resume(); // also queues behind a pending suspend()
     syncAzan();
   }
 
   G.Audio = {
     unlock,
     play,
-    footstep: (run) => play(run ? "run" : "step"),
+    footstep,
+    ambient,
+    bus,
+    setSurface(kind) {
+      A.surface = SURFACE[kind] ? kind : "paving";
+    },
     loadAzan,
     probeAzan,
     startAzan,
@@ -286,6 +363,9 @@
     debug: () => ({
       played: A.played,
       refused: A.refused,
+      ambient: A.ambient,
+      surface: A.surface,
+      ambience: G.Ambience ? G.Ambience.debug() : null,
       ctx: A.ctx ? A.ctx.state : "none",
       azanActive: azan.active,
       azanPlaying: Boolean(azan.el && !azan.el.paused && azan.active),

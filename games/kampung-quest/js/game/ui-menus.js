@@ -127,9 +127,25 @@
       '"/>';
     const el = U.svgFrom(inner, "kq-pic");
     el.setAttribute("viewBox", "0 0 48 48");
-    el.setAttribute("width", "56");
-    el.setAttribute("height", "56");
+    el.setAttribute("width", "88");
+    el.setAttribute("height", "88");
     return el;
+  }
+
+  /** One barber style tile (preview, name, price pips or a "Now" tag); `here` marks the current look. */
+  function lookTile(look, price, here, onPick) {
+    return U.el(
+      "button",
+      {
+        type: "button",
+        cls: "kq-tile" + (here ? " is-now" : ""),
+        "aria-label": look.name + (here ? ", your look now" : ", " + price + " coins"),
+        on: { click: () => onPick(look) },
+      },
+      headPicture(look),
+      U.el("b", { text: look.name }),
+      here ? U.el("i", { cls: "kq-tag", text: "Now" }) : pips(price),
+    );
   }
 
   /** Barber sheet. o: { price, current: {hair, hat}, coins(), onPick(look) -> {ok,hint}, onClose } */
@@ -139,26 +155,11 @@
       role: "status",
       text: "Pick a style. Each haircut is " + o.price + " coins.",
     });
-    const grid = U.el("div", { cls: "kq-grid" });
+    const grid = U.el("div", { cls: "kq-grid kq-grid-looks" });
     const isCurrent = (l) => l.hair === o.current().hair && l.hat === o.current().hat;
     const fill = () => {
       U.clear(grid);
-      LOOKS.forEach(function (look) {
-        const here = isCurrent(look);
-        const tile = U.el(
-          "button",
-          {
-            type: "button",
-            cls: "kq-tile" + (here ? " is-now" : ""),
-            "aria-label": look.name + (here ? ", your look now" : ", " + o.price + " coins"),
-            on: { click: () => pick(look) },
-          },
-          headPicture(look),
-          U.el("b", { text: look.name }),
-          here ? U.el("i", { cls: "kq-tag", text: "Now" }) : pips(o.price),
-        );
-        grid.appendChild(tile);
-      });
+      LOOKS.forEach((look) => grid.appendChild(lookTile(look, o.price, isCurrent(look), pick)));
     };
     const pick = (look) => {
       const res = o.onPick(look);
@@ -167,7 +168,8 @@
       fill();
     };
     fill();
-    const box = U.el("div", { cls: "kq-menu" }, G.UI.header("Barber Raju's chair"), grid, note);
+    const head = G.UI.header("Barber Raju's chair");
+    const box = U.el("div", { cls: "kq-menu kq-menu-looks" }, head, grid, note);
     return G.UI.openSheet({ el: box, label: "Barber", onClose: o.onClose, focus: ".kq-tile" });
   }
 

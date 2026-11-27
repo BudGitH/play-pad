@@ -127,3 +127,12 @@ test("the clock is deterministic: same ticks, same time", () => {
   assert.equal(a.minute, b.minute);
   assert.equal(a.day, b.day);
 });
+
+test("dayTimeLabel gives the title's Continue text and clamps a hostile saved day or minute", () => {
+  assert.equal(Clock.dayTimeLabel(1, 13 * 60 + 23.7), "day 1, 13:23");
+  assert.equal(Clock.dayTimeLabel(3, 0), "day 3, 00:00");
+  assert.equal(Clock.dayTimeLabel(2, 1439), "day 2, 23:59");
+  assert.equal(Clock.dayTimeLabel(0, -5), "day 1, 00:00");
+  assert.equal(Clock.dayTimeLabel("x", 1e9), "day 1, 23:59");
+  assert.equal(Clock.dayTimeLabel(NaN, NaN), "day 1, 00:00");
+});

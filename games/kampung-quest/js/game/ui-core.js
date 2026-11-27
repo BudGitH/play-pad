@@ -165,7 +165,7 @@
     const q = UI.queued;
     if (!q || toastsBlocked()) return;
     UI.queued = null;
-    showToast(q.text, q.kind, q.ms);
+    showToast(q.text, q.kind, q.ms, q.tag);
   }
 
   /** How many toasts the reserved lane holds: two when it is wide enough for one line each, else one
@@ -175,8 +175,9 @@
   }
 
   /** Show a short toast (capped in number, removed after ms) of a kind: hint, good or gold. */
-  function showToast(text, kind, ms) {
+  function showToast(text, kind, ms, tag) {
     const node = U.el("div", { cls: "kq-toast " + (kind || ""), text });
+    if (tag) node.setAttribute("data-tag", tag);
     UI.toasts.appendChild(node);
     while (UI.toasts.children.length > toastCap()) UI.toasts.firstChild.remove();
     setTimeout(() => node.remove(), ms || 3600);
@@ -185,19 +186,38 @@
   /** A transient message chip in the reserved toast lane. kind: "" | "good" | "gold" | "hint".
    *  Screen readers hear it through the polite live region (the chip itself has no role).
    *  While a backdrop sheet is open the chip is held back (the latest one wins) and shown when it
-   *  closes, so it never hides sheet content (A11Y2-05); the announcement is not delayed. */
-  function toast(text, kind, ms) {
+   *  closes, so it never hides sheet content (A11Y2-05); the announcement is not delayed. An optional
+   *  `tag` lets the caller retire the toast early with dismissToast(tag). */
+  function toast(text, kind, ms, tag) {
     announce(text);
-    if (toastsBlocked()) UI.queued = { text, kind, ms };
-    else showToast(text, kind, ms);
+    if (toastsBlocked()) UI.queued = { text, kind, ms, tag };
+    else showToast(text, kind, ms, tag);
   }
 
-  /** Polite screen-reader message. channel "caption" uses its own region (azan and prayer text). */
+  /** Retire a tagged toast (shown or still held back) once what it said is no longer true. */
+  function dismissToast(tag) {
+    if (UI.queued && UI.queued.tag === tag) UI.queued = null;
+    Array.from(UI.toasts.children).forEach((n) => n.getAttribute("data-tag") === tag && n.remove());
+    announce("");
+  }
+
+  /** How long a spoken message stays in the live region before it is cleared (so it never goes stale). */
+  const LIVE_CLEAR_MS = 6000;
+
+  /**
+   * Polite screen-reader message. channel "caption" uses its own region (azan and prayer text). The
+   * text is cleared after a few seconds, or at once by announce("") (e.g. when the step it
+   * described is done), so a reader browsing the page never meets an out-of-date sentence.
+   */
   function announce(text, channel) {
     const region = channel === "caption" ? UI.liveCaption : UI.live;
     if (!region) return;
+    clearTimeout(region.sayTimer);
+    clearTimeout(region.clearTimer);
     region.textContent = "";
-    setTimeout(() => (region.textContent = text), 30);
+    if (!text) return;
+    region.sayTimer = setTimeout(() => (region.textContent = text), 30);
+    region.clearTimer = setTimeout(() => (region.textContent = ""), LIVE_CLEAR_MS);
   }
 
   /** A button: btn("Label", { icon, cls, onClick, label, disabled, type }). */
@@ -273,6 +293,7 @@
     openSheet,
     closeSheet,
     toast,
+    dismissToast,
     releaseToasts,
     announce,
     btn,

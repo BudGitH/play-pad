@@ -14,7 +14,7 @@
 
 ## Child-friendly and religious-accuracy rules (never break these)
 
-- No violence, no fail state, no punishment, no scolding: a wrong tile gives a gentle hint ("Nearly! Next comes…"), never red or a cross. Every food is halal. Vehicles never hurt the player.
+- No violence, no fail state, no punishment, no scolding: a wrong tile gives a gentle hint ("Nearly! Next: Ruku (bow).") and the expected tile glows softly, never red or a cross. Every food is halal. Vehicles never hurt the player.
 - **Prayer times** are the fixed MUIS values for 26 Nov 2026 in `js/data/prayer-times.js` (source cited there and in `assets/CREDITS.md`). Raka'at: Subuh 2, Zohor 4, Asar 4, Maghrib 3, Isyak 4. Wudu order and the posture sequence come from `KQ.Sim.Prayer` (Shafi'i, as in Singapore): do not re-implement them in the UI.
 - **The azan is a real recording** (CC BY-SA 4.0, see `assets/audio/azan_license.txt`). It plays once per prayer, only when the tab is visible, the game is unmuted and unpaused; otherwise captions only. **No music, ever, during the azan** (there is no music in the game at all).
 - The hero must keep the colour family (royal blue, tan arms, white gloves, red shoes) with **no quills, no joined eye-patch, no green eyes, no peach muzzle, no belly oval**.

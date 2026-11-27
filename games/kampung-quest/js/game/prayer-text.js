@@ -114,6 +114,19 @@
     return "It's " + KQ.Sim.Prayer.DISPLAY[name] + " time! Let's go and pray.";
   }
 
+  /**
+   * The short, picture-first hint after a wrong posture tap, naming the expected tile: "Nearly!
+   * Next: Ruku (bow)." Unknown types give an empty hint (never an error message).
+   */
+  function nextHint(type) {
+    const t = TILE[type];
+    if (!t) return "";
+    const sub = t[1].toLowerCase();
+    return (
+      "Nearly! Next: " + t[0] + (sub.indexOf("(") === -1 ? " (" + sub + ")." : " - " + sub + ".")
+    );
+  }
+
   /** Four tiles for the "what comes next" question: the valid next step(s) plus look-alike-free decoys. */
   function choices(valid, seed) {
     const same = (a, b) => TILE[a][2] === TILE[b][2];
@@ -128,5 +141,5 @@
     return picks.sort((a, b) => NATURAL.indexOf(a) - NATURAL.indexOf(b));
   }
 
-  G.PrayerText = { DHIKR, TILE, azanCues, title, choices };
+  G.PrayerText = { DHIKR, TILE, azanCues, title, choices, nextHint };
 })((window.KQ = window.KQ || {}));

@@ -36,11 +36,12 @@
     );
   }
 
-  /** Mute / unmute sound and keep the saved setting and the HUD in step. */
+  /** Mute / unmute sound, keep the saved setting and the HUD in step, and say so politely. */
   function setMuted(v) {
     G.Audio.setMuted(v);
     S().sim.settings.muted = Boolean(v);
     S().hudDirty = true;
+    G.UI.announce(v ? "Sound off" : "Sound on");
   }
 
   /**
@@ -114,6 +115,15 @@
   }
 
   /**
+   * Put keyboard focus on a dock button before its sheet opens (a shortcut key opens the sheet with
+   * focus elsewhere), so closing the sheet with Esc returns focus to the button that opened it.
+   */
+  function focusDockButton(id) {
+    const b = G.Hud.refs.dockBtns && G.Hud.refs.dockBtns[id];
+    if (b && document.activeElement !== b) b.focus({ preventScroll: true });
+  }
+
+  /**
    * Handle a dock button: close whatever sheet is open (except for Pause) and open the matching
    * screen.
    */
@@ -121,6 +131,7 @@
     if (G.UI.modalOpen() && id !== "pause") {
       G.UI.closeSheet("replaced-by-dock");
     }
+    focusDockButton(id);
     if (id === "missions") G.Screens.missions(ctxFor());
     else if (id === "map") openMap();
     else if (id === "pray") G.PrayerFlow.openDayCard();

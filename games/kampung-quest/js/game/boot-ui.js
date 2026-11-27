@@ -32,7 +32,6 @@
       start: q("kqStart"),
       newGame: q("kqNew"),
       note: q("kqLoadNote"),
-      resume: q("kqResume"),
       error: q("kqError"),
     });
     U.clear(B.list);
@@ -67,16 +66,18 @@
     li.lastChild.textContent = STEPS[i] + (detail ? " · " + detail : "");
   }
 
-  /** Loading finished: enable Start, focus it, and offer Continue / New game when a save exists. */
+  /**
+   * Loading finished: enable the primary button and focus it. When a save exists it reads
+   * "Continue \u00b7 day N, HH:MM" (`saved`) and "New game" appears beside it as the quieter choice.
+   */
   function ready(saved) {
     setProgress(1, "Ready.");
     B.start.disabled = false;
-    B.start.focus({ preventScroll: true });
     if (saved) {
-      B.resume.textContent = saved;
-      B.resume.hidden = false;
+      B.start.lastElementChild.textContent = saved;
       B.newGame.hidden = false;
     }
+    B.start.focus({ preventScroll: true });
   }
 
   /** Show a small notice on the title screen (e.g. saving is unavailable). */

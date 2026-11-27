@@ -197,6 +197,7 @@
       else if (compact) t.setAttribute("role", "button");
       else t.removeAttribute("role");
       if (which === "mission" && !compact) t.removeAttribute("tabindex");
+      if (which === "mission" && G.HudView) G.HudView.nameMissionToggle();
       if (!compact) return;
       t.setAttribute("tabindex", "0");
       t.setAttribute("aria-expanded", String(parts[which].box.classList.contains("is-open")));

@@ -104,6 +104,7 @@
       return;
     }
     G.Audio.play("good");
+    G.UI.dismissToast("nenek");
     G.UI.toast("New mission: " + m.title, "gold", 4200);
     S().hudDirty = true;
   }

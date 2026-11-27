@@ -203,6 +203,18 @@
     // only a new mission or a new step shows the full card for a few seconds (phones); a collected
     // can or a prayer pause / resume just updates the chip
     if (newStep) G.HudLayout.peek("mission");
+    nameMissionToggle();
+  }
+
+  /**
+   * On a phone the folded mission card is a button; give it an explicit spoken name (mission and
+   * step) so it can never be announced as an unnamed button. Elsewhere it is a plain panel.
+   */
+  function nameMissionToggle() {
+    const t = H().refs.missionToggle;
+    if (t.getAttribute("role") === "button")
+      t.setAttribute("aria-label", H().refs.missionText || "Mission");
+    else t.removeAttribute("aria-label");
   }
 
   /**
@@ -243,10 +255,9 @@
     if (R.mutedState !== muted) {
       R.mutedState = muted;
       U.clear(R.mute).appendChild(G.Pictures.icon(muted ? "mute" : "sound"));
-      R.mute.setAttribute("aria-pressed", String(muted));
-      R.mute.setAttribute("aria-label", muted ? "Unmute sound" : "Mute sound");
+      R.mute.setAttribute("aria-pressed", String(!muted)); // pressed = sound is on
     }
   }
 
-  G.HudView = { update, nextNote };
+  G.HudView = { update, nextNote, nameMissionToggle };
 })((window.KQ = window.KQ || {}));

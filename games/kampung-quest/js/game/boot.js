@@ -285,7 +285,12 @@
     G.PrayerFlow.restoreDue();
     G.PrayerFlow.resume();
     if (!s.sim.pos)
-      G.UI.toast("Nenek is waiting by your block. Walk to her and press Talk.", "good", 7000);
+      G.UI.toast(
+        "Nenek is waiting by your block. Walk to her and press Talk.",
+        "good",
+        7000,
+        "nenek",
+      );
     document.getElementById("kqTalk").focus({ preventScroll: true });
     if (!s.loopStarted) {
       s.loopStarted = true;
@@ -304,18 +309,11 @@
     G.HudLayout.armTurnHint();
   }
 
-  /** The "Continue: day N, HH:MM" text for the title screen, empty for a new game. */
+  /** The "Continue · day N, HH:MM" title-button text, empty for a new game. */
   function savedLabel(saved) {
     if (saved.status !== "loaded") return "";
     const c = saved.state.clock;
-    return (
-      "Continue: day " +
-      c.day +
-      ", " +
-      KQ.Sim.Clock.pad2(Math.floor(c.minute / 60)) +
-      ":" +
-      KQ.Sim.Clock.pad2(Math.floor(c.minute % 60))
-    );
+    return "Continue \u00b7 " + KQ.Sim.Clock.dayTimeLabel(c.day, c.minute);
   }
 
   /** The boot sequence: bind the title, read prefs and save, build everything, then wait for Start. */

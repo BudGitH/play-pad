@@ -212,6 +212,8 @@ async function checkEating(page) {
   await tile.click();
   await step(page, 100);
   const after = await state(page);
+  // screen readers hear the new food level, not just "it went up"
+  await expect(page.locator("#kqLive")).toHaveText(/ Food \d+ of 100\.$/);
   expect(after.hunger).toBeGreaterThan(before.hunger);
   expect(after.coins).toBeLessThan(before.coins);
   expect(after.coins).toBeGreaterThanOrEqual(0);
@@ -265,6 +267,13 @@ async function checkPrayerFlow(page) {
   await page.keyboard.press("e");
   await expect(page.getByRole("dialog", { name: "Wudu steps" })).toBeVisible();
   await expectGentleHint(page, ".kq-wtile");
+  await expect(page.locator(".kq-prayer-sheet .kq-note[role=status]")).toHaveText(
+    /^Nearly! Next: /,
+  );
+  await expect(page.locator('.kq-wtile[aria-current="step"]')).toHaveAttribute("data-i", "0");
+  await page.locator(".kq-wudu-act").click(); // niat is one tap: step 1 is now done
+  await expect(page.locator(".kq-wtile").first()).toHaveAttribute("aria-label", /, done$/);
+  await expect(page.locator('.kq-wtile[aria-current="step"]')).toHaveAttribute("data-i", "1");
   for (let i = 0; i < 60 && (await state(page)).prayer.flow?.phase === "wudu"; i += 1) {
     await page.locator(".kq-wudu-act").click();
   }
@@ -273,7 +282,9 @@ async function checkPrayerFlow(page) {
   await step(page, 500);
   await page.keyboard.press("e");
   await expect(page.getByRole("dialog", { name: "Prayer steps" })).toBeVisible();
+  await expect(page.locator(".kq-ptile.is-now")).toHaveCount(0); // nothing glows before a wrong tap
   await expectGentleHint(page, ".kq-ptile");
+  await expectExpectedTileGlows(page);
   const coinsBefore = (await state(page)).coins;
   const taps = await prayAllSteps(page);
   expect(taps).toBe(29); // Zohor: 4 raka'at (KQ.Sim.Prayer plan size)
@@ -736,6 +747,26 @@ async function expectGentleHint(page, tileSel) {
   expect(JSON.stringify((await state(page)).prayer.flow)).toBe(before);
 }
 
+/** After one wrong tap: a short picture-first hint, and the expected tile (only) glows and is aria-current. */
+async function expectExpectedTileGlows(page) {
+  const want = await kq(page, () => window.KQ.Game.S.sim.prayer.nextPrayStep().type);
+  await expect(page.locator(".kq-prayer-sheet .kq-note[role=status]")).toHaveText(
+    /^Nearly! Next: .{3,40}\.$/,
+  );
+  const next = page.locator(`.kq-ptile[data-type="${want}"]`);
+  await expect(next).toHaveClass(/is-now/);
+  await expect(next).toHaveAttribute("aria-current", "step");
+  await expect(page.locator('.kq-ptile[aria-current="step"]')).toHaveCount(1);
+  const look = await next.evaluate((el) => {
+    const cs = getComputedStyle(el);
+    return [cs.borderTopColor, cs.backgroundColor].join(" ");
+  });
+  for (const m of look.matchAll(/rgba?\((\d+), (\d+), (\d+)/g)) {
+    const [r, g, b] = m.slice(1).map(Number);
+    expect(r > 150 && g < 100 && b < 100, "the cue is never red: " + look).toBe(false);
+  }
+}
+
 /** Tap the correct posture tile until the prayer is finished. Returns the number of taps. */
 async function prayAllSteps(page) {
   let taps = 0;
@@ -765,6 +796,16 @@ test("AC-1 boots over http and over file:// with zero console errors", async ({ 
   expect(problems).toEqual([]);
 });
 
+/** After a save: the primary, focused button says Continue (day and time inside); New game is quieter. */
+async function expectContinueTitle(page) {
+  const primary = page.locator("#kqStart");
+  await expect(primary).toHaveText(/^\s*Continue · day \d+, \d\d:\d\d\s*$/);
+  await expect(primary).toBeFocused();
+  await expect(primary).toHaveClass(/primary/);
+  await expect(page.locator("#kqNew")).toBeVisible();
+  await expect(page.locator("#kqNew")).not.toHaveClass(/primary/);
+}
+
 test.describe("AC-13 save", () => {
   test.describe.configure({ timeout: 150_000 });
 
@@ -776,7 +817,7 @@ test.describe("AC-13 save", () => {
     const before = await state(page);
     await kq(page, () => window.KQ.Game.Loop.save());
     await load(page);
-    await expect(page.locator("#kqResume")).toContainText(/Continue/i);
+    await expectContinueTitle(page);
     await start(page);
     const after = await state(page);
     expect(after.coins).toBe(before.coins);
@@ -795,6 +836,8 @@ test.describe("AC-13 save", () => {
       await load(page);
       await kq(page, (v) => localStorage.setItem("kampung-quest:v1", v), raw);
       await load(page);
+      // unreadable JSON is no save at all, so no Continue (a clamped, readable one still resumes)
+      if (label === "broken JSON") await expect(page.locator("#kqStart")).toHaveText("Start");
       await start(page);
       const s = await state(page);
       expect(s.hhmm).toBe("07:00");
@@ -1052,6 +1095,155 @@ test("AC-14 @slow main-thread frame at 4x CPU throttle: 50 fps budget at the haw
     );
   }
   await page.close();
+});
+
+/* ---------- persona-panel polish: focus, announcements, toasts, tall sheets (one shared page) ---------- */
+
+/** Browser-side: the id of the element that has keyboard focus ("" when it is the page body). */
+function focusedId() {
+  return document.activeElement?.id || "";
+}
+
+/** Every visible button in the accessibility tree has a name (a line like `- button:` has none). */
+async function expectNoUnnamedButtons(page) {
+  const tree = await page.locator("body").ariaSnapshot();
+  const unnamed = tree.split("\n").filter((l) => /^\s*- button(\s*\[[^\]]*\])*:?\s*$/.test(l));
+  expect(unnamed, "buttons with no accessible name").toEqual([]);
+}
+
+async function checkNenekToast(page) {
+  const toast = page.locator('.kq-toast[data-tag="nenek"]');
+  await expect(toast).toHaveCount(1); // shown at the very start of a new game
+  // make it long-lived so only the accept (not its 7 s timer) can remove it
+  await kq(page, () =>
+    window.KQ.Game.UI.toast("Nenek is waiting by your block.", "good", 60_000, "nenek"),
+  );
+  await expect(toast).toHaveCount(2);
+  await acceptNenek(page);
+  expect((await state(page)).mission?.id).toBe("prata_for_nenek");
+  await expect(toast).toHaveCount(0);
+  await expect(page.locator(".kq-toast", { hasText: "New mission" })).toBeVisible();
+}
+
+async function checkWayFocus(page) {
+  await kq(page, () => window.__kq.forcePrayer("zohor"));
+  await step(page, 500);
+  const way = page.getByRole("button", { name: "Show me the way" });
+  await expect(way).toBeVisible();
+  await expectNoUnnamedButtons(page);
+  // the spoken sentence has one full stop, not two ("pray.. Call to prayer")
+  await expect(page.locator("#kqLiveCaption")).toContainText("Call to prayer");
+  expect(await page.locator("#kqLiveCaption").textContent()).not.toContain("..");
+  await way.focus();
+  await page.keyboard.press("Enter");
+  await step(page, 300);
+  expect(await kq(page, focusedId), "focus after the button folds away").toBe("kqDock-pray");
+  await expectNoUnnamedButtons(page);
+  // Esc from a sheet opened by a shortcut key goes back to that sheet's dock button
+  for (const [key, id] of [
+    ["b", "kqDock-bag"],
+    ["j", "kqDock-missions"],
+  ]) {
+    await page.keyboard.press(key);
+    await expect(page.getByRole("dialog")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    expect(await kq(page, focusedId), "focus after Esc from " + key).toBe(id);
+  }
+  await page.locator("#kqDock-map").click();
+  await page.keyboard.press("Escape");
+  expect(await kq(page, focusedId)).toBe("kqDock-map");
+}
+
+async function checkSoundAnnounce(page) {
+  const mute = page.locator("#kqMute");
+  await expect(mute).toHaveAttribute("aria-label", "Sound");
+  await expect(mute).toHaveAttribute("aria-pressed", "true"); // pressed = sound on
+  await mute.click();
+  await expect(page.locator("#kqLive")).toHaveText("Sound off");
+  await step(page, 100);
+  await expect(mute).toHaveAttribute("aria-label", "Sound");
+  await expect(mute).toHaveAttribute("aria-pressed", "false");
+  await mute.click();
+  await expect(page.locator("#kqLive")).toHaveText("Sound on");
+  await step(page, 100); // the HUD redraws on the next frame
+  await expect(mute).toHaveAttribute("aria-pressed", "true");
+  // the sentence goes away by itself after a few seconds
+  await expect(page.locator("#kqLive")).toHaveText("", { timeout: 9000 });
+}
+
+/** Browser-side: where the open sheet box and its Close button sit, and whether the box scrolls. */
+function sheetGeometry() {
+  const box = document.querySelector(".kq-sheet-box");
+  const b = box.getBoundingClientRect();
+  const close = box.querySelector(".kq-sheet-close").getBoundingClientRect();
+  return {
+    top: b.top,
+    bottom: b.bottom,
+    scrolls: box.scrollHeight > box.clientHeight,
+    closeTop: close.top,
+    closeBottom: close.bottom,
+    height: window.innerHeight,
+  };
+}
+
+/** The barber's style previews sit in two larger columns, inside the stage. */
+async function expectBarberTwoColumns(page) {
+  await kq(page, () => window.__kq.teleport("barber"));
+  await step(page, 300);
+  await kq(page, () => window.__kq.interact());
+  const tiles = page.locator(".kq-grid-looks .kq-tile");
+  await expect(tiles).toHaveCount(7);
+  const first = await tiles.nth(0).boundingBox();
+  const second = await tiles.nth(1).boundingBox();
+  expect(Math.abs(first.y - second.y), "two tiles on the first row").toBeLessThan(2);
+  expect(second.x).toBeGreaterThan(first.x + first.width - 2);
+  expect(first.width, "larger previews").toBeGreaterThan(200);
+  const g = await kq(page, sheetGeometry);
+  expect(g.top).toBeGreaterThanOrEqual(0);
+  expect(g.bottom).toBeLessThanOrEqual(g.height);
+}
+
+async function checkTallSheets(page) {
+  await kq(page, () => window.KQ.Game.PrayerFlow.reset());
+  await kq(page, () => window.KQ.Game.Actions.dock("missions"));
+  let g = await kq(page, sheetGeometry);
+  expect(g.bottom, "sheet inside the stage").toBeLessThanOrEqual(g.height);
+  expect(g.scrolls, "12 missions need to scroll").toBe(true);
+  await kq(page, () => {
+    const box = document.querySelector(".kq-sheet-box");
+    box.scrollTop = box.scrollHeight;
+  });
+  g = await kq(page, sheetGeometry);
+  expect(g.closeTop, "Close pinned inside the box after scrolling").toBeGreaterThanOrEqual(g.top);
+  expect(g.closeBottom).toBeLessThanOrEqual(g.bottom);
+  await page.keyboard.press("Escape");
+  await expectBarberTwoColumns(page);
+  await page.keyboard.press("Escape");
+}
+
+test.describe.serial("persona polish (one shared page at 1180 x 820)", () => {
+  /** @type {{page?: import('@playwright/test').Page, problems?: string[]}} */
+  const shared = {};
+  test.describe.configure({ timeout: 120_000 });
+  test.beforeAll(async ({ browser }) => {
+    test.setTimeout(180_000);
+    shared.page = await browser.newPage({ viewport: { width: 1180, height: 820 } });
+    shared.problems = watchProblems(shared.page);
+    await open(shared.page);
+  });
+  test.afterAll(async () => {
+    await shared.page?.close();
+  });
+  test("the first-step toast names Nenek and is retired once her mission is accepted", () =>
+    checkNenekToast(shared.page));
+  test("Show me the way moves focus to Pray; Esc from a dock sheet returns to its button", () =>
+    checkWayFocus(shared.page));
+  test("Sound keeps a fixed name, announces, and live text does not go stale", () =>
+    checkSoundAnnounce(shared.page));
+  test("tall sheets scroll inside the stage; the barber shows two columns", () =>
+    checkTallSheets(shared.page));
+  test("no console or page errors in the polish run", () => checkNoErrors(shared.problems));
 });
 
 test("AC-14 / AC-6 slow device: auto-downgrade without a recompile; the game day keeps real time", async ({

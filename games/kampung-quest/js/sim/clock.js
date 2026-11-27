@@ -44,6 +44,16 @@
     return value < 10 ? "0" + value : String(value);
   }
 
+  /**
+   * The short "day 2, 13:23" text for a saved day and minute-of-day (used on the title's Continue
+   * button). Out-of-range or non-numeric input is clamped so a hostile save cannot print junk.
+   */
+  function dayTimeLabel(day, minute) {
+    const d = Number.isFinite(day) ? Math.max(1, Math.floor(day)) : 1;
+    const m = Number.isFinite(minute) ? Math.min(1439, Math.max(0, Math.floor(minute))) : 0;
+    return "day " + d + ", " + pad2(Math.floor(m / 60)) + ":" + pad2(m % 60);
+  }
+
   /** Sun anchors (minutes) from a times object; falls back to defaults. */
   function sunAnchors(times) {
     const rise = times ? parseHHMM(times.syuruk) : NaN;
@@ -119,7 +129,7 @@
     return clock;
   }
 
-  KQ.Sim.Clock = { create, parseHHMM, MINUTES_PER_DAY, pad2 };
+  KQ.Sim.Clock = { create, parseHHMM, MINUTES_PER_DAY, pad2, dayTimeLabel };
 })(
   ((typeof window !== "undefined" ? window : globalThis).KQ =
     (typeof window !== "undefined" ? window : globalThis).KQ || {}),

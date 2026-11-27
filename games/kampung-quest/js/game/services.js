@@ -83,13 +83,20 @@
     G.Audio.play("coin");
     G.MissionFlow.notify({ type: "buy", target: placeId, item: item.id });
     S().hudDirty = true;
+    let hint = res.hint;
     if (forMission) G.UI.toast("You are carrying " + item.name + " for the mission.", "good", 4200);
     else if (item.hunger > 0) {
       G.Nudge.onAte();
-      G.UI.toast("Sedap! Your food meter went up.", "good");
+      G.UI.toast("Sedap! " + foodLine(), "good");
+      hint += " " + foodLine(); // the sheet announces this hint last, so it must carry the level
     }
     happy("wave", 1.6);
-    return { ok: true, hint: res.hint };
+    return { ok: true, hint };
+  }
+
+  /** The spoken food level after eating, e.g. "Food 100 of 100." (the same words as the needs ring). */
+  function foodLine() {
+    return "Food " + Math.round(sim().needs.hunger) + " of 100.";
   }
 
   /**

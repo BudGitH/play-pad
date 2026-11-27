@@ -92,7 +92,8 @@
       const shown = !host.el.hidden;
       const expanded = shown && !host.el.classList.contains("is-bar");
       if (shown && !wasShown) {
-        say(host.title.textContent + ". Call to prayer. Your mission waits until you have prayed.");
+        const title = host.title.textContent.replace(/[.!?\s]+$/, ""); // it already ends in "pray."
+        say(title + ". Call to prayer. Your mission waits until you have prayed.");
         host.saidAt = Date.now();
       }
       if (expanded) autoCollapse(host);
@@ -111,7 +112,12 @@
       cls: "kq-small kq-azan-sub",
       text: "Your mission waits (paused) until you have prayed.",
     });
-    host.go = G.UI.btn("Show me the way", { cls: "primary kq-big", icon: "mosque", onClick: on });
+    host.go = G.UI.btn("Show me the way", {
+      cls: "primary kq-big",
+      icon: "mosque",
+      label: "Show me the way",
+      onClick: on,
+    });
     host.body = U.el("div", { cls: "kq-azan-cues" }, captionLines(host));
     host.el = U.el(
       "section",
@@ -220,14 +226,27 @@
 
   const ACT_WORD = { niat: "Say niat", head: "Wipe", ears: "Wipe", doa: "Say doa" };
 
+  /**
+   * Show each wudu tile's state for sight and for screen readers: done steps say ", done" in their
+   * name, the current step is aria-current="step" (colour is never the only signal).
+   */
+  function markWuduTiles(tiles, v) {
+    tiles.forEach(function (t, i) {
+      const done = i < v.index;
+      t.classList.toggle("is-done", done);
+      t.classList.toggle("is-now", i === v.index);
+      t.classList.toggle("is-tried", v.tried === i);
+      const label = "Step " + (i + 1) + ": " + KQ.Sim.Prayer.WUDU_STEPS[i].label;
+      t.setAttribute("aria-label", label + (done ? ", done" : ""));
+      if (i === v.index) t.setAttribute("aria-current", "step");
+      else t.removeAttribute("aria-current");
+    });
+  }
+
   /** Refresh the wudu screen. v: { index, taps, step, total, hint } */
   function wuduUpdate(ui, v) {
     const tiles = ui.row.querySelectorAll(".kq-wtile");
-    tiles.forEach(function (t, i) {
-      t.classList.toggle("is-done", i < v.index);
-      t.classList.toggle("is-now", i === v.index);
-      t.classList.toggle("is-tried", v.tried === i);
-    });
+    markWuduTiles(tiles, v);
     const cur = tiles[v.index];
     if (cur && cur.scrollIntoView) cur.scrollIntoView({ block: "nearest", inline: "center" });
     ui.title.textContent =
@@ -295,7 +314,16 @@
     return { handle, row, dots, title, cue, hint, onPick: h.onPick };
   }
 
-  /** Refresh. v: { name, kind, rakaat, total, choices:[type], tried, hint, cue } */
+  /**
+   * After a wrong tap, softly highlight the tile that comes next (the same gold-ish glow the wudu
+   * panel uses for its next tile, never red) and mark it for screen readers.
+   */
+  function markExpected(tile) {
+    tile.classList.add("is-now");
+    tile.setAttribute("aria-current", "step");
+  }
+
+  /** Refresh. v: { name, kind, rakaat, total, choices:[type], want:[type], tried, hint, cue } */
   function prayUpdate(ui, v) {
     const label = KQ.Sim.Prayer.DISPLAY[v.name] + (v.kind === "qada" ? " (make-up)" : "");
     ui.title.textContent = label + " · raka'at " + v.rakaat + " of " + v.total + "";
@@ -313,6 +341,7 @@
     v.choices.forEach((type, i) => {
       const tile = postureTile(type, i, ui.onPick);
       if (v.tried === type) tile.classList.add("is-tried");
+      if (v.tried && v.want && v.want.indexOf(type) !== -1) markExpected(tile);
       ui.row.appendChild(tile);
     });
     if (v.cue) setCue(ui.cue, v.cue);

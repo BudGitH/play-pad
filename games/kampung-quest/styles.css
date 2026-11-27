@@ -833,13 +833,16 @@ kbd {
   align-items: flex-end;
 }
 .kq-sheet-box {
+  --kq-sbox-pt: 14px; /* top padding; the pinned header cancels it so scrolled content never peeks above */
   position: relative;
   max-width: min(980px, 100%);
   max-height: 100%;
   overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--md-sys-color-outline) transparent;
   border-radius: 22px;
   background: var(--kq-hud-strong);
-  padding: 14px 18px 16px;
+  padding: var(--kq-sbox-pt) 18px 16px;
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.55);
   pointer-events: auto;
   animation: kq-sheet-in 0.22s ease-out;
@@ -859,6 +862,15 @@ kbd {
   align-items: center;
   gap: 4px 12px;
   margin-bottom: 8px;
+}
+/* a tall sheet (barber, missions, shop) scrolls inside its box while the title and Close stay put */
+.kq-menu > .kq-sheet-head {
+  position: sticky;
+  top: calc(-1 * var(--kq-sbox-pt));
+  z-index: 2;
+  margin-top: calc(-1 * var(--kq-sbox-pt));
+  padding: var(--kq-sbox-pt) 0 6px;
+  background: var(--kq-hud-strong);
 }
 .kq-sheet-title {
   flex: 1 1 auto;
@@ -912,6 +924,20 @@ kbd {
 }
 .kq-grid-missions {
   grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+}
+/* the barber: two columns of larger style previews, a comfortable width on any screen */
+.kq-menu-looks {
+  width: min(560px, calc(100vw - 48px));
+}
+.kq-grid.kq-grid-looks {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.kq-grid-looks .kq-tile {
+  min-height: 150px;
+}
+.kq-grid-looks .kq-pic {
+  width: 88px;
+  height: 88px;
 }
 .kq-tile {
   position: relative;
@@ -1173,6 +1199,12 @@ kbd {
   border-color: var(--md-sys-color-primary);
   background: var(--md-sys-color-primary-container);
   animation: kq-glow 1.6s ease-in-out infinite;
+}
+/* the prayer panel's "this one is next" cue after a wrong tap: a calm gold glow, never red */
+.kq-ptile.is-now {
+  border: 2px solid var(--kq-gold);
+  background: var(--md-sys-color-tertiary-container);
+  animation: kq-glow-gold 1.6s ease-in-out infinite;
 }
 .kq-wtile.is-done {
   opacity: 0.75;
@@ -1734,7 +1766,8 @@ kbd {
     font-size: 16px;
   }
   .kq-sheet-box {
-    padding: 8px 12px 10px;
+    --kq-sbox-pt: 8px;
+    padding: var(--kq-sbox-pt) 12px 10px;
   }
   .kq-title-card {
     padding: 14px 18px;
@@ -1981,6 +2014,15 @@ kbd {
     transform: scale(1.07);
   }
 }
+@keyframes kq-glow-gold {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(244, 194, 107, 0.75);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(244, 194, 107, 0);
+  }
+}
 @keyframes kq-glow {
   0%,
   100% {
@@ -2020,6 +2062,10 @@ kbd {
 .kq-less-motion .kq-wtile.is-now,
 .kq-less-motion .kq-step.is-now .kq-step-ic {
   outline: 3px solid var(--md-sys-color-primary);
+  box-shadow: none;
+}
+.kq-less-motion .kq-ptile.is-now {
+  outline: 3px solid var(--kq-gold);
   box-shadow: none;
 }
 @media (prefers-reduced-motion: reduce) {
@@ -2168,7 +2214,8 @@ kbd {
     padding: 8px;
   }
   .kq-sheet-bottom .kq-sheet-box {
-    padding: 10px 12px 12px;
+    --kq-sbox-pt: 10px;
+    padding: var(--kq-sbox-pt) 12px 12px;
   }
 }
 @media (max-width: 359px) {

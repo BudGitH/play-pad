@@ -244,9 +244,22 @@
     F.guide = true;
     F.guideT = 0;
     collapse();
+    keepFocus();
     computeGuide();
     G.Audio.play("tap");
     G.UI.toast("Follow the green footprints to the mosque.", "good");
+  }
+
+  /**
+   * The 'Show me the way' button folds away with the azan card; if keyboard focus was on it (or
+   * lost), move it to the Pray dock button so it never drops to the page body.
+   */
+  function keepFocus() {
+    const a = document.activeElement;
+    const lost = !a || a === document.body || !a.isConnected;
+    if (!lost && !(F.card && F.card.el.contains(a))) return;
+    const pray = G.Hud.refs.dockBtns && G.Hud.refs.dockBtns.pray;
+    if (pray) pray.focus({ preventScroll: true });
   }
 
   /** Turn the guidance trail off and remove its footprints. */
@@ -354,7 +367,7 @@
     F.wudu.hint =
       i < info.wuduIndex
         ? "You did that one already. Well done! Next: " + want.label + "."
-        : "Nearly! Next comes: " + want.label + ". Take your time.";
+        : "Nearly! Next: " + want.label + ".";
     G.Audio.play("hint");
     refreshWudu();
   }
@@ -388,6 +401,7 @@
   /** The wudu screen closed: release the hero and the camera. */
   function closeWudu() {
     F.wui = null;
+    G.UI.announce("", "caption");
     G.Player.release(S().player);
     leaveScreen();
   }
@@ -426,6 +440,7 @@
       rakaat,
       total,
       choices: G.PrayerText.choices(valid, seed),
+      want: valid,
       tried: F.pray.tried,
       hint: F.pray.hint,
       cue: F.pray.cue,
@@ -460,10 +475,10 @@
     refreshPray();
   }
 
-  /** The gentle 'Nearly! Next comes ...' hint naming the expected posture (empty at the end). */
+  /** The short gentle "Nearly! Next: Ruku (bow)." hint naming the expected posture (empty at the end). */
   function hintFor(prayer) {
     const want = prayer.nextPrayStep();
-    return want ? "Nearly! Next comes: " + want.label + ". Take your time." : "";
+    return want ? G.PrayerText.nextHint(want.type) : "";
   }
 
   /** Lock the hero at the hall's prayer spot, open the prayer screen and frame the camera. */
@@ -482,6 +497,7 @@
    */
   function closePray() {
     F.pui = null;
+    G.UI.announce("", "caption");
     if (!F.completing) G.Player.release(S().player);
     leaveScreen();
   }

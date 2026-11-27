@@ -1,7 +1,7 @@
 // AC-7, AC-8, AC-9: prayer times, wudu order, raka'at plans, states, qada, edge cases.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { loadSim, FIXTURE_TIMES, plain, mins } from "./load-sim.mjs";
+import { loadSim, loadPrayerText, FIXTURE_TIMES, plain, mins } from "./load-sim.mjs";
 
 const KQ = loadSim();
 const Prayer = KQ.Sim.Prayer;
@@ -738,4 +738,23 @@ test("owner rule: finishing a prayer or a qada grants the star sticker and never
     assert.equal(wallet.coins, 7, done.kind + " leaves the purse untouched");
   }
   assert.equal(missions.awardPrayer("zohor").newSticker, false, "a star is only given once");
+});
+
+test("the wrong-tap prayer hint is short, picture-first and names the expected tile, never scolding", () => {
+  const text = loadPrayerText();
+  assert.equal(text.nextHint("ruku"), "Nearly! Next: Ruku (bow).");
+  assert.equal(text.nextHint("qunut"), "Nearly! Next: Doa qunut (palms up).");
+  assert.equal(text.nextHint("tasyahud_awal"), "Nearly! Next: Tasyahud - sit (first).");
+  for (const type of Object.keys(text.TILE)) {
+    const hint = text.nextHint(type);
+    assert.match(hint, /^Nearly! Next: .+\.$/, type);
+    assert.ok(hint.length <= 48, type + " stays one short line");
+    assert.doesNotMatch(hint, /wrong|fail|bad|incorrect|mistake/i, type);
+  }
+  assert.equal(text.nextHint("not_a_posture"), "", "an unknown type gives no hint, not an error");
+});
+
+test("the azan card title keeps its single full stop (the spoken sentence is built on it)", () => {
+  const text = loadPrayerText();
+  assert.equal(text.title("zohor"), "It's Zohor time! Let's go and pray.");
 });

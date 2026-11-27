@@ -60,6 +60,16 @@ export function loadSimWithData() {
   return sandbox.KQ;
 }
 
+/** The sim plus the game layer's pure text module (js/game/prayer-text.js): returns KQ.Game.PrayerText. */
+export function loadPrayerText() {
+  const sandbox = {};
+  sandbox.window = sandbox; // game files attach to window.KQ
+  vm.createContext(sandbox);
+  runAll(sandbox, SIM_DIR, SIM_FILES);
+  runAll(sandbox, path.join(JS_DIR, "game"), ["prayer-text"]);
+  return sandbox.KQ.Game.PrayerText;
+}
+
 /** Deep-clone across the vm realm boundary so assert.deepStrictEqual works. */
 export function plain(value) {
   return JSON.parse(JSON.stringify(value));

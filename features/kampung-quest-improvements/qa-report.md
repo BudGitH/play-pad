@@ -18,3 +18,11 @@ Verified by the agents and orchestrator: `npm run check` clean, `npm run test:kq
 ## Round 2
 
 See the section appended below.
+
+| Sev | Lens     | Finding (round 2)                                                              | Status                                          |
+| --- | -------- | ------------------------------------------------------------------------------ | ----------------------------------------------- |
+| MED | Accuracy | Reload with a saved sunat flow while a fard is due: the azan card never queued | Fixed: `restoreDue` drops the idle sunat first  |
+| LOW | Accuracy | Azan audio now plays under an open sunat screen (card waits for close)         | Accepted: correct behaviour; spec idea in IDEAS |
+| LOW | Docs     | Hall Pray with wudu still clean goes straight to prayer (matches the taps)     | Noted in DECISIONS                              |
+
+Round 2 verdict: **CLEAN** (no CRITICAL/HIGH). `npm run check`, `npm run test:kq` 267/267, prayer + ambience specs 18/18.

@@ -739,6 +739,7 @@
   /** After loading a save with a prayer already due: show its card quietly (no second azan). */
   function restoreDue() {
     const due = S().sim.prayer.due();
+    if (due) dropIdleSunat(); // a saved sunat never hides the owed fard's card on reload
     if (!due || flowState()) return;
     F.name = due;
     F.t = 0;

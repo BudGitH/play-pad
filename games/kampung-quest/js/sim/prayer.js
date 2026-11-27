@@ -21,6 +21,10 @@
  *   - Subuh time ends at Syuruk (sunrise); every other prayer ends when the next
  *     one starts; Isyak runs to the next Subuh. A prayer that outlives its time
  *     becomes a gentle "qada" (make-up) prayer: no penalty, no scolding.
+ *   - Sunat (voluntary) prayer: a 2-raka'at prayer the hero may offer at the mosque at any time
+ *     (the "sunat mutlak" of the Shafi'i school), with the same wudu and posture flow as the
+ *     fard prayers. It is a flow WITHOUT a tracker entry: it never marks a fard prayer done and
+ *     never touches the five-prayer strip or the qada list.
  *   Prayer TIMES are injected (KQ.PRAYER_TIMES) - never hard-coded here.
  * DEPENDENCIES: ids.js not required; clock.js (KQ.Sim.Clock.parseHHMM) must load
  *   first. No THREE, no DOM, no Date.now: deterministic.
@@ -38,8 +42,12 @@
     asar: "Asar",
     maghrib: "Maghrib",
     isyak: "Isyak",
+    sunat: "Sunat",
   };
   const RAKAAT = { subuh: 2, zohor: 4, asar: 4, maghrib: 3, isyak: 4 };
+  /** The voluntary prayer's flow name and its raka'at (kept apart from RAKAAT: it is not a fard prayer). */
+  const SUNAT = "sunat";
+  const SUNAT_RAKAAT = 2;
   const STATUSES = ["upcoming", "due", "in-progress", "done", "qada", "qada-done"];
   const MAX_QADA = 10;
   const MAX_ENTRIES = 30;
@@ -140,7 +148,7 @@
 
   /** Steps of one raka'at, including the sitting that ends it (if any). */
   function rakaatSteps(name, rakaat) {
-    const total = RAKAAT[name];
+    const total = rakaatOf(name);
     const steps = [];
     if (rakaat === 1) steps.push(plainStep("takbir", 1));
     steps.push(makeStep("qiyam", rakaat), makeStep("ruku", rakaat), makeStep("itidal", rakaat));
@@ -161,19 +169,35 @@
     return NAMES.indexOf(name) === -1 ? null : name;
   }
 
+  /** Is this the voluntary (sunat) prayer? Case-insensitive, like the fard names. */
+  function isSunat(raw) {
+    return typeof raw === "string" && raw.trim().toLowerCase() === SUNAT;
+  }
+
+  /** A fard prayer name, or "sunat", or null: the names a step plan or a flow can have. */
+  function flowName(raw) {
+    return isSunat(raw) ? SUNAT : normaliseName(raw);
+  }
+
+  /** Raka'at of a fard prayer or of the sunat prayer. */
+  function rakaatOf(name) {
+    return name === SUNAT ? SUNAT_RAKAAT : RAKAAT[name];
+  }
+
   /**
    * Ordered prayer steps (fresh copies) for one prayer, ending in both salams.
-   * @param {string} rawName subuh|zohor|asar|maghrib|isyak (case-insensitive)
+   * @param {string} rawName subuh|zohor|asar|maghrib|isyak|sunat (case-insensitive)
    * @returns {object[]} [] for an unknown name
    */
   function rakaatPlan(rawName) {
-    const name = normaliseName(rawName);
+    const name = flowName(rawName);
     if (!name) return [];
+    const total = rakaatOf(name);
     const plan = [];
-    for (let rakaat = 1; rakaat <= RAKAAT[name]; rakaat += 1) {
+    for (let rakaat = 1; rakaat <= total; rakaat += 1) {
       plan.push(...rakaatSteps(name, rakaat));
     }
-    plan.push(plainStep("salam_r", RAKAAT[name]), plainStep("salam_l", RAKAAT[name]));
+    plan.push(plainStep("salam_r", total), plainStep("salam_l", total));
     return plan;
   }
 
@@ -364,8 +388,35 @@
     S.flow = null;
   }
 
+  /**
+   * Begin (or resume) the voluntary sunat flow. It has no tracker entry, so nothing is marked done
+   * or owed by it. It is refused while a fard prayer is due or being prayed, so it can never take
+   * the place of one.
+   */
+  function startSunat(S) {
+    if (S.flow && S.flow.name === SUNAT) return flowInfo(S, true);
+    if (S.flow || isBlocking(S)) {
+      const due = dueName(S);
+      return {
+        ok: false,
+        hint:
+          (due ? DISPLAY[due] : "Your prayer") + " comes first. Let's pray that one, InsyaAllah!",
+      };
+    }
+    S.flow = {
+      name: SUNAT,
+      day: Math.floor(S.now / DAY) + 1,
+      kind: "sunat",
+      phase: S.wuduClean ? "pray" : "wudu",
+      wuduIdx: 0,
+      prayIdx: 0,
+    };
+    return flowInfo(S, true);
+  }
+
   /** Begin or resume a prayer flow for a prayer name; gives a friendly hint when it cannot start. */
   function startFlow(S, rawName) {
+    if (isSunat(rawName)) return startSunat(S);
     const name = normaliseName(rawName);
     if (!name) return { ok: false, hint: "Hmm, I don't know that prayer. Try the prayer card!" };
     if (S.flow && S.flow.name === name) return flowInfo(S, true);
@@ -405,7 +456,7 @@
       wuduTotal: WUDU_STEPS.length,
       prayIndex: flow.prayIdx,
       prayTotal: plan.length,
-      rakaat: RAKAAT[flow.name],
+      rakaat: rakaatOf(flow.name),
     };
   }
 
@@ -450,6 +501,7 @@
   /** Mark the prayer done (or qada-done), note whether it was late and clear the flow. */
   function finishFlow(S) {
     const flow = S.flow;
+    if (flow.kind === "sunat") return finishSunat(S);
     const entry = findFlowEntry(S);
     const qada = flow.kind === "qada";
     const late = Boolean(entry) && S.now >= entry.endAbs;
@@ -464,6 +516,17 @@
     else if (late)
       praise = "Alhamdulillah - better late than never! Well done for praying " + label + ".";
     return { name: flow.name, kind: flow.kind, late, praise };
+  }
+
+  /** The sunat prayer is complete: no tracker entry changes, only the flow clears. */
+  function finishSunat(S) {
+    S.flow = null;
+    return {
+      name: SUNAT,
+      kind: "sunat",
+      late: false,
+      praise: "Alhamdulillah! You prayed a sunat prayer (2 raka'at). Well done!",
+    };
   }
 
   /** Check a posture tap against the raka'at plan; a right tap advances, finishing the last step completes the prayer. */
@@ -619,9 +682,15 @@
     };
   }
 
+  /** The kind of a saved flow: the sunat flow is always "sunat"; a fard one is "qada" or "due". */
+  function flowKind(name, raw) {
+    if (name === SUNAT) return "sunat";
+    return raw === "qada" ? "qada" : "due";
+  }
+
   /** Validate a saved flow: known prayer and phase, indices clamped (wudu index = step count in the pray phase). */
   function cleanFlow(raw) {
-    const name = raw && typeof raw === "object" ? normaliseName(raw.name) : null;
+    const name = raw && typeof raw === "object" ? flowName(raw.name) : null;
     if (!name || PHASES.indexOf(raw.phase) === -1) return null;
     // wudu finished means every step is done: the index equals the step count in the pray phase
     const wuduIdx =
@@ -629,7 +698,7 @@
     return {
       name,
       day: cleanInt(raw.day, 1, 99999, 1),
-      kind: raw.kind === "qada" ? "qada" : "due",
+      kind: flowKind(name, raw.kind),
       phase: raw.phase,
       wuduIdx,
       prayIdx: cleanInt(raw.prayIdx, 0, rakaatPlan(name).length - 1, 0),
@@ -686,7 +755,7 @@
     S.now = clean.lastAbs === null ? 0 : clean.lastAbs;
     S.wuduClean = clean.wuduClean;
     S.flow = clean.flow;
-    if (S.flow && !findFlowEntry(S)) S.flow = null;
+    if (S.flow && S.flow.kind !== "sunat" && !findFlowEntry(S)) S.flow = null;
     S.entries.forEach(function (entry) {
       if (entry.status === "in-progress" && !S.flow) entry.status = "due";
     });
@@ -734,11 +803,13 @@
   KQ.Sim.Prayer = {
     create,
     rakaatPlan,
+    rakaatOf,
     sanitizeSnapshot,
     WUDU_STEPS,
     NAMES,
     DISPLAY,
     RAKAAT,
+    SUNAT,
     STATUSES,
   };
 })(

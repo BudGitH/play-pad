@@ -151,14 +151,16 @@
    * Which of two interaction targets wins when the hero is in range of both. A neighbour with
    * mission business beats a nearby object (a stall counter is ~0.15 m from its hawker, so
    * distance alone never picks the hawker); otherwise the nearer one wins, with a small bias
-   * towards the neighbour.
+   * towards the neighbour. A zone-wide `fallback` object (the Pray prompt inside the mosque hall)
+   * never outranks a neighbour who can be talked to now.
    * @param {{enabled:boolean, dist:number}|null} npc
-   * @param {{dist:number}|null} obj
+   * @param {{dist:number, fallback?:boolean}|null} obj
    * @param {boolean} wants whether the neighbour has mission business
    * @returns {"npc"|"obj"|null} null when neither is a usable choice
    */
   function pickTarget(npc, obj, wants) {
     const npcOk = Boolean(npc && npc.enabled);
+    if (obj && obj.fallback) return npcOk ? "npc" : "obj";
     if (npcOk && (!obj || wants || npc.dist - 0.4 <= obj.dist)) return "npc";
     if (obj) return "obj";
     return npc ? "npc" : null;

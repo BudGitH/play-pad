@@ -15,6 +15,7 @@
   const OBJ_RANGE = 2.4;
   const NPC_RANGE = 2.3;
   const FAR_RANGE = 4.5;
+  const SUNAT_ARIA = "Sunat prayer (2 raka'at)";
   const LABELS = {
     counter_: ["Order", "Order food"],
     wudu_tap_: ["Wudu", "Take wudu"],
@@ -38,11 +39,55 @@
     return key ? LABELS[key] : ["Use", "Use"];
   }
 
+  /** The prayer hall plus its verandah (the whole inside of the mosque), from the town plan; null if unknown. */
+  function mosqueZone() {
+    const L = KQ.WorldParts && KQ.WorldParts.LAYOUT && KQ.WorldParts.LAYOUT.mosque;
+    return L ? { x0: L.hall.x0, x1: L.verandah.x1, z0: L.hall.z0, z1: L.hall.z1 } : null;
+  }
+
+  /**
+   * A "Pray" prompt for a hero anywhere inside the mosque hall, so praying is always one press
+   * away there (a due or owed prayer, else the voluntary sunat prayer). It is a `fallback`: a
+   * neighbour within reach and any real object nearby outrank it (KQ.Sim.Missions.pickTarget).
+   */
+  function mosqueTarget(hero) {
+    const zone = mosqueZone();
+    if (!zone || hero.x < zone.x0 || hero.x > zone.x1 || hero.z < zone.z0 || hero.z > zone.z1)
+      return null;
+    const spot = S().world.pois.mosque_hall.pos;
+    return {
+      kind: "obj",
+      id: "prayer_spot",
+      label: "Pray",
+      aria: "Pray",
+      x: hero.x,
+      z: hero.z,
+      dist: U.dist(hero.x, hero.z, spot.x, spot.z),
+      enabled: true,
+      h: 2.1,
+      fallback: true,
+    };
+  }
+
+  /** When no fard prayer is owed, the Pray prompt offers the voluntary prayer and says so plainly. */
+  function withPrayerLabel(target) {
+    if (target && target.id === "prayer_spot" && G.PrayerFlow.isVoluntary()) {
+      target.label = "Sunat prayer";
+      target.aria = SUNAT_ARIA;
+    }
+    return target;
+  }
+
   /**
    * The nearest interactable within reach as a Talk-button target, ignoring the women's prayer
-   * spot.
+   * spot; inside the mosque hall the Pray prompt is the fallback.
    */
   function objectTarget(hero) {
+    return withPrayerLabel(nearestObject(hero) || mosqueTarget(hero));
+  }
+
+  /** The nearest interactable or pick-up within reach, or null. */
+  function nearestObject(hero) {
     let best = null;
     S().world.interactables.forEach(function (it) {
       if (it.id === "prayer_spot_women") return;
@@ -190,6 +235,7 @@
     Order: "bowl",
     Wudu: "drop",
     Pray: "mosque",
+    "Sunat prayer": "mosque",
     Pay: "bag",
     Haircut: "scissors",
     "Check-up": "heart",

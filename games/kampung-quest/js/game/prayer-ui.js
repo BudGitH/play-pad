@@ -325,7 +325,7 @@
 
   /** Refresh. v: { name, kind, rakaat, total, choices:[type], want:[type], tried, hint, cue } */
   function prayUpdate(ui, v) {
-    const label = KQ.Sim.Prayer.DISPLAY[v.name] + (v.kind === "qada" ? " (make-up)" : "");
+    const label = T().flowLabel(v.name, v.kind);
     ui.title.textContent = label + " · raka'at " + v.rakaat + " of " + v.total + "";
     ui.dots.setAttribute("aria-label", "Raka'at " + v.rakaat + " of " + v.total);
     U.clear(ui.dots);
@@ -362,7 +362,11 @@
   function dayMessage(ps) {
     const D = KQ.Sim.Prayer.DISPLAY;
     if (ps.flow)
-      return "You are in the middle of " + D[ps.flow.name] + ". Walk to the mosque to carry on.";
+      return (
+        "You are in the middle of " +
+        T().flowLabel(ps.flow.name, ps.flow.kind) +
+        ". Walk to the mosque to carry on."
+      );
     if (ps.due) return D[ps.due] + " is ready. Let's go to the mosque together.";
     if (ps.qada.length) {
       return (

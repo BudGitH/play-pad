@@ -163,6 +163,15 @@
     return list.slice(0, budget);
   }
 
+  /**
+   * How many people count against the cap. Normally everyone still on screen, including people fading out, so
+   * the headcount never exceeds the cap; after a jump (teleport, clock leap) the old crowd is on its way out
+   * at once, so only the people staying count and the new town fills in straight away.
+   */
+  function liveCount(C) {
+    return C.instant ? C.members.filter((m) => !m.leaving).length : C.members.length;
+  }
+
   /** Bring the fixed-spot population in line with what is wanted (only popping where nobody looks). */
   function reconcileSpots(C, hero, minute, budget) {
     const want = wantedSlots(C, hero, minute, budget);
@@ -172,23 +181,24 @@
       const far = U.dist(m.x, m.z, hero.x, hero.z) > DESPAWN_R;
       m.leaving = far || mayPop(C, m.x, m.z) || m.leaving;
     });
+    let live = liveCount(C);
     want.forEach(function (w) {
       const have = C.byId.get(w.s.id);
       if (have) have.leaving = false;
-      else if (C.members.length < SC().capFor(C.tier) && mayPop(C, w.s.x, w.s.z) && roomAt(C, w.s))
+      else if (live < SC().capFor(C.tier) && mayPop(C, w.s.x, w.s.z) && roomAt(C, w.s)) {
         admit(C, w.s, minute);
+        live += 1;
+      }
     });
   }
 
   /** Add one stroller (or a pair) on a pavement out of sight. */
   function addStroller(C, hero, minute) {
-    G.CrowdWalkers.spawn(C, hero, minute, SC().capFor(C.tier) - C.members.length).forEach(
-      function (m) {
-        if (C.instant) m.show = 1;
-        C.members.push(m);
-        C.byId.set(m.id, m);
-      },
-    );
+    G.CrowdWalkers.spawn(C, hero, minute, SC().capFor(C.tier) - liveCount(C)).forEach(function (m) {
+      if (C.instant) m.show = 1;
+      C.members.push(m);
+      C.byId.set(m.id, m);
+    });
   }
 
   /** Spawn and retire strollers to follow the time-of-day target. */
@@ -204,7 +214,7 @@
         .sort((a, b) => U.dist(b.x, b.z, hero.x, hero.z) - U.dist(a.x, a.z, hero.x, hero.z))[0];
       if (far && mayPop(C, far.x, far.z)) far.leaving = true;
     }
-    const room = Math.min(target - live, SC().capFor(C.tier) - C.members.length);
+    const room = Math.min(target - live, SC().capFor(C.tier) - liveCount(C));
     // a group counts as several strollers, so a busy hour fills up at up to three spawns per half second
     for (let i = 0; i < (C.instant ? room : Math.min(3, room)); i += 1)
       addStroller(C, hero, minute);

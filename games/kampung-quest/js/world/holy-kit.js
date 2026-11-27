@@ -3,7 +3,7 @@
  * PURPOSE: Shared builders for the Haramain scenery (KQ.WorldParts.HolyKit): the extra
  *          materials (kiswah black, carpets with prayer rows, hotel glass, chandelier glow,
  *          fronds), arch slabs, domes, minarets and small collider helpers (palms: holy-palms.js, hills: holy-rocks.js).
- * BUSINESS CONTEXT: AC-H1 (Makkah + Madinah scenery). Everything is procedural: no downloads.
+ * BUSINESS CONTEXT: AC-H1 (Makkah + Madinah scenery). Geometry is procedural; ground / rock / stone use the CC0 photo sets (with canvas stand-ins on file://).
  * DEPENDENCIES: the world modules (geo.js Batch, materials.js catalogue, canvas.js, textures).
  * ========================================================================== */
 (function (KQ) {

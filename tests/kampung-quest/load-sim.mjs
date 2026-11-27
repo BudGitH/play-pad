@@ -70,6 +70,15 @@ export function loadPrayerText() {
   return sandbox.KQ.Game.PrayerText;
 }
 
+/** The pure collision maths (js/game/collide.js: resolve, settle, separate, openHeading, armLength). */
+export function loadCollide() {
+  const sandbox = {};
+  sandbox.window = sandbox;
+  vm.createContext(sandbox);
+  runAll(sandbox, path.join(JS_DIR, "game"), ["collide"]);
+  return sandbox.KQ.Game.Collide;
+}
+
 /** Deep-clone across the vm realm boundary so assert.deepStrictEqual works. */
 export function plain(value) {
   return JSON.parse(JSON.stringify(value));

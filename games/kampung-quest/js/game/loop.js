@@ -70,7 +70,9 @@
       heightAt: s.world.heightAt,
       audio: G.Audio,
     });
-    G.Npcs.update(s.npcs, dt, { x: P.pos.x, z: P.pos.z });
+    G.Npcs.update(s.npcs, dt, P.pos);
+    G.Collide.settle(s.world.colliders, P.pos, G.Player.RADIUS);
+    G.Player.sync(P);
     G.Collectibles.updateCat(s.collect, dt, P, s.t);
     G.Camera.update(dt, {
       pos: P.pos,

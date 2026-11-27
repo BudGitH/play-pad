@@ -24,7 +24,7 @@
 | Area          | Files                                                                                                                                                                      |
 | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Boot / loop   | `boot.js`, `boot-ui.js`, `loop.js`, `sim-setup.js`, `settings.js`, `hooks.js` (`__kq`)                                                                                     |
-| Hero / camera | `player.js`, `input.js`, `camera.js`, `collide.js`                                                                                                                         |
+| Hero / camera | `player.js` (walk, jump), `input.js`, `camera.js`, `collide.js` (pure circle-vs-box maths: settle, separate, openHeading, armLength; `js/sim/jump.js` is the jump arc)     |
 | NPCs          | `npc-manager.js` (routines, reveal, separation), `npc-agent.js` (walk, poses), `npc-goals.js` (seats, prayer rows), `pathing.js`, `seats.js`                               |
 | World extras  | `collectibles.js` (cans, litter, Mimi), `markers.js` (beacons, footprints, giver stars)                                                                                    |
 | HUD / UI      | `hud.js`, `hud-view.js`, `minimap.js`, `ui-core.js` (sheets, focus trap, toasts), `ui-dialogue.js`, `ui-menus.js`, `ui-screens.js`, `pictures.js`, `names.js`, `speech.js` |
@@ -41,6 +41,8 @@ State lives in one object, `KQ.Game.S` (created in `boot.js`). The pure sim obje
 - **Prayer flow slows the clock to 25 %** (`FLOW_RATE`) while a flow is active or a prayer screen is open, so a 50-tap Zohor does not run into Asar. A prayer that falls due during a menu is queued (`PrayerFlow.maybeShowCard`) and shown after the menu closes.
 - **Indoor NPCs** (`routine.indoors`) are hidden, but stand at their block's door when the hero is within 15 m (so the first mission giver is always reachable at 07:00).
 - **Time of day for tests:** `__kq.setMinute(m)`, `__kq.forcePrayer("zohor")`, `__kq.step(ms)` advance deterministically even when headless rAF is throttled.
+- **Characters never move without `Collide.settle`.** Hero, NPCs and their separation all end in a push-out against the colliders (body radius `Player.RADIUS` 0.33, `NpcAgent.RADIUS` 0.31); NPCs are placed with `placeAt` / `stepOut` (free spot, facing open space); stuck means no progress toward the waypoint, and two skips ask for a new route. The camera arm is floored at 0.35 m and rises as it shortens. Audit: `tests/kampung-quest-collision.spec.mjs`.
+- **Jump** (Space, touch Jump button, `__kq.input("jump")`): height only (`Sim.Jump`, peak 0.8 m, no double jump), colliders stay horizontal; Space is taken only while `Actions.canJump()`.
 - **Hair / hat outfit:** `hat: "none"` + `hair: "classic"` is the hero's own blue cap (the save default); other combinations come from `Player.HEAD_STYLES`.
 
 ## Mobile and touch

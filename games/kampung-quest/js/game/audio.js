@@ -133,6 +133,8 @@
     pose: (c, t) => noise(c, t, { type: "bandpass", f: 500, d: 0.18, g: 0.04 }),
     step: (c, t) => noise(c, t, { f: 420, d: 0.06, g: 0.05 }),
     run: (c, t) => noise(c, t, { f: 520, d: 0.07, g: 0.07 }),
+    jump: (c, t) => tone(c, t, { f: 300, to: 620, d: 0.14, g: 0.06 }),
+    land: (c, t) => noise(c, t, { f: 300, d: 0.09, g: 0.07 }),
   };
 
   /**

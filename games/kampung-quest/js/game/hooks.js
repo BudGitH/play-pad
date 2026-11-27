@@ -37,6 +37,8 @@
     const pf = G.PrayerFlow.state;
     return {
       modal: h ? h.opts.label : null,
+      ritual: G.RitualFlow.debug().open,
+      eating: G.EatFlow.open(),
       wudu: Boolean(pf.wui),
       pray: Boolean(pf.pui),
       azanCard: Boolean(pf.card && !pf.card.el.hidden),
@@ -206,6 +208,8 @@
     action: (name) => G.Actions.handle(name),
     input: (action, on) => G.Input.virtual(action, on),
     forcePrayer,
+    ritual: () => G.RitualFlow.debug(),
+    openRite: (rite) => G.RitualFlow.open(rite),
     freeze(on) {
       S().frozen = Boolean(on);
     },

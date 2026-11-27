@@ -1,11 +1,11 @@
 /* ============================================================================
  * FILE: hud-layout.js
  * PURPOSE: Keeps the HUD pieces from landing on each other on any screen: measures the top HUD
- *          (CSS variables the toast lane and the portrait minimap hang from), moves the coins chip
- *          into the status card on a portrait phone, nudges the floating Talk button out of the
- *          card, dock, controls, azan card and toast lane that surround it, and runs the phone's
- *          "lighter HUD" (the status card and the mission card fold to a strip / one-line chip;
- *          a tap opens them for a few seconds).
+ *          (CSS variables the toast lane and the portrait radar column hang from), moves the coins
+ *          chip into the status card on a portrait phone, nudges the floating Talk button out of
+ *          the cards, dock, radar, controls, azan card and toast lane that surround it, and runs
+ *          the phone's "lighter HUD" (the mission card folds to a one-line chip; a tap opens it for
+ *          a few seconds. The status card is the Pray button and never folds).
  * BUSINESS CONTEXT: AC-15 (everything reachable by touch on a phone, portrait and landscape) and
  *   QA findings A11Y-01..04 (dock over coins, toast over Talk, "Walk closer" over the cards),
  *   A11Y2-04 (the exploring HUD covered 25-40 % of a phone screen).
@@ -52,9 +52,8 @@
     const R = G.Hud.refs;
     const azan = document.getElementById("kqAzan");
     const keys = L.root.querySelector(".kq-keys");
-    const list = [R.status, R.mission, R.coins, R.mute, R.ring, R.dock, R.joy, R.jump];
-    list.push(azan, R.lane, R.portraitChip, keys);
-    L.root.querySelectorAll(".kq-needchip").forEach((c) => list.push(c));
+    const list = [R.status, R.mission, R.coins, R.mute, R.pause, R.radar, R.needs];
+    list.push(R.dock, R.joy, R.jump, azan, R.lane, R.portraitChip, keys);
     return list.map(rectOf).filter(Boolean);
   }
 
@@ -149,20 +148,19 @@
   function placeCoins() {
     const R = G.Hud.refs;
     if (isPortraitPhone()) R.clockrow.appendChild(R.coins);
-    else R.topright.insertBefore(R.coins, R.topright.firstChild);
+    else R.trRow.insertBefore(R.coins, R.trRow.firstChild);
     measure();
   }
 
   /* ----------------------- the phone's folded status card and mission card ----------------------- */
 
   const folding = () => ({
-    status: { box: G.Hud.refs.status, toggle: G.Hud.refs.status },
     mission: { box: G.Hud.refs.mission, toggle: G.Hud.refs.missionToggle },
   });
 
   /**
-   * Open or fold a phone card (status or mission); an open card folds again by itself after a few
-   * seconds.
+   * Open or fold the phone's mission card; an open card folds again by itself after a few seconds.
+   * (The status card does not fold any more: the whole card is the Pray button.)
    */
   function setOpen(which, open) {
     const part = folding()[which];
@@ -174,7 +172,7 @@
     fitTalk();
   }
 
-  /** A tap on the folded card: open it for a few seconds, or fold it again. Ignored off a phone. */
+  /** A tap on the folded mission card: open it for a few seconds, or fold it again. Ignored off a phone. */
   function toggle(which) {
     if (!isCompact()) return;
     setOpen(which, !folding()[which].box.classList.contains("is-open"));
@@ -185,7 +183,7 @@
     if (isCompact()) setOpen(which, true);
   }
 
-  /** Phones: the cards are buttons that fold and open. Elsewhere they are plain, always-open panels. */
+  /** Phones: the mission card is a button that folds and opens. Elsewhere it is a plain, always-open panel. */
   function syncCompact() {
     const compact = isCompact();
     const parts = folding();
@@ -193,11 +191,10 @@
       const t = parts[which].toggle;
       if (!compact) setOpen(which, false);
       t.removeAttribute("aria-expanded");
-      if (which === "status") t.setAttribute("role", compact ? "button" : "group");
-      else if (compact) t.setAttribute("role", "button");
+      if (compact) t.setAttribute("role", "button");
       else t.removeAttribute("role");
-      if (which === "mission" && !compact) t.removeAttribute("tabindex");
-      if (which === "mission" && G.HudView) G.HudView.nameMissionToggle();
+      if (!compact) t.removeAttribute("tabindex");
+      if (G.HudView) G.HudView.nameMissionToggle();
       if (!compact) return;
       t.setAttribute("tabindex", "0");
       t.setAttribute("aria-expanded", String(parts[which].box.classList.contains("is-open")));

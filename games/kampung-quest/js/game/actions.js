@@ -88,7 +88,10 @@
         location.href = "../../index.html";
       },
       onStartOver: confirmStartOver,
-      onChangeRegion: () => G.Region.openSheet({ onClose: (why) => why === "same" && openPause() }),
+      onChangeRegion() {
+        G.Region.openSheet({ onClose: (why) => why !== "replaced" && openPause() });
+        G.Loop.setPaused(true);
+      },
       onClose: () => G.Loop.setPaused(false),
     };
   }
@@ -140,6 +143,7 @@
     if (id === "missions") G.Screens.missions(ctxFor());
     else if (id === "map") openMap();
     else if (id === "pray") G.PrayerFlow.openDayCard();
+    else if (id === "rites") G.RitualFlow.openMenu();
     else if (id === "bag") openBag();
     else if (id === "pause") openPause();
   }
@@ -175,7 +179,7 @@
       return G.Vehicles.mounted()
         ? G.Vehicles.horn()
         : canJump() && G.Player.jump(S().player, G.Audio);
-    if (["missions", "map", "pray", "bag"].indexOf(name) !== -1) dock(name);
+    if (["missions", "map", "pray", "bag", "rites"].indexOf(name) !== -1) dock(name);
   }
 
   /** Can the hero jump now: in play, no sheet or prayer screen open, not held by a flow. */

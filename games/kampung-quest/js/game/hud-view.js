@@ -1,9 +1,11 @@
 /* ============================================================================
  * FILE: hud-view.js
- * PURPOSE: Keeps the HUD in step with the sim: clock, next-prayer note, the five-prayer strip,
- *          coins, the food / energy ring, the picture mission card, dock states and the mute button.
+ * PURPOSE: Keeps the HUD in step with the sim: clock, next-prayer note, the five-prayer strip (and
+ *          the status card's due / qada glow), coins, the food / energy bars, the picture mission
+ *          card, the Missions badge and the mute button.
  * BUSINESS CONTEXT: AC-6 (clock), AC-10 (meters), AC-11 (tracker, "paused" while praying),
- *   design D (the ring announces its numbers as text; colour is never the only signal).
+ *   design D (the needs announce their numbers as text; colour is never the only signal: each bar
+ *   also has an icon, a length and a word, "Hungry" / "Tired" when low).
  * DEPENDENCIES: hud.js (refs), names.js, pictures.js, KQ.Sim state passed in.
  * ========================================================================== */
 (function (KQ) {
@@ -76,7 +78,7 @@
     });
   }
 
-  /** The spoken label of the needs ring: both numbers, plus a kind "low" note for a meter under the low line. */
+  /** The spoken label of the needs bars: both numbers, plus a kind "low" note for a meter under the low line. */
   function needsLabel(food, energy, needs) {
     let text = "Food " + food + " of 100, energy " + energy + " of 100.";
     if (needs.isHungry()) text += " Food low \u2014 time to eat.";
@@ -84,37 +86,40 @@
     return text;
   }
 
-  /**
-   * Give a meter that is under the low line a soft amber highlight (a pulsing ring; still under
-   * reduced motion): the chip and its ring arc get `is-low`. The words are in the ring's label.
-   */
-  function markLow(needs) {
-    const R = H().refs;
-    const hungry = needs.isHungry();
-    const tired = needs.isTired();
-    R.foodChip.classList.toggle("is-low", hungry);
-    R.arcleft.classList.toggle("is-low", hungry);
-    R.energyChip.classList.toggle("is-low", tired);
-    R.arcright.classList.toggle("is-low", tired);
+  /** The bar colour for a level: green when full, through yellow, to orange when low (never red). */
+  function needColour(level) {
+    const hue = 30 + (105 * Math.min(100, Math.max(0, level))) / 100;
+    return "hsl(" + Math.round(hue) + " 78% 52%)";
   }
 
   /**
-   * Refresh the food / energy numbers, the ring arcs, the low highlight and the ring's spoken label
-   * (only when a value changed).
+   * One need's bar, word and low state: the bar's length and colour follow the level, and under the
+   * low line the word turns kind ("Hungry" / "Tired") and the row pulses softly (a static amber
+   * outline under reduced motion).
+   */
+  function paintNeed(kind, level, low, words) {
+    const R = H().refs;
+    const fill = R[kind + "Fill"];
+    fill.style.transform = "scaleX(" + level / 100 + ")";
+    fill.style.background = low ? "" : needColour(level);
+    R[kind + "Row"].classList.toggle("is-low", low);
+    R[kind + "Word"].textContent = low ? words[1] : words[0];
+  }
+
+  /**
+   * Refresh both need bars and the bars' spoken label (only when a value or the low state changed).
    */
   function updateNeeds(needs) {
     const R = H().refs;
     const food = Math.round(needs.hunger);
     const energy = Math.round(needs.energy);
-    H().setText("food", R.foodNum, String(food));
-    H().setText("energy", R.energyNum, String(energy));
     const f = food + "|" + energy + "|" + needs.status();
-    if (H().refs.lastNeeds === f) return;
+    if (R.lastNeeds === f) return;
     R.lastNeeds = f;
-    R.arcleft.setAttribute("stroke-dasharray", food + " 100");
-    R.arcright.setAttribute("stroke-dasharray", energy + " 100");
-    R.ring.setAttribute("aria-label", needsLabel(food, energy, needs));
-    markLow(needs);
+    paintNeed("food", food, needs.isHungry(), ["Food", "Hungry"]);
+    paintNeed("energy", energy, needs.isTired(), ["Energy", "Tired"]);
+    R.needs.setAttribute("aria-label", needsLabel(food, energy, needs));
+    R.needs.title = "Food " + food + ", energy " + energy;
   }
 
   /**
@@ -195,6 +200,9 @@
     let sig = "none";
     if (mission && prog) sig = mission.id + prog.stepIndex + ":" + prog.count + ":" + prog.paused;
     else if (sim.missions.available().length === 0) sig = "done";
+    const state = sig;
+    const rite = sim.umrah ? sim.umrah.summary() : null;
+    sig += "|" + rite;
     if (R.missionSig === sig) return;
     const first = R.missionSig === undefined;
     const stepKey = mission && prog ? mission.id + ":" + prog.stepIndex : "none";
@@ -204,7 +212,9 @@
     U.clear(R.missionBody);
     R.mission.classList.toggle("is-paused", Boolean(prog && prog.paused));
     if (mission && prog) renderMissionSteps(mission, prog);
-    else renderNoMission(sig);
+    else renderNoMission(state);
+    if (rite)
+      R.missionBody.appendChild(U.el("p", { cls: "kq-small kq-ritual-line", text: "🕋 " + rite }));
     // only a new mission or a new step shows the full card for a few seconds (phones); a collected
     // can or a prayer pause / resume just updates the chip
     if (newStep) G.HudLayout.peek("mission");
@@ -222,25 +232,47 @@
     else t.removeAttribute("aria-label");
   }
 
+  /** Turn a class on a node, only touching the DOM when the answer changed. */
+  function flag(key, node, cls, on) {
+    if (H().refs[key] === on) return;
+    H().refs[key] = on;
+    node.classList.toggle(cls, on);
+  }
+
   /**
-   * Refresh the dock: the Pray button glows when a prayer is due or in qada, and Missions shows the
-   * new-mission badge.
+   * The prayer-time card is the Pray button: it glows gold while a prayer is due or being prayed,
+   * and gets a dashed gold edge while one is waiting to be made up (qada).
    */
-  function updateDock(sim, ps, extra) {
+  function updatePrayCard(ps) {
     const R = H().refs;
-    const pray = R.dockBtns.pray;
-    const qadaCount = ps.qada.length;
-    const urgent = ps.due || (ps.flow && ps.flow.kind !== "sunat");
-    const cls = "kq-dock-btn" + (urgent ? " is-due" : qadaCount ? " is-qada" : "");
-    H().setClass("praybtn", pray, cls);
-    const avail = sim.missions.active() ? 0 : sim.missions.available().length;
-    H().setText("badge", R.badge, avail ? String(avail) : "");
-    R.badge.hidden = !avail;
-    R.dockBtns.missions.setAttribute(
-      "aria-label",
-      "Missions" + (avail ? ", " + avail + " new" : ""),
-    );
-    void extra;
+    const urgent = Boolean(ps.due || (ps.flow && ps.flow.kind !== "sunat"));
+    flag("praydue", R.status, "is-due", urgent);
+    flag("prayqada", R.status, "is-qada", !urgent && ps.qada.length > 0);
+  }
+
+  /** The spoken name of the Missions button: how many are left, and whether one is in progress. */
+  function missionsLabel(active, todo) {
+    if (active) return "Missions, 1 in progress" + (todo > 1 ? ", " + (todo - 1) + " more" : "");
+    return todo ? "Missions, " + todo + " to find" : "Missions, all done";
+  }
+
+  /**
+   * Refresh the Missions button: the badge counts the missions still to do (the one in progress
+   * plus the ones waiting), pink while you still need to find a star, green once one is under way.
+   */
+  function updateMissions(sim) {
+    const R = H().refs;
+    const active = Boolean(sim.missions.active());
+    const todo = sim.missions.available().length + (active ? 1 : 0);
+    H().setText("badge", R.badge, todo ? String(todo) : "");
+    R.badge.hidden = !todo;
+    flag("misactive", R.badge, "is-active", active);
+    flag("misbtn", R.dockBtns.missions, "is-active", active);
+    const name = missionsLabel(active, todo);
+    if (R.misname !== name) {
+      R.misname = name;
+      R.dockBtns.missions.setAttribute("aria-label", name);
+    }
   }
 
   /** Per-frame HUD refresh. `sim` is the KQ.Sim bundle; `muted` the sound state. */
@@ -250,13 +282,14 @@
     H().setText("clock", R.clockText, sim.clock.hhmm());
     H().setText("nextp", R.nextp, nextNote(ps));
     const spoken = "Clock " + sim.clock.hhmm() + ". " + nextNote(ps) + " " + prayerSummary(ps);
-    R.status.setAttribute("aria-label", spoken);
+    R.status.setAttribute("aria-label", spoken + " Opens today's prayers.");
     updatePrayers(ps);
     H().setText("coins", R.coinNum, String(sim.economy.coins));
     R.coins.setAttribute("aria-label", sim.economy.coins + " coins");
     updateNeeds(sim.needs);
     renderMission(sim);
-    updateDock(sim, ps);
+    updatePrayCard(ps);
+    updateMissions(sim);
     G.HudLayout.measure();
     if (R.mutedState !== muted) {
       R.mutedState = muted;

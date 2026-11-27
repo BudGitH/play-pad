@@ -207,7 +207,9 @@
   /** The ritual text items for a wudu step card. */
   function wuduTexts(id) {
     const all = KQ.RITUAL_TEXT || {};
-    return (WUDU_TEXTS[id] || []).filter((k) => all[k]).map((k) => Object.assign({ id: k }, all[k]));
+    return (WUDU_TEXTS[id] || [])
+      .filter((k) => all[k])
+      .map((k) => Object.assign({ id: k }, all[k]));
   }
 
   G.PrayerText = {

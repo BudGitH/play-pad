@@ -111,6 +111,13 @@
     return v.speed;
   }
 
+  /** Roll to a halt at a firm but friendly rate (getting out): 70 % of the vehicle's braking. */
+  function stopGently(v, dt) {
+    const dv = v.spec.brake * 0.7 * dt;
+    v.speed = Math.abs(v.speed) <= dv ? 0 : v.speed - Math.sign(v.speed) * dv;
+    return v.speed;
+  }
+
   /** How well the wheels bite at this speed: none when standing (cars), less at the top end. */
   function grip(v) {
     const s = v.spec;
@@ -250,6 +257,7 @@
     throttleOf,
     steerOf,
     stepSpeed,
+    stopGently,
     stepHeading,
     advance,
     local,

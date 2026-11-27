@@ -1,0 +1,31 @@
+import { chromium } from "@playwright/test";
+const b = await chromium.launch({ executablePath: "/usr/bin/google-chrome", args: ["--use-gl=angle","--enable-unsafe-swiftshader","--no-sandbox"] });
+const page = await b.newPage({ viewport: { width: 1100, height: 700 } });
+page.on("pageerror", (e) => console.log("PAGEERR", e.message));
+await page.goto("http://localhost:5599/games/kampung-quest/index.html?still=1&autoq=0&q=low");
+await page.waitForFunction(() => window.__kq?.loaded, null, { timeout: 120000 });
+await page.locator("#kq button.primary").first().click();
+await page.waitForFunction(() => window.__kq.ready, null, { timeout: 60000 });
+const shot = async (n) => page.screenshot({ path: `features/kampung-quest-haramain/shots/${n}.png` });
+const yaw = (y) => page.evaluate((y) => { window.KQ.Game.Camera.state.yaw = y; window.KQ.Game.Camera.state.idle = -999; window.__kq.step(300); }, y);
+// bike
+await page.evaluate(() => { window.__kq.place(-33, 7.2, Math.PI); window.__kq.step(300); });
+console.log(JSON.stringify(await page.evaluate(() => window.__kq.state().target)));
+await page.evaluate(() => window.__kq.interact());
+await page.evaluate(() => window.__kq.step(600));
+await yaw(Math.PI + 0.1); await shot("bike-side-idle");
+await page.evaluate(() => window.__kq.input("up", true));
+await page.evaluate(() => window.__kq.step(1500));
+await yaw(Math.PI + 0.1); await shot("bike-side-riding");
+await page.evaluate(() => window.__kq.input("up", false));
+await page.evaluate(() => window.__kq.step(900));
+await page.evaluate(() => window.__kq.interact());
+await page.evaluate(() => window.__kq.step(500));
+console.log(JSON.stringify(await page.evaluate(() => [window.__kq.vehicles().mounted, window.__kq.state().pos])));
+// car side
+await page.evaluate(() => { window.__kq.place(-22, 4.1, Math.PI); window.__kq.step(300); });
+await page.evaluate(() => window.__kq.interact());
+await page.evaluate(() => window.__kq.step(600));
+await yaw(Math.PI + 0.3); await shot("car-side");
+await yaw(-Math.PI/2 + 0.4); await shot("car-front");
+await b.close();

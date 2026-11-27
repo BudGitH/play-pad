@@ -1,11 +1,14 @@
 /* ============================================================================
  * FILE: hud.js
- * PURPOSE: The in-game HUD of design option D ("Kid dock and needs ring"): clock + five-prayer
- *          strip (icons only on a phone), picture mission card (a one-line chip on a phone), dock
- *          (Missions, Map, Pray, Bag, Pause), coins, mute, minimap wrapped in the food / energy
- *          ring, joystick (push to the rim to run) + Jump, and the floating Talk button.
- *          One control per action: the minimap is a picture, not a second Map button; there is no
- *          Run button; the keyboard hints do not repeat the Pause button.
+ * PURPOSE: The in-game HUD of design option D ("Kid dock"), with the radar redesign: clock +
+ *          five-prayer strip (icons only on a phone; the whole card is the Pray button), picture
+ *          mission card (a one-line chip on a phone), a two-button dock (Missions, Bag), coins,
+ *          sound and Pause (top-right corner), a GTA-style round radar (a tap opens the full Map)
+ *          with the food / energy bars hanging under it, joystick (push to the rim to run) + Jump,
+ *          and the floating Talk button.
+ *          One control per action: Map = the radar, Pray = the prayer-time card, Pause = the corner
+ *          button, so the dock holds only the two menus that have no other home; there is no Run
+ *          button; the keyboard hints do not repeat the Pause button (shortcuts M, P, J, B, Esc).
  * BUSINESS CONTEXT: AC-10 (needs meters), AC-11 (tracker, minimap), AC-12 (context prompt within
  *   2 m), AC-15 (>= 48 px targets, DOM order = the keyboard focus order of the design: nearest
  *   action, clock and prayers, mission card, dock, mute, needs ring).
@@ -53,9 +56,10 @@
 
   /**
    * Build the clock + five-prayer status card (the first stop in the keyboard focus order after
-   * Talk).
+   * Talk). The whole card is a button: a tap, Enter or Space opens today's prayers (the Pray
+   * action), and a small "Pray >" chip says so.
    */
-  function buildStatus() {
+  function buildStatus(on) {
     R.prayers = {};
     R.clock = U.el(
       "span",
@@ -66,23 +70,42 @@
     R.nextp = U.el("span", { cls: "kq-nextp", text: "" });
     R.clockrow = U.el("div", { cls: "kq-clockrow" }, R.clock, R.nextp);
     const strip = U.el("div", { cls: "kq-prayers" }, PRAYERS.map(prayerItem));
+    R.prayGo = U.el(
+      "span",
+      { cls: "kq-pray-go", "aria-hidden": "true" },
+      P().icon("mosque"),
+      U.el("b", { text: "Pray" }),
+      P().icon("chevron"),
+    );
     R.status = U.el(
       "div",
       {
         cls: "kq-glass kq-status",
         id: "kqStatus",
         tabindex: "0",
-        role: "group",
+        role: "button",
+        title: "Open today's prayers (P)",
         "aria-label": "Clock and prayers",
       },
       R.clockrow,
       strip,
+      R.prayGo,
     );
-    bindToggle(R.status, R.status, "status");
+    bindPress(R.status, () => on("pray"));
     return R.status;
   }
 
-  /** On a phone a tap on the card (or Enter / Space on its toggle) opens / folds it; the read-to-me button is left alone. */
+  /** A tap, Enter or Space on a div-button runs `go` (the same keys a real button answers to). */
+  function bindPress(node, go) {
+    node.addEventListener("click", go);
+    node.addEventListener("keydown", function (e) {
+      if (e.target !== node || (e.key !== "Enter" && e.key !== " ")) return;
+      e.preventDefault();
+      go();
+    });
+  }
+
+  /** On a phone a tap on the mission card (or Enter / Space on its toggle) opens / folds it; the read-to-me button is left alone. */
   function bindToggle(card, toggle, which) {
     const go = () => G.HudLayout.toggle(which);
     card.addEventListener("click", function (e) {
@@ -138,101 +161,89 @@
     return b;
   }
 
-  /** Build the bottom dock (Missions, Map, Pray, Bag, Pause), with the missions badge. */
+  /**
+   * Build the bottom dock: Missions (with its count badge) and Bag. Map, Pray and Pause have their
+   * own homes (the radar, the prayer-time card, the corner button), so the dock stays two big,
+   * labelled buttons.
+   */
   function buildDock(on) {
     R.dockBtns = {};
     R.badge = U.el("i", { cls: "kq-badge", hidden: true, text: "" });
-    const mis = dockButton("missions", "Missions", "star", on);
+    const mis = dockButton("missions", "Missions", "missions", on);
     mis.appendChild(R.badge);
     R.dock = U.el(
       "div",
       { cls: "kq-dock", role: "group", "aria-label": "Menu" },
       mis,
-      dockButton("map", "Map", "map", on),
-      dockButton("pray", "Pray", "mosque", on),
-      dockButton("bag", "Bag", "bag", on),
-      dockButton("pause", "Pause", "pause", on),
+      dockButton("bag", "Bag", "backpack", on),
     );
     return R.dock;
   }
 
-  /** SVG arc path for one side of the needs ring: the left arc is food, the right arc is energy. */
-  function ringPath(side) {
-    const cx = 70;
-    const r = 62;
-    const a0 = side === "left" ? 105 : 75;
-    const a1 = side === "left" ? 255 : -75;
-    const pt = (a) => [
-      cx + r * Math.cos((a * Math.PI) / 180),
-      cx + r * Math.sin((a * Math.PI) / 180),
-    ];
-    const s = pt(a0);
-    const e = pt(a1);
-    const sweep = side === "left" ? 1 : 0;
-    return "M" + s[0] + " " + s[1] + " A" + r + " " + r + " 0 0 " + sweep + " " + e[0] + " " + e[1];
+  /**
+   * Build the round radar: a canvas the loop redraws (minimap.js) inside a button, so a tap or
+   * Enter opens the full map. A small map badge on the rim says it can be tapped.
+   */
+  function buildRadar(on) {
+    R.canvas = U.el("canvas", {
+      cls: "kq-minimap",
+      width: "256",
+      height: "256",
+      "aria-hidden": "true",
+    });
+    R.mapGo = U.el("span", { cls: "kq-map-go", "aria-hidden": "true" }, P().icon("map"));
+    R.radar = U.el(
+      "button",
+      {
+        type: "button",
+        cls: "kq-radar",
+        id: "kqMap",
+        title: "Open the map (M)",
+        "aria-label": "Map",
+        on: { click: () => on("map") },
+      },
+      R.canvas,
+      R.mapGo,
+    );
+    R.dockBtns.map = R.radar;
+    return R.radar;
+  }
+
+  /** One need row: icon, a coloured bar that drains, and its word (Food / Hungry, Energy / Tired). */
+  function needRow(kind, iconName, word) {
+    R[kind + "Fill"] = U.el("i", { cls: "kq-need-fill" });
+    R[kind + "Word"] = U.el("b", { cls: "kq-need-word", text: word });
+    R[kind + "Row"] = U.el(
+      "span",
+      { cls: "kq-need kq-" + kind },
+      P().icon(iconName),
+      U.el("span", { cls: "kq-need-bar" }, R[kind + "Fill"]),
+      R[kind + "Word"],
+    );
+    return R[kind + "Row"];
   }
 
   /**
-   * Build the needs-ring SVG: a track and a value arc per side, drawn with pathLength 100 so fill
-   * is a percentage.
+   * Build the food and energy bars that hang under the radar. One element, one spoken label (the
+   * numbers and the low notes), so a screen reader gets a sentence, not four fragments.
    */
-  function ringSvg() {
-    const ns = "http://www.w3.org/2000/svg";
-    const svg = document.createElementNS(ns, "svg");
-    svg.setAttribute("viewBox", "0 0 140 140");
-    svg.setAttribute("class", "kq-ring");
-    svg.setAttribute("aria-hidden", "true");
-    ["left", "right"].forEach(function (side) {
-      const track = document.createElementNS(ns, "path");
-      track.setAttribute("d", ringPath(side));
-      track.setAttribute("class", "kq-ring-track");
-      const val = document.createElementNS(ns, "path");
-      val.setAttribute("d", ringPath(side));
-      val.setAttribute("class", "kq-ring-val kq-ring-" + (side === "left" ? "food" : "energy"));
-      val.setAttribute("pathLength", "100");
-      val.setAttribute("stroke-dasharray", "0 100");
-      svg.appendChild(track);
-      svg.appendChild(val);
-      R["arc" + side] = val;
-    });
-    return svg;
-  }
-
-  /** Build the minimap canvas wrapped in the needs ring, with food and energy number chips. */
-  function buildMap() {
-    R.canvas = U.el("canvas", { cls: "kq-minimap", width: "200", height: "200" });
-    R.foodChip = U.el(
-      "span",
-      { cls: "kq-needchip kq-food" },
-      P().icon("bowl"),
-      (R.foodNum = U.el("b", { text: "85" })),
-    );
-    R.energyChip = U.el(
-      "span",
-      { cls: "kq-needchip kq-energy" },
-      P().icon("bolt"),
-      (R.energyNum = U.el("b", { text: "90" })),
-    );
-    R.ring = U.el(
+  function buildNeeds() {
+    R.needs = U.el(
       "div",
       {
-        cls: "kq-mapwrap",
+        cls: "kq-glass kq-needs",
         id: "kqNeeds",
         tabindex: "0",
         role: "img",
-        "aria-label": "Food 85, energy 90",
+        "aria-label": "Food 85 of 100, energy 90 of 100.",
       },
-      ringSvg(),
-      R.canvas,
-      R.foodChip,
-      R.energyChip,
+      needRow("food", "bowl", "Food"),
+      needRow("energy", "bolt", "Energy"),
     );
-    R.north = U.el("span", { cls: "kq-north", "aria-hidden": "true", text: "N" });
-    R.ring.appendChild(R.north);
-    return R.ring;
+    return R.needs;
   }
 
-  /** Build the coins chip and the mute button at the top right. */
+  /** Build the top-right column: a row of coins, sound and Pause, the radar, then the needs bars. */
   function buildTopRight(on) {
     R.coins = U.el(
       "span",
@@ -253,7 +264,21 @@
       },
       P().icon("sound"),
     );
-    R.topright = U.el("div", { cls: "kq-topright" }, R.coins, R.mute, buildMap());
+    R.pause = U.el(
+      "button",
+      {
+        type: "button",
+        cls: "kq-round kq-pause",
+        id: "kqDock-pause", // id kept from the dock days: tests and focus return use it
+        title: "Pause (Esc)",
+        "aria-label": "Pause",
+        on: { click: () => on("pause") },
+      },
+      P().icon("pause"),
+    );
+    R.dockBtns.pause = R.pause;
+    R.trRow = U.el("div", { cls: "kq-tr-row" }, R.coins, R.mute, R.pause);
+    R.topright = U.el("div", { cls: "kq-topright" }, R.trRow, buildRadar(on), buildNeeds());
     return R.topright;
   }
 
@@ -319,10 +344,11 @@
   /** Build the HUD into `host`. on(action) receives dock / button actions. */
   function build(host, on) {
     host.appendChild(buildTalk(on));
-    R.tl = U.el("div", { cls: "kq-tl" }, buildStatus(), buildMission());
+    R.tl = U.el("div", { cls: "kq-tl" }, buildStatus(on), buildMission());
     host.appendChild(R.tl);
     host.appendChild(buildDock(on));
     host.appendChild(buildTopRight(on));
+    R.dockBtns.pray = R.status; // the Pray action's focus home (focus returns here after a sheet)
     host.appendChild(buildTouch(on));
     host.appendChild(buildHints());
     host.appendChild((R.portrait = U.el("div", { cls: "kq-portrait" })));

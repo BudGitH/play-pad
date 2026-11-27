@@ -1,0 +1,30 @@
+import { chromium } from "@playwright/test";
+const out = "/tmp/claude-0/-home-user-play-pad/01e17b23-f583-5e92-861b-908001ed85c1/scratchpad";
+const browser = await chromium.launch({ executablePath: "/usr/bin/google-chrome", args: ["--use-gl=angle", "--enable-unsafe-swiftshader", "--no-sandbox"] });
+const [w, h, tag] = (process.argv[2] || "1180x820x").split("x");
+const page = await browser.newPage({ viewport: { width: +w, height: +h } });
+page.on("pageerror", (e) => console.log("PAGEERROR", e.message));
+page.on("console", (m) => m.type() === "error" && console.log("CONSOLE", m.text()));
+await page.goto("http://localhost:5598/games/kampung-quest/index.html?still=1&autoq=0&q=low");
+await page.waitForFunction(() => window.__kq?.loaded, null, { timeout: 90000 });
+await page.locator("#kq button.primary").first().click();
+await page.waitForFunction(() => window.__kq.ready, null, { timeout: 30000 });
+await page.evaluate(() => window.__kq.step(300));
+await page.evaluate(() => window.__kq.forcePrayer("subuh"));
+await page.evaluate(() => window.__kq.step(300));
+await page.evaluate(() => window.__kq.action("pray"));
+await page.locator(".kq-pray-here").click();
+await page.evaluate(() => window.__kq.step(300));
+await page.screenshot({ path: `${out}/wudu-${tag}.png` });
+let n = 0;
+while ((await page.evaluate(() => window.__kq.state().prayer.flow?.phase)) === "wudu") { await page.locator(".kq-wudu-act").click(); n++; if (n===3) await page.screenshot({ path: `${out}/wudu3-${tag}.png` }); }
+console.log("wudu presses", n);
+await page.evaluate(() => window.__kq.step(300));
+await page.screenshot({ path: `${out}/pray1-${tag}.png` });
+let p = 0;
+while ((await page.evaluate(() => window.__kq.state().prayer.flow?.phase)) === "pray") { await page.locator(".kq-step-next").click(); p++; if (p===2) await page.screenshot({ path: `${out}/pray2-${tag}.png` }); }
+console.log("prayer presses", p);
+await page.evaluate(() => window.__kq.step(300));
+console.log(JSON.stringify((await page.evaluate(() => window.__kq.state())).prayer.prayers.map(x=>x.name+":"+x.status)));
+await page.screenshot({ path: `${out}/praised-${tag}.png` });
+await browser.close();

@@ -24,6 +24,14 @@
     park: "#4f8a50",
   };
   let bg = null;
+  /** The Haramain map painter (bounds + paint) when that region is on, else null (the kampung town). */
+  const holyMap = () => (KQ.region === "haramain" && KQ.Holy && KQ.Holy.map) || null;
+  /** The world rectangle the cached background covers: the town square, or the holy map's bounds. */
+  function extent() {
+    const m = holyMap();
+    const h = m ? 0 : L().half;
+    return m ? m.bounds : { x0: -h, z0: -h, x1: h, z1: h };
+  }
 
   /** Fill a world-space rectangle {x0, z0, x1, z1} with a colour. */
   function rect(ctx, r, color) {
@@ -65,6 +73,8 @@
   /** The town drawn once into a cached offscreen canvas, reused by every minimap frame. */
   function background() {
     if (bg) return bg;
+    const hm = holyMap();
+    if (hm) return holyBackground(hm);
     const size = 512;
     bg = document.createElement("canvas");
     bg.width = bg.height = size;
@@ -73,6 +83,20 @@
     ctx.scale(size / (h * 2), size / (h * 2));
     ctx.translate(h, h);
     paintTown(ctx);
+    return bg;
+  }
+
+  /** The Haramain map drawn once at 1.5 pixels per metre. */
+  function holyBackground(hm) {
+    const k = 1.5;
+    const b = hm.bounds;
+    bg = document.createElement("canvas");
+    bg.width = Math.round((b.x1 - b.x0) * k);
+    bg.height = Math.round((b.z1 - b.z0) * k);
+    const ctx = bg.getContext("2d");
+    ctx.scale(k, k);
+    ctx.translate(-b.x0, -b.z0);
+    hm.paint(ctx);
     return bg;
   }
 
@@ -138,16 +162,16 @@
       ctx.arc(cw / 2, cw / 2, cw / 2 - 1, 0, 7);
       ctx.clip();
     }
-    const h = L().half;
+    const e = extent();
     const k = cw / view.span;
     ctx.fillStyle = "#1c2a1f";
     ctx.fillRect(0, 0, cw, cw);
     ctx.drawImage(
       background(),
-      cw / 2 + (-h - view.cx) * k,
-      cw / 2 + (-h - view.cz) * k,
-      h * 2 * k,
-      h * 2 * k,
+      cw / 2 + (e.x0 - view.cx) * k,
+      cw / 2 + (e.z0 - view.cz) * k,
+      (e.x1 - e.x0) * k,
+      (e.z1 - e.z0) * k,
     );
     view.markers.forEach((m) => marker(ctx, m, view, cw));
     heroArrow(ctx, cw, view.heading, view, view.hero);

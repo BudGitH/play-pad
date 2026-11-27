@@ -15,7 +15,21 @@
   "use strict";
   const G = (KQ.Game = KQ.Game || {});
   const U = G.U;
-  const HALL_SPOT = { x: -45, z: -33, heading: -Math.PI / 2 };
+  const KAMPUNG_HALL = { x: -45, z: -33, heading: -Math.PI / 2 };
+  /** The hero's prayer spot: the kampung mosque's, or the current holy city's (Haramain region). */
+  const hallNow = () =>
+    KQ.region === "haramain" && KQ.Holy && KQ.Holy.world ? KQ.Holy.HALL[KQ.Holy.world.city()] : KAMPUNG_HALL;
+  const HALL_SPOT = {
+    get x() {
+      return hallNow().x;
+    },
+    get z() {
+      return hallNow().z;
+    },
+    get heading() {
+      return hallNow().heading;
+    },
+  };
   const NAMES = () => KQ.Sim.Prayer.DISPLAY;
   const SUNAT = () => KQ.Sim.Prayer.SUNAT;
   /** A sunat prayer the hero wandered away from (this far from the hall, no screen open) is dropped. */
@@ -327,6 +341,7 @@
    */
   function frameHero(spot, yawOff, dist) {
     F.lastYawOff = yawOff;
+    F.lastFace = spot.faceYaw;
     F.lastDist = dist;
     const box = G.UI.state.sheet;
     const side = Boolean(box && box.parentElement.classList.contains("kq-sheet-side"));
@@ -399,23 +414,6 @@
     G.Audio.play(step.pose === "idle" || step.pose === "doa" ? "tap" : "splash");
     const res = prayer.wuduStep(step.id);
     if (res.ok && res.done) return finishWudu();
-    refreshWudu();
-  }
-
-  /**
-   * A wudu tile was picked: the right one acts, a wrong one gives a gentle hint with the next step
-   * named.
-   */
-  function wuduPick(i) {
-    const info = S().sim.prayer.state().flow;
-    if (!info || i === info.wuduIndex) return wuduAct();
-    const want = S().sim.prayer.nextWuduStep();
-    F.wudu.tried = i;
-    F.wudu.hint =
-      i < info.wuduIndex
-        ? "You did that one already. Well done! Next: " + want.label + "."
-        : "Nearly! Next: " + want.label + ".";
-    G.Audio.play("hint");
     refreshWudu();
   }
 
@@ -658,6 +656,39 @@
     if (tap) openWudu(tap);
   }
 
+  /**
+   * The heading that faces the qibla from a spot: from the region (KQ.Holy.qiblaAt, in Makkah and
+   * Madinah) when it knows, else the mosque hall's heading (the kampung's qibla is west).
+   */
+  function qiblaHeading(x, z) {
+    const holy = KQ.Holy;
+    const q = holy && typeof holy.qiblaAt === "function" ? holy.qiblaAt(x, z) : null;
+    if (typeof q === "number" && Number.isFinite(q)) return q;
+    if (q && Number.isFinite(q.x) && Number.isFinite(q.z)) return Math.atan2(q.x, q.z);
+    return HALL_SPOT.heading;
+  }
+
+  /** The spot the hero prays on when they start "right here": where they stand, facing the qibla. */
+  function heroHere() {
+    const p = S().player.pos;
+    return { x: p.x, z: p.z, y: S().world.heightAt(p.x, p.z), heading: qiblaHeading(p.x, p.z) };
+  }
+
+  /**
+   * "Wudu and prayer right here" (no walking): start the owed prayer (or the voluntary sunat one)
+   * and open its stepper where the hero stands. Used by the Pray card, so a child never has to
+   * find the taps or the hall to take part.
+   */
+  function startHere() {
+    const res = S().sim.prayer.startFlow(startable() || SUNAT());
+    if (!res.ok) return notNow(res.hint);
+    clearGuide();
+    quietCard();
+    const here = heroHere();
+    if (res.phase === "wudu") openWudu(null, here);
+    else openPray(here);
+  }
+
   /** A sunat prayer from the hall: straight to the prayer steps when still clean, else wudu first. */
   function sunatAtHall() {
     if (!S().sim.prayer.state().wuduClean) {
@@ -719,6 +750,7 @@
     return G.PrayerUI.dayCard({
       sim: S().sim,
       onWay: showWay,
+      onHere: startHere,
       onQada(name) {
         S().sim.prayer.startFlow(name);
         showWay();
@@ -860,12 +892,14 @@
     reset,
     state: F,
     screenOpen,
+    /** Key 1 presses Next on the open wudu / prayer card (the other number keys have no tile any more). */
     pickTile(i) {
-      if (!F.pui) return false;
-      const tile = F.pui.row.querySelectorAll(".kq-ptile")[i];
-      if (tile) tile.click();
-      return Boolean(tile);
+      const ui = F.pui || F.wui;
+      if (!ui || i !== 0 || !ui.ctl.nextBtn) return false;
+      ui.ctl.nextBtn.click();
+      return true;
     },
+    startHere,
     destination,
     isVoluntary,
     dueNow: () => Boolean(S().sim.prayer.due()),

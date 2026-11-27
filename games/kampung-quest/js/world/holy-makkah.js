@@ -129,6 +129,16 @@
     K().solid(c.colliders, m.x + 2.5, m.z + 0.8, m.x + 3.1, m.z + 1.2, "post");
   }
 
+  /** The hair salon kiosk on the plaza (tahallul: shave or trim after Umrah). */
+  function salon(c) {
+    const s = KQ.HOLY.makkah.hairSalon;
+    c.B.aabb("whitePlaster", s.x - 3, 0.1, s.z - 4.5, s.x + 3, 3.2, s.z - 1.5, 0xf6f1e4);
+    c.B.aabb("paint", s.x - 3.4, 3.2, s.z - 4.9, s.x + 3.4, 3.6, s.z - 1.0, 0x1f7a4d);
+    c.B.box("glass", s.x, 1.6, s.z - 1.45, 4.2, 1.8, 0.1, 0xffffff);
+    c.B.box("wood", s.x, 0.6, s.z - 1.1, 4.4, 0.5, 0.5, 0x8a6a44);
+    K().solid(c.colliders, s.x - 3.2, s.z - 4.7, s.x + 3.2, s.z - 1.0, "shop-wall");
+  }
+
   /** Mina: a grid of white tents with a gravel yard and aisles. */
   function mina(c) {
     const B = c.B;
@@ -201,6 +211,7 @@
     clockTower(c);
     hotels(c);
     busStop(c);
+    salon(c);
     mina(c);
     arafah(c, hills);
     muzdalifah(c);
@@ -210,5 +221,5 @@
     return { palms: palmSpots(), hills };
   }
 
-  P.HolyMakkah = { build, BOUNDS, ROADS };
+  P.HolyMakkah = { build, BOUNDS, ROADS, road };
 })((window.KQ = window.KQ || {}));

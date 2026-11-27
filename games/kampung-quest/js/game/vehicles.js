@@ -217,7 +217,8 @@
   function control(v, move, dt) {
     const sv = v.sim;
     const out = V.exiting ? IDLE : move;
-    SV().stepSpeed(sv, SV().throttleOf(out), dt);
+    if (V.exiting) SV().stopGently(sv, dt);
+    else SV().stepSpeed(sv, SV().throttleOf(out), dt);
     SV().stepHeading(sv, SV().steerOf(out), dt);
     const cap = SV().speedCap(sv, peopleNear(sv.x, sv.z));
     if (SV().brakeFor(sv, cap, dt)) V.braked += 1;

@@ -53,6 +53,12 @@
     exit: "M4 3h9v2H6v14h7v2H4zm11 4 5 5-5 5-1.4-1.4 2.6-2.6H9v-2h7.2l-2.6-2.6z",
     refresh:
       "M12 4a8 8 0 1 0 7.7 10h-2.1A6 6 0 1 1 12 6c1.7 0 3.2.7 4.2 1.8L13 11h7V4l-2.7 2.7A8 8 0 0 0 12 4z",
+    // HUD icons: a clipboard with a tick-list (Missions), a backpack (Bag), a chevron (tap to open)
+    missions:
+      "M8.5 1.5h7a1 1 0 0 1 1 1V5h-9V2.5a1 1 0 0 1 1-1zM6 4.5h12a2 2 0 0 1 2 2V20a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6.5a2 2 0 0 1 2-2zM7.5 10v2h2v-2zm4 0v2h5v-2zm-4 4v2h2v-2zm4 0v2h5v-2zm-4 4v1.5h2V18zm4 0v1.5h5V18z",
+    backpack:
+      "M9 5V4a3 3 0 0 1 6 0v1h-2V4a1 1 0 0 0-2 0v1zM7 6h10a3 3 0 0 1 3 3v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9a3 3 0 0 1 3-3zM8 10v1.6h8V10zm0 4v5h8v-5z",
+    chevron: "M8.6 5.4 15.2 12l-6.6 6.6-1.6-1.6L12 12 7 7z",
   };
 
   /**

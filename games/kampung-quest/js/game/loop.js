@@ -61,6 +61,7 @@
   function stepActors(dt) {
     const s = S();
     const P = s.player;
+    G.RitualFlow.update(dt); // auto-walk and the walked-round counter move the hero before the usual step
     const free = !G.UI.modalOpen() && !s.paused;
     const move = free ? G.Input.move() : { x: 0, y: 0, mag: 0, run: false };
     if (!G.Vehicles.update(dt, move, free)) {

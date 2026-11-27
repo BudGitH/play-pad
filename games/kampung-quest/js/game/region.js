@@ -83,7 +83,12 @@
         G.UI.btn("Stay here", { cls: "primary", onClick: () => h.close("same") }),
       ),
     );
-    const h = G.UI.openSheet({ el: box, label: "Change region", onClose: o && o.onClose, focus: ".kq-region-card" });
+    const h = G.UI.openSheet({
+      el: box,
+      label: "Change region",
+      onClose: o && o.onClose,
+      focus: ".kq-region-card",
+    });
     return h;
   }
 

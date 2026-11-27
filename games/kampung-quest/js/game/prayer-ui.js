@@ -20,11 +20,6 @@
     return window.innerWidth >= 700 && window.innerHeight >= 340;
   }
 
-  /** Which prayer panel to build: 'side' on wide screens, 'bottom' sheet otherwise. */
-  function panelVariant() {
-    return wantsSide() ? "side" : "bottom";
-  }
-
   /**
    * Create the Arabic, transliteration and English caption paragraphs on a host and return them in
    * order.
@@ -168,7 +163,11 @@
       title: step.label,
       how: wuduHow(step),
       texts: T().wuduTexts(step.id),
-      next: { label: last ? "Finish wudu" : "Next", cls: "kq-wudu-act", icon: last ? "check" : null },
+      next: {
+        label: last ? "Finish wudu" : "Next",
+        cls: "kq-wudu-act",
+        icon: last ? "check" : null,
+      },
     });
   }
 
@@ -240,16 +239,19 @@
     const acts = U.el("div", { cls: "kq-bubble-actions" });
     const go = (fn) => () => (G.UI.closeSheet("choice"), fn());
     const D = KQ.Sim.Prayer.DISPLAY;
+    acts.appendChild(
+      G.UI.btn("Wudu and pray right here", {
+        cls: "primary kq-pray-here",
+        icon: "drop",
+        onClick: go(o.onHere),
+      }),
+    );
     if (ps.flow || ps.due) {
-      acts.appendChild(
-        G.UI.btn("Show me the way", { cls: "primary", icon: "mosque", onClick: go(o.onWay) }),
-      );
+      acts.appendChild(G.UI.btn("Show me the way", { icon: "mosque", onClick: go(o.onWay) }));
     } else if (ps.qada.length) {
       const name = ps.qada[0].name;
       const label = "Pray " + D[name] + " (qada) now";
-      acts.appendChild(
-        G.UI.btn(label, { cls: "primary", icon: "mosque", onClick: go(() => o.onQada(name)) }),
-      );
+      acts.appendChild(G.UI.btn(label, { icon: "mosque", onClick: go(() => o.onQada(name)) }));
     }
     const later = ps.due || ps.qada.length ? "Later" : "Close";
     acts.appendChild(G.UI.btn(later, { icon: "close", onClick: () => G.UI.closeSheet("button") }));

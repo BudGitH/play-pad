@@ -219,8 +219,6 @@
       kids.push(reciteBlock(item, rs));
       kids.push(el("p", { cls: "kq-small kq-step-ref", text: item.ref }));
     }
-    if (card.counter) kids.push(counterBlock(card.counter));
-    if (card.note) kids.push(el("p", { cls: "kq-note", role: "status", text: card.note }));
     return kids;
   }
 
@@ -251,7 +249,10 @@
         }),
       ),
     );
-    return el("div", { cls: "kq-step-foot" }, next, row);
+    const top = [];
+    if (card.counter) top.push(counterBlock(card.counter));
+    if (card.note) top.push(el("p", { cls: "kq-note", role: "status", text: card.note }));
+    return el("div", { cls: "kq-step-foot" }, top, next, row);
   }
 
   /**

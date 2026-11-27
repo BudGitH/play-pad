@@ -74,5 +74,21 @@
     return item ? item.name : id;
   }
 
-  G.Names = { npc, poi, stepLabel, itemName, STALL, POI };
+  /** Words for a prayer strip entry's state (full phrase, e.g. for the Pray card and screen readers). */
+  const PRAYER_STATUS = {
+    done: "Prayed",
+    "qada-done": "Made up",
+    due: "Time to pray",
+    "in-progress": "Praying",
+    qada: "Make up (qada)",
+    upcoming: "Later",
+  };
+
+  /** The label for one prayer entry: "Prayed at home" for a prayer already past at game start, else by status. */
+  function prayerStatus(entry) {
+    if (entry.home) return "Prayed at home";
+    return PRAYER_STATUS[entry.status] || "Later";
+  }
+
+  G.Names = { npc, poi, stepLabel, itemName, prayerStatus, STALL, POI };
 })((window.KQ = window.KQ || {}));

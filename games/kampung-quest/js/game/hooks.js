@@ -88,6 +88,7 @@
       completed: sim.missions.completed(),
       stickers: sim.missions.stickers(),
       prayer: sim.prayer.state(),
+      hints: Object.assign(sim.hints.snapshot(), { foodMarker: Boolean(G.Nudge.markerPos()) }),
       outfit: sim.outfit,
       muted: G.Audio.isMuted(),
       quality: s.quality,

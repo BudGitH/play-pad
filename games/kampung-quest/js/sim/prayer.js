@@ -525,7 +525,11 @@
     };
   }
 
-  /** The strip view of an entry: name, HH:MM, status and flags (no internal fields). */
+  /**
+   * The strip view of an entry: name, HH:MM, status and flags (no internal fields). `home` is true
+   * for a prayer that was already past when the game began and counts as prayed at home (the UI
+   * says "Prayed at home", not "Prayed").
+   */
   function publicEntry(S, entry) {
     const clock = KQ.Sim.Clock;
     const hh = Math.floor((entry.startAbs % DAY) / 60);
@@ -537,6 +541,7 @@
       time: clock.pad2(hh) + ":" + clock.pad2(Math.floor(entry.startAbs % 60)),
       late: entry.late,
       prefilled: entry.prefilled,
+      home: entry.prefilled === true && entry.status === "done",
       rakaat: RAKAAT[entry.name],
     };
   }

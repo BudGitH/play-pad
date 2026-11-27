@@ -39,6 +39,7 @@
 
   /** The spoken state of one prayer for a screen reader (the strip shows it only as an icon and a colour). */
   function prayerState(entry) {
+    if (entry.home) return "prayed at home";
     if (entry.status === "done" || entry.status === "qada-done") return "done";
     if (entry.status === "due" || entry.status === "in-progress") return "now";
     return entry.status === "qada" ? "make up" : "not yet";
@@ -70,9 +71,31 @@
     });
   }
 
+  /** The spoken label of the needs ring: both numbers, plus a kind "low" note for a meter under the low line. */
+  function needsLabel(food, energy, needs) {
+    let text = "Food " + food + " of 100, energy " + energy + " of 100.";
+    if (needs.isHungry()) text += " Food low \u2014 time to eat.";
+    if (needs.isTired()) text += " Energy low \u2014 time to rest.";
+    return text;
+  }
+
   /**
-   * Refresh the food / energy numbers, the ring arcs and the ring's spoken label (only when a value
-   * changed).
+   * Give a meter that is under the low line a soft amber highlight (a pulsing ring; still under
+   * reduced motion): the chip and its ring arc get `is-low`. The words are in the ring's label.
+   */
+  function markLow(needs) {
+    const R = H().refs;
+    const hungry = needs.isHungry();
+    const tired = needs.isTired();
+    R.foodChip.classList.toggle("is-low", hungry);
+    R.arcleft.classList.toggle("is-low", hungry);
+    R.energyChip.classList.toggle("is-low", tired);
+    R.arcright.classList.toggle("is-low", tired);
+  }
+
+  /**
+   * Refresh the food / energy numbers, the ring arcs, the low highlight and the ring's spoken label
+   * (only when a value changed).
    */
   function updateNeeds(needs) {
     const R = H().refs;
@@ -80,12 +103,13 @@
     const energy = Math.round(needs.energy);
     H().setText("food", R.foodNum, String(food));
     H().setText("energy", R.energyNum, String(energy));
-    const f = food + "|" + energy;
+    const f = food + "|" + energy + "|" + needs.status();
     if (H().refs.lastNeeds === f) return;
     R.lastNeeds = f;
     R.arcleft.setAttribute("stroke-dasharray", food + " 100");
     R.arcright.setAttribute("stroke-dasharray", energy + " 100");
-    R.ring.setAttribute("aria-label", "Food " + food + " of 100, energy " + energy + " of 100");
+    R.ring.setAttribute("aria-label", needsLabel(food, energy, needs));
+    markLow(needs);
   }
 
   /**

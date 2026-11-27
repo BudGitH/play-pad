@@ -25,6 +25,7 @@
       clock: S.Clock.create({ times: KQ.PRAYER_TIMES }),
       prayer,
       needs: S.Needs.create(),
+      hints: S.Hints.create(),
       economy: S.Economy.create(),
       missions: S.Missions.create({ isPaused: () => prayer.isBlockingMissions() }),
       outfit: Object.assign({}, state.outfit),

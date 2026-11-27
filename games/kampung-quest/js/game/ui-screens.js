@@ -116,31 +116,23 @@
     return G.UI.openSheet({ el: box, label: "My bag", onClose: ctx.onClose });
   }
 
-  const STATUS_TEXT = {
-    done: "Prayed",
-    "qada-done": "Made up",
-    due: "Time to pray",
-    "in-progress": "Praying",
-    qada: "Make up (qada)",
-    upcoming: "Later",
-  };
-
   /** The five-prayer day strip: name, time, raka'at, status. */
   function dayStrip(sim) {
     const row = U.el("ol", { cls: "kq-day" });
     sim.prayer.state().prayers.forEach(function (p) {
       const st = p.status;
+      const words = G.Names.prayerStatus(p);
       row.appendChild(
         U.el(
           "li",
           {
-            cls: "kq-day-item is-" + st,
-            "aria-label": p.label + " " + p.time + ", " + p.rakaat + " rakaat, " + STATUS_TEXT[st],
+            cls: "kq-day-item is-" + st + (p.home ? " is-home" : ""),
+            "aria-label": p.label + " " + p.time + ", " + p.rakaat + " rakaat, " + words,
           },
           G.Pictures.icon(st === "done" || st === "qada-done" ? "check" : "mosque"),
           U.el("b", { text: p.label }),
           U.el("span", { cls: "kq-small", text: p.time + " · " + p.rakaat }),
-          U.el("span", { cls: "kq-small", text: STATUS_TEXT[st] }),
+          U.el("span", { cls: "kq-small", text: words }),
         ),
       );
     });

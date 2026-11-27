@@ -29,10 +29,10 @@
 | World extras  | `collectibles.js` (cans, litter, Mimi), `markers.js` (beacons, footprints, giver stars)                                                                                    |
 | HUD / UI      | `hud.js`, `hud-view.js`, `minimap.js`, `ui-core.js` (sheets, focus trap, toasts), `ui-dialogue.js`, `ui-menus.js`, `ui-screens.js`, `pictures.js`, `names.js`, `speech.js` |
 | Prayer        | `prayer-flow.js` (controller), `prayer-ui.js` (screens), `prayer-text.js` (dhikr, captions)                                                                                |
-| Play          | `interact.js`, `mission-flow.js`, `services.js`, `actions.js`                                                                                                              |
+| Play          | `interact.js`, `mission-flow.js`, `services.js`, `actions.js`, `nudge.js` (first-meal nudge + hawker beacon, food / energy low notes; decisions in `js/sim/hints.js`)      |
 | Sound         | `audio.js` (synth UI sounds, azan element, lifecycle gates)                                                                                                                |
 
-State lives in one object, `KQ.Game.S` (created in `boot.js`). The pure sim objects are `S.sim.{clock, prayer, needs, economy, missions}`.
+State lives in one object, `KQ.Game.S` (created in `boot.js`). The pure sim objects are `S.sim.{clock, prayer, needs, hints, economy, missions}`.
 
 ## Rules that are easy to break
 

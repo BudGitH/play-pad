@@ -17,6 +17,7 @@ export const SIM_FILES = [
   "clock",
   "prayer",
   "needs",
+  "hints",
   "economy",
   "missions-data",
   "missions",

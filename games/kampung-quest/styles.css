@@ -568,6 +568,24 @@ kbd {
 .kq-needchip b {
   color: var(--md-sys-color-on-surface);
 }
+/* a meter under the low line: a soft amber ring (never red); the pulse stops under reduced motion */
+.kq-needchip.is-low {
+  box-shadow: 0 0 0 3px #ffb74d;
+  animation: kq-low-pulse 2.2s ease-in-out infinite;
+}
+.kq-ring-val.is-low {
+  stroke: #ffb74d;
+  filter: drop-shadow(0 0 4px #ffb74d);
+}
+@keyframes kq-low-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 3px #ffb74d;
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(255, 183, 77, 0.35);
+  }
+}
 
 /* touch controls (shown on coarse pointers) and keyboard hints (fine pointers) */
 .kq-touch {

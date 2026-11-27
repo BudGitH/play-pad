@@ -93,20 +93,21 @@
   }
 
   /**
-   * Build the marker set: mission (pink) and mosque (green) beacons, the footprint trail and the
-   * giver-star store.
+   * Build the marker set: mission (pink), mosque (green) and hawker-centre (amber) beacons, the
+   * footprint trail and the giver-star store.
    */
   function create(scene) {
     const M = {
       mission: makeBeacon(0xff6b85),
       mosque: makeBeacon(0x30d158),
+      food: makeBeacon(0xff9f0a),
       trail: makeTrail(scene),
       starTex: starTexture(),
       trailPts: [],
       time: 0,
       stars: {},
     };
-    scene.add(M.mission, M.mosque);
+    scene.add(M.mission, M.mosque, M.food);
     return M;
   }
 
@@ -192,6 +193,7 @@
     const still = view.reduced;
     placeBeacon(M.mission, view.mission, view.missionY || 0, M.time, still);
     placeBeacon(M.mosque, view.mosque, view.mosqueY || 0, M.time, still);
+    placeBeacon(M.food, view.food, view.foodY || 0, M.time, still);
     M.trail.material.opacity = still ? 0.8 : 0.55 + Math.sin(M.time * 4) * 0.3;
     Object.keys(M.stars).forEach(function (id) {
       const spr = M.stars[id];

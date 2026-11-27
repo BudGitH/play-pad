@@ -85,6 +85,7 @@
     s.target = target;
     G.Interact.place(target, s.camera, s.size.w, s.size.h);
     G.PrayerFlow.update(dt);
+    G.Nudge.update(dt);
     if (s.uiT >= 0.12 || s.hudDirty) {
       s.uiT = 0;
       s.hudDirty = false;
@@ -105,11 +106,12 @@
     s.markerView = {
       mission: G.MissionFlow.targetPos(),
       mosque: mosque && { x: mosque.x, z: mosque.z },
+      food: G.Nudge.markerPos(),
       reduced: G.Settings.reduced(),
     };
   }
 
-  /** The minimap markers: the mission target, the mosque while a prayer is due or owed, the hawker centre and home. */
+  /** The minimap markers: the mission target, the mosque while a prayer is due or owed, the hawker centre (bigger while the first-meal nudge is on) and home. */
   function mapMarkers() {
     const s = S();
     const out = [];
@@ -122,7 +124,10 @@
     }
     const hk = s.world.pois.hawker.pos;
     const home = s.world.pois.home.pos;
-    out.push({ x: hk.x, z: hk.z, color: "#ff9f0a" }, { x: home.x, z: home.z, color: "#f4a8b8" });
+    out.push(
+      { x: hk.x, z: hk.z, color: "#ff9f0a", big: Boolean(G.Nudge.markerPos()) },
+      { x: home.x, z: home.z, color: "#f4a8b8" },
+    );
     return out;
   }
 

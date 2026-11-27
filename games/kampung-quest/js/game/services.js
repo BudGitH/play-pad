@@ -84,7 +84,10 @@
     G.MissionFlow.notify({ type: "buy", target: placeId, item: item.id });
     S().hudDirty = true;
     if (forMission) G.UI.toast("You are carrying " + item.name + " for the mission.", "good", 4200);
-    else if (item.hunger > 0) G.UI.toast("Sedap! Your food meter went up.", "good");
+    else if (item.hunger > 0) {
+      G.Nudge.onAte();
+      G.UI.toast("Sedap! Your food meter went up.", "good");
+    }
     happy("wave", 1.6);
     return { ok: true, hint: res.hint };
   }

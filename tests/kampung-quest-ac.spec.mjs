@@ -442,6 +442,116 @@ test.describe.serial("regressions of the QA fixes (one shared page)", () => {
   test("no console or page errors in the regression run", () => checkNoErrors(shared.problems));
 });
 
+/** Walk to the prata stall, open its menu with Talk and tap Roti prata. */
+async function buyPrata(page) {
+  await kq(page, () => window.__kq.teleport("stall_prata"));
+  await kq(page, () => window.__kq.interact());
+  await page
+    .locator(".kq-tile", { hasText: /Roti prata/ })
+    .first()
+    .click();
+}
+
+/** Finish Nenek's prata errand with real clicks (accept, buy, deliver) and close every dialogue. */
+async function completeNenekErrand(page) {
+  await acceptNenek(page);
+  await buyPrata(page);
+  await nearNpc(page, "nenek");
+  await kq(page, () => window.__kq.interact());
+  // close the thanks dialogue: press its primary button (Next, then the child's reply) until it is gone
+  for (let i = 0; i < 8 && (await state(page)).ui.modal; i += 1) {
+    await page.locator(".kq-bubble-actions button.primary").first().click();
+  }
+  expect((await state(page)).ui.modal, "every dialogue closed").toBeNull();
+  expect((await state(page)).completed).toContain("prata_for_nenek");
+}
+
+async function checkPrayedAtHome(page) {
+  const spoken = await kq(page, () =>
+    document.querySelector("#kqStatus").getAttribute("aria-label"),
+  );
+  expect(spoken).toMatch(/Subuh prayed at home/);
+  await page.locator("#kqDock-map").click();
+  await expect(page.locator(".kq-day")).toContainText("Prayed at home");
+  await expect(page.locator(".kq-day")).not.toContainText(/Prayed(?! at home)/);
+  await page.keyboard.press("Escape");
+}
+
+async function checkRingStillUnderReducedMotion(page) {
+  // reduced motion: the ring stays (a static amber outline), the pulse stops
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  const motion = await kq(page, () => {
+    const cs = getComputedStyle(document.querySelector(".kq-needchip.kq-food"));
+    return { name: cs.animationName, ring: cs.boxShadow };
+  });
+  expect(motion.name).toBe("none");
+  expect(motion.ring).not.toBe("none");
+}
+
+test("PM-01 a new player who finishes Nenek's errand is nudged to eat, can eat, and the marker clears", async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+  const problems = watchProblems(page);
+  await open(page);
+  expect((await state(page)).hints).toMatchObject({ nudged: false, ate: false, foodMarker: false });
+  await completeNenekErrand(page);
+  // a quiet moment after the reward: the nudge lands (step in small slices so its toast is still up)
+  for (let i = 0; i < 20 && !(await state(page)).hints.nudged; i += 1) await step(page, 500);
+  await expect(page.locator(".kq-toast", { hasText: /Tummy rumbling/ })).toBeVisible();
+  const nudged = await state(page);
+  expect(nudged.hints).toMatchObject({ nudged: true, ate: false, foodMarker: true });
+  const marker = await kq(page, () => window.KQ.Game.S.markerView.food);
+  const hawker = await kq(page, () => window.KQ.Game.S.world.pois.hawker.pos);
+  expect(marker, "a hawker beacon").toMatchObject({ x: hawker.x, z: hawker.z });
+  const dots = await kq(page, () => window.KQ.Game.Loop.mapView(70).markers);
+  expect(dots.some((m) => m.color === "#ff9f0a" && m.big)).toBe(true);
+  // the nudge is saved, so a reload never repeats it
+  await kq(page, () => window.KQ.Game.Loop.save());
+  const saved = await kq(page, () => JSON.parse(localStorage.getItem("kampung-quest:v1")).hints);
+  expect(saved).toMatchObject({ nudged: true, ate: false });
+  // eat with the coins the errand left
+  expect(nudged.coins).toBeGreaterThanOrEqual(2);
+  await buyPrata(page);
+  await step(page, 400);
+  const ate = await state(page);
+  expect(ate.hunger).toBeGreaterThan(nudged.hunger);
+  expect(ate.coins).toBeLessThan(nudged.coins);
+  expect(ate.hints).toMatchObject({ ate: true, foodMarker: false });
+  expect(await kq(page, () => window.KQ.Game.S.markerView.food ?? null)).toBeNull();
+  checkNoErrors(problems);
+});
+
+test("PM-01 a low meter gets a soft highlight and words, a one-time toast, and Subuh is 'Prayed at home'", async ({
+  page,
+}) => {
+  test.setTimeout(150_000);
+  await open(page);
+  await checkPrayedAtHome(page);
+  await kq(page, () => {
+    const g = window.KQ.Game.S.sim;
+    g.hints.noteAte(); // the first-meal nudge is not what this test is about
+    g.needs.restore({ hunger: 20, energy: 80 });
+  });
+  await step(page, 5000);
+  await expect(page.locator(".kq-toast", { hasText: /food meter is low/ })).toBeVisible();
+  await expect(page.locator("#kqNeeds")).toHaveAttribute(
+    "aria-label",
+    /Food low \u2014 time to eat/,
+  );
+  await expect(page.locator(".kq-needchip.kq-food")).toHaveClass(/is-low/);
+  await expect(page.locator(".kq-needchip.kq-energy")).not.toHaveClass(/is-low/);
+  // once a day: after the toast is gone and more time passes, it is not shown again
+  await kq(page, () => document.querySelectorAll(".kq-toast").forEach((n) => n.remove()));
+  await step(page, 8000);
+  await expect(page.locator(".kq-toast", { hasText: /food meter is low/ })).toHaveCount(0);
+  await checkRingStillUnderReducedMotion(page);
+  await kq(page, () => window.KQ.Game.S.sim.needs.restore({ hunger: 80, energy: 80 }));
+  await step(page, 400);
+  await expect(page.locator(".kq-needchip.kq-food")).not.toHaveClass(/is-low/);
+  await expect(page.locator("#kqNeeds")).not.toHaveAttribute("aria-label", /low/);
+});
+
 /** Browser-side: count "Another tab" toasts and the storage events (and the newest revision) this tab has seen. */
 function spyOnSaveWarnings() {
   window.__toasts = 0;

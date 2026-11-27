@@ -6,8 +6,8 @@
  *   Risk (requirements NFR): the save is UNTRUSTED input - it is parsed, schema-checked,
  *   numbers are clamped, unknown ids are dropped, and only known keys are ever read
  *   (so a hand-crafted "__proto__" key or "1e999" number cannot do harm).
- * DEPENDENCIES: optional KQ.Sim.Prayer / KQ.Sim.Missions / KQ.Sim.Economy for the
- *   sub-schemas (load order: ids, clock, prayer, needs, economy, missions, schedule, save).
+ * DEPENDENCIES: optional KQ.Sim.Prayer / KQ.Sim.Missions / KQ.Sim.Economy / KQ.Sim.Hints for the
+ *   sub-schemas (load order: ids, clock, prayer, needs, hints, economy, missions, schedule, save).
  * HOW TO TEST: npm run test:kq (tests/kampung-quest/save.test.mjs)
  * ========================================================================== */
 (function (KQ) {
@@ -56,6 +56,7 @@
       needs: { hunger: 85, energy: 90 },
       missions: { active: null, completed: [], stickers: [] },
       prayers: null,
+      hints: { nudged: false, ate: false, foodDay: 0, energyDay: 0 },
       outfit: Object.assign({}, DEFAULT_OUTFIT),
       pos: null,
       settings: { muted: false, quality: "med" },
@@ -73,6 +74,12 @@
   function cleanPrayers(raw) {
     const prayer = KQ.Sim.Prayer;
     return prayer && prayer.sanitizeSnapshot ? prayer.sanitizeSnapshot(raw) : null;
+  }
+
+  /** Sanitise the saved hints section (what was already nudged); a save from before hints gets the defaults. */
+  function cleanHints(raw) {
+    const hints = KQ.Sim.Hints;
+    return hints && hints.sanitize ? hints.sanitize(raw) : defaultState().hints;
   }
 
   /** Whitelist the saved hair and hat against the known outfit options. */
@@ -144,6 +151,7 @@
       },
       missions: cleanMissions(raw.missions),
       prayers: cleanPrayers(raw.prayers),
+      hints: cleanHints(raw.hints),
       outfit: cleanOutfit(raw.outfit),
       pos: cleanPos(raw.pos),
       settings: {
@@ -229,7 +237,7 @@
     return true;
   }
 
-  /** Build a save state from the live sim modules: { clock, economy, needs, missions, prayer, outfit, pos, settings }. */
+  /** Build a save state from the live sim modules: { clock, economy, needs, missions, prayer, hints, outfit, pos, settings }. */
   function capture(sim) {
     const base = defaultState();
     return {
@@ -240,6 +248,7 @@
       needs: sim.needs.snapshot(),
       missions: sim.missions.snapshot(),
       prayers: sim.prayer ? sim.prayer.snapshot() : null,
+      hints: sim.hints ? sim.hints.snapshot() : base.hints,
       outfit: sim.outfit || base.outfit,
       pos: sim.pos || null,
       settings: sim.settings || base.settings,
@@ -254,6 +263,7 @@
     sim.needs.restore(state.needs);
     sim.missions.restore(state.missions);
     if (sim.prayer && state.prayers) sim.prayer.restore(state.prayers);
+    if (sim.hints) sim.hints.restore(state.hints);
   }
 
   /** The revision this tab holds (for the cross-tab `storage` listener). */

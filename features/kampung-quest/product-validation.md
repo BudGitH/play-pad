@@ -28,9 +28,10 @@
 
 ## 5A — Senior PM review (business requirements)
 
-| Round | Verdict        | Blocking issues | Notes                                                                                                                                               |
-| ----- | -------------- | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1     | NEEDS_REVISION | 1 HIGH          | Live run (1280x720 + iPhone 13 portrait): mission, azan, wudu, prayer, reload mid-prayer and no-WebGL all fine; nothing nudged a new player to eat. |
+| Round | Verdict        | Blocking issues | Notes                                                                                                                                                                                                                                                                                            |
+| ----- | -------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1     | NEEDS_REVISION | 1 HIGH          | Live run (1280x720 + iPhone 13 portrait): mission, azan, wudu, prayer, reload mid-prayer and no-WebGL all fine; nothing nudged a new player to eat.                                                                                                                                              |
+| 2     | PASS           | 0               | Live re-run as a new player on 1280x720 and a 390x844 touch phone: nudge → hawker marker → meal → marker clears; low-food cue; "Prayed at home"; full Zohor gives the sticker and no coins (10 → 10); 0 console errors. One LOW: the portrait turn hint sits close to the nudge toast (→ IDEAS). |
 
 **Issues (round 1) and what was done:**
 
@@ -42,7 +43,7 @@
 - **[MEDIUM]** Stale screenshots and an unfilled validation record → Phase 5 inputs → **Fixed:** 21 screenshots retaken (18bef6a), this record filled.
 - **[MEDIUM]** Qada UI, the four service sheets and the blocked-storage notice are covered only by unit tests → AC-9 / AC-10 → handed to the persona panel to exercise live; browser probes stay in `docs/IDEAS.md`.
 
-**Evidence anchor (round 1):** "within one 48-minute game day, a new player completes ≥ 1 mission, eats ≥ 1 meal and completes ≥ 1 full prayer flow without help" (`requirements.md`).
+**Evidence anchor (rounds 1 and 2):** "within one 48-minute game day, a new player completes ≥ 1 mission, eats ≥ 1 meal and completes ≥ 1 full prayer flow without help" (`requirements.md`).
 
 ---
 

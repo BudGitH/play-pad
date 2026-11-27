@@ -63,10 +63,7 @@
       .map((k) => [k, F.POSES[k]]),
   );
 
-  /** The pose function for a name; unknown names fall back to idle. */
-  function poseFn(name) {
-    return POSE_MAP.get(name) || POSE_MAP.get("idle");
-  }
+  const IDLE = F.POSES.idle;
 
   /**
    * Pose a rig.
@@ -76,8 +73,9 @@
    * @param {number} [weight=1] 0..1 blend from the rig's current state toward the pose
    */
   F.pose = function (rig, name, phase01, weight) {
-    const fn = poseFn(name);
-    const P = fn(phase01 || 0, rig.dims);
+    const found = POSE_MAP.get(name);
+    const P =
+      typeof found === "function" ? found(phase01 || 0, rig.dims) : IDLE(phase01 || 0, rig.dims);
     const w = weight === undefined ? 1 : Math.max(0, Math.min(1, weight));
     const parts = F.POSE_PARTS;
     parts.JOINTS.forEach(function (k) {

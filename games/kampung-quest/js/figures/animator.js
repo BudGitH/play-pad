@@ -54,13 +54,18 @@
   }
 
   /**
-   * The pose function for a name: only the pose table's own entries count (never an inherited
-   * property such as "constructor"); anything else falls back to idle.
+   * Pose functions by name, built once: poses.js and prayer-poses.js load before this file, so the
+   * table is complete here. A Map lookup never reaches an inherited property such as "constructor".
    */
+  const POSE_MAP = new Map(
+    Object.keys(F.POSES)
+      .filter((k) => typeof F.POSES[k] === "function")
+      .map((k) => [k, F.POSES[k]]),
+  );
+
+  /** The pose function for a name; unknown names fall back to idle. */
   function poseFn(name) {
-    const own = Object.prototype.hasOwnProperty.call(F.POSES, name);
-    const fn = own ? F.POSES[name] : null;
-    return typeof fn === "function" ? fn : F.POSES.idle;
+    return POSE_MAP.get(name) || POSE_MAP.get("idle");
   }
 
   /**

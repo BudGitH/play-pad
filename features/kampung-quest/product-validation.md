@@ -1,10 +1,10 @@
-# Product Validation: <feature name>
+# Product Validation: Kampung Quest
 
 > **Phase 5 output.** Produced _after_ technical QA (`qa-report.md`) is PASS. This is the **product gate**: the feature is not "done" until this is PASS. Built from the Senior PM review (5A), the persona panel (5B), and any round-table sessions (5C). All roles are spawned from `docs/PRODUCT-PANEL.md` — no external skill or tool required.
 
-**Feature:** <feature name>
-**Ticket:** PLAY-\_\_\_
-**Run at:** 2026-11-21 (round 1)
+**Feature:** Kampung Quest (`games/kampung-quest/`)
+**Ticket:** PLAY-013
+**Run at:** 2026-11-26 (5A round 1), 2026-11-27 (5A round 2, 5B)
 **Overall product gate:** ☐ PASS ☐ BLOCKED ☐ BLOCKED — ESCALATED
 
 ---
@@ -28,15 +28,21 @@
 
 ## 5A — Senior PM review (business requirements)
 
-| Round | Verdict                 | Blocking issues | Notes |
-| ----- | ----------------------- | --------------- | ----- |
-| 1     | _PASS / NEEDS_REVISION_ | _n_             | _..._ |
+| Round | Verdict        | Blocking issues | Notes                                                                                                                                               |
+| ----- | -------------- | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1     | NEEDS_REVISION | 1 HIGH          | Live run (1280x720 + iPhone 13 portrait): mission, azan, wudu, prayer, reload mid-prayer and no-WebGL all fine; nothing nudged a new player to eat. |
 
-**Issues (latest round):**
+**Issues (round 1) and what was done:**
 
-- **[CRITICAL/HIGH/MEDIUM]** _what's wrong_ → violates _which business requirement_ → _recommended change_.
+- **[HIGH]** No guided path to "eat a meal"; the HUD never signalled hunger → success metric ("eats ≥ 1 meal … without help") → **Fixed (18bef6a):** a one-time first-day nudge after the first mission (or 10:00) with a hawker beacon and minimap dot that clear on eating; soft amber low-meter ring with aria words and one toast per day.
+- **[MEDIUM]** Subuh shown as "Prayed" at start without player action → rules 2 and 5 → **Owner decision:** keep it done, labelled "Prayed at home" (built in 18bef6a; `docs/DECISIONS.md`).
+- **[MEDIUM]** Open owner decisions → rule 5 →
+  - Coins for prayer: **owner decision**, sticker and praise only, no coins (`docs/DECISIONS.md`).
+  - Religious read-through and the azan audition on a real phone: **still with the owner** (release conditions).
+- **[MEDIUM]** Stale screenshots and an unfilled validation record → Phase 5 inputs → **Fixed:** 21 screenshots retaken (18bef6a), this record filled.
+- **[MEDIUM]** Qada UI, the four service sheets and the blocked-storage notice are covered only by unit tests → AC-9 / AC-10 → handed to the persona panel to exercise live; browser probes stay in `docs/IDEAS.md`.
 
-**Evidence anchor:** _one quote from `requirements.md` / `PROJECT.md` the verdict turns on._
+**Evidence anchor (round 1):** "within one 48-minute game day, a new player completes ≥ 1 mission, eats ≥ 1 meal and completes ≥ 1 full prayer flow without help" (`requirements.md`).
 
 ---
 

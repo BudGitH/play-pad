@@ -718,3 +718,24 @@ test("all child-facing hints avoid scolding language", () => {
     assert.doesNotMatch(hint, /wrong|fail|bad|penalt|punish|stupid|sin\b/i);
   }
 });
+
+test("owner rule: finishing a prayer or a qada grants the star sticker and never any coins", () => {
+  const { Economy, Missions } = KQ.Sim;
+  assert.equal(Economy.PRAYER_REWARD_COINS, undefined, "no prayer coin reward is defined");
+  const prayer = started();
+  const wallet = Economy.create({ coins: 7 });
+  const missions = Missions.create();
+  goTo(prayer, "13:00");
+  goTo(prayer, "16:30");
+  for (const name of ["asar", "zohor"]) {
+    const begin = prayer.startFlow(name);
+    if (begin.phase === "wudu") doWudu(prayer);
+    const done = doPrayer(prayer, name).result;
+    const award = missions.awardPrayer(done.name);
+    assert.equal(award.coins, 0, done.kind + " pays no coins");
+    assert.equal(award.newSticker, true, done.kind + " grants the " + name + " star");
+    assert.ok(missions.stickers().includes("prayer_" + name), name);
+    assert.equal(wallet.coins, 7, done.kind + " leaves the purse untouched");
+  }
+  assert.equal(missions.awardPrayer("zohor").newSticker, false, "a star is only given once");
+});

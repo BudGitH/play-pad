@@ -487,26 +487,20 @@
   }
 
   /**
-   * The prayer is done: pay the coin reward and sticker, then show the praise card and release the
-   * hero when it closes.
+   * The prayer is done: award the star sticker (never coins), then show the praise card and release
+   * the hero when it closes.
    */
   function completePrayer(result) {
     const sim = S().sim;
-    sim.economy.add(KQ.Sim.Economy.PRAYER_REWARD_COINS);
-    const sticker = sim.missions.grantSticker(KQ.Sim.Missions.prayerSticker(result.name));
+    const award = sim.missions.awardPrayer(result.name);
     F.completing = true;
     G.UI.closeSheet("done");
     F.completing = false;
     clearGuide();
     G.Audio.play("bell");
     S().player.forcedPose = "doa";
-    const lines = [
-      result.praise,
-      "You earned " +
-        KQ.Sim.Economy.PRAYER_REWARD_COINS +
-        " coins" +
-        (sticker ? " and a " + NAMES()[result.name] + " star sticker." : "."),
-    ];
+    const lines = [result.praise];
+    if (award.newSticker) lines.push("You got a " + NAMES()[result.name] + " star sticker.");
     G.Menus.card({
       title: "You prayed " + NAMES()[result.name] + "!",
       variant: "bubble",

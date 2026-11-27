@@ -274,9 +274,16 @@ async function checkPrayerFlow(page) {
   await page.keyboard.press("e");
   await expect(page.getByRole("dialog", { name: "Prayer steps" })).toBeVisible();
   await expectGentleHint(page, ".kq-ptile");
+  const coinsBefore = (await state(page)).coins;
   const taps = await prayAllSteps(page);
   expect(taps).toBe(29); // Zohor: 4 raka'at (KQ.Sim.Prayer plan size)
   const done = await state(page);
+  // owner rule: a prayer earns a star sticker and never coins, and the praise card says so
+  expect(done.coins, "praying pays no coins").toBe(coinsBefore);
+  expect(await kq(page, () => window.KQ.Game.S.sim.missions.stickers())).toContain("prayer_zohor");
+  const card = page.getByRole("dialog", { name: /You prayed/ });
+  await expect(card).toContainText("star sticker");
+  await expect(card).not.toContainText(/coin/i);
   expect(done.prayer.prayers.find((p) => p.name === "zohor").status).toBe("done");
   expect(done.prayer.flow).toBeNull();
   expect(await kq(page, () => window.KQ.Game.S.sim.missions.isPausedNow())).toBe(false);
@@ -340,16 +347,33 @@ function azanFor(name) {
   return st.ui.azanCard && st.prayer.due === name && st.prayer.blocking;
 }
 
+/** Pause or resume the game the way the Pause menu does (the higher tiers are built while paused). */
+const setPaused = (page, on) => kq(page, (v) => window.KQ.Game.Loop.setPaused(v), on);
+
+/**
+ * R3-PERF-01: the loader compiles only the start tier and those below it; the higher tiers are
+ * built while the Pause menu is open. After that warm-up, no tier change compiles a program.
+ */
 async function checkNoRecompile(page) {
   await step(page, 1000);
   const programs = async () => (await kq(page, () => window.__kq.stats())).programs;
   const p0 = await programs();
   expect(p0, "the loader compiled shaders").toBeGreaterThan(10);
-  for (const tier of ["med", "high", "low"]) {
-    await kq(page, (t) => window.KQ.Game.Loop.setQuality(t), tier);
-    await step(page, 700);
-    expect((await state(page)).quality).toBe(tier);
-    expect(await programs(), `switching to ${tier} must not compile a shader program`).toBe(p0);
+  await setPaused(page, true);
+  try {
+    await expect
+      .poll(programs, { message: "pausing builds the higher tiers", timeout: 20_000 })
+      .toBeGreaterThan(p0);
+    await page.waitForTimeout(2500); // one tier per 500 ms tick: both higher tiers are done
+    const p1 = await programs();
+    for (const tier of ["med", "high", "low"]) {
+      await kq(page, (t) => window.KQ.Game.Loop.setQuality(t), tier);
+      await step(page, 700);
+      expect((await state(page)).quality).toBe(tier);
+      expect(await programs(), `switching to ${tier} must not compile a shader program`).toBe(p1);
+    }
+  } finally {
+    await setPaused(page, false); // the page is shared with the later tests
   }
 }
 
@@ -429,7 +453,7 @@ test.describe.serial("regressions of the QA fixes (one shared page)", () => {
   test.afterAll(async () => {
     await shared.page?.close();
   });
-  test("R2-PERF-01/04 low -> med -> high -> low never compiles a shader program", () =>
+  test("R2-PERF-01/04 after the pause-menu warm-up, tier changes compile no shader program", () =>
     checkNoRecompile(shared.page));
   test("ACC2-01 setMinute resets the azan card only when the tracker rebuilt", () =>
     checkSetMinuteKeepsAzan(shared.page));

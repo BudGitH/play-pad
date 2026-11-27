@@ -231,8 +231,17 @@
     new MutationObserver(fitTalk).observe(R.lane, { childList: true });
     placeCoins();
     syncCompact();
+  }
+
+  /**
+   * Show the 'turn sideways' hint for the first 12 s of play. Armed at Start, not at HUD build, so a
+   * fast load does not use up the hint behind the loading screen.
+   */
+  function armTurnHint() {
+    if (L.turnArmed) return;
+    L.turnArmed = true;
     setTimeout(dismissTurn, 12000);
   }
 
-  G.HudLayout = { init, measure, fitTalk, dismissTurn, toggle, peek };
+  G.HudLayout = { init, measure, fitTalk, dismissTurn, armTurnHint, toggle, peek };
 })((window.KQ = window.KQ || {}));

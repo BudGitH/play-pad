@@ -142,7 +142,6 @@
     cleanCoins,
     START_COINS,
     MAX_COINS,
-    PRAYER_REWARD_COINS: 3,
   };
   KQ.Sim.MENU = MENU;
   KQ.Sim.SHOP = SHOP;

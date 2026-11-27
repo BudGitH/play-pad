@@ -1879,6 +1879,18 @@ kbd {
   .kq-root.kq-no-turn {
     --kq-turn-h: 0px;
   }
+  /* an open status card or the azan takes the hint's room: hide the hint so the toast lane stays
+     clear of the joystick and the azan card */
+  .kq-root:has(.kq-status.is-open),
+  .kq-root.kq-azan-bar,
+  .kq-root.kq-azan-full {
+    --kq-turn-h: 0px;
+  }
+  .kq-root:has(.kq-status.is-open) .kq-portrait,
+  .kq-root.kq-azan-bar .kq-portrait,
+  .kq-root.kq-azan-full .kq-portrait {
+    display: none;
+  }
   .kq-portrait {
     display: block;
   }

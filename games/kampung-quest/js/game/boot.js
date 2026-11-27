@@ -121,7 +121,7 @@
   /**
    * Build one quality tier's shader variants: the world's look and light count, the figures that
    * cast shadows on that tier, a compile of everything, and one tiny render that also builds the
-   * shadow-depth programs (renderer.compile does not).
+   * shadow-depth programs (renderer.compile does not). Leaves the scene on that tier.
    */
   function compileTier(s, tier) {
     s.quality = tier;
@@ -133,12 +133,14 @@
   }
 
   /**
-   * Compile every shader program of EVERY tier behind the loading screen (hero, NPCs, markers and
-   * the world's variants, depth programs included), so Start, the first walk to a new area, an
-   * auto-downgrade and a manual upgrade in the settings never freeze on a compile (PERF-08,
-   * R2-PERF-01, R2-PERF-04). The start tier goes last so it is the state the game begins in. The
+   * Compile the shader programs the auto-downgrade can reach behind the loading screen: the start
+   * tier and every tier BELOW it (Loop.monitor only ever drops tiers), so Start, the first walk to
+   * a new area and a downgrade never freeze on a compile (PERF-08, R2-PERF-01, R2-PERF-04). Higher
+   * tiers are only reached by a manual settings change and are built later by compileAbove, which
+   * keeps the loader short (R3-PERF-01: compiling all three tiers tripled the load time). The
    * canvas is shrunk while doing it (programs do not depend on size) and the hero, hidden until
-   * Start, is shown so its meshes are drawn too.
+   * Start, is shown so its meshes are drawn too. One frame is yielded between tiers so the loading
+   * screen keeps painting; the start tier goes last so it is the state the game begins in.
    */
   async function precompile(s) {
     BU().setProgress(0.82, "Getting the shaders ready...");
@@ -147,11 +149,42 @@
     const heroShown = s.player.group.visible;
     s.player.group.visible = true;
     s.renderer.setSize(2, 2, false);
-    TIERS.filter((t) => t !== start)
-      .concat(start)
-      .forEach((tier) => compileTier(s, tier));
+    const order = TIERS.slice(0, TIERS.indexOf(start)).concat(start);
+    for (const tier of order) {
+      compileTier(s, tier);
+      await nextFrame();
+    }
     s.player.group.visible = heroShown;
     G.Loop.resize();
+  }
+
+  /**
+   * Compile one tier that the loader skipped, then put the scene back on the tier in play. Runs
+   * between frames, so no half-set state is ever drawn: the tier, the figures' shadows and the
+   * renderer size are restored before the next rAF.
+   */
+  function compileOther(s, tier) {
+    const keep = s.quality;
+    s.renderer.setSize(2, 2, false);
+    compileTier(s, tier);
+    s.quality = keep;
+    s.world.setQuality(keep);
+    G.Loop.figureShadows(s);
+    G.Loop.resize();
+  }
+
+  /**
+   * Build the tiers ABOVE the start tier after Start, one per tick, only while the Pause menu is
+   * open (the game is stopped, so the one-off compile is hidden behind the menu) or never at all if
+   * the player stays in the game. A manual upgrade made before that just compiles on the spot.
+   * Stops by itself once every tier is built.
+   */
+  function compileAbove(s, start) {
+    const todo = TIERS.slice(TIERS.indexOf(start) + 1);
+    const timer = setInterval(function () {
+      if (!todo.length) clearInterval(timer);
+      else if (s.started && s.paused && !s.hidden) compileOther(s, todo.shift());
+    }, 500);
   }
 
   /** Poll a condition every 80 ms until it holds or the time runs out; resolves with the final answer. */
@@ -268,6 +301,7 @@
     const state = fresh || saved.status !== "loaded" ? KQ.Sim.Save.defaultState() : saved.state;
     if (fresh) state.settings.quality = s.quality;
     launch(s, state);
+    G.HudLayout.armTurnHint();
   }
 
   /** The "Continue: day N, HH:MM" text for the title screen, empty for a new game. */
@@ -319,6 +353,7 @@
     const refs = BU().refs;
     refs.start.addEventListener("click", () => begin(s, saved, false));
     refs.newGame.addEventListener("click", () => begin(s, saved, true));
+    compileAbove(s, s.quality);
     G.Boot.ready = true;
   }
 

@@ -59,6 +59,19 @@
     return !step.item || !event.item || step.item === event.item;
   }
 
+  /** The sticker id for a prayer's star. */
+  function prayerStickerId(name) {
+    return "prayer_" + name;
+  }
+
+  /**
+   * The reward for finishing a prayer or a qada: the prayer's star sticker and NEVER coins (owner
+   * decision: worship does not earn in-game money). Returns `{ coins: 0, newSticker }`.
+   */
+  function awardPrayer(M, name) {
+    return { coins: 0, newSticker: grantStickers(M, [prayerStickerId(name)]).length === 1 };
+  }
+
   /** Add known stickers the hero does not own yet, returning only the newly added ones. */
   function grantStickers(M, ids) {
     const added = [];
@@ -222,6 +235,7 @@
       completed: () => M.completed.slice(),
       stickers: () => M.stickers.slice(),
       grantSticker: (id) => grantStickers(M, [id]).length === 1,
+      awardPrayer: (name) => awardPrayer(M, name),
       snapshot: () => ({
         active: M.active ? Object.assign({}, M.active) : null,
         completed: M.completed.slice(),
@@ -294,7 +308,7 @@
     stepReply,
     completionLines,
     replyLabel,
-    prayerSticker: (name) => "prayer_" + name,
+    prayerSticker: prayerStickerId,
   };
 })(
   ((typeof window !== "undefined" ? window : globalThis).KQ =

@@ -1,6 +1,6 @@
 /* Kampung Quest — street furniture and play (KQ.WorldParts.Props): playground on soft rubber
-   flooring, covered linkways, bus stop shelter, recycling bins, park benches and paths, the
-   carpark, parked cars (static, instanced) and the paved plazas that join it all up. */
+   flooring, covered linkways, bus stop shelter and recycling bins. (Parked cars, bicycles and
+   scooters are the drivable vehicles in game/vehicles.js, not static decor.) */
 (function (KQ) {
   "use strict";
   const P = (KQ.WorldParts = KQ.WorldParts || {});

@@ -19,7 +19,7 @@
 
 - **Business outcome:** a child (or parent) can complete a tawaf and a sa'i without help, the world looks and feels lived in, and the player can personalise the hero, without losing the phone budget or the religious-accuracy and child-safety rules.
 - **Success metric:** every AC below passes in CI; low-tier draw calls stay under 400 in every audited view with all five features on (measured 100-230); no console errors in any region; all existing suites stay green.
-- **Must-have business rules:** no violence, no fail state, no scolding (hints are gentle); modest clothes only (long sleeves or knee-length shorts, ihram overrides the wardrobe); the default hero look keeps the colour family; vehicles never hurt anyone; CC0 / permissive assets with credits; text enters the DOM only through `textContent`; the save is untrusted input.
+- **Must-have business rules:** no violence, no fail state, no scolding (hints are gentle); modest clothes only (long sleeves, sleeves to the elbow or knee-length shorts, ihram overrides the wardrobe; the one documented exception is the classic jacket, which has bare arms because it is the hero's own default look and is never repainted); the default hero look keeps the colour family; vehicles never hurt anyone; CC0 / permissive assets with credits; text enters the DOM only through `textContent`; the save is untrusted input.
 
 ## Target personas & success bar
 
@@ -52,7 +52,7 @@
 - [x] **AC-R3 (gentle hints):** the hint names the start line first, then "keep the Kaaba on the left"; clockwise gets "Other way, please"; never red, never a fail state.
 - [x] **AC-R4 (calm pace):** Walk for me is about 30 s a round (2.8 m/s) and the guide stays up while it walks; counting accepts a wide start line (35 degrees) and counts a round slightly early (26 degrees); both rites still count by hand.
 - [x] **AC-R5 (tailor):** the Butik (Singapore), Makkah and Madinah each have a stall that opens the wardrobe; try-on is live, Cancel / Escape undoes it, Save persists through a reload, focus stays inside the sheet.
-- [x] **AC-R6 (wardrobe data):** 8 outfits x 8 colours, all modest; the choice is sanitised (unknown ids, hostile data fall back); the look is shared across regions via its own key, New game clears it; the default classic look in royal blue is never repainted; ihram overrides and restores the look.
+- [x] **AC-R6 (wardrobe data):** 8 outfits x 8 colours, all modest (the classic jacket's bare arms are the documented exception: it is the hero's default look); the choice is sanitised (unknown ids, hostile data fall back); the look is shared across regions via its own key, New game clears it; the default classic look in royal blue is never repainted; ihram overrides and restores the look.
 - [x] **AC-R7 (phone wardrobe):** on a portrait phone the wardrobe is a bottom sheet with 48 px targets and Save in view.
 - [x] **AC-R8 (vehicles):** every car, bicycle and scooter in the kampung, Makkah and Madinah is a vehicle (no static decor), of several car styles, in free ground, outside every no-drive zone; each shows Drive / Ride, can be mounted, seats the hero and can be left; a car, bike and scooter each drive away with the hero.
 - [x] **AC-R9 (vehicle safety):** a vehicle brakes for people, stops at walls and no-drive zones, never ends inside a collider; horn and engine obey mute, pause and the azan.

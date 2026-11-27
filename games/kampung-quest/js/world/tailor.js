@@ -1,10 +1,17 @@
-/* Kampung Quest — the tailor's stall (KQ.WorldParts.Tailor): a small three-sided kiosk with a striped
-   canopy, a signboard, a counter and a rail of coloured clothes. One builder serves every region:
-   the kampung park edge, the Makkah plaza street and the Madinah bus-stop street. The hero stands
-   at the counter (`stand`) and the "Change clothes" prompt opens the wardrobe sheet.
-   Layout: `x` is the stall's centre, `z` the front line, `face` +1 when the front looks towards +Z
-   (south), -1 towards -Z. The stall reaches 3 m back from the front line; its canopy hangs 0.9 m in
-   front of it, over the spot where the hero stands. */
+/* ============================================================================
+ * FILE: tailor.js
+ * PURPOSE: Kampung Quest — the tailor's stall (KQ.WorldParts.Tailor): a small three-sided kiosk with a striped
+ *          canopy, a signboard, a counter and a rail of coloured clothes. One builder serves every region:
+ *          the kampung park edge, the Makkah plaza street and the Madinah bus-stop street. The hero stands
+ *          at the counter (`stand`) and the "Change clothes" prompt opens the wardrobe sheet.
+ *          Layout: `x` is the stall's centre, `z` the front line, `face` +1 when the front looks towards +Z
+ *          (south), -1 towards -Z. The stall reaches 3 m back from the front line; its canopy hangs 0.9 m in
+ *          front of it, over the spot where the hero stands.
+ * BUSINESS CONTEXT: AC-R5 (realism round, features/kampung-quest-realism/requirements.md): a place in each region where the hero
+ *   can change clothes; it needs to be findable, reachable (stand spot outside the no-drive plaza) and child-friendly.
+ * DEPENDENCIES: KQ.WorldParts (builder B, geo helpers), games/kampung-quest/js/game/wardrobe.js (the sheet the stall opens).
+ * HOW TO TEST: npx playwright test tests/kampung-quest-wardrobe.spec.mjs (each region's stall opens the wardrobe).
+ * ========================================================================== */
 (function (KQ) {
   "use strict";
   const P = (KQ.WorldParts = KQ.WorldParts || {});

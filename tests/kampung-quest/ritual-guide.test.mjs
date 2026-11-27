@@ -53,6 +53,62 @@ test("a round counts anywhere in the wide band and a bit before the line", () =>
   assert.equal(short.rounds, 0, "but a part round does not");
 });
 
+/** Step an anticlockwise walk in tiny steps, returning the lap at which each round was banked. */
+function banks(t, from, to, radius = 14) {
+  const r = route(radius);
+  const at = {};
+  for (let u = from; u <= to; u += 0.005) {
+    const p = r.at(u);
+    const n = t.feed(p.x, p.z);
+    if (!(n in at)) at[n] = u - from;
+  }
+  return at;
+}
+
+test("rounds are cumulative against the line: the slack is spent once, so round 7 needs ~6.9 laps", () => {
+  const t = W.createTawaf(RING);
+  const at = banks(t, 0, 7.2);
+  assert.equal(t.rounds, 7);
+  for (let n = 1; n <= 7; n++) {
+    const lap = at[n];
+    assert.ok(
+      lap >= n - 0.08 - 0.01 && lap <= n - 0.07 + 0.02,
+      "round " + n + " banked at lap " + lap.toFixed(3),
+    );
+  }
+  assert.ok(at[7] > 6.9, "round 7 only after ~7 laps, not 6.5: " + at[7].toFixed(3));
+  const half = W.createTawaf(RING);
+  banks(half, 0, 6.5);
+  assert.equal(half.rounds, 6, "6.5 laps is six rounds");
+  const almost = W.createTawaf(RING);
+  banks(almost, 0, 6.9);
+  assert.equal(almost.rounds, 6, "6.9 laps is still six rounds");
+});
+
+test("starting 0.55 rad before the line (still armed) changes nothing: round 7 only after ~6.9 laps", () => {
+  const before = -0.55 / (Math.PI * 2); // laps; inside the 0.6 rad arming window
+  const t = W.createTawaf(RING);
+  const at = banks(t, before, before + 7.2);
+  assert.equal(t.armed, true);
+  assert.equal(t.rounds, 7);
+  assert.ok(at[7] > 6.9, "round 7 banked after " + at[7].toFixed(3) + " laps");
+  const early = W.createTawaf(RING);
+  banks(early, before, before + 6.5);
+  assert.equal(early.rounds, 6);
+});
+
+test("clockwise steps never count and never build up debt against later rounds", () => {
+  const t = W.createTawaf(RING);
+  walk(t, 14, 0.3);
+  const r = route(14);
+  for (let u = 0.3; u >= -3; u -= 0.01) t.feed(r.at(u).x, r.at(u).z); // three laps the wrong way
+  assert.equal(t.rounds, 0);
+  assert.equal(t.back, true);
+  // turning round at the line: one lap forward is round 1, not three laps' worth
+  for (let u = -3; u <= -1.5; u += 0.01) t.feed(r.at(u).x, r.at(u).z);
+  assert.equal(t.rounds, 1, "one lap (and a half) forward after the detour is round 1, no more");
+});
+
 test("starting a little way from the Black Stone line still begins the count", () => {
   const t = W.createTawaf(RING);
   const r = route(14).at(-0.07); // about 25 degrees before the line

@@ -1,9 +1,16 @@
-// Kampung Quest — the toy car bodies (F.VehicleCars). A car is drawn from its side view (bonnet, cabin, boot,
-// wheel arches), pushed out to its width, then dressed: glass, pillars, roof, bumpers, grille, plates, mirrors,
-// wipers, door seams, seats, dash and lamps. Five styles: hatch, sedan, taxi (a sedan with a roof sign), suv, mpv.
-// Everything of one car merges into four geometries (tinted body, dark trim, glass, lamps) so a car is a few
-// draw calls; the wheels and steering wheel are separate (vehicle-meshes.js). Local frame: faces +z, left +x.
-//   F.VehicleCars.build(style) -> { body, trim, glass, lamp, axles:[front z, rear z], style }
+/* ============================================================================
+ * FILE: vehicle-car-geo.js
+ * PURPOSE: Kampung Quest — the toy car bodies (F.VehicleCars). A car is drawn from its side view (bonnet, cabin, boot,
+ *          wheel arches), pushed out to its width, then dressed: glass, pillars, roof, bumpers, grille, plates, mirrors,
+ *          wipers, door seams, seats, dash and lamps. Five styles: hatch, sedan, taxi (a sedan with a roof sign), suv, mpv.
+ *          Everything of one car merges into four geometries (tinted body, dark trim, glass, lamps) so a car is a few
+ *          draw calls; the wheels and steering wheel are separate (vehicle-meshes.js). Local frame: faces +z, left +x.
+ *            F.VehicleCars.build(style) -> { body, trim, glass, lamp, axles:[front z, rear z], style }
+ * BUSINESS CONTEXT: AC-R8 (realism round, features/kampung-quest-realism/requirements.md): every parked car is a drivable vehicle,
+ *   in one of five styles so the streets do not look cloned; few draw calls per car (CROWD / draw budget, AC-R13).
+ * DEPENDENCIES: KQ.Figures.VehicleParts (vehicle-parts.js), KQ.Figures.Geo (geometry.js).
+ * HOW TO TEST: npx playwright test tests/kampung-quest-vehicles-all.spec.mjs (every vehicle builds, draw budget).
+ * ========================================================================== */
 (function (KQ) {
   "use strict";
   const F = (KQ.Figures = KQ.Figures || {});

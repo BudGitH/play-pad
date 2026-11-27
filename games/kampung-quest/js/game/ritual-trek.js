@@ -32,6 +32,30 @@
     auto: null,
     onCount: null,
     hint: "",
+    shown: 0,
+  };
+  /** Scratch objects reused every frame (no per-frame allocation): the counting view and what the hint last saw. */
+  const VIEW = {
+    x: 0,
+    z: 0,
+    armed: true,
+    want: "b",
+    onRing: true,
+    back: false,
+    progress: 0,
+    count: 0,
+    toGoal: 99,
+  };
+  const SIG = {
+    stale: true,
+    mode: null,
+    count: -1,
+    armed: null,
+    onRing: null,
+    back: null,
+    pb: -1,
+    want: "",
+    near: false,
   };
 
   /** The Makkah anchors, with safe fallbacks so a missing data file never throws. */
@@ -65,7 +89,8 @@
   function track(kind, base, target, onCount) {
     const same = T.mode && T.kind === kind && T.base === base && T.target === target && T.tracker;
     stopAuto();
-    Object.assign(T, { mode: "manual", kind, base, target, onCount });
+    Object.assign(T, { mode: "manual", kind, base, target, onCount, shown: base });
+    SIG.stale = true;
     if (!same) T.tracker = makeTracker(kind, target - base); // reopening the card keeps the progress
     showGuide(kind);
     T.hint = hintFor(view()); // the card is drawn before the next frame: it needs the sentence now
@@ -75,7 +100,22 @@
   function stop() {
     stopAuto();
     G.RitualGuide.hide();
-    Object.assign(T, { mode: null, kind: null, tracker: null, onCount: null, hint: "" });
+    Object.assign(T, { mode: null, kind: null, tracker: null, onCount: null, hint: "", shown: 0 });
+    SIG.stale = true;
+  }
+
+  /**
+   * The count the card shows now (it can be ahead of the walked count when Next is tapped): the
+   * hint and the "Round n" line follow the card, not the count the walk started from.
+   */
+  function sync(count) {
+    if (count === T.shown) return;
+    T.shown = count;
+    SIG.stale = true;
+    if (!T.mode || !S().player) return;
+    const v = view();
+    T.hint = hintFor(v); // the card being redrawn asks for the hint right after
+    hintStale(v);
   }
 
   /** The dotted guide on the ground for the rite (nothing when the anchors are missing). */
@@ -196,38 +236,70 @@
     }
   }
 
-  /** The counting state of the rite as the guide and the hints see it: { x, z, armed, want, ... }. */
+  /** Metres from the hero to the hill being walked to (sa'i), or a big number when the anchors are missing. */
+  function toGoal(v) {
+    const m = holy();
+    const goal = m && (v.want === "b" ? m.marwa : m.safa);
+    return goal ? Math.hypot(v.x - goal.x, v.z - goal.z) : 99;
+  }
+
+  /**
+   * The counting state of the rite as the guide and the hints see it: { x, z, armed, want, count, ... }.
+   * One shared scratch object, rewritten each call: read it at once, never keep it.
+   */
   function view() {
     const p = S().player.pos;
     const t = T.tracker;
-    const out = { x: p.x, z: p.z, armed: true, want: "b", onRing: true, back: false, progress: 0 };
+    const out = VIEW;
+    Object.assign(out, { x: p.x, z: p.z, armed: true, want: "b", onRing: true, back: false });
+    Object.assign(out, { progress: 0, count: T.shown, toGoal: 99 });
     if (T.mode === "auto" && T.auto) {
       out.want = Math.floor(T.auto.pos / T.auto.unit) % 2 === 0 ? "b" : "a"; // sa'i legs alternate
       return out;
     }
     if (!t) return out;
     const n = t.rounds === undefined ? t.legs : t.rounds;
-    Object.assign(out, { armed: t.armed, count: T.base + n });
+    out.armed = t.armed;
+    out.count = Math.max(T.shown, T.base + n);
     if (T.kind === "tawaf")
       Object.assign(out, { onRing: t.onRing, back: t.back, progress: t.progress });
-    else out.want = t.want;
+    else {
+      out.want = t.want;
+      out.toGoal = toGoal(out);
+    }
     return out;
+  }
+
+  /** Did anything the hint sentence depends on change since it was last written? (Updates the memo.) */
+  function hintStale(v) {
+    const pb = Math.floor(v.progress * 10); // the hint only cares about 0.1 and 0.8
+    const near = v.toGoal < 12;
+    const same =
+      !SIG.stale &&
+      SIG.mode === T.mode &&
+      SIG.count === v.count &&
+      SIG.armed === v.armed &&
+      SIG.onRing === v.onRing &&
+      SIG.back === v.back &&
+      SIG.pb === pb &&
+      SIG.want === v.want &&
+      SIG.near === near;
+    Object.assign(SIG, { stale: false, mode: T.mode, count: v.count, armed: v.armed });
+    Object.assign(SIG, { onRing: v.onRing, back: v.back, pb, want: v.want, near });
+    return !same;
   }
 
   /** The one gentle sentence for what to do now (the card's note and the chip show it), or "". */
   function hintFor(v) {
     if (T.mode === "auto") return "Walking for you. Tap Stop walking any time to take over.";
     if (T.kind === "tawaf")
-      return RW().tawafHint(Object.assign({ rounds: v.count || T.base, target: T.target }, v));
-    const g = geometry("sai");
-    const goal = v.want === "b" ? g.b : g.a;
-    const toGoal = Math.hypot(v.x - goal.x, v.z - goal.z);
+      return RW().tawafHint(Object.assign({ target: T.target, rounds: v.count }, v));
     return RW().saiHint({
-      legs: v.count || T.base,
+      legs: v.count,
       target: T.target,
       armed: v.armed,
       want: v.want,
-      toGoal,
+      toGoal: v.toGoal,
     });
   }
 
@@ -243,12 +315,13 @@
     if (!T.mode) return; // the count above may have ended the step
     const v = view();
     G.RitualGuide.update(dt, v);
-    T.hint = hintFor(v);
+    if (hintStale(v)) T.hint = hintFor(v); // the sentence is rebuilt only when its inputs change
   }
 
   G.RitualTrek = {
     track,
     stop,
+    sync,
     auto,
     stopAuto,
     update,

@@ -4,7 +4,7 @@
 
 **Feature:** Kampung Quest realism (guide, tailor, vehicles, crowd, outskirts and camels)
 **Ticket:** PLAY-013
-**Run at:** 2026-11-27 (round 1, then re-verified after fixes in the same session)
+**Run at:** 2026-11-27 (round 1, re-verified after fixes; round 2 below, run by an independent panel)
 **Overall result:** [x] PASS (no CRITICAL / HIGH open)
 
 ---
@@ -97,15 +97,50 @@
 
 ## Human summary
 
-All five features are in, work together, and pass every automated check. Two integration problems were found and fixed (parked bikes standing on footpaths people walk along, and the tawaf crowd not filling after a teleport) and one test threshold was tightened. Nothing CRITICAL or HIGH is open. The one honest caveat is that the four review lenses were run by one reviewer in turn rather than by four parallel agents, so a fresh-eyes pass is advisable before a public release.
+All five features are in, work together, and pass every automated check. Two integration problems were found and fixed (parked bikes standing on footpaths people walk along, and the tawaf crowd not filling after a teleport) and one test threshold was tightened. Nothing CRITICAL or HIGH is open. Round 1 ran the four review lenses as one reviewer in turn; round 2 re-ran them with independent reviewers and found a HIGH (tawaf round 7 counted after about 6.5 laps) and a MEDIUM (New game did not clear the look in the other region), both fixed, with the LOWs.
 
 ## Open items
 
-- Re-run the lens review with four independent agents when a sub-agent tool is available (process gap, not a code defect).
+- ~~Re-run the lens review with four independent agents~~ done in round 2.
 - A real mid-range phone check of fps and the tier thresholds (everything here ran on software GL; same watch-item as Sunset Stride in `docs/IDEAS.md`).
+
+---
+
+## Round 2 (independent panel)
+
+> Round 1 was one reviewer taking each lens in turn. Round 2 ran the four lenses as **independent reviewers**, which closes the process gap noted above (ledger `qa-panel-not-independent`). It found one HIGH and one MEDIUM defect that round 1 missed, plus CI and hygiene LOWs. All are fixed and re-verified below.
+
+### Findings and fixes
+
+| #   | Severity | Dimension            | Finding                                                                                                                                                                                                                                                                                                                                                                                       | Fix and proof                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| --- | -------- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | HIGH     | ACCURACY             | **Tawaf drift.** `turnTawaf` banked a round at `TAU - SLACK` then did `acc -= TAU; acc = max(0, acc)`, so the 26-degree early credit was re-granted every round: round 7 counted after about 6.5 laps, not 7.                                                                                                                                                                                 | Counting is cumulative against the Black Stone line: round n banks at `n * TAU - SLACK`, remainder carried, floor `-SLACK`; `progress` and the "Nearly round n" hint use the same total. New unit tests (`ritual-guide.test.mjs`) walk 7 laps in 0.005-lap steps from the line and from 0.55 rad before it: round 7 banks only after more than 6.9 laps; clockwise never counts and builds no debt.                                                                            |
+| 2   | MEDIUM   | ACCURACY             | **New game did not clear the look everywhere.** `clearLook` removed the shared key, but another region's slot still held its wardrobe / outfit, so kampung, New game, Makkah, kampung brought the old clothes back.                                                                                                                                                                           | `clearLook` writes a `{ v, cleared: true }` marker that every region reads as the default look (replaced by the real look at the next save). Unit test reproduces the scenario with two region save modules (`loadSim(files, region)`).                                                                                                                                                                                                                                        |
+| 3   | LOW      | QUALITY (UX)         | Wardrobe Save toasted success even when `Loop.save()` was refused (stale tab / blocked storage). The rite hint used the fixed `T.base` count instead of the card's count after Next. `noteFor` left a trailing space on an empty hint.                                                                                                                                                        | Wardrobe shows a gentle "could not keep them for next time" notice when the save fails. `RitualTrek.sync(count)` keeps the hint on the card's count (called from `refresh()`). `noteFor` appends the hint only when there is one.                                                                                                                                                                                                                                              |
+| 4   | MEDIUM   | QUALITY (CI)         | The five new browser specs (tawaf-guide, wardrobe, vehicles-all, haramain-outskirts, crowd) were not run by CI.                                                                                                                                                                                                                                                                               | New `npm run smoke:kq:realism` and a path-filtered "Kampung Quest (realism)" leg in `probes.yml` (about 6.5 min of software-GL runtime, so not a per-PR job). YAML parsed with a YAML loader.                                                                                                                                                                                                                                                                                  |
+| 5   | LOW      | COMPLIANCE / QUALITY | Missing Tier-1 headers on `dress.js`, `vehicle-car-geo.js`, `vehicle-parts.js`, `vehicle-two-wheel-geo.js`, `tailor.js`. Dead `c.kind === "car"` branch and stale comments in `detail.js` / `props.js`. Unused exported `cap` in `ritual-walk.js`. `V.kind` not initialised and `V.dots` not disposed in `ritual-guide.js`. Per-frame allocations in `ritual-trek.update` and the camel herd. | Headers added. Dead branch and stale comments fixed (parked vehicles' missing contact-shadow blob is parked in `docs/IDEAS.md`: not cheap, it needs a shared instanced blob mesh). `cap` removed (the one in `ritual-flow.js` stays). `V.kind` initialised and `V.dots.dispose()` called in `hide()`. `ritual-trek` reuses scratch view / signature objects and rebuilds the hint only when its inputs change; the camel herd reuses a scratch `Vector3` and shared leg poses. |
+| 6   | LOW      | ACCURACY (modesty)   | The classic jacket's bare arms were an undocumented exception to "modest clothes only".                                                                                                                                                                                                                                                                                                       | Documented in the `js/sim/wardrobe.js` header and in `requirements.md` (it is the hero's own default look). New tests: tee and sporty are knee-length shorts with sleeves in every colour, and `classic` is the only outfit with bare arms.                                                                                                                                                                                                                                    |
+
+### Test results after the round 2 fixes (`PW_CHROMIUM_PATH=/usr/bin/google-chrome`, `--trace off`, `@slow` skipped)
+
+| Suite                                             | Result                                        |
+| ------------------------------------------------- | --------------------------------------------- |
+| `npm run check` (eslint, lint ratchet, prettier)  | clean: 0 errors, 41 legacy warnings, none new |
+| `npm run secrets`                                 | clean                                         |
+| `npm run test:kq`                                 | 369 / 369 (was 364; +5 new tests)             |
+| `tests/kampung-quest-tawaf-guide.spec.mjs`        | 5 / 5                                         |
+| `tests/kampung-quest-rituals.spec.mjs`            | 19 / 19                                       |
+| `tests/kampung-quest-wardrobe.spec.mjs`           | 4 / 4                                         |
+| `tests/kampung-quest-vehicles-all.spec.mjs`       | 10 / 10                                       |
+| `tests/kampung-quest-haramain-outskirts.spec.mjs` | 5 / 5                                         |
+| `tests/kampung-quest-haramain-world.spec.mjs`     | 17 / 17                                       |
+| `tests/kampung-quest-crowd.spec.mjs`              | 7 / 7                                         |
+| `tests/kampung-quest-ac.spec.mjs`                 | 36 / 36                                       |
+
+**Round 2 result:** no CRITICAL / HIGH / MEDIUM open. Remaining open items: a real mid-range phone check (above) and the parked-vehicle contact shadow (`docs/IDEAS.md`).
 
 ---
 
 ### Loop control
 
-No CRITICAL / HIGH open, so no second fix round was needed. Next: `product-validation.md`.
+Round 1: no CRITICAL / HIGH open. Round 2 (independent panel): one HIGH and one MEDIUM found, fixed and re-verified in one loop; nothing open at CRITICAL / HIGH / MEDIUM. Next: `product-validation.md`.

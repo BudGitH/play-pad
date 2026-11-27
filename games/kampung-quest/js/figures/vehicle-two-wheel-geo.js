@@ -1,9 +1,16 @@
-// Kampung Quest — the two-wheelers (F.VehicleTwoWheel): a diamond-frame bicycle (mudguards, rack, chain ring,
-// cranks, pedals, a wire basket, bell, lamp, spoked wheels) and a scooter (leg shield, floor, seat, rear body,
-// steering column with headlight, mirrors and grips). Each comes as a few merged geometries: a tinted frame / body,
-// dark trim, the steering end (which turns with the front wheel) and, for the scooter, lamps.
-//   F.VehicleTwoWheel.bike() / .moto() -> { frame, trim, fork, wheel, hub:[front pivot z, wheel centre y, rear z], lamp? }
-// Local frame: faces +z, left +x, the origin on the ground mid-wheelbase.
+/* ============================================================================
+ * FILE: vehicle-two-wheel-geo.js
+ * PURPOSE: Kampung Quest — the two-wheelers (F.VehicleTwoWheel): a diamond-frame bicycle (mudguards, rack, chain ring,
+ *          cranks, pedals, a wire basket, bell, lamp, spoked wheels) and a scooter (leg shield, floor, seat, rear body,
+ *          steering column with headlight, mirrors and grips). Each comes as a few merged geometries: a tinted frame / body,
+ *          dark trim, the steering end (which turns with the front wheel) and, for the scooter, lamps.
+ *            F.VehicleTwoWheel.bike() / .moto() -> { frame, trim, fork, wheel, hub:[front pivot z, wheel centre y, rear z], lamp? }
+ *          Local frame: faces +z, left +x, the origin on the ground mid-wheelbase.
+ * BUSINESS CONTEXT: AC-R8 (realism round, features/kampung-quest-realism/requirements.md): the bicycles and scooters parked around the
+ *   kampung, Makkah and Madinah are rideable; each is a few merged geometries (draw budget, AC-R13).
+ * DEPENDENCIES: KQ.Figures.VehicleParts (vehicle-parts.js), KQ.Figures.Geo (geometry.js).
+ * HOW TO TEST: npx playwright test tests/kampung-quest-vehicles-all.spec.mjs (a bike and a scooter ride away with the hero).
+ * ========================================================================== */
 (function (KQ) {
   "use strict";
   const F = (KQ.Figures = KQ.Figures || {});

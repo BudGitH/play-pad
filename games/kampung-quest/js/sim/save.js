@@ -192,6 +192,14 @@
     return result;
   }
 
+  /** The hero's own clothes: what a New game (and a "cleared" shared look) gives every region. */
+  function defaultLook() {
+    return {
+      outfit: Object.assign({}, DEFAULT_OUTFIT),
+      wardrobe: Object.assign({}, DEFAULT_WARDROBE),
+    };
+  }
+
   /**
    * The look shared by every region: what the barber and the tailor last saved, or null. Never
    * throws. TRUST_BOUNDARY: localStorage (untrusted; the hair / hat and the wardrobe ids are
@@ -203,6 +211,7 @@
       if (typeof text !== "string" || text.length > MAX_CHARS) return null;
       const d = JSON.parse(text);
       if (!isObject(d) || d.v !== VERSION) return null;
+      if (d.cleared === true) return defaultLook(); // New game: every region slot starts bare again
       return { outfit: cleanOutfit(d.outfit), wardrobe: cleanWardrobe(d.wardrobe) };
     } catch (err) {
       return null;
@@ -219,12 +228,17 @@
     }
   }
 
-  /** Forget the shared look (New game starts from the hero's own clothes). */
+  /**
+   * Forget the shared look (New game starts from the hero's own clothes in EVERY region). It leaves
+   * a "cleared" marker rather than removing the key: with the key gone, another region's slot
+   * would still hold the old wardrobe and bring it back on the next load (QA round 2, MEDIUM).
+   * The marker is replaced by the real look at the next save.
+   */
   function clearLook(storage) {
     try {
-      storage.removeItem(LOOK_KEY);
+      storage.setItem(LOOK_KEY, JSON.stringify({ v: VERSION, cleared: true }));
     } catch (err) {
-      /* nothing to forget */
+      /* the cleared slot itself still starts bare; only another region's slot may keep its look */
     }
   }
 

@@ -184,10 +184,16 @@
     W.committed = true;
     G.Player.applyOutfit(S().player, sim.outfit);
     G.Audio.play("good");
-    G.Loop.save();
+    const saved = G.Loop.save();
     S().hudDirty = true;
     G.UI.closeSheet("save");
-    G.UI.toast("Looking good in your " + Rules().nameOf(sim.wardrobe) + "!", "good");
+    if (saved) G.UI.toast("Looking good in your " + Rules().nameOf(sim.wardrobe) + "!", "good");
+    else
+      G.UI.toast(
+        "Your new clothes are on, but this game could not keep them for next time.",
+        "hint",
+        5000,
+      );
   }
 
   /** The sheet closed (any way): undo an unsaved preview, give the hero and the camera back. */

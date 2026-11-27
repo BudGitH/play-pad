@@ -7,6 +7,9 @@
  *   Makkah / Madinah offer outfits and a palette of colours each. The default (the classic jacket in
  *   royal blue) is the hero's own colour family and is never repainted. Every outfit is modest
  *   (long sleeves or sleeves to the elbow, knee-length shorts at the shortest) and child-friendly.
+ *   ONE DOCUMENTED EXCEPTION: the classic jacket has bare (tan) arms because it IS the hero's default
+ *   look (the colour-family rule keeps it as designed); it is the only outfit without sleeves, and
+ *   the wardrobe test asserts that no other outfit is "bare" (features/kampung-quest-realism/requirements.md).
  * DEPENDENCIES: none (pure: no THREE, no DOM). Optional consumer: save.js (cleans the saved choice).
  * HOW TO TEST: npm run test:kq (tests/kampung-quest/wardrobe.test.mjs)
  * ========================================================================== */

@@ -1,8 +1,15 @@
-// Kampung Quest — small geometry helpers shared by the vehicle models (F.VehicleParts): painted boxes,
-// rods between two points, side-profile extrusions (a car body is drawn as its side view and pushed out
-// to its width) and the wheel. Every piece comes back painted (vertex colour, atlas white strip) so a
-// whole vehicle merges into a handful of draw calls. Needs KQ.Figures.Geo (geometry.js).
-// Vehicle local frame: faces +z, left is +x, y up, the origin on the ground in the middle of the wheelbase.
+/* ============================================================================
+ * FILE: vehicle-parts.js
+ * PURPOSE: Kampung Quest — small geometry helpers shared by the vehicle models (F.VehicleParts): painted boxes,
+ *          rods between two points, side-profile extrusions (a car body is drawn as its side view and pushed out
+ *          to its width) and the wheel. Every piece comes back painted (vertex colour, atlas white strip) so a
+ *          whole vehicle merges into a handful of draw calls. Needs KQ.Figures.Geo (geometry.js).
+ *          Vehicle local frame: faces +z, left is +x, y up, the origin on the ground in the middle of the wheelbase.
+ * BUSINESS CONTEXT: AC-R8 (realism round, features/kampung-quest-realism/requirements.md): shared building blocks so each vehicle merges into a handful
+ *   of draw calls (the vehicles share one white-strip atlas colour, tinted by material).
+ * DEPENDENCIES: KQ.Figures.Geo (geometry.js); THREE.
+ * HOW TO TEST: npx playwright test tests/kampung-quest-vehicles-all.spec.mjs (builds every vehicle through these helpers).
+ * ========================================================================== */
 (function (KQ) {
   "use strict";
   const F = (KQ.Figures = KQ.Figures || {});

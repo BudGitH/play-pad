@@ -71,7 +71,7 @@
       const line = v.full
         ? "All 7 legs done, ending at Marwa."
         : "Leg " + (v.count + 1) + ": " + cap(leg.from) + " to " + cap(leg.to) + ".";
-      return v.full ? line : line + " " + hint;
+      return v.full || !hint ? line : line + " " + hint;
     }
     return hint;
   }
@@ -109,6 +109,7 @@
 
   /** Redraw the card (if open) and the chip, and tell the HUD the mission-card line changed. */
   function refresh() {
+    if (RF.rite) G.RitualTrek.sync(umrah().view(RF.rite).count); // the hint follows the card's count
     if (RF.ctl && RF.rite) RF.ctl.show(card(RF.rite));
     syncChip();
     S().hudDirty = true;

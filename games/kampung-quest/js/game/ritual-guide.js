@@ -19,7 +19,7 @@
   const COLOR = { dot: 0x00897b, lit: 0xffa000, line: 0xff8f00 };
   const DUMMY = new THREE.Object3D();
   const TINT = new THREE.Color();
-  const V = { guide: null, group: null, dots: null, arrow: null, geo: null, lit: "", time: 0 };
+  const V = { guide: null, group: null, dots: null, arrow: null, kind: null, lit: "", time: 0 };
 
   /** An unlit, fog-free material that sits on the ground without flicker against the marble. */
   function groundMaterial(color, opacity) {
@@ -113,6 +113,7 @@
   function hide() {
     if (!V.group) return;
     V.group.parent.remove(V.group);
+    V.dots.dispose(); // frees the instance matrix / colour buffers (geometry and material go below)
     V.group.traverse((o) => {
       if (o.geometry) o.geometry.dispose();
       if (o.material) o.material.dispose();

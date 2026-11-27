@@ -1,5 +1,5 @@
 # PlayPad deep AC probes (PLAY-012) — the slow, per-game acceptance probes that `ci.yml` does not run
-# (Kampung Quest's other browser specs DO run in ci.yml; only its @slow frame-time probe is here).
+# (Kampung Quest's AC and phone specs run in ci.yml; its @slow frame-time probe and the realism-round specs are here).
 #
 # Why a separate workflow: a workflow-level `paths:` filter applies to EVERY job in the file, and the
 # fast checks in ci.yml (secrets, lint, smoke) must run on every PR. The probes take ~2-3 minutes each, so
@@ -73,8 +73,13 @@ jobs:
             run: node features/brick-buddies/probe.mjs # starts its own server on :5602
           - name: Kampung Quest
             # The @slow AC-14 probe: main-thread frame time at 4x CPU throttle (R2-Q-02). Playwright's
-            # webServer starts tools/serve.mjs on :5599 itself. The other Kampung Quest specs run on every PR in ci.yml.
+            # webServer starts tools/serve.mjs on :5599 itself. The AC and phone specs run on every PR in ci.yml.
             run: npm run perf:kq
+          - name: Kampung Quest (realism)
+            # The realism round's browser specs (guided tawaf, wardrobe / tailor, every vehicle, Makkah outskirts,
+            # the crowd and its draw budget): several minutes of software-GL 3D, so they run here, path-filtered,
+            # not on every PR. Playwright's webServer starts tools/serve.mjs on :5599 itself.
+            run: npm run smoke:kq:realism
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:

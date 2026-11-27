@@ -1,8 +1,16 @@
-// Kampung Quest — dressing the hero. The tailor (KQ.Sim.Wardrobe) gives plain overrides (torso, sleeves,
-// legs, skirt, print ...); dressHero merges them over the hero's cast spec, builds the parts and the
-// printed atlas for that look and swaps them onto the hero's rig in place (same skeleton, same face, same
-// animations). undressHero puts the hero's own clothes back (also used for the ihram, which sits on the
-// hero's own bare arms). Two print styles used only by the wardrobe live here: the thobe and the jersey.
+/* ============================================================================
+ * FILE: dress.js
+ * PURPOSE: Kampung Quest — dressing the hero. The tailor (KQ.Sim.Wardrobe) gives plain overrides (torso, sleeves,
+ *          legs, skirt, print ...); dressHero merges them over the hero's cast spec, builds the parts and the
+ *          printed atlas for that look and swaps them onto the hero's rig in place (same skeleton, same face, same
+ *          animations). undressHero puts the hero's own clothes back (also used for the ihram, which sits on the
+ *          hero's own bare arms). Two print styles used only by the wardrobe live here: the thobe and the jersey.
+ * BUSINESS CONTEXT: AC-R5 / AC-R6 (realism round, features/kampung-quest-realism/requirements.md): the hero can change clothes at the tailor and
+ *   the look is rebuilt on the same rig, so animations, face and colliders keep working.
+ *   The default classic jacket in royal blue is never repainted (the colour-family rule).
+ * DEPENDENCIES: KQ.Figures (geometry, atlas, cast spec), KQ.Sim.Wardrobe (the overrides).
+ * HOW TO TEST: npm run test:kq (wardrobe.test.mjs, rules); npx playwright test tests/kampung-quest-wardrobe.spec.mjs (browser).
+ * ========================================================================== */
 (function (KQ) {
   "use strict";
   const F = (KQ.Figures = KQ.Figures || {});

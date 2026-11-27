@@ -18,13 +18,18 @@
   const Q = new THREE.Quaternion();
   const E = new THREE.Euler();
   const V = new THREE.Vector3();
+  const SC = new THREE.Vector3();
   const ONE = new THREE.Vector3(1, 1, 1);
+  /** Shared leg poses for the animals that do not walk (read only: never mutated). */
+  const LEGS_STAND = Object.freeze([0, 1, 2, 3].map(() => ({ ang: 0, lift: 0, sy: 1 })));
+  const FOLD = { ang: 1.38, lift: 0, sy: 0.6 };
+  const LEGS_REST = Object.freeze([FOLD, FOLD, FOLD, FOLD]);
 
   /** Set `out` to translate(p) * rotation(euler yaw/pitch/roll order YXZ) * scale(s). */
   function place(out, p, rot, s) {
     E.set(rot[0] || 0, rot[1] || 0, rot[2] || 0, "YXZ");
     Q.setFromEuler(E);
-    return out.compose(V.set(p[0], p[1], p[2]), Q, s ? new THREE.Vector3(s[0], s[1], s[2]) : ONE);
+    return out.compose(V.set(p[0], p[1], p[2]), Q, s ? SC.set(s[0], s[1], s[2]) : ONE);
   }
 
   /** The four leg poses of a pacing gait at phase `ph` (same-side legs move together). */
@@ -44,7 +49,7 @@
       neckP: 0.12 + 0.05 * Math.sin(ph * 0.7),
       neckY: 0.3 * Math.sin(ph * 0.31),
       tail: 0.35 * Math.sin(ph * 2.1),
-      legs: [0, 1, 2, 3].map(() => ({ ang: 0, lift: 0, sy: 1 })),
+      legs: LEGS_STAND,
     };
     if (c.def.mode === "rest") return Object.assign(base, rest(ph));
     if (c.def.mode === "graze")
@@ -59,10 +64,9 @@
 
   /** Kneeling: body low, legs folded back under, head up, chewing. */
   function rest(ph) {
-    const fold = { ang: 1.38, lift: 0, sy: 0.6 };
     return {
       y: -0.7 + 0.008 * Math.sin(ph * 1.5),
-      legs: [fold, fold, fold, fold],
+      legs: LEGS_REST,
       neckP: -0.05 + 0.04 * Math.sin(ph * 0.9),
       neckY: 0.5 * Math.sin(ph * 0.22),
     };

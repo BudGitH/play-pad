@@ -54,17 +54,19 @@
     return angleOf(kaaba.x, kaaba.z, kaaba.x + (sx * kaaba.w) / 2, kaaba.z + (sz * kaaba.d) / 2);
   }
 
-  /** Add the hero's turn since the last position to a tawaf counter state; whole rounds are banked. */
+  /**
+   * Add the hero's turn since the last position to a tawaf counter state. The count is CUMULATIVE
+   * against the Black Stone line: T.total is the anticlockwise angle walked since the line (it never
+   * drops below -SLACK, so clockwise steps cannot build up debt), and round n is banked once
+   * T.total >= n * TAU - SLACK. The forgiving SLACK is therefore spent once, not once per round: the
+   * seventh round needs about 6.93 laps from the line, never 6.5 (QA round 2, HIGH).
+   */
   function turnTawaf(T, th, max) {
     if (T.last === null) return;
     const d = wrap(th - T.last);
     if (Math.abs(d) > 0.01) T.back = d < 0;
-    T.acc = Math.max(0, T.acc + d);
-    while (T.acc >= TAU - SLACK && T.rounds < max) {
-      T.rounds += 1;
-      T.acc -= TAU;
-    }
-    T.acc = Math.max(0, T.acc);
+    T.total = Math.max(-SLACK, T.total + d);
+    while (T.rounds < max && T.total >= (T.rounds + 1) * TAU - SLACK) T.rounds += 1;
   }
 
   /**
@@ -74,7 +76,7 @@
    * pauses counting and keeps the progress, so wandering off a little never loses a round.
    */
   function createTawaf(opts) {
-    const T = { armed: false, last: null, acc: 0, rounds: 0, back: false, onRing: false };
+    const T = { armed: false, last: null, total: 0, rounds: 0, back: false, onRing: false };
     const max = opts.rounds || 7;
     function feed(x, z) {
       const r = Math.hypot(x - opts.cx, z - opts.cz);
@@ -85,7 +87,7 @@
       }
       const th = angleOf(opts.cx, opts.cz, x, z);
       if (!T.armed && Math.abs(wrap(th - opts.startAngle)) < NEAR_LINE) {
-        Object.assign(T, { armed: true, acc: 0, last: th });
+        Object.assign(T, { armed: true, total: wrap(th - opts.startAngle), last: th });
       } else if (T.armed) turnTawaf(T, th, max);
       T.last = th;
       return T.rounds;
@@ -100,7 +102,7 @@
       },
       /** How far through the current round the hero is, 0..1. */
       get progress() {
-        return Math.min(1, T.acc / TAU);
+        return Math.max(0, Math.min(1, (T.total - T.rounds * TAU) / TAU));
       },
       /** True while the hero is walking clockwise (the wrong way round). */
       get back() {
@@ -271,8 +273,6 @@
     return { lit, from, arrow: { x: b.x, z: b.z, heading } };
   }
 
-  const cap = (t) => t.charAt(0).toUpperCase() + t.slice(1);
-
   /**
    * One gentle sentence for the tawaf. s: { rounds, target, armed, onRing, back, progress }. Never
    * scolds: the wrong way gets "Other way, please", and everything else says what to do next.
@@ -315,7 +315,6 @@
     guideState,
     tawafHint,
     saiHint,
-    cap,
     WALK_SPEED,
     BRISK_SPEED,
     TAWAF_SPEED,

@@ -79,6 +79,28 @@ test("robes cover to the ankle and tunics to the knee", () => {
   assert.equal(Wardrobe.specFor({ wear: "tee", tone: "sunny" }).bareShins, true);
 });
 
+test("the short outfits (tee, sporty) are knee-length shorts with sleeves: no bare arms, no thigh", () => {
+  for (const id of ["tee", "sporty"]) {
+    const outfit = Wardrobe.OUTFITS.find((o) => o.id === id);
+    for (const c of outfit.palette) {
+      const s = Wardrobe.specFor({ wear: id, tone: c.id });
+      assert.equal(s.sleeves, "short", id + "/" + c.id + " keeps its sleeves");
+      assert.equal(s.bareShins, true, id + "/" + c.id + ": only the shins show");
+      assert.match(
+        s.legs,
+        HEX,
+        id + "/" + c.id + ": the thigh piece is covered (shorts to the knee)",
+      );
+      assert.ok(!s.skirt, id + " is plain shorts, not a skirt");
+    }
+  }
+  // the classic jacket is the ONLY outfit with bare arms (the hero's own default look)
+  const bare = Wardrobe.OUTFITS.filter((o) =>
+    o.palette.some((c) => Wardrobe.specFor({ wear: o.id, tone: c.id }).sleeves === "bare"),
+  );
+  assert.deepEqual(plain(bare.map((o) => o.id)), ["classic"]);
+});
+
 test("a saved choice is cleaned: unknown ids, other outfits' colours and junk fall back safely", () => {
   const clean = (raw) => plain(Wardrobe.sanitize(raw));
   assert.deepEqual(clean({ wear: "thobe", tone: "navy" }), { wear: "thobe", tone: "navy" });
@@ -184,6 +206,34 @@ test("a damaged shared look is ignored; New game forgets it", () => {
   state.wardrobe = { wear: "kurta", tone: "navy" };
   Save.save(storage, state);
   assert.equal(Save.clear(storage), true);
-  assert.equal(LOOK_KEY in storage.data, false);
+  assert.deepEqual(JSON.parse(storage.data[LOOK_KEY]), { v: 1, cleared: true });
   assert.deepEqual(plain(Save.load(storage).state.wardrobe), { wear: "classic", tone: "royal" });
+});
+
+test("New game in one region clears the look in every region (no resurrection)", () => {
+  const kampung = loadSim().Sim.Save;
+  const makkah = loadSim(undefined, "haramain").Sim.Save;
+  assert.notEqual(kampung.KEY, makkah.KEY);
+  const storage = memoryStorage();
+  const look = (save, wear, hair) => {
+    const s = save.defaultState();
+    s.wardrobe = { wear, tone: "navy" };
+    s.outfit = { hair, hat: "none" };
+    return s;
+  };
+  // the player dresses in the kampung, then in Makkah: both slots hold a look
+  assert.equal(kampung.save(storage, look(kampung, "kurta", "curly")).ok, true);
+  assert.equal(makkah.save(storage, look(makkah, "thobe", "curly")).ok, true);
+  // New game in the kampung wipes its slot and the shared look
+  assert.equal(kampung.clear(storage), true);
+  assert.deepEqual(plain(kampung.load(storage).state.wardrobe), { wear: "classic", tone: "royal" });
+  // Makkah still holds its old slot, but must NOT bring the thobe back
+  const m = makkah.load(storage);
+  assert.equal(m.status, "loaded");
+  assert.deepEqual(plain(m.state.wardrobe), { wear: "classic", tone: "royal" });
+  assert.deepEqual(plain(m.state.outfit), { hair: "classic", hat: "none" });
+  // saving in Makkah and returning to the kampung must not resurrect it either
+  assert.equal(makkah.save(storage, m.state).ok, true);
+  assert.deepEqual(plain(kampung.load(storage).state.wardrobe), { wear: "classic", tone: "royal" });
+  assert.deepEqual(plain(kampung.load(storage).state.outfit), { hair: "classic", hat: "none" });
 });

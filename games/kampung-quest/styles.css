@@ -2779,3 +2779,16 @@ kbd {
     font-size: 15px;
   }
 }
+/* short / narrow screens: compact region cards so Start stays in view */
+@media (max-width: 480px), (max-height: 600px) {
+  .kq-regions {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  .kq-region-art {
+    max-width: 110px;
+  }
+  .kq-region-card b {
+    font-size: 15px;
+  }
+}

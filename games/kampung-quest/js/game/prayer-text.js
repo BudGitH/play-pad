@@ -110,14 +110,16 @@
   }
 
   /** The clear name of the voluntary prayer, shown on the Pray button, panel and praise card. */
-  const SUNAT_LABEL = "Sunat prayer (2 raka'at)";
+  const SUNAT_NAME = "Sunat prayer";
+  /** The same name with its length, for screen readers and the panel. */
+  const SUNAT_LABEL = SUNAT_NAME + " (2 raka'at)";
 
   /**
    * What to call a prayer flow on screen: "Zohor", "Zohor (make-up)" or, for the voluntary one,
    * "Sunat prayer".
    */
   function flowLabel(name, kind) {
-    if (name === KQ.Sim.Prayer.SUNAT) return "Sunat prayer";
+    if (name === KQ.Sim.Prayer.SUNAT) return SUNAT_NAME;
     return KQ.Sim.Prayer.DISPLAY[name] + (kind === "qada" ? " (make-up)" : "");
   }
 
@@ -153,5 +155,15 @@
     return picks.sort((a, b) => NATURAL.indexOf(a) - NATURAL.indexOf(b));
   }
 
-  G.PrayerText = { DHIKR, TILE, SUNAT_LABEL, azanCues, title, flowLabel, choices, nextHint };
+  G.PrayerText = {
+    DHIKR,
+    TILE,
+    SUNAT_NAME,
+    SUNAT_LABEL,
+    azanCues,
+    title,
+    flowLabel,
+    choices,
+    nextHint,
+  };
 })((window.KQ = window.KQ || {}));

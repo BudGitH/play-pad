@@ -215,7 +215,7 @@
     el.addEventListener("lostpointercapture", end);
   }
 
-  /** Wire the DOM: the stage (camera drag), the joystick and the run toggle. */
+  /** Wire the DOM: the stage (camera drag, wheel zoom) and the joystick (its rim is the touch way to run). */
   function attach(opts) {
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("keyup", onKeyUp);
@@ -251,8 +251,6 @@
       state.lookX = state.lookY = state.zoom = 0;
       return out;
     },
-    /** True while the joystick is pushed out to its rim (the touch way to run). */
-    isJoyRunning: () => state.joyRun,
     usedKeyboard: () => lastKeyboard,
     /** Test / assistive hook: hold or release a named action ("up", "left", "run", "interact"...). */
     virtual(action, on) {

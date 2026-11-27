@@ -32,7 +32,7 @@
 | Prayer        | `prayer-flow.js` (controller), `prayer-ui.js` (screens), `prayer-text.js` (dhikr, captions)                                                                                                                                                                              |
 | Play          | `interact.js`, `mission-flow.js`, `services.js`, `actions.js`, `nudge.js` (first-meal nudge + hawker beacon, food / energy low notes; decisions in `js/sim/hints.js`)                                                                                                    |
 | Greetings     | `greetings.js` (salaam bubbles over passing citizens and for the hero; pooled DOM, no draw calls; hook `__kq.greetings()`); decisions, chances, cooldowns and caps are pure in `js/sim/greet.js`. The salaam exchange is only between Muslim people, others say "Hello!" |
-| Sound         | `audio.js` (synth UI sounds, footsteps, azan element, lifecycle gates), `ambience.js` (synth day/night/place soundscape, ducked to silence under the azan and prayer; probe `Audio.debug().ambience`); `greetings.js` (salaam bubbles, rules in `js/sim/greet.js`)       |
+| Sound         | `audio.js` (synth UI sounds, footsteps, azan element, lifecycle gates), `ambience.js` (synth day/night/place soundscape, ducked to silence under the azan and prayer; probe `Audio.debug().ambience`); pure mix maths in `js/sim/ambience-mix.js`                        |
 
 State lives in one object, `KQ.Game.S` (created in `boot.js`). The pure sim objects are `S.sim.{clock, prayer, needs, hints, economy, missions}`.
 
@@ -41,6 +41,7 @@ State lives in one object, `KQ.Game.S` (created in `boot.js`). The pure sim obje
 - **The pause / hidden gate sits where time and sound are produced** (`Loop.frame`, `Audio.voice`), not in callers (`docs/LEARNINGS.md`, 2026-11-21 audio rows). `Audio.debug()` counts every trigger and every refusal so a probe can assert the lifecycle.
 - **Sun times.** The world follows `KQ.PRAYER_TIMES` itself (`js/data/prayer-times.js` must load before the world scripts): sunrise = Syuruk, sunset = Maghrib. `world.update` is given the real clock minute; do not remap it.
 - **Prayer flow slows the clock to 25 %** (`FLOW_RATE`) while a flow is active or a prayer screen is open, so a 50-tap Zohor does not run into Asar. A prayer that falls due during a menu is queued (`PrayerFlow.maybeShowCard`) and shown after the menu closes.
+- **A fard prayer always outranks the optional sunat prayer.** On `due`, `PrayerFlow.onDue` drops a sunat flow whose screen is closed (the wudu stays clean); `atHall` starts the owed fard prayer over a sunat flow; `nextNote`, the dock and `maybeShowCard` ignore sunat when a fard prayer is due. "Not now" on a sunat screen cancels the flow.
 - **Indoor NPCs** (`routine.indoors`) are hidden, but stand at their block's door when the hero is within 15 m (so the first mission giver is always reachable at 07:00).
 - **Time of day for tests:** `__kq.setMinute(m)`, `__kq.forcePrayer("zohor")`, `__kq.step(ms)` advance deterministically even when headless rAF is throttled.
 - **Characters never move without `Collide.settle`.** Hero, NPCs and their separation all end in a push-out against the colliders (body radius `Player.RADIUS` 0.33, `NpcAgent.RADIUS` 0.31); NPCs are placed with `placeAt` / `stepOut` (free spot, facing open space); stuck means no progress toward the waypoint, and two skips ask for a new route. The camera arm is floored at 0.35 m and rises as it shortens. Audit: `tests/kampung-quest-collision.spec.mjs`.
@@ -59,7 +60,7 @@ State lives in one object, `KQ.Game.S` (created in `boot.js`). The pure sim obje
 
 ## Test hooks (`window.__kq`)
 
-`ready` (game running), `loaded` (assets ready, Start enabled), `state()`, `step(ms)`, `setMinute(m)`, `teleport(poiId)`, `place(x, z, yaw)`, `interact()`, `action(name)`, `input(action, on)`, `forcePrayer(name)`, `freeze(bool)`, `stats()` (`fps`, `frames`, `calls` incl. shadows, `tris`, `programs`), `npc(id)`, `start(fresh)`. URL flags: `?q=low|med|high`, `?autoq=0` (no auto-downgrade), `?still` (no rAF loop; drive with `step`).
+`ready` (game running), `loaded` (assets ready, Start enabled), `state()` (also `airborne`, `jumpHeight`, `running`), `greetings()` (greeting count and visible bubbles), `greetChance(p)` (force the greeting chance 0..1, `null` = normal; refuses non-finite values), `step(ms)`, `setMinute(m)`, `teleport(poiId)`, `place(x, z, yaw)`, `interact()`, `action(name)`, `input(action, on)`, `forcePrayer(name)`, `freeze(bool)`, `stats()` (`fps`, `frames`, `calls` incl. shadows, `tris`, `programs`), `npc(id)`, `start(fresh)`. URL flags: `?q=low|med|high`, `?autoq=0` (no auto-downgrade), `?still` (no rAF loop; drive with `step`).
 
 ## How to run and test
 

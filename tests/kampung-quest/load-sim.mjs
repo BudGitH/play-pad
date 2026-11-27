@@ -23,6 +23,7 @@ export const SIM_FILES = [
   "missions",
   "schedule",
   "greet",
+  "ambience-mix",
   "save",
 ];
 

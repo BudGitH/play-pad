@@ -18,7 +18,10 @@
    * prayer and its time.
    */
   function nextNote(ps) {
-    if (ps.flow) return "Praying " + label(ps.flow.name);
+    const sunat = Boolean(ps.flow) && ps.flow.kind === "sunat";
+    // a fard prayer falling due always outranks a (calm, optional) sunat flow
+    if (sunat && !ps.due) return G.PrayerText.flowLabel(ps.flow.name, ps.flow.kind);
+    if (ps.flow && !sunat) return "Praying " + label(ps.flow.name);
     if (ps.due) return label(ps.due) + " time!";
     // inMin is GAME minutes (the sim's clock), so the countdown follows game time, never the wall clock
     if (ps.next && ps.next.inMin <= 60)
@@ -227,7 +230,8 @@
     const R = H().refs;
     const pray = R.dockBtns.pray;
     const qadaCount = ps.qada.length;
-    const cls = "kq-dock-btn" + (ps.due || ps.flow ? " is-due" : qadaCount ? " is-qada" : "");
+    const urgent = ps.due || (ps.flow && ps.flow.kind !== "sunat");
+    const cls = "kq-dock-btn" + (urgent ? " is-due" : qadaCount ? " is-qada" : "");
     H().setClass("praybtn", pray, cls);
     const avail = sim.missions.active() ? 0 : sim.missions.available().length;
     H().setText("badge", R.badge, avail ? String(avail) : "");

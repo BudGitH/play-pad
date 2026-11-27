@@ -178,7 +178,31 @@ async function checkFardWins(page) {
   expect(sunat, "the sim refuses a sunat flow over a running Zohor").toBe(false);
 }
 
+/** Wudu done for a sunat prayer, the hero left standing at the taps: a flow with no screen open. */
+async function startIdleSunat(page) {
+  await kq(page, () => window.__kq.teleport("mosque_wudu"));
+  await page.keyboard.press("e");
+  await doWudu(page);
+  await expect(page.getByRole("dialog", { name: "Wudu steps" })).toBeHidden();
+  const st = await state(page);
+  expect(st.prayer.flow).toMatchObject({ name: "sunat", phase: "pray" });
+  await step(page, 300); // the HUD refreshes every 120 ms of frames
+  expect(await nextNote(page), "calm wording, not 'Praying'").toBe("Sunat prayer");
+  return st;
+}
+
 async function checkStrayDropped(page) {
+  await open(page);
+  await startIdleSunat(page);
+  await kq(page, () => window.__kq.place(30, 30, 0));
+  await step(page, 2500);
+  const st = await state(page);
+  expect(st.prayer.flow, "the optional prayer was dropped").toBeNull();
+  expect(st.prayer.wuduClean, "and the wudu is still clean").toBe(true);
+}
+
+/** "Not now" on either sunat screen ends the optional prayer: no prayer mode left behind. */
+async function checkNotNowEndsSunat(page) {
   await open(page);
   await kq(page, () => window.__kq.teleport("mosque_wudu"));
   await page.keyboard.press("e");
@@ -186,9 +210,70 @@ async function checkStrayDropped(page) {
   expect((await state(page)).prayer.flow?.name).toBe("sunat");
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog", { name: "Wudu steps" })).toBeHidden();
-  await kq(page, () => window.__kq.place(30, 30, 0));
-  await step(page, 2500);
-  expect((await state(page)).prayer.flow, "the optional prayer was dropped").toBeNull();
+  expect((await state(page)).prayer.flow, "Escape on the wudu screen ends it").toBeNull();
+  await step(page, 300);
+  expect(await nextNote(page)).not.toMatch(/Sunat|Praying/);
+  await startIdleSunat(page);
+  await kq(page, () => window.__kq.teleport("mosque_hall"));
+  await step(page, 300);
+  await page.keyboard.press("e");
+  const panel = page.getByRole("dialog", { name: "Prayer steps" });
+  await expect(panel).toBeVisible();
+  await panel.getByRole("button", { name: "Not now" }).click();
+  await expect(panel).toBeHidden();
+  const st = await state(page);
+  expect(st.prayer.flow, "Not now on the prayer screen ends it").toBeNull();
+  expect(st.prayer.wuduClean).toBe(true);
+  await step(page, 300);
+  await expect(page.locator(".kq-dock-btn.is-due")).toHaveCount(0);
+}
+
+/** HIGH-1: a fard prayer falling due always takes over an idle sunat flow (azan, HUD, Pray). */
+async function checkFardTakesOverIdleSunat(page) {
+  await open(page);
+  await kq(page, instrument);
+  await startIdleSunat(page);
+  await kq(page, () => window.__kq.forcePrayer("zohor"));
+  await step(page, 300);
+  const st = await state(page);
+  expect(st.prayer.due).toBe("zohor");
+  expect(st.prayer.flow, "the idle sunat flow was dropped").toBeNull();
+  expect(st.prayer.wuduClean, "the wudu carries across").toBe(true);
+  expect(st.ui.azanCard, "the azan card is showing").toBe(true);
+  expect((await azans(page)).map((x) => x.name)).toEqual(["zohor"]);
+  await step(page, 300);
+  expect(await nextNote(page)).toBe("Zohor time!");
+  await kq(page, () => window.__kq.teleport("mosque_hall"));
+  await step(page, 300);
+  expect((await state(page)).target).toMatchObject({ id: "prayer_spot", label: "Pray" });
+  await page.keyboard.press("e");
+  await expect(page.getByRole("dialog", { name: "Prayer steps" })).toBeVisible();
+  expect((await state(page)).prayer.flow).toMatchObject({ name: "zohor", kind: "due" });
+  await step(page, 300);
+  expect(await nextNote(page)).toBe("Praying Zohor");
+}
+
+/** Defence in depth: even if a sunat flow is still open when a prayer is due, Pray starts the fard one. */
+async function checkHallStartsFardOverSunat(page) {
+  await open(page);
+  await startIdleSunat(page);
+  await kq(page, () => {
+    const pf = window.KQ.Game.PrayerFlow;
+    const real = pf.onEvents;
+    pf.onEvents = () => {}; // as if the due event had been missed: the sim says due, the flow is still sunat
+    window.__kq.setMinute(775);
+    pf.onEvents = real;
+  });
+  const st = await state(page);
+  expect(st.prayer).toMatchObject({ due: "zohor", flow: { name: "sunat" } });
+  await step(page, 300);
+  expect(await nextNote(page), "the HUD names the due prayer, not Sunat").toBe("Zohor time!");
+  await kq(page, () => window.__kq.teleport("mosque_hall"));
+  await step(page, 300);
+  expect((await state(page)).target.label).toBe("Pray");
+  await page.keyboard.press("e");
+  await expect(page.getByRole("dialog", { name: "Prayer steps" })).toBeVisible();
+  expect((await state(page)).prayer.flow).toMatchObject({ name: "zohor", kind: "due" });
 }
 
 test.describe("4. Pray is always available in the mosque", () => {
@@ -210,6 +295,14 @@ test.describe("4. Pray is always available in the mosque", () => {
   test("a sunat prayer the hero walks away from is let go, and the wudu stays clean", async ({
     page,
   }) => checkStrayDropped(page));
+  test("Not now on a sunat screen ends the optional prayer", async ({ page }) =>
+    checkNotNowEndsSunat(page));
+  test("a fard prayer falling due takes over an idle sunat flow: azan, HUD and Pray", async ({
+    page,
+  }) => checkFardTakesOverIdleSunat(page));
+  test("the hall's Pray starts the due fard prayer even over a still-open sunat flow", async ({
+    page,
+  }) => checkHallStartsFardOverSunat(page));
 });
 
 /* ---------- 5. the azan and the HUD follow the game clock ---------- */
@@ -281,14 +374,14 @@ async function checkCountdown(page) {
   await open(page);
   await kq(page, instrument);
   await kq(page, () => window.__kq.setMinute(750)); // 12:30: Zohor (12:54) in 24 game minutes
-  await step(page, 100);
+  await step(page, 300);
   const first = await nextNote(page);
   expect(first).toMatch(/^Zohor in 2[34] min$/);
   await step(page, 2000); // 2 real seconds = 1 game minute
   const n2 = Number((await nextNote(page)).match(/\d+/)[0]);
   expect(Number(first.match(/\d+/)[0]) - n2, "one game minute passed").toBe(1);
   await kq(page, () => window.__kq.setMinute(700)); // 11:40: Zohor is over an hour away
-  await step(page, 100);
+  await step(page, 300);
   expect(await nextNote(page)).toBe("Next: Zohor 12:54");
 }
 

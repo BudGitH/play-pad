@@ -24,12 +24,15 @@ function doWudu(prayer) {
   for (const step of Prayer.WUDU_STEPS) assert.equal(prayer.wuduStep(step.id).ok, true, step.id);
 }
 
+/** Walk every non-optional step of the sunat plan; returns the last result (the finishing one). */
 function doPrayer(prayer) {
   let last = null;
-  for (const step of prayer.nextPrayStep() ? Prayer.rakaatPlan("sunat") : []) {
-    if (!step.optional) last = prayer.prayStep(step.id);
+  for (const step of Prayer.rakaatPlan("sunat")) {
+    if (step.optional) continue;
+    last = prayer.prayStep(step.id);
     assert.equal(last.ok, true, step.id);
   }
+  assert.ok(last, "the sunat plan has steps");
   return last;
 }
 
@@ -149,6 +152,19 @@ test("a fard prayer falling due during a sunat flow takes over without losing th
   assert.equal(fard.ok, true);
   assert.equal(fard.kind, "due");
   assert.equal(fard.phase, "pray", "wudu done for the sunat counts for Zohor");
+});
+
+test("dropping an idle sunat flow when a fard prayer falls due keeps the wudu clean", () => {
+  const prayer = started("12:30");
+  prayer.startFlow("sunat");
+  doWudu(prayer);
+  prayer.update(mins("13:00"), 1);
+  assert.equal(prayer.state().flow.name, "sunat", "still open until the controller drops it");
+  prayer.cancelFlow(); // what PrayerFlow does when nobody is looking at the sunat screen
+  assert.equal(prayer.state().flow, null);
+  assert.equal(prayer.state().wuduClean, true, "the wudu survives the drop");
+  assert.equal(prayer.state().due, "zohor", "Zohor is still due, untouched");
+  assert.equal(prayer.startFlow("zohor").phase, "pray");
 });
 
 test("a sunat flow survives a save / load round trip, and a hostile snapshot cannot forge one", () => {

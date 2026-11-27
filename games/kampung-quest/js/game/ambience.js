@@ -12,14 +12,14 @@
  *   Audio.setGate, and every one-off event goes through Audio.ambient() (the same gate as voice()).
  * CPU: about 40 nodes in all, one shared noise buffer, parameters touched every 80 ms, a bed that
  *   is silent is disconnected, and events are scheduled sparsely from game time.
- * DEPENDENCIES: audio.js (bus, ambient, setSurface), util.js. Optional: KQ.PRAYER_TIMES,
+ * DEPENDENCIES: audio.js (bus, ambient, setSurface), util.js, js/sim/ambience-mix.js (the pure mix
+ *   maths, given the prayer times and rectangles below). Optional: KQ.PRAYER_TIMES,
  *   KQ.WorldParts.LAYOUT (a built-in copy of the few rectangles used is the fallback).
  * ========================================================================== */
 (function (KQ) {
   "use strict";
   const G = (KQ.Game = KQ.Game || {});
   const U = G.U;
-  const HOUR = 60;
   /** Real seconds of game time between parameter updates. */
   const TICK = 0.08;
   /** After the azan or a prayer flow ends, wait this long (game seconds) before fading back in. */
@@ -49,7 +49,7 @@
     muffle: 0,
   };
 
-  /* ------------------------------ the mix (pure) ------------------------------ */
+  /* ------------------------------ the mix (data in, pure maths in sim) ------------------------------ */
 
   const FALLBACK_TIMES = { subuh: "05:29", syuruk: "06:51", maghrib: "18:54" };
   const FALLBACK_RECTS = {
@@ -58,97 +58,23 @@
     mosque: { x0: -58, x1: -12, z0: -58, z1: -10, hall: { x0: -52, x1: -32, z0: -46, z1: -20 } },
   };
 
-  /** "HH:MM" to minutes. */
-  function toMin(hhmm) {
-    const m = /^(\d{1,2}):(\d{2})$/.exec(String(hhmm));
-    return m ? Number(m[1]) * HOUR + Number(m[2]) : 0;
+  /** The prayer times the day is built on: the real ones, or a built-in copy if the data did not load. */
+  function times() {
+    return KQ.PRAYER_TIMES || FALLBACK_TIMES;
   }
 
-  /** The prayer times the day is built on (Subuh, Syuruk = sunrise, Maghrib = sunset), in minutes. */
-  function dayTimes() {
-    const t = KQ.PRAYER_TIMES || FALLBACK_TIMES;
-    return { subuh: toMin(t.subuh), syuruk: toMin(t.syuruk), maghrib: toMin(t.maghrib) };
-  }
-
+  /**
+   * The town rectangles the mix measures against: the hawker centre, the park and the mosque
+   * (with its hall). Falls back to a built-in copy when the layout is not loaded.
+   */
   function rects() {
     const L = KQ.WorldParts && KQ.WorldParts.LAYOUT;
     return L && L.hawker && L.park && L.mosque && L.mosque.hall ? L : FALLBACK_RECTS;
   }
 
-  /** 0 below a, 1 above b, smooth between. */
-  function ramp(v, a, b) {
-    const t = U.clamp((v - a) / (b - a), 0, 1);
-    return t * t * (3 - 2 * t);
-  }
-
-  /** Distance from a point to a rectangle (0 inside). */
-  function rectDist(r, x, z) {
-    return Math.hypot(Math.max(r.x0 - x, 0, x - r.x1), Math.max(r.z0 - z, 0, z - r.z1));
-  }
-
-  /** 1 at distance `near` or less, 0 at `far` or more. */
-  function prox(d, near, far) {
-    return 1 - ramp(d, near, far);
-  }
-
-  /** A bump of height 1 centred on a minute, `half` minutes wide each side. */
-  function bump(m, centre, half) {
-    return 1 - ramp(Math.abs(m - centre), 0, half);
-  }
-
-  /** What the clock says: how loud birds, insects, traffic and the hawker centre are. */
-  function mixTime(minute) {
-    const m = ((minute % 1440) + 1440) % 1440;
-    const t = dayTimes();
-    const birds = ramp(m, t.subuh, t.syuruk + 30) * (1 - ramp(m, t.maghrib - 50, t.maghrib + 10));
-    const insects = Math.max(
-      ramp(m, t.maghrib - 5, t.maghrib + 25),
-      1 - ramp(m, t.subuh - 15, t.subuh + 15),
-    );
-    const deep = Math.max(ramp(m, 22 * HOUR, 23 * HOUR), 1 - ramp(m, 5 * HOUR, 6 * HOUR));
-    const rush = bump(m, 8 * HOUR, 70) + bump(m, 18 * HOUR, 80);
-    const open = ramp(m, 6 * HOUR, 7 * HOUR) * (1 - ramp(m, 21.5 * HOUR, 22.5 * HOUR));
-    return {
-      birds,
-      insects,
-      traffic: U.lerp(1, 0.4, deep) * (1 + 0.2 * rush),
-      open: 0.12 + 0.88 * open,
-    };
-  }
-
-  /** Where the hero stands: near the hawker centre, in the park, in the mosque, near a road. */
-  function mixPlace(x, z) {
-    const L = rects();
-    const hall = L.mosque.hall;
-    const indoor = 1 - ramp(rectDist(hall, x, z), 0, 3);
-    const compound = prox(rectDist(L.mosque, x, z), 0, 6);
-    const green = prox(rectDist(L.park, x, z), 0, 22);
-    const road = prox(Math.min(Math.abs(x), Math.abs(z)), 6, 40);
-    const hawker = prox(rectDist(L.hawker, x, z), 0, 26) * (1 - indoor);
-    const surface = indoor > 0.5 ? "carpet" : rectDist(L.park, x, z) === 0 ? "grass" : "paving";
-    return { indoor, compound, green, road, hawker, surface };
-  }
-
-  /**
-   * The full target mix for a clock minute and a hero position: per-bed levels 0..1, how muffled
-   * the bus is (0 open air .. 1 inside the mosque hall) and the overall level.
-   */
+  /** The target mix for a clock minute and hero position (pure maths: js/sim/ambience-mix.js). */
   function mixFor(minute, x, z) {
-    const t = mixTime(minute);
-    const p = mixPlace(x, z);
-    const calm = 1 - 0.4 * p.compound;
-    return {
-      traffic: t.traffic * U.lerp(0.45, 1, p.road) * calm,
-      wind: 0.6 * (0.8 + 0.2 * p.green),
-      leaves: 0.5 + 0.5 * p.green,
-      murmur: t.open * p.hawker,
-      crickets: t.insects * (0.7 + 0.3 * p.green),
-      birds: t.birds * (0.75 + 0.25 * p.green),
-      clink: t.open * p.hawker,
-      indoor: p.indoor,
-      master: 1 - 0.45 * p.indoor,
-      surface: p.surface,
-    };
+    return KQ.Sim.AmbienceMix.mixFor(minute, x, z, times(), rects());
   }
 
   /* ------------------------------ the graph ------------------------------ */
@@ -520,7 +446,7 @@
     if (R.quiet === "" && R.level > 0.02) events(N, mix, step);
   }
 
-  /** Hard-duck now (the azan is about to sound): level to zero within about 80 ms. */
+  /** Hard-duck now (the azan is about to sound, the context may be suspended next): gain to exactly zero. */
   function silence() {
     R.level = 0;
     R.hold = RESUME_DELAY;
@@ -528,7 +454,7 @@
     if (!N) return;
     const now = N.ctx.currentTime;
     N.out.gain.cancelScheduledValues(now);
-    N.out.gain.setTargetAtTime(0, now, 0.025);
+    N.out.gain.setValueAtTime(0, now);
   }
 
   /** What a probe can read: the target mix, the bus level (model and real gain) and event counts. */
@@ -555,5 +481,5 @@
     };
   }
 
-  G.Ambience = { update, silence, debug, mix: mixFor, BED_GAIN };
+  G.Ambience = { update, silence, debug, mix: mixFor };
 })((window.KQ = window.KQ || {}));

@@ -7,7 +7,7 @@
 //
 // Run: npx playwright test tests/kampung-quest-ambience.spec.mjs --project=kampung-quest
 // The page opens with `?still=1` (time moves only through __kq.step); one-off events are spaced in
-// real audio time, so the tests alternate a game step with a short real wait.
+// real audio time, so the tests alternate a game step with `expect.poll` rounds (no fixed sleeps).
 import { test, expect } from "@playwright/test";
 
 const GAME = "/games/kampung-quest/index.html?still=1&autoq=0&q=low";
@@ -16,14 +16,34 @@ const audio = (page) => kq(page, () => window.KQ.Game.Audio.debug());
 const step = (page, ms) => kq(page, (t) => window.__kq.step(t), ms);
 const mix = (page, args) => kq(page, ([m, x, z]) => window.KQ.Game.Ambience.mix(m, x, z), args);
 
-/** Alternate game steps and real waits until `done(audio)` holds (events are real-time spaced). */
-async function stepUntil(page, done, tries = 25) {
-  for (let i = 0; i < tries; i += 1) {
-    await step(page, 6000);
-    await page.waitForTimeout(300);
-    if (done(await audio(page))) return true;
+/**
+ * Step the game until `done(audio)` holds. One-off events are spaced in real audio time, so each
+ * poll round is one game step; expect.poll supplies the retries (no fixed sleeps). Returns false
+ * when it never held, so callers state what was expected.
+ */
+async function stepUntil(page, done, timeout = 20_000) {
+  try {
+    await expect
+      .poll(
+        async () => {
+          await step(page, 6000);
+          return done(await audio(page));
+        },
+        { timeout, intervals: [250] },
+      )
+      .toBe(true);
+    return true;
+  } catch {
+    return false;
   }
-  return false;
+}
+
+/** Let `ms` of real time pass (events are spaced in real time), as a poll on the page clock. */
+async function elapse(page, ms) {
+  const t0 = await kq(page, () => performance.now());
+  await expect
+    .poll(() => kq(page, () => performance.now()), { intervals: [50] })
+    .toBeGreaterThan(t0 + ms);
 }
 
 /** Fake the tab being hidden or shown, as AC-16 does. */
@@ -111,7 +131,7 @@ test("AMB-4 muted, paused and hidden each stop it, and it comes back", async () 
   const frozen = async (why) => {
     const n = await ambient();
     await step(page, 12_000);
-    await page.waitForTimeout(400);
+    await elapse(page, 400);
     await step(page, 12_000);
     expect(await ambient(), why + ": no event scheduled").toBe(n);
   };
@@ -156,7 +176,7 @@ test("AMB-5 nothing under the azan: the bed ducks to zero, no events, back after
   const events = a.ambience.events;
   for (let i = 0; i < 4; i += 1) {
     await step(page, 4000);
-    await page.waitForTimeout(300);
+    await elapse(page, 300);
     a = await audio(page);
     if (a.ambience.quiet !== "azan") break;
     expect(a.ambience.events, "no ambient event while the azan is live").toBe(events);

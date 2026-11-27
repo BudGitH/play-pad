@@ -15,7 +15,6 @@
   const OBJ_RANGE = 2.4;
   const NPC_RANGE = 2.3;
   const FAR_RANGE = 4.5;
-  const SUNAT_ARIA = "Sunat prayer (2 raka'at)";
   const LABELS = {
     counter_: ["Order", "Order food"],
     wudu_tap_: ["Wudu", "Take wudu"],
@@ -72,8 +71,8 @@
   /** When no fard prayer is owed, the Pray prompt offers the voluntary prayer and says so plainly. */
   function withPrayerLabel(target) {
     if (target && target.id === "prayer_spot" && G.PrayerFlow.isVoluntary()) {
-      target.label = "Sunat prayer";
-      target.aria = SUNAT_ARIA;
+      target.label = G.PrayerText.SUNAT_NAME;
+      target.aria = G.PrayerText.SUNAT_LABEL;
     }
     return target;
   }
@@ -235,7 +234,7 @@
     Order: "bowl",
     Wudu: "drop",
     Pray: "mosque",
-    "Sunat prayer": "mosque",
+    [G.PrayerText.SUNAT_NAME]: "mosque",
     Pay: "bag",
     Haircut: "scissors",
     "Check-up": "heart",

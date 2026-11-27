@@ -227,9 +227,16 @@
     return { total: st.greeter.count(), showing, visible: showing.length };
   }
 
-  /** Force the chance of every greeting roll (tests), or null for the normal chances. */
+  /**
+   * Force the chance of every greeting roll (tests), or null for the normal chances. Returns false
+   * (and changes nothing) before the game state exists or for a value that is not a finite number.
+   */
   function setChance(p) {
-    ensure(G.S).greeter.setChance(p);
+    if (!G.S) return false;
+    const reset = p === null || p === undefined;
+    if (!reset && !Number.isFinite(Number(p))) return false;
+    ensure(G.S).greeter.setChance(reset ? null : Number(p));
+    return true;
   }
 
   G.Greetings = { update, debug, setChance, TICK };

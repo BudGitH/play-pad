@@ -164,6 +164,17 @@
     });
   }
 
+  /** Add one stroller (or a pair) on a pavement out of sight. */
+  function addStroller(C, hero, minute) {
+    G.CrowdWalkers.spawn(C, hero, minute, SC().capFor(C.tier) - C.members.length >= 2).forEach(
+      function (m) {
+        if (C.instant) m.show = 1;
+        C.members.push(m);
+        C.byId.set(m.id, m);
+      },
+    );
+  }
+
   /** Spawn and retire strollers to follow the time-of-day target. */
   function reconcileWalkers(C, hero, minute, target) {
     const walkers = C.members.filter((m) => m.walker);
@@ -177,12 +188,9 @@
         .sort((a, b) => U.dist(b.x, b.z, hero.x, hero.z) - U.dist(a.x, a.z, hero.x, hero.z))[0];
       if (far && mayPop(C, far.x, far.z)) far.leaving = true;
     }
-    if (live >= target || C.members.length >= SC().capFor(C.tier)) return;
-    G.CrowdWalkers.spawn(C, hero, minute).forEach(function (m) {
-      if (C.instant) m.show = 1;
-      C.members.push(m);
-      C.byId.set(m.id, m);
-    });
+    const room = Math.min(target - live, SC().capFor(C.tier) - C.members.length);
+    for (let i = 0; i < (C.instant ? room : Math.min(1, room)); i += 1)
+      addStroller(C, hero, minute);
   }
 
   /** The twice-a-second job: decide who is here. */
@@ -271,6 +279,8 @@
       z: m.z,
       pose: m.pose,
       seated: Boolean(m.slot.sit),
+      wtype: m.wtype || null,
+      prop: m.prop || null,
       walker: m.walker,
     }));
   }

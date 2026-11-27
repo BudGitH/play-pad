@@ -138,11 +138,12 @@
   }
 
   /** Spawn one stroller (or a pair of friends) on a pavement out of sight. Returns the new members. */
-  function spawn(C, hero, minute) {
+  function spawn(C, hero, minute, allowPair) {
     const from = pickSpawnNode(C, hero);
     if (!from) return [];
     const type = SC().walkerType(minute, C.rng());
-    const pair = ["commuter", "stroller", "elder"].indexOf(type) !== -1 && C.rng() < 0.3;
+    const pair =
+      allowPair && ["commuter", "stroller", "elder"].indexOf(type) !== -1 && C.rng() < 0.3;
     const dest = pickDestination(C, from.id);
     const id = "walker:" + C.serial++;
     const out = [];

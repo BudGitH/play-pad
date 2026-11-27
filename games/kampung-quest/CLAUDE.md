@@ -21,16 +21,17 @@
 
 ## Module map (`js/game`)
 
-| Area          | Files                                                                                                                                                                      |
-| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Boot / loop   | `boot.js`, `boot-ui.js`, `loop.js`, `sim-setup.js`, `settings.js`, `hooks.js` (`__kq`)                                                                                     |
-| Hero / camera | `player.js` (walk, jump), `input.js`, `camera.js`, `collide.js` (pure circle-vs-box maths: settle, separate, openHeading, armLength; `js/sim/jump.js` is the jump arc)     |
-| NPCs          | `npc-manager.js` (routines, reveal, separation), `npc-agent.js` (walk, poses), `npc-goals.js` (seats, prayer rows), `pathing.js`, `seats.js`                               |
-| World extras  | `collectibles.js` (cans, litter, Mimi), `markers.js` (beacons, footprints, giver stars)                                                                                    |
-| HUD / UI      | `hud.js`, `hud-view.js`, `minimap.js`, `ui-core.js` (sheets, focus trap, toasts), `ui-dialogue.js`, `ui-menus.js`, `ui-screens.js`, `pictures.js`, `names.js`, `speech.js` |
-| Prayer        | `prayer-flow.js` (controller), `prayer-ui.js` (screens), `prayer-text.js` (dhikr, captions)                                                                                |
-| Play          | `interact.js`, `mission-flow.js`, `services.js`, `actions.js`, `nudge.js` (first-meal nudge + hawker beacon, food / energy low notes; decisions in `js/sim/hints.js`)      |
-| Sound         | `audio.js` (synth UI sounds, azan element, lifecycle gates)                                                                                                                |
+| Area          | Files                                                                                                                                                                                                                                                                  |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Boot / loop   | `boot.js`, `boot-ui.js`, `loop.js`, `sim-setup.js`, `settings.js`, `hooks.js` (`__kq`)                                                                                                                                                                                 |
+| Hero / camera | `player.js` (walk, jump), `input.js`, `camera.js`, `collide.js` (pure circle-vs-box maths: settle, separate, openHeading, armLength; `js/sim/jump.js` is the jump arc)                                                                                                 |
+| NPCs          | `npc-manager.js` (routines, reveal, separation), `npc-agent.js` (walk, poses), `npc-goals.js` (seats, prayer rows), `pathing.js`, `seats.js`                                                                                                                           |
+| World extras  | `collectibles.js` (cans, litter, Mimi), `markers.js` (beacons, footprints, giver stars)                                                                                                                                                                                |
+| Crowd         | `crowd.js` (population, range, cap, draw), `crowd-zones.js` (every fixed spot), `crowd-members.js` (spot behaviours), `crowd-walkers.js` (strollers on the walk graph); pure rules `js/sim/crowd.js`; renderer `js/figures/crowd-{geo,kit}.js`, poses `crowd-poses.js` |
+| HUD / UI      | `hud.js`, `hud-view.js`, `minimap.js`, `ui-core.js` (sheets, focus trap, toasts), `ui-dialogue.js`, `ui-menus.js`, `ui-screens.js`, `pictures.js`, `names.js`, `speech.js`                                                                                             |
+| Prayer        | `prayer-flow.js` (controller), `prayer-ui.js` (screens), `prayer-text.js` (dhikr, captions)                                                                                                                                                                            |
+| Play          | `interact.js`, `mission-flow.js`, `services.js`, `actions.js`, `nudge.js` (first-meal nudge + hawker beacon, food / energy low notes; decisions in `js/sim/hints.js`)                                                                                                  |
+| Sound         | `audio.js` (synth UI sounds, azan element, lifecycle gates)                                                                                                                                                                                                            |
 
 State lives in one object, `KQ.Game.S` (created in `boot.js`). The pure sim objects are `S.sim.{clock, prayer, needs, hints, economy, missions}`.
 
@@ -43,6 +44,7 @@ State lives in one object, `KQ.Game.S` (created in `boot.js`). The pure sim obje
 - **Time of day for tests:** `__kq.setMinute(m)`, `__kq.forcePrayer("zohor")`, `__kq.step(ms)` advance deterministically even when headless rAF is throttled.
 - **Characters never move without `Collide.settle`.** Hero, NPCs and their separation all end in a push-out against the colliders (body radius `Player.RADIUS` 0.33, `NpcAgent.RADIUS` 0.31); NPCs are placed with `placeAt` / `stepOut` (free spot, facing open space); stuck means no progress toward the waypoint, and two skips ask for a new route. The camera arm is floored at 0.35 m and rises as it shortens. Audit: `tests/kampung-quest-collision.spec.mjs`.
 - **Jump** (Space, touch Jump button, `__kq.input("jump")`): height only (`Sim.Jump`, peak 0.8 m, no double jump), colliders stay horizontal; Space is taken only while `Actions.canJump()`.
+- **The crowd is instanced, not rigged.** The 16 cast neighbours are full rigs (14 meshes each); the extras are `KQ.Figures.CrowdKit`: one InstancedMesh per part type (about 25 draw calls for any headcount), poses from the same `F.POSES` functions baked into a (pose, phase bucket, kid) bank. Never add a per-person mesh or light. New activity = a pose in `crowd-poses.js` + a slot kind in `crowd-zones.js` + a curve in `Sim.Crowd`. Extras appear and vanish only out of sight (`mayPop`), never walk except on the walk graph or inside a collider-checked play area, hold seats in the shared `npcs.seats` as `taken === "crowd"`, and are not talkable. Caps per tier are `Sim.Crowd.TIER_CAPS`; the draw-call budget is asserted in `tests/kampung-quest-crowd.spec.mjs` and AC-14.
 - **Hair / hat outfit:** `hat: "none"` + `hair: "classic"` is the hero's own blue cap (the save default); other combinations come from `Player.HEAD_STYLES`.
 
 ## Mobile and touch

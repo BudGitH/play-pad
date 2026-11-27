@@ -181,6 +181,16 @@ const JOINTS = [
 const ADULT = { thigh: 0.13, shin: 0.175, hipH: 0.305, legD: 0.12, scale: 1.1 };
 const KID = { thigh: 0.08, shin: 0.125, hipH: 0.205, legD: 0.12, scale: 1 };
 
+/** Assert every joint of one pose result is a finite triple (and root offsets are finite numbers). */
+function checkPose(name, p, pose) {
+  for (const key of Object.keys(pose)) {
+    const v = pose[key];
+    assert.ok([].concat(v).every(Number.isFinite), name + "." + key + " at " + p);
+    if (JOINTS.includes(key)) assert.equal(v.length, 3, name + "." + key);
+    else assert.ok(key === "rootY" || key === "rootZ", name + " unexpected key " + key);
+  }
+}
+
 test("every crowd pose is registered, has a loop speed, and gives finite joint angles at every phase", () => {
   const F = loadPoses();
   const names = Object.keys(F.CROWD_POSES);
@@ -189,16 +199,7 @@ test("every crowd pose is registered, has a loop speed, and gives finite joint a
     assert.equal(typeof F.POSES[name], "function", name + " registered");
     assert.ok(F.CROWD_RATES[name] > 0, name + " has a rate");
     for (const dims of [ADULT, KID]) {
-      for (let p = 0; p < 1; p += 0.05) {
-        const pose = F.POSES[name](p, dims);
-        for (const key of Object.keys(pose)) {
-          const v = pose[key];
-          const list = Array.isArray(v) ? v : [v];
-          assert.ok(list.every(Number.isFinite), name + "." + key + " at " + p);
-          if (JOINTS.includes(key)) assert.equal(v.length, 3, name + "." + key);
-          else assert.ok(key === "rootY" || key === "rootZ", name + " unexpected key " + key);
-        }
-      }
+      for (let p = 0; p < 1; p += 0.05) checkPose(name, p, F.POSES[name](p, dims));
     }
   }
 });

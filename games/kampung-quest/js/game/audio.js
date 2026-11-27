@@ -204,6 +204,17 @@
       noise(c, t, { type: "bandpass", f: 900, d: 0.1, g: 0.025 });
     },
     land: (c, t) => footfall(c, t, "land"),
+    // vehicles: a soft toy "pip-pip" for the car and a bright "ting-ting" for the bicycle bell
+    honk: (c, t) => {
+      tone(c, t, { f: 392, d: 0.12, g: 0.08, type: "triangle" });
+      tone(c, t + 0.16, { f: 440, d: 0.16, g: 0.08, type: "triangle" });
+    },
+    ring: (c, t) => {
+      [0, 0.13].forEach((dt) => {
+        tone(c, t + dt, { f: 2093, d: 0.5, g: 0.06 });
+        tone(c, t + dt, { f: 3136, d: 0.3, g: 0.025 });
+      });
+    },
   };
 
   /**

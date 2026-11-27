@@ -9,7 +9,7 @@ const SIM_DIR = path.join(JS_DIR, "sim");
 const DATA_DIR = path.join(JS_DIR, "data");
 
 /** The shipped data files (real MUIS times, azan captions), loaded only by loadSimWithData(). */
-export const DATA_FILES = ["prayer-times", "azan"];
+export const DATA_FILES = ["prayer-times", "azan", "holy-sites", "ritual-text"];
 
 /** Load order matters: see the header of save.js. */
 export const SIM_FILES = [
@@ -24,6 +24,9 @@ export const SIM_FILES = [
   "schedule",
   "greet",
   "ambience-mix",
+  "recite",
+  "ritual-walk",
+  "umrah",
   "save",
 ];
 

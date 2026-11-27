@@ -24,6 +24,7 @@
     const sim = {
       clock: S.Clock.create({ times: KQ.PRAYER_TIMES }),
       prayer,
+      umrah: S.Umrah.create(),
       needs: S.Needs.create(),
       hints: S.Hints.create(),
       economy: S.Economy.create(),

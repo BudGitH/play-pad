@@ -18,6 +18,12 @@
   /** The longest move tested against walls at once (a run step on a slow frame is split). */
   const MAX_MOVE = 0.2;
   const STEP_LEN = 0.62;
+  /** How fast the velocity follows the stick (per second): on the ground, and in the air where letting go
+   *  of the stick carries the hero on a little (a running jump keeps its momentum, it does not stall). */
+  const GROUND_FOLLOW = 14;
+  const GROUND_STOP = 18;
+  const AIR_FOLLOW = 10;
+  const AIR_STOP = 2.5;
 
   /** Head-piece specs for the barber's outfit options (default = the hero's own blue cap). */
   const HEAD_STYLES = {
@@ -144,6 +150,12 @@
     }
   }
 
+  /** The damping rate for the horizontal velocity: grounded or airborne, steering or letting go. */
+  function followRate(P, steering) {
+    if (P.jump.grounded) return steering ? GROUND_FOLLOW : GROUND_STOP;
+    return steering ? AIR_FOLLOW : AIR_STOP;
+  }
+
   /** Height: follow the terrain, add the jump arc, and thud on landing. */
   function vertical(P, dt, env) {
     P.base = U.damp(P.base, env.heightAt(P.pos.x, P.pos.z), 18, dt);
@@ -179,7 +191,7 @@
     }
     const top = (move.run ? RUN : WALK) * env.speedFactor;
     const want = desiredVelocity(move, env.yaw, top * move.mag);
-    const k = move.mag > 0 ? 14 : 18;
+    const k = followRate(P, move.mag > 0);
     P.vx = U.damp(P.vx, want.x, k, dt);
     P.vz = U.damp(P.vz, want.z, k, dt);
     const before = { x: P.pos.x, z: P.pos.z };

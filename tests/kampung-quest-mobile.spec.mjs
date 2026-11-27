@@ -1,4 +1,4 @@
-// Kampung Quest on emulated phones and a tablet: touch only (joystick, look, pinch, Run, Talk, wudu and
+// Kampung Quest on emulated phones and a tablet: touch only (joystick incl. run at its rim, Jump with a second finger, look, pinch, Talk, wudu and
 // prayer tiles), >= 48 px targets, no page scroll, and the low quality tier by default.
 // Uses Playwright's device descriptors (isMobile + hasTouch, default device scale factor) and raw touch
 // events over CDP, because page.touchscreen can only tap. Run: npm run smoke
@@ -69,26 +69,57 @@ async function expectTouchTargets(page) {
   expect(small, "buttons under 48 px").toEqual([]);
 }
 
+/** Put a finger on the joystick centre, push it (dx, dy) px, run `ms` of game time; returns the state mid-push. */
 async function joystickPush(page, cdp, dx, dy, ms) {
   const box = await page.locator("#kqJoy").boundingBox();
   const c = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
   await touch(cdp, "touchStart", [c]);
   await touch(cdp, "touchMove", [{ x: c.x + dx, y: c.y + dy }]);
   await kq(page, (t) => window.__kq.step(t), ms);
+  const during = await kq(page, () => window.__kq.state());
   await touch(cdp, "touchEnd", []);
+  return during;
 }
 
-/** Left thumb: the joystick walks the hero; Run toggles. */
+/** Left thumb: the joystick walks the hero, and pushing it to the rim runs (there is no Run button). */
 async function checkMoveAndRun(page, cdp) {
   const before = await kq(page, () => window.__kq.state().pos);
-  await joystickPush(page, cdp, 0, -40, 900);
-  const after = await kq(page, () => window.__kq.state().pos);
-  expect(Math.hypot(after.x - before.x, after.z - before.z)).toBeGreaterThan(0.8);
+  const walking = await joystickPush(page, cdp, 0, -30, 450);
+  expect(Math.hypot(walking.pos.x - before.x, walking.pos.z - before.z)).toBeGreaterThan(0.4);
+  expect(walking.running).toBe(false);
+  const running = await joystickPush(page, cdp, 0, -80, 450);
+  expect(running.running).toBe(true);
+  expect(running.speed).toBeGreaterThan(walking.speed + 0.8);
+  await expect(page.locator("#kqRun")).toHaveCount(0);
   // a raw CDP drag leaves Chrome's tap detector one tap behind: settle it with a harmless tap on the scene
   await page.touchscreen.tap(page.viewportSize().width * 0.5, page.viewportSize().height * 0.5);
-  await page.locator("#kqRun").tap();
-  await expect(page.locator("#kqRun")).toHaveAttribute("aria-pressed", "true");
-  await page.locator("#kqRun").tap();
+}
+
+/** Two thumbs at once: the left one keeps steering while the right one taps Jump; the hop keeps the speed. */
+async function checkMoveWhileJumping(page, cdp) {
+  const joy = await page.locator("#kqJoy").boundingBox();
+  const jump = await page.locator("#kqJump").boundingBox();
+  const c = { x: joy.x + joy.width / 2, y: joy.y + joy.height / 2 };
+  const stick = { x: c.x, y: c.y - 30 };
+  const jumpAt = { x: jump.x + jump.width / 2, y: jump.y + jump.height / 2 };
+  await touch(cdp, "touchStart", [c]);
+  await touch(cdp, "touchMove", [stick]);
+  await kq(page, () => window.__kq.step(600));
+  const start = await kq(page, () => window.__kq.state());
+  await touch(cdp, "touchStart", [stick, jumpAt]); // second finger lands on Jump, first stays down
+  await kq(page, () => window.__kq.step(250));
+  const air = await kq(page, () => window.__kq.state());
+  expect(air.airborne, "the Jump tap with the stick held made the hero hop").toBe(true);
+  expect(air.jumpHeight).toBeGreaterThan(0.3);
+  expect(air.speed, "still moving in the air").toBeGreaterThan(start.speed * 0.8);
+  await kq(page, () => window.__kq.step(700));
+  const land = await kq(page, () => window.__kq.state());
+  expect(land.airborne).toBe(false);
+  expect(land.speed, "still walking after landing").toBeGreaterThan(start.speed * 0.8);
+  expect(Math.hypot(land.pos.x - start.pos.x, land.pos.z - start.pos.z)).toBeGreaterThan(1.0);
+  await touch(cdp, "touchEnd", []);
+  // two raw fingers leave Chrome's tap detector behind too: settle it with a harmless tap on the scene
+  await page.touchscreen.tap(page.viewportSize().width * 0.5, page.viewportSize().height * 0.5);
 }
 
 /** Right thumb drag turns the camera; a two-finger pinch zooms it. */
@@ -211,6 +242,13 @@ for (const name of ["iPhone 13 landscape", "Pixel 7"]) {
       await checkPrayer(page);
       expect(problems).toEqual([]);
     });
+
+    // its own page: the extra game time would let a neighbour walk up and take over the Talk button above
+    test("the stick keeps steering while a second finger taps Jump", async ({ page }) => {
+      await startGame(page);
+      const cdp = await page.context().newCDPSession(page);
+      await checkMoveWhileJumping(page, cdp);
+    });
   });
 }
 
@@ -224,7 +262,7 @@ for (const name of ["iPad Mini", "iPad Mini landscape", "iPhone 13", "Pixel 7 la
       await expectNoPageScroll(page);
       await expectTouchTargets(page);
       // the touch controls are on screen, inside the visible area
-      for (const id of ["#kqJoy", "#kqRun", "#kqDock-pause"]) {
+      for (const id of ["#kqJoy", "#kqJump", "#kqDock-pause"]) {
         const box = await page.locator(id).boundingBox();
         const vw = page.viewportSize();
         expect(box.x).toBeGreaterThanOrEqual(0);

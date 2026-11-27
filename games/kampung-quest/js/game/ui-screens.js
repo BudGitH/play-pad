@@ -179,7 +179,7 @@
   const HOWTO = [
     [
       "run",
-      "Walk with W A S D or the arrow keys, or the joystick. Hold Shift or tap Run to go faster.",
+      "Walk with W A S D or the arrow keys, or the joystick. Hold Shift, or push the joystick right to its edge, to run. Space or the Jump button jumps, even while you walk.",
     ],
     ["talk", "Walk up to a neighbour with a star and press E or the Talk button."],
     ["bowl", "Buy food at the hawker stalls. It fills your food meter."],
@@ -285,6 +285,7 @@
       fixed,
       choice("Caption size", CAPTION, () => prefs.captionSize, ctx.setCaption),
       choice("Read to me", ON_OFF, () => prefs.readToMe, ctx.setRead),
+      choice("Ambient sounds", ON_OFF, () => prefs.ambience, ctx.setAmbience),
       choice("Picture quality", QUALITY, ctx.getQuality, ctx.setQuality),
       choice("Less motion", MOTION, () => prefs.lessMotion, ctx.setMotion),
     ];

@@ -1,8 +1,10 @@
 /* ============================================================================
  * FILE: input.js
- * PURPOSE: Keyboard, touch joystick, run toggle and camera-drag input for Kampung Quest.
- *          Produces a movement vector, camera look deltas and shortcut callbacks.
- * BUSINESS CONTEXT: AC-2 (WASD/arrows, Shift run, touch joystick + run toggle, mouse /
+ * PURPOSE: Keyboard, touch joystick (push to the rim to run) and camera-drag input for Kampung
+ *          Quest. Produces a movement vector, camera look deltas and shortcut callbacks.
+ *          Movement, run and jump are independent inputs: holding any of them never cancels
+ *          another (each finger is its own pointer; each key is its own entry in `keys`).
+ * BUSINESS CONTEXT: AC-2 (WASD/arrows, Shift run, touch joystick with run at the rim, mouse /
  *   two-finger camera) and AC-15 (fully playable by keyboard; shortcuts E, 1-4, M, J, P, Esc).
  * DEPENDENCIES: util.js. DOM elements are passed to attach(); nothing is global but KQ.Game.Input.
  * ========================================================================== */
@@ -36,10 +38,13 @@
     Period: "camRight",
   };
   const JOY_RADIUS = 44;
+  /** Finger distance (as a share of the throw) that starts running, and the lower one that stops it. */
+  const RUN_ON = 1;
+  const RUN_OFF = 0.8;
 
   const keys = new Set();
   const virtual = new Set();
-  const state = { joyX: 0, joyY: 0, runToggle: false, lookX: 0, lookY: 0, zoom: 0 };
+  const state = { joyX: 0, joyY: 0, joyRun: false, lookX: 0, lookY: 0, zoom: 0 };
   const pointers = new Map();
   let handler = null;
   let lastKeyboard = false;
@@ -69,7 +74,7 @@
     y += state.joyY;
     const mag = Math.min(1, Math.hypot(x, y));
     const len = Math.hypot(x, y) || 1;
-    const run = held("ShiftLeft") || held("ShiftRight") || state.runToggle;
+    const run = held("ShiftLeft") || held("ShiftRight") || state.joyRun;
     return { x: (x / len) * mag, y: (y / len) * mag, mag, run };
   }
 
@@ -174,15 +179,21 @@
     const dead = len < 6 ? 0 : 1;
     state.joyX = (dx / radius) * dead;
     state.joyY = (-dy / radius) * dead;
+    // run with hysteresis: the finger must reach the rim to start, and may ease back a little
+    const reach = len / radius;
+    state.joyRun = state.joyRun ? reach >= RUN_OFF : reach >= RUN_ON;
+    el.classList.toggle("is-run", state.joyRun);
   }
 
   /**
    * Wire a joystick element so pointer drags on it drive the movement vector and releasing
-   * recentres it.
+   * recentres it. Only the finger that landed first steers (a later finger on the pad is
+   * ignored); fingers elsewhere (Jump, camera) never touch the joystick's pointer.
    */
   function attachJoystick(el, knob) {
     let id = null;
     el.addEventListener("pointerdown", function (e) {
+      if (id !== null) return;
       id = e.pointerId;
       el.setPointerCapture(id);
       setJoy(el, knob, e);
@@ -195,10 +206,13 @@
       if (e.pointerId !== id) return;
       id = null;
       state.joyX = state.joyY = 0;
+      state.joyRun = false;
+      el.classList.remove("is-run");
       knob.style.transform = "translate(0px,0px)";
     };
     el.addEventListener("pointerup", end);
     el.addEventListener("pointercancel", end);
+    el.addEventListener("lostpointercapture", end);
   }
 
   /** Wire the DOM: the stage (camera drag), the joystick and the run toggle. */
@@ -237,11 +251,8 @@
       state.lookX = state.lookY = state.zoom = 0;
       return out;
     },
-    toggleRun(on) {
-      state.runToggle = on === undefined ? !state.runToggle : Boolean(on);
-      return state.runToggle;
-    },
-    isRunToggled: () => state.runToggle,
+    /** True while the joystick is pushed out to its rim (the touch way to run). */
+    isJoyRunning: () => state.joyRun,
     usedKeyboard: () => lastKeyboard,
     /** Test / assistive hook: hold or release a named action ("up", "left", "run", "interact"...). */
     virtual(action, on) {

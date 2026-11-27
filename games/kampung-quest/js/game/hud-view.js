@@ -20,7 +20,9 @@
   function nextNote(ps) {
     if (ps.flow) return "Praying " + label(ps.flow.name);
     if (ps.due) return label(ps.due) + " time!";
-    if (ps.next && ps.next.inMin <= 30) return label(ps.next.name) + " soon";
+    // inMin is GAME minutes (the sim's clock), so the countdown follows game time, never the wall clock
+    if (ps.next && ps.next.inMin <= 60)
+      return label(ps.next.name) + " in " + Math.max(1, Math.ceil(ps.next.inMin)) + " min";
     if (!ps.next) return "";
     return "Next: " + label(ps.next.name) + " " + KQ.PRAYER_TIMES[ps.next.name];
   }

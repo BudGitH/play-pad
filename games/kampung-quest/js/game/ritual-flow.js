@@ -15,7 +15,7 @@
   const G = (KQ.Game = KQ.Game || {});
   const S = () => G.S;
   const U = () => KQ.Sim.Umrah;
-  const RF = { rite: null, ctl: null, chip: null, step: null, chooser: null };
+  const RF = { rite: null, ctl: null, chip: null, step: null, chooser: null, hint: "" };
 
   const umrah = () => S().sim.umrah;
   /** Can "Go there" work? Only when the region provides KQ.Holy.goTo. */
@@ -63,15 +63,17 @@
     return out;
   }
 
-  /** Where the walking rites say to go and what they mean, as a calm extra line under the card. */
+  /** Where the walking rites say to go and what they mean, plus the gentle "what next" hint, as a calm extra line under the card. */
   function noteFor(v) {
+    const hint = v.step.walk ? G.RitualTrek.hint() : "";
     if (v.step.walk === "sai") {
       const leg = KQ.Sim.RitualWalk.saiLeg(Math.min(v.count + 1, v.target));
-      return v.full
+      const line = v.full
         ? "All 7 legs done, ending at Marwa."
         : "Leg " + (v.count + 1) + ": " + cap(leg.from) + " to " + cap(leg.to) + ".";
+      return v.full ? line : line + " " + hint;
     }
-    return "";
+    return hint;
   }
 
   const cap = (t) => t.charAt(0).toUpperCase() + t.slice(1);
@@ -237,6 +239,7 @@
   function finish(rite) {
     G.Audio.play("bell");
     G.RitualTrek.stop();
+    RF.hint = "";
     G.RitualLook.sync();
     const ctl = RF.ctl;
     RF.rite = null;
@@ -291,8 +294,10 @@
 
   /** Show the chip (a button with the current step) while a rite is under way and its card is closed. */
   function syncChip() {
-    const text = umrah().summary();
-    if (RF.ctl || !RF.rite || !text) return removeChip();
+    const summary = umrah().summary();
+    if (RF.ctl || !RF.rite || !summary) return removeChip();
+    const hint = G.RitualTrek.hint();
+    const text = hint ? summary + ". " + hint : summary;
     if (!RF.chip) {
       RF.chip = G.UI.btn(text, { cls: "primary kq-ritual-chip", icon: "mosque", onClick: reopen });
       S().hudHost.appendChild(RF.chip);
@@ -338,6 +343,11 @@
   function update(dt) {
     G.RitualTrek.update(dt);
     G.RitualUI.tick(dt);
+    const hint = G.RitualTrek.hint();
+    if (hint !== RF.hint) {
+      RF.hint = hint;
+      if (RF.rite) refresh(); // only when the sentence changes: a few times a round
+    }
   }
 
   /** A plain description for tests: where the rite is, the counter, ihram, the haircut and the walkers. */
@@ -357,6 +367,8 @@
       cut: u ? u.cut : "none",
       auto: G.RitualTrek.isAuto(),
       tracking: G.RitualTrek.mode(),
+      hint: G.RitualTrek.hint(),
+      guide: G.RitualGuide.debug(),
       cutting: G.RitualLook.isCutting(),
     };
   }

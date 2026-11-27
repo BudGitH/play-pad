@@ -3,25 +3,26 @@
  * PURPOSE: Walking the rites for real: counting tawaf rounds (anticlockwise around the Kaaba from
  *          the Black Stone line) and sa'i legs (Safa -> Marwa) from where the hero is, and the
  *          "Walk for me" auto-walk that carries the hero round the mataf or along the mas'a lane,
- *          briskly between the green lights.
+ *          calmly (a stroll, a touch quicker between the green lights). While a step is active it also
+ *          shows the dotted ground guide (ritual-guide.js) and offers one gentle hint line.
  * BUSINESS CONTEXT: AC-H3 (walking is optional: Next, Go there and Walk for me all work, and a hero
  *   who walks by hand is counted too). One counter for all of them: the tracker only looks at the
  *   hero's position, so a manual walk and the auto-walk are counted by the same rules. No fail
  *   state: walking the wrong way just does not count.
- * DEPENDENCIES: KQ.HOLY (anchors), KQ.Sim.RitualWalk (pure geometry), player.js.
+ * DEPENDENCIES: KQ.HOLY (anchors), KQ.Sim.RitualWalk (pure geometry), player.js, ritual-guide.js.
  * ========================================================================== */
 (function (KQ) {
   "use strict";
   const G = (KQ.Game = KQ.Game || {});
   const S = () => G.S;
   const RW = () => KQ.Sim.RitualWalk;
-  /** Tawaf auto-walk radius (metres from the Kaaba centre) and pace. */
-  const TAWAF_RADIUS = 14;
-  const TAWAF_SPEED = 7;
-  /** Where a tawaf round is counted: between these distances from the Kaaba. */
-  const RING = { rMin: 8, rMax: 30 };
+  /** Tawaf auto-walk radius (metres from the Kaaba centre) and pace: calm, about 31 s a round. */
+  const TAWAF_RADIUS = KQ.Sim.RitualWalk.TAWAF_RADIUS;
+  const TAWAF_SPEED = KQ.Sim.RitualWalk.TAWAF_SPEED;
+  /** Where a tawaf round is counted: between these distances from the Kaaba (a wide, forgiving band). */
+  const RING = { rMin: 7, rMax: 32 };
   /** How close to a hill (m) counts as being on it. */
-  const HILL = 6;
+  const HILL = 7;
   const T = {
     mode: null,
     kind: null,
@@ -30,6 +31,7 @@
     tracker: null,
     auto: null,
     onCount: null,
+    hint: "",
   };
 
   /** The Makkah anchors, with safe fallbacks so a missing data file never throws. */
@@ -61,21 +63,27 @@
    * and `target` its goal; `onCount(n)` is told the new total whenever a round / leg is walked.
    */
   function track(kind, base, target, onCount) {
+    const same = T.mode && T.kind === kind && T.base === base && T.target === target && T.tracker;
     stopAuto();
-    Object.assign(T, {
-      mode: "manual",
-      kind,
-      base,
-      target,
-      onCount,
-      tracker: makeTracker(kind, target - base),
-    });
+    Object.assign(T, { mode: "manual", kind, base, target, onCount });
+    if (!same) T.tracker = makeTracker(kind, target - base); // reopening the card keeps the progress
+    showGuide(kind);
+    T.hint = hintFor(view()); // the card is drawn before the next frame: it needs the sentence now
   }
 
-  /** Stop watching (the step changed or the rite closed). */
+  /** Stop watching (the step changed or the rite closed): the ground guide goes too. */
   function stop() {
     stopAuto();
-    Object.assign(T, { mode: null, kind: null, tracker: null, onCount: null });
+    G.RitualGuide.hide();
+    Object.assign(T, { mode: null, kind: null, tracker: null, onCount: null, hint: "" });
+  }
+
+  /** The dotted guide on the ground for the rite (nothing when the anchors are missing). */
+  function showGuide(kind) {
+    const g = geometry(kind);
+    if (!g) return;
+    if (kind === "tawaf") G.RitualGuide.show(kind, Object.assign({ radius: TAWAF_RADIUS }, g));
+    else G.RitualGuide.show(kind, { a: g.a, b: g.b, w: holy().masaLane.w });
   }
 
   /** Put the hero on the ground at a route point, facing along it. */
@@ -126,7 +134,8 @@
 
   /**
    * "Walk for me": carry the hero along the route from the start (round 0 / the current leg), at a
-   * walking pace and briskly between the green lights, until the target is reached. `onEnd` runs then.
+   * calm walking pace (a touch quicker between the green lights), until the target is reached.
+   * `onEnd` runs then.
    */
   function auto(kind, base, target, onCount, onEnd) {
     const r = routeFor(kind, base, target);
@@ -187,14 +196,54 @@
     }
   }
 
-  /** Per frame: move the auto-walker, or feed the hero's position to the manual counter. */
+  /** The counting state of the rite as the guide and the hints see it: { x, z, armed, want, ... }. */
+  function view() {
+    const p = S().player.pos;
+    const t = T.tracker;
+    const out = { x: p.x, z: p.z, armed: true, want: "b", onRing: true, back: false, progress: 0 };
+    if (T.mode === "auto" && T.auto) {
+      out.want = Math.floor(T.auto.pos / T.auto.unit) % 2 === 0 ? "b" : "a"; // sa'i legs alternate
+      return out;
+    }
+    if (!t) return out;
+    const n = t.rounds === undefined ? t.legs : t.rounds;
+    Object.assign(out, { armed: t.armed, count: T.base + n });
+    if (T.kind === "tawaf")
+      Object.assign(out, { onRing: t.onRing, back: t.back, progress: t.progress });
+    else out.want = t.want;
+    return out;
+  }
+
+  /** The one gentle sentence for what to do now (the card's note and the chip show it), or "". */
+  function hintFor(v) {
+    if (T.mode === "auto") return "Walking for you. Tap Stop walking any time to take over.";
+    if (T.kind === "tawaf")
+      return RW().tawafHint(Object.assign({ rounds: v.count || T.base, target: T.target }, v));
+    const g = geometry("sai");
+    const goal = v.want === "b" ? g.b : g.a;
+    const toGoal = Math.hypot(v.x - goal.x, v.z - goal.z);
+    return RW().saiHint({
+      legs: v.count || T.base,
+      target: T.target,
+      armed: v.armed,
+      want: v.want,
+      toGoal,
+    });
+  }
+
+  /** Per frame: move the auto-walker (or feed the hero's position to the counter), then the guide and hint. */
   function update(dt) {
     if (!T.mode || !S().player) return;
-    if (T.mode === "auto" && T.auto) return stepAuto(dt);
-    if (!T.tracker) return;
-    const p = S().player.pos;
-    const n = T.tracker.feed(p.x, p.z);
-    if (n > 0 && T.onCount) T.onCount(T.base + (T.kind === "tawaf" ? n : n + 0));
+    if (T.mode === "auto" && T.auto) stepAuto(dt);
+    else if (T.tracker) {
+      const p = S().player.pos;
+      const n = T.tracker.feed(p.x, p.z);
+      if (n > 0 && T.onCount) T.onCount(T.base + n);
+    }
+    if (!T.mode) return; // the count above may have ended the step
+    const v = view();
+    G.RitualGuide.update(dt, v);
+    T.hint = hintFor(v);
   }
 
   G.RitualTrek = {
@@ -205,6 +254,8 @@
     update,
     isAuto: () => Boolean(T.auto),
     mode: () => T.mode,
+    hint: () => T.hint,
     TAWAF_RADIUS,
+    TAWAF_SPEED,
   };
 })((window.KQ = window.KQ || {}));

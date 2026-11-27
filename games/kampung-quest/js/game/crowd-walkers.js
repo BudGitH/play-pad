@@ -17,6 +17,8 @@
   const SPAWN_MIN = 28;
   const SPAWN_MAX = 54;
   const LANE = 0.5;
+  /** A lane-shifted waypoint must leave this much room (a person's radius) around it. */
+  const LANE_CLEAR = 0.3;
   /** Places a stroller may head for (the mosque hall and wudu area are left to the cast). */
   const SKIP = ["mosque_hall", "mosque_hall_women", "mosque_wudu"];
 
@@ -46,8 +48,8 @@
     return null;
   }
 
-  /** Move a polyline sideways by `lane` metres (to the right of the way it goes), segment by segment. */
-  function lanePath(pts, lane, world) {
+  /** The polyline sideways by `lane` metres (to the right of the way it goes), segment by segment; null if it clips anything. */
+  function shifted(pts, lane, world) {
     const out = [];
     for (let i = 1; i < pts.length; i += 1) {
       const a = pts[i - 1];
@@ -56,17 +58,24 @@
       if (len < 0.2) continue;
       const nx = (-(b.z - a.z) / len) * lane;
       const nz = ((b.x - a.x) / len) * lane;
-      [
-        [a, 0.0],
-        [b, 1],
-      ].forEach(function (e) {
-        const x = e[0].x + nx;
-        const z = e[0].z + nz;
-        const ok = G.CrowdZones.clear(world, x, z, 0.2);
-        if (e[1] || !out.length) out.push(ok ? { x, z } : { x: e[0].x, z: e[0].z });
-      });
+      const ends = out.length ? [b] : [a, b];
+      for (let k = 0; k < ends.length; k += 1) {
+        const p = { x: ends[k].x + nx, z: ends[k].z + nz };
+        const last = out[out.length - 1];
+        const free =
+          G.CrowdZones.clear(world, p.x, p.z, LANE_CLEAR) &&
+          (!last || G.CrowdZones.segmentClear(world, last.x, last.z, p.x, p.z, LANE_CLEAR));
+        if (!free) return null;
+        out.push(p);
+      }
     }
     return out;
+  }
+
+  /** The route as waypoints kept to the walker's own side of the pavement, or down the middle where that would clip something. */
+  function lanePath(pts, lane, world) {
+    const path = shifted(pts, lane, world) || shifted(pts, 0, world);
+    return path || pts.map((p) => ({ x: p.x, z: p.z }));
   }
 
   /** The way from (x, z) to a graph node as lane-shifted waypoints, or null. */
@@ -87,12 +96,23 @@
     return list[0];
   }
 
-  /** Make a stroller person (not yet placed). */
-  function makeWalker(C, type, id, lane) {
+  /** The age role a stroller of this type is drawn from; in a family, the first is the parent and the rest children. */
+  function roleOf(type, k) {
+    if (type === "family") return k === 0 ? "adult" : "kid";
+    if (type === "student") return "student";
+    return type === "kid" ? "kid" : type === "elder" ? "elder" : "adult";
+  }
+
+  /** The pose a stroller of this type walks with (family members hold hands: a parent and a small child). */
+  function poseOf(type, k) {
+    return type === "family" && k > 0 ? "walk_hold_kid" : SC().WALKERS[type].pose;
+  }
+
+  /** Make a stroller person (not yet placed); `k` is the place in a group (0 = the first). */
+  function makeWalker(C, type, id, lane, k) {
     const T = SC().WALKERS[type];
-    const role = type === "kid" ? "kid" : type === "elder" ? "elder" : "adult";
     const female = type === "aunty" ? true : undefined;
-    const outfit = SC().outfit(id, role, female);
+    const outfit = SC().outfit(id, roleOf(type, k || 0), female);
     const draw = U.rng(U.hash(id));
     const speed = T.speed[0] + (T.speed[1] - T.speed[0]) * draw();
     return {
@@ -107,7 +127,7 @@
       z: 0,
       y: 0,
       heading: 0,
-      pose: T.pose,
+      pose: poseOf(type, k || 0),
       phase: draw(),
       rate: speed * T.cycles,
       show: 0.01,
@@ -137,19 +157,23 @@
     return true;
   }
 
-  /** Spawn one stroller (or a pair of friends) on a pavement out of sight. Returns the new members. */
-  function spawn(C, hero, minute, allowPair) {
+  /** Lanes (metres right of the pavement centre) for a group of n walking side by side. */
+  function lanesFor(C, n) {
+    if (n === 1) return [C.rng() < 0.5 ? LANE : -LANE];
+    return n === 2 ? [-LANE * 0.8, LANE * 0.8] : [-LANE * 1.3, 0, LANE * 1.3];
+  }
+
+  /** Spawn one stroller (or a group of friends or a family) on a pavement out of sight. Returns the new members. */
+  function spawn(C, hero, minute, room) {
     const from = pickSpawnNode(C, hero);
     if (!from) return [];
     const type = SC().walkerType(minute, C.rng());
-    const pair =
-      allowPair && ["commuter", "stroller", "elder"].indexOf(type) !== -1 && C.rng() < 0.3;
+    const size = Math.min(SC().walkerGroup(type, C.rng()), Math.max(1, room));
     const dest = pickDestination(C, from.id);
     const id = "walker:" + C.serial++;
     const out = [];
-    const lanes = pair ? [-LANE * 0.8, LANE * 0.8] : [C.rng() < 0.5 ? LANE : -LANE];
-    lanes.forEach(function (lane, i) {
-      const m = makeWalker(C, type, id + (i ? "b" : ""), lane);
+    lanesFor(C, size).forEach(function (lane, i) {
+      const m = makeWalker(C, type, id + (i ? "abc"[i - 1] : ""), lane, i);
       if (i && out[0]) {
         m.speed = out[0].speed;
         m.rate = out[0].rate;

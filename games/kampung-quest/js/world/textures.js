@@ -34,6 +34,20 @@
     leaves: { a: true, fb: null }, // alpha leaf-cluster atlas (2 cells); canvas cards on file://
     tuft: { a: true, fb: null }, // alpha grass tuft card
     carpet_d: { linear: true, fb: null }, // carpet fibre detail, multiplied ×2 over the pattern
+    // Haramain + planting beds (CC0, ambientCG; see assets/CREDITS.md)
+    sand: { n: true, fb: { base: [206, 178, 134], amp: 16, ripples: true } },
+    dirt: { n: true, fb: { base: [146, 120, 86], amp: 38, speck: 0.5 } },
+    rock: { n: true, fb: { base: [118, 100, 86], amp: 58, streaks: true, speck: 0.3 } },
+    limestone: {
+      n: true,
+      fb: { base: [214, 200, 172], amp: 16, grid: [4, 4], grout: [150, 138, 116], speck: 0.1 },
+    },
+    sandstone: {
+      n: true,
+      fb: { base: [190, 172, 132], amp: 30, grid: [5, 6], grout: [122, 108, 84] },
+    },
+    wood: { n: true, fb: { base: [216, 204, 190], amp: 36, streaks: true } },
+    soil: { n: true, fb: { base: [88, 64, 46], amp: 42, speck: 0.8 } },
   };
 
   /** Cheap 2D value noise (seeded), used to draw the fallback textures. */
@@ -58,6 +72,7 @@
     if (fb.speck && rnd() < fb.speck) v += (rnd() - 0.5) * fb.amp;
     if (fb.blades) v += (noise(x / 1.5, y / 6) - 0.5) * fb.amp;
     if (fb.streaks) v += (noise(x / 2, y / 24) - 0.5) * fb.amp * 1.4;
+    if (fb.ripples) v += Math.sin(y / 5 + noise(x / 40, y / 40) * 8) * fb.amp * 0.5;
     if (fb.veins)
       v -= Math.max(0, 1 - Math.abs(Math.sin(x / 20 + noise(x / 30, y / 30) * 9)) * 18) * 40;
     if (fb.grid) {
@@ -164,5 +179,18 @@
     P.Tex.anisotropy = Math.max(1, Math.min(8, n || 1));
   }
 
-  P.Tex = { base: "assets/", anisotropy: 4, SETS, set, setAnisotropy, valueNoise };
+  /**
+   * Load a photo file as a plain Image (for drawing into a procedural canvas), over http(s) only.
+   * `onLoad(img)` runs when it arrives; nothing happens on file:// or on a load error, so the
+   * procedural canvas keeps its own stand-in look.
+   */
+  function image(file, onLoad) {
+    if (!KQ.CAN_FETCH) return false;
+    const img = new Image();
+    img.onload = () => onLoad(img);
+    img.src = P.Tex.base + "textures/" + file;
+    return true;
+  }
+
+  P.Tex = { base: "assets/", anisotropy: 4, SETS, set, setAnisotropy, valueNoise, image };
 })((window.KQ = window.KQ || {}));

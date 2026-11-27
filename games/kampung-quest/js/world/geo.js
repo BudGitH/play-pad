@@ -115,6 +115,7 @@
     "grass",
     "rubber",
     "concrete",
+    "limestone",
   ]);
 
   /**

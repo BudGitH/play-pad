@@ -30,6 +30,7 @@
       economy: S.Economy.create(),
       missions: S.Missions.create({ isPaused: () => prayer.isBlockingMissions() }),
       outfit: Object.assign({}, state.outfit),
+      wardrobe: Object.assign({}, state.wardrobe),
       pos: safePos(state.pos),
       settings: Object.assign({}, state.settings),
     };

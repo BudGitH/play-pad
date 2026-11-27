@@ -427,7 +427,7 @@ test("vehicle hooks: vehicleSpots lie on streets and noDrive covers the mosques,
       street: H.inNoDrive(-150, -103),
     };
   });
-  expect(r.kinds).toEqual(["bike", "car"]);
+  expect(r.kinds).toEqual(["bike", "car", "moto"]);
   expect(r.n).toBeGreaterThan(10);
   expect(r.carsInZones).toBe(0);
   expect(r.mataf && r.masa && r.nabawi).toBe(true);

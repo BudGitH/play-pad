@@ -109,7 +109,7 @@
   }
 
   const LOOKS = [
-    { id: "classic", hair: "classic", hat: "none", name: "Blue cap", hairC: "#1d4fc6" },
+    { id: "classic", hair: "classic", hat: "none", name: "Matching cap", hairC: "#1d4fc6" },
     { id: "crew", hair: "crew", hat: "none", name: "Crew cut", hairC: "#2a1c14" },
     { id: "curly", hair: "curly", hat: "none", name: "Curly top", hairC: "#3a2416" },
     { id: "side_part", hair: "side_part", hat: "none", name: "Side part", hairC: "#6b4423" },

@@ -1,103 +1,10 @@
-/* Kampung Quest — street clutter (KQ.WorldParts.Clutter): parked bicycles and motorbikes
-   (instanced, static), potted plants, bollards, clipped hedges, and hawker steam sprites. */
+/* Kampung Quest — street clutter (KQ.WorldParts.Clutter): potted plants, bollards, clipped hedges, and hawker
+   steam sprites. (The parked bicycles, scooters and cars are drivable vehicles now: game/vehicle-spots.js.) */
 (function (KQ) {
   "use strict";
   const P = (KQ.WorldParts = KQ.WorldParts || {});
   const col = (c, x, z, hx, hz, kind) =>
     c.push({ minX: x - hx, maxX: x + hx, minZ: z - hz, maxZ: z + hz, kind });
-
-  /** Bicycle frame + wheel geometries (built once, merged). */
-  function bikeGeos() {
-    return P.cached("bike", () => {
-      const B = new P.Batch();
-      const bar = (x0, y0, x1, y1) => {
-        const len = Math.hypot(x1 - x0, y1 - y0);
-        B.box("f", (x0 + x1) / 2, (y0 + y1) / 2, 0, len, 0.04, 0.04, 0xffffff, [
-          0,
-          0,
-          Math.atan2(y1 - y0, x1 - x0),
-        ]);
-      };
-      bar(-0.48, 0.32, 0, 0.32);
-      bar(0, 0.32, 0.38, 0.66);
-      bar(-0.48, 0.32, -0.2, 0.66);
-      bar(-0.2, 0.66, 0.38, 0.66);
-      bar(0.48, 0.32, 0.38, 0.8);
-      bar(-0.2, 0.66, -0.24, 0.78);
-      B.box("f", -0.24, 0.8, 0, 0.22, 0.05, 0.1, 0xffffff);
-      B.box("f", 0.38, 0.82, 0, 0.05, 0.04, 0.5, 0xffffff);
-      const frame = B.build({ f: new THREE.MeshBasicMaterial() })[0].geometry;
-      const W = new P.Batch();
-      const tor = new THREE.TorusGeometry(0.3, 0.03, 6, 20);
-      [-0.48, 0.48].forEach((x) => W.geo("w", tor, P.compose(x, 0.32, 0, 0, 1, 1, 1)));
-      const wheels = W.build({ w: new THREE.MeshBasicMaterial() })[0].geometry;
-      return { frame, wheels };
-    });
-  }
-
-  /** Motorbike body/seat + wheel geometries (built once). */
-  function motoGeos() {
-    return P.cached("moto", () => {
-      const B = new P.Batch();
-      B.box("b", 0, 0.5, 0, 1.0, 0.36, 0.34, 0xffffff);
-      B.box("b", -0.15, 0.74, 0, 0.6, 0.1, 0.3, 0x222222);
-      B.box("b", 0.52, 0.72, 0, 0.12, 0.46, 0.12, 0xffffff, [0, 0, -0.3]);
-      B.box("b", 0.6, 0.98, 0, 0.06, 0.06, 0.62, 0x333333);
-      const body = B.build({ b: new THREE.MeshBasicMaterial() })[0].geometry;
-      const W = new P.Batch();
-      const cylG = new THREE.CylinderGeometry(0.26, 0.26, 0.12, 16).rotateX(Math.PI / 2);
-      [-0.55, 0.62].forEach((x) => W.geo("w", cylG, P.compose(x, 0.26, 0, 0, 1, 1, 1)));
-      const wheels = W.build({ w: new THREE.MeshBasicMaterial() })[0].geometry;
-      return { body, wheels };
-    });
-  }
-
-  const BIKES = [
-    [-30.5, 17.6, 0],
-    [-29.7, 17.6, 0],
-    [-28.9, 17.6, 0],
-    [13.2, -8.4, 1.57],
-    [13.2, -7.6, 1.57],
-    [36.5, 47.4, 0],
-    [37.3, 47.4, 0],
-    [25.4, 7.6, 0],
-  ];
-  const MOTOS = [
-    [-19.2, 41.2, 1.57],
-    [-19.2, 42.2, 1.57],
-    [-19.2, 43.2, 1.57],
-    [61, -7.3, 0],
-    [63, -7.3, 0],
-    [-25.4, 48.2, 0],
-  ];
-  const BIKE_COLS = [
-    0x2f6fb0, 0xd94f4f, 0x2b2b2b, 0xf2c230, 0x3f9a5a, 0xe8e8e8, 0x8a4fbf, 0xd9773a,
-  ];
-
-  /** Bicycles + motorbikes as four instanced meshes. */
-  function vehicles(group, mats, colliders) {
-    const bg = bikeGeos();
-    const mg = motoGeos();
-    const one = (list, extra) =>
-      list.map(([x, z, ry], i) =>
-        Object.assign({ x, y: 0.13, z, ry, color: BIKE_COLS[i % BIKE_COLS.length] }, extra),
-      );
-    const paint = new THREE.MeshPhysicalMaterial({
-      roughness: 0.35,
-      metalness: 0.3,
-      clearcoat: 0.8,
-    });
-    const ims = [
-      P.instanced(bg.frame, paint, one(BIKES)),
-      P.instanced(bg.wheels, mats.dark, one(BIKES, { color: 0x1c1c1c })),
-      P.instanced(mg.body, paint, one(MOTOS)),
-      P.instanced(mg.wheels, mats.dark, one(MOTOS, { color: 0x1c1c1c })),
-    ];
-    ims.forEach((m, i) => (m.name = ["bikes", "bikeWheels", "motos", "motoWheels"][i]));
-    group.add(...ims);
-    BIKES.forEach(([x, z, ry]) => col(colliders, x, z, ry ? 0.2 : 0.55, ry ? 0.55 : 0.2, "bike"));
-    MOTOS.forEach(([x, z, ry]) => col(colliders, x, z, ry ? 0.25 : 0.7, ry ? 0.7 : 0.25, "moto"));
-  }
 
   const POTS = [
     [-27, 21.5],
@@ -205,5 +112,5 @@
     });
   }
 
-  P.Clutter = { vehicles, pots, bollards, hedges, steam, animateSteam, POTS };
+  P.Clutter = { pots, bollards, hedges, steam, animateSteam, POTS };
 })((window.KQ = window.KQ || {}));

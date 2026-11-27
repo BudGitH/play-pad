@@ -15,7 +15,9 @@
   const PL = () => KQ.Sim.Crowd.Pilgrim;
   const TAU = Math.PI * 2;
   /** Metres between people on a lane, the tour spacing and how far a child walks beside a parent. */
-  const GAP = 2.6;
+  const GAP = 2.1;
+  /** Tawaf lanes around the Kaaba (more, and closer, than the first crowd: the mataf is packed). */
+  const LANES = 8;
   const TOUR_GAP = 1.5;
   const SIDE = 0.62;
   let tourSerial = 0;
@@ -101,19 +103,19 @@
     });
   }
 
-  /** The tawaf ring: six lanes filled with units; the outer lanes take wheelchairs and elders. */
+  /** The tawaf ring: eight lanes filled with units; the outer lanes take wheelchairs and elders. */
   function ringSlots() {
     const R = PL().RING;
     const out = [];
-    for (let lane = 0; lane < 6; lane += 1) {
-      const r = R.rMin + ((R.rMax - R.rMin) * lane) / 5;
+    for (let lane = 0; lane < LANES; lane += 1) {
+      const r = R.rMin + ((R.rMax - R.rMin) * lane) / (LANES - 1);
       const circ = TAU * r;
       const v0 = R.vMin + (R.vMax - R.vMin) * SC().hash01("lane" + lane);
       let s = 0;
       let i = 0;
       while (s < circ - GAP) {
         const id = "tawaf:" + lane + ":" + i;
-        const kind = unitKind(id, lane >= 4);
+        const kind = unitKind(id, lane >= LANES - 2);
         const list = ringUnit(kind, id, r, s, v0, lane);
         out.push(...list);
         s += lengthOf(kind, list.length);
@@ -140,7 +142,7 @@
     const S = PL().SAI;
     const out = [];
     S.xs.forEach(function (x, l) {
-      const count = 9;
+      const count = 13;
       for (let i = 0; i < count; i += 1) {
         const id = "sai:" + l + ":" + i;
         const phase = (i + SC().hash01(id + "p") * 0.7) / count;
@@ -157,5 +159,5 @@
     tourSerial = 0;
   }
 
-  G.CrowdHolyUnits = { ringSlots, saiSlots, LOOKS, unitKind, members, reset };
+  G.CrowdHolyUnits = { ringSlots, saiSlots, LOOKS, unitKind, members, reset, LANES };
 })((window.KQ = window.KQ || {}));

@@ -22,6 +22,10 @@
   const MAX_CHARS = 200000;
   const QUALITIES = ["low", "med", "high"];
   const DEFAULT_OUTFIT = { hair: "classic", hat: "none" };
+  /** The hero's wardrobe choice (outfit + colour); the same look is worn in every region. */
+  const DEFAULT_WARDROBE = { wear: "classic", tone: "royal" };
+  /** The look (barber style + wardrobe) is shared by every region's save slot under this key. */
+  const LOOK_KEY = "kampung-quest:look";
   /** The walkable world is about +/-72 m (edge colliders); a saved position must sit inside it. */
   const WORLD_HALF = REGION ? 1000 : 70;
   const MAX_REV = 1e9;
@@ -61,6 +65,7 @@
       rituals: null,
       hints: { nudged: false, ate: false, foodDay: 0, energyDay: 0 },
       outfit: Object.assign({}, DEFAULT_OUTFIT),
+      wardrobe: Object.assign({}, DEFAULT_WARDROBE),
       pos: null,
       settings: { muted: false, quality: "med" },
     };
@@ -102,6 +107,14 @@
       hair: pick(options.hair, src.hair, DEFAULT_OUTFIT.hair),
       hat: pick(options.hat, src.hat, DEFAULT_OUTFIT.hat),
     };
+  }
+
+  /** Whitelist the saved wardrobe choice (outfit and colour ids) through the wardrobe module. */
+  function cleanWardrobe(raw) {
+    const wardrobe = KQ.Sim.Wardrobe;
+    return wardrobe && wardrobe.sanitize
+      ? wardrobe.sanitize(raw)
+      : Object.assign({}, DEFAULT_WARDROBE);
   }
 
   /** A hero position inside the playable bounds, or null (the game then uses the start spot). */
@@ -163,6 +176,7 @@
       rituals: cleanRituals(raw.rituals),
       hints: cleanHints(raw.hints),
       outfit: cleanOutfit(raw.outfit),
+      wardrobe: cleanWardrobe(raw.wardrobe),
       pos: cleanPos(raw.pos),
       settings: {
         muted: settings.muted === true,
@@ -179,12 +193,61 @@
   }
 
   /**
+   * The look shared by every region: what the barber and the tailor last saved, or null. Never
+   * throws. TRUST_BOUNDARY: localStorage (untrusted; the hair / hat and the wardrobe ids are
+   * whitelisted, anything else is ignored).
+   */
+  function readLook(storage) {
+    try {
+      const text = storage.getItem(LOOK_KEY);
+      if (typeof text !== "string" || text.length > MAX_CHARS) return null;
+      const d = JSON.parse(text);
+      if (!isObject(d) || d.v !== VERSION) return null;
+      return { outfit: cleanOutfit(d.outfit), wardrobe: cleanWardrobe(d.wardrobe) };
+    } catch (err) {
+      return null;
+    }
+  }
+
+  /** Remember the look for the other regions (best effort: a full or blocked store is ignored). */
+  function writeLook(storage, state) {
+    try {
+      const look = { v: VERSION, outfit: state.outfit, wardrobe: state.wardrobe };
+      storage.setItem(LOOK_KEY, JSON.stringify(look));
+    } catch (err) {
+      /* the slot itself still holds the look; only the other regions miss out */
+    }
+  }
+
+  /** Forget the shared look (New game starts from the hero's own clothes). */
+  function clearLook(storage) {
+    try {
+      storage.removeItem(LOOK_KEY);
+    } catch (err) {
+      /* nothing to forget */
+    }
+  }
+
+  /** A loaded or new game wears the shared look, so the hero looks the same in every region. */
+  function withLook(result, storage) {
+    if (result.status !== "loaded" && result.status !== "new") return result;
+    const look = readLook(storage);
+    if (look) Object.assign(result.state, look);
+    return result;
+  }
+
+  /**
    * Load a save. NEVER throws. TRUST_BOUNDARY: this reads localStorage (untrusted).
    * @param {Storage|null} storage localStorage-like object (may be null or throwing)
    * @returns {{state:object, status:'loaded'|'new'|'corrupt'|'unavailable', error?:string}}
    *   `state` is always a valid, clamped state (a new game unless status is 'loaded').
    */
   function load(storage) {
+    return withLook(loadSlot(storage), storage);
+  }
+
+  /** The slot of this region (without the shared look). */
+  function loadSlot(storage) {
     let text;
     try {
       text = storage.getItem(KEY);
@@ -226,6 +289,7 @@
       return { ok: false, reason: "unavailable" };
     }
     knownRev = clean.rev;
+    writeLook(storage, clean);
     return { ok: true, rev: clean.rev };
   }
 
@@ -244,6 +308,7 @@
       return false;
     }
     knownRev = next;
+    clearLook(storage);
     return true;
   }
 
@@ -261,6 +326,7 @@
       rituals: sim.umrah ? sim.umrah.snapshot() : null,
       hints: sim.hints ? sim.hints.snapshot() : base.hints,
       outfit: sim.outfit || base.outfit,
+      wardrobe: sim.wardrobe || base.wardrobe,
       pos: sim.pos || null,
       settings: sim.settings || base.settings,
     };

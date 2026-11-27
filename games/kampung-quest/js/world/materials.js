@@ -27,6 +27,9 @@
     books: 1.0,
     railing: 0.9,
     leaf: 2.2,
+    paint: 3.2,
+    wood: 1.4,
+    soil: 1.6,
   };
 
   /**
@@ -72,7 +75,17 @@
       bark: photo("bark", 0.95, 1.0),
       terrazzo: photo("terrazzo", 0.4, 0.35, { envMapIntensity: 0.9 }),
       hedge: photo("hedge", 0.85, 0.6),
+      wood: photo("wood", 0.68, 0.45),
+      soil: photo("soil", 1.0, 0.8),
     };
+  }
+
+  /** Painted walls: flat colour from the vertex tint, with the plaster's fine bumps as a stucco feel. */
+  function stucco() {
+    const n = P.Tex.set("plaster").normalMap;
+    const o = { roughness: 0.55, metalness: 0.0 };
+    if (n) Object.assign(o, { normalMap: n, normalScale: new THREE.Vector2(0.6, 0.6) });
+    return std(o);
   }
 
   /**
@@ -82,9 +95,8 @@
   function painted(pat) {
     const railing = pat.railing;
     return {
-      paint: std({ roughness: 0.55, metalness: 0.0 }),
+      paint: stucco(),
       plastic: std({ roughness: 0.32, metalness: 0.0 }),
-      wood: std({ roughness: 0.6, metalness: 0.0 }),
       metal: std({ roughness: 0.32, metalness: 0.85 }),
       chrome: std({ roughness: 0.12, metalness: 1.0, envMapIntensity: 1.2 }),
       gold: std({ roughness: 0.28, metalness: 1.0, envMapIntensity: 1.1 }),
@@ -275,6 +287,7 @@
     plastic: [0.2, 0, 0, 0.2],
     carpet: [0.3, 0, 0, 0.15],
     dark: [0.3, 0, 0, 0.2],
+    soil: [0.5, 0, 0.15, 0],
   };
 
   /** Build the whole catalogue once. */

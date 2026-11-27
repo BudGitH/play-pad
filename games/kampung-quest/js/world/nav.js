@@ -15,6 +15,10 @@
    */
   const SPURS = [
     [
+      [58, SW],
+      [58, 10.6, "tailor", 0], // the Butik stall (LAYOUT.tailor): stand 1.3 m in front of its front line
+    ],
+    [
       [26, -SW],
       [26, -10.5],
       [26, -19, "hawker", N],

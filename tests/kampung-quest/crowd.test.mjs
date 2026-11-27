@@ -97,18 +97,93 @@ test("outfits are deterministic, modest and respect the role", () => {
     kinds.add(o.age);
     assert.match(o.skin, /^#[0-9a-f]{6}$/);
     assert.match(o.top, /^#[0-9a-f]{6}$/);
-    assert.ok(o.scale >= 0.95 && o.scale <= 1.05);
+    assert.ok(o.scale >= 0.84 && o.scale <= 1.1, "height varies but stays sensible: " + o.scale);
+    assert.ok(o.girth >= 0.88 && o.girth <= 1.22, "body size varies: " + o.girth);
     if (!o.kid) assert.ok(o.long || o.skirt || o.top, "adults are covered");
     if (o.female && !o.kid) assert.ok(o.long, "women wear long sleeves");
     if (o.head === "tudung") assert.ok(o.female);
   }
-  assert.ok(kinds.has("kid") && kinds.has("elder") && kinds.has("adult"));
+  assert.ok(kinds.has("kid") && kinds.has("elder") && kinds.has("adult") && kinds.has("teen"));
   for (let i = 0; i < 40; i += 1) {
     assert.equal(C.outfit("k" + i, "kid").kid, true);
     assert.equal(C.outfit("e" + i, "elder").kid, false);
     assert.equal(C.outfit("f" + i, "adult", true).female, true);
     assert.equal(C.outfit("m" + i, "adult", false).female, false);
   }
+});
+
+test("caps are about 2x the first crowd and the draw-call cost does not depend on them", () => {
+  assert.deepEqual({ ...C.TIER_CAPS }, { low: 120, med: 195, high: 280 });
+  assert.ok(C.TIER_CAPS.low >= 2 * 56 && C.TIER_CAPS.med >= 2 * 84 && C.TIER_CAPS.high >= 2 * 120);
+});
+
+test("the new activity kinds follow the clock: shops by day, picnics after school, loners on the pavements", () => {
+  for (const kind of ["shop", "picnic", "loiter"]) assert.ok(C.KINDS.includes(kind), kind);
+  assert.ok(C.occupancy("shop", hours(18.4)) > 0.6);
+  assert.ok(C.occupancy("shop", hours(18.4)) > C.occupancy("shop", hours(15)));
+  assert.ok(C.occupancy("picnic", hours(17.2)) > 0.7);
+  assert.equal(C.occupancy("picnic", hours(12)), 0);
+  assert.ok(C.occupancy("loiter", hours(12.8)) > C.occupancy("loiter", hours(15)));
+});
+
+test("strollers come in groups: families, pupils and friends; singles stay single", () => {
+  assert.equal(C.walkerGroup("jogger", 0.5), 1);
+  assert.equal(C.walkerGroup("cyclist", 0.99), 1);
+  assert.ok(C.walkerGroup("family", 0.1) >= 2, "a parent and at least one child");
+  const sizes = new Set();
+  for (let i = 0; i < 100; i += 1) sizes.add(C.walkerGroup("student", (i + 0.5) / 100));
+  assert.deepEqual([...sizes].sort(), [1, 2, 3]);
+  assert.ok(C.WALKERS.student.speed[1] < C.WALKERS.jogger.speed[0]);
+  assert.ok(C.walkerWeights(hours(7)).student > C.walkerWeights(hours(11)).student);
+  assert.equal(C.walkerWeights(hours(3)).student, C.walkerWeights(hours(3)).student);
+});
+
+test("pupils wear a school uniform: white top, dark bottoms, girls modest", () => {
+  const ages = new Set();
+  for (let i = 0; i < 120; i += 1) {
+    const o = C.outfit("pupil" + i, "student");
+    ages.add(o.age);
+    assert.ok(o.age === "kid" || o.age === "teen", o.age);
+    assert.equal(o.kid, o.age === "kid");
+    assert.ok(Math.min(...parseHex(o.top)) > 200, "a white-ish top: " + o.top);
+    assert.ok(Math.max(...parseHex(o.legs)) < 140, "dark bottoms: " + o.legs);
+    if (o.female && o.group === "malay") assert.ok(o.head.startsWith("tudung"));
+    if (o.age === "teen") assert.ok(o.scale < 0.95, "teens are shorter than adults");
+  }
+  assert.deepEqual([...ages].sort(), ["kid", "teen"]);
+});
+
+const parseHex = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+
+test("variety: skin tones, hair, headwear, body sizes and colours spread widely across a crowd", () => {
+  const skins = new Set();
+  const tops = new Set();
+  const heads = new Set();
+  const hairs = new Set();
+  const girths = [];
+  for (let i = 0; i < 600; i += 1) {
+    const o = C.outfit("v" + i, "any");
+    skins.add(o.skin);
+    tops.add(o.top);
+    heads.add(o.head);
+    if (o.head === "hair") hairs.add(o.headColour);
+    girths.push(o.girth);
+  }
+  assert.ok(skins.size > 100, "per-person skin shade: " + skins.size);
+  assert.ok(tops.size > 200, "per-person clothing shade: " + tops.size);
+  for (const h of ["hair", "bun", "tudung", "tudung_kid", "songkok", "kopiah", "cap", "turban"])
+    assert.ok(heads.has(h), "headwear " + h);
+  assert.ok(hairs.size > 6, "hair colours " + hairs.size);
+  assert.ok(Math.max(...girths) - Math.min(...girths) > 0.25, "slight to stocky");
+});
+
+test("shade lightens and darkens a colour and always returns a valid hex", () => {
+  assert.equal(C.shade("#808080", 0), "#808080");
+  assert.ok(parseHex(C.shade("#808080", 0.5))[0] > 128);
+  assert.ok(parseHex(C.shade("#808080", -0.5))[0] < 128);
+  assert.equal(C.shade("#ffffff", 0.9), "#ffffff");
+  assert.equal(C.shade("#000000", -0.9), "#000000");
+  for (const k of [-3, -0.2, 0.2, 3]) assert.match(C.shade("#d27aa6", k), /^#[0-9a-f]{6}$/);
 });
 
 test("a chat circle faces the middle, a queue lines up and a grid is centred", () => {

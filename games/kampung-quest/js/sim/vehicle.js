@@ -19,8 +19,8 @@
   KQ.Sim = KQ.Sim || {};
 
   /**
-   * What each kind of vehicle can do. Speeds in m/s (the hero walks 2.3 and runs 4.4: the bicycle
-   * is faster than a run, the car faster still), turn in rad/s at full lock, halfLen / halfWid the
+   * What each kind of vehicle can do ("car" covers every car style, "moto" is a scooter). Speeds in m/s
+   * (the hero walks 2.3 and runs 4.4: the bicycle is faster than a run, the scooter and the car faster still), turn in rad/s at full lock, halfLen / halfWid the
    * body, ring the two circles (centre offset along the body, radius) used against the walls.
    */
   const SPECS = {
@@ -34,10 +34,10 @@
       turn: 1.9,
       turnSpeed: 1.3,
       minGrip: 0,
-      halfLen: 1.4,
-      halfWid: 0.8,
-      ring: { off: 0.6, r: 0.78 },
-      camDist: 5.4,
+      halfLen: 1.9,
+      halfWid: 0.82,
+      ring: { off: 1.08, r: 0.8 },
+      camDist: 5.6,
       camPitch: 0.34,
     },
     bike: {
@@ -54,6 +54,22 @@
       halfWid: 0.26,
       ring: { off: 0.2, r: 0.34 },
       camDist: 4.2,
+      camPitch: 0.3,
+    },
+    moto: {
+      label: "Ride",
+      maxFwd: 6.8,
+      maxRev: 1.4,
+      accel: 4.4,
+      brake: 9,
+      coast: 2,
+      turn: 2.3,
+      turnSpeed: 0.9,
+      minGrip: 0.3,
+      halfLen: 0.96,
+      halfWid: 0.3,
+      ring: { off: 0.5, r: 0.4 },
+      camDist: 4.6,
       camPitch: 0.3,
     },
   };

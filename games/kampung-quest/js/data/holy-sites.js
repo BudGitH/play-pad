@@ -25,6 +25,7 @@
       greenLights: Object.freeze({ z0: -8, z1: 8 }), // men walk briskly between these
       gate: p(0, -55, 5), // King Abdul Aziz gate
       hairSalon: p(20, -80, 3), // tahallul (shave / trim)
+      tailor: p(-50, -80, 3), // the tailor's stall on the west side street, outside the no-drive plaza
       clockTower: p(0, -130, 12),
       miqat: p(-60, -150, 5), // bus stop "Miqat (Masjid Aisyah, Tan'im)"
     }),
@@ -47,6 +48,7 @@
       uhud: p(600, -220, 40),
       baqi: p(660, 10, 15),
       busStop: p(600, -90, 4),
+      tailor: p(610, -101, 3), // the tailor's stall by the bus stop street
     }),
     /** Qibla in Makkah points at the Kaaba; in Madinah it is +z (south) by our layout. */
     madinahQibla: Object.freeze({ x: 0, z: 1 }),

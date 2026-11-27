@@ -87,17 +87,13 @@
     return out;
   }
 
-  /** Every fixed or analytic spot of the Haramain crowd. */
-  function build(world) {
-    G.CrowdHolyUnits.reset();
+  /** Prayer rows: arcs in the Haram courtyard, the Nabawi hall and Quba (skipping the readers, aisle and chamber). */
+  function prayerRows(world, taken) {
     const nab = KQ.WorldParts.HolyNabawiInside.CHAMBER;
-    const readers = readerSlots(world);
-    const spots = G.CrowdHolySpots.build(world);
-    const taken = readers.concat(spots);
     const near = (x, z) => taken.some((r) => Math.abs(r.x - x) < 0.9 && Math.abs(r.z - z) < 0.9);
     const aisle = (x) => x > 599.3 && x < 601.7;
     const chamber = (x, z) => x > nab.x0 - 2 && x < nab.x1 + 2 && z > nab.z0 - 2 && z < nab.z1 + 4;
-    const rows = rowSlots(world, {
+    const nabawi = {
       name: "nabawi",
       x0: 569.5,
       x1: 632,
@@ -106,24 +102,27 @@
       z1: 27,
       dz: 1.7,
       skip: (x, z) => aisle(x) || near(x, z) || chamber(x, z),
-    });
+    };
+    const quba = { name: "quba", x0: 549.5, x1: 570.5, dx: 1.25, z0: 113.5, z1: 126.5, dz: 1.7 };
+    return [].concat(
+      haramRows(world).filter((r) => !near(r.x, r.z)),
+      rowSlots(world, nabawi),
+      rowSlots(world, Object.assign(quba, { skip: near })),
+    );
+  }
+
+  /** Every fixed or analytic spot of the Haramain crowd. */
+  function build(world, pathP) {
+    G.CrowdHolyUnits.reset();
+    const readers = readerSlots(world);
+    const spots = G.CrowdHolySpots.build(world);
     const all = [].concat(
       G.CrowdHolyUnits.ringSlots(),
       G.CrowdHolyUnits.saiSlots(),
-      haramRows(world).filter((r) => !near(r.x, r.z)),
-      rows,
-      rowSlots(world, {
-        name: "quba",
-        x0: 549.5,
-        x1: 570.5,
-        dx: 1.25,
-        z0: 113.5,
-        z1: 126.5,
-        dz: 1.7,
-        skip: near,
-      }),
+      prayerRows(world, readers.concat(spots)),
       readers,
       spots,
+      G.CrowdHolyMore.build(world, pathP),
     );
     all.forEach((s) => (s.y = s.y === undefined ? world.heightAt(s.x, s.z) : s.y));
     return all;

@@ -12,7 +12,20 @@
   const KID_THIGH = 0.08 / 0.13;
   const KID_SHIN = 0.125 / 0.175;
   /** Poses that cycle fast enough to need more phase buckets for a smooth stride. */
-  const FAST = { walk: 1, run: 1, jog: 1, walkbag: 1, pedal: 1, hop: 1, walk_stoop: 1, push: 1, walk_hold: 1, walk_hold_kid: 1, carry: 1, guide: 1 };
+  const FAST = {
+    walk: 1,
+    run: 1,
+    jog: 1,
+    walkbag: 1,
+    pedal: 1,
+    hop: 1,
+    walk_stoop: 1,
+    push: 1,
+    walk_hold: 1,
+    walk_hold_kid: 1,
+    carry: 1,
+    guide: 1,
+  };
   const bank = new Map();
   const tmp = {
     e: new THREE.Euler(),

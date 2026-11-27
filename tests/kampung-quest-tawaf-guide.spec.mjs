@@ -142,6 +142,8 @@ test("the hint is gentle: start line first, then keep the Kaaba on the left, 'Ot
 });
 
 test("Walk for me is calm: about half a minute a round, the guide stays up and goes when done", async () => {
+  // ~3.6 min of game time at the calm pace: slow 2-core CI runners need more than the file default.
+  test.setTimeout(600_000);
   await reset();
   await openFromDock("umrah");
   await advanceTo("tawaf");

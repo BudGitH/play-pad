@@ -116,6 +116,7 @@ test("camels: the hero is pushed out of a standing camel and a walking camel mov
 });
 
 test("camels and outskirts keep the draw-call budget on the low tier", async ({ browser }) => {
+  test.setTimeout(150_000); // four full renders in software GL on a 2-core CI runner
   const page = await shared(browser);
   const worst = await kq(page, () => {
     const G = window.KQ.Game;

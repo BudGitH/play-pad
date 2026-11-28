@@ -27,7 +27,8 @@
    */
   function fitShift() {
     const box = G.UI.state.sheet;
-    if (!box) return G.Camera.setShift(0, 0);
+    const tucked = G.RitualUI.active && G.RitualUI.active.minimised; // a chip leaves the hero centred
+    if (!box || tucked) return G.Camera.setShift(0, 0);
     const side = box.parentElement.classList.contains("kq-sheet-side");
     if (side) G.Camera.setShift(0, box.offsetWidth * 0.5);
     else G.Camera.setShift(box.offsetHeight * 0.5, 0);
@@ -267,45 +268,157 @@
     return el("div", { cls: "kq-step-foot" }, top, next, row);
   }
 
-  /**
-   * Open a stepper sheet. h: { label, onNext, onBack, onGo, onExtra(id), onClose(reason) }.
-   * Returns a controller { show(card), close(), tick(dt), nextBtn }. `card`:
-   * { kicker, index, total, emoji | picture, title, how[], texts[] (ritual text items), counter
-   *   { count, target, unit, plural }, next { label, disabled, cls }, canBack, go, extras[], note,
-   *   key (changes when the card changes: resets the reading position) }.
-   */
-  function open(h) {
-    const rs = { cursor: null, auto: false, full: false, textIndex: 0, key: null };
-    const ctl = { rs, card: null, closed: false };
-    const parts = shell();
+  /* ------------------------------ the sheet, minimise and restore ------------------------------ */
+
+  /** Close reasons that only move the card (it lives on): the owner's onClose must not hear them. */
+  const KEEPS_CARD = ["minimise", "relayout"];
+
+  /** Show the card's sheet (side panel or bottom sheet by screen size) and keep its handle. */
+  function showSheet(ctl, h, parts) {
     ctl.handle = G.UI.openSheet({
       el: parts.box,
       label: h.label,
       variant: variant(),
       scrim: false,
-      onClose(reason) {
-        ctl.closed = true;
-        if (G.RitualUI.active === ctl) G.RitualUI.active = null;
-        G.Camera.setShift(0, 0);
-        h.onClose(reason);
-      },
+      onClose: (reason) => onSheetClose(ctl, h, reason),
       focus: ".kq-step-next",
     });
+  }
+
+  /** The sheet closed: a minimise or re-layout keeps the card; anything else ends it for good. */
+  function onSheetClose(ctl, h, reason) {
+    if (KEEPS_CARD.indexOf(reason) !== -1) return;
+    endCard(ctl, h, reason);
+  }
+
+  /** End the card (finished, "Not now", Escape, replaced...): chip gone, camera centred, owner told. */
+  function endCard(ctl, h, reason) {
+    ctl.closed = true;
+    ctl.minimised = false;
+    G.RitualMin.remove(ctl);
+    if (G.RitualUI.active === ctl) G.RitualUI.active = null;
+    G.UI.state.root.classList.remove("kq-min-locked");
+    G.Camera.setShift(0, 0);
+    h.onClose(reason);
+  }
+
+  /**
+   * Tuck the card away into its chip. `by` is "child" (the Hide button, H or -) or "game" (the game
+   * is moving the hero, or the child chose to walk the rite): a "game" card comes back by itself at
+   * the next step that needs a tap, a "child" card stays down and the chip pulses instead.
+   */
+  function minimise(ctl, by) {
+    if (ctl.closed || ctl.minimised) return;
+    ctl.minimised = true;
+    ctl.by = by;
+    ctl.handle.close("minimise");
+    G.Camera.setShift(0, 0);
+    G.UI.state.root.classList.toggle("kq-min-locked", Boolean(G.S.player && G.S.player.locked));
+    const chip = G.RitualMin.show(ctl, () => ctl.restore());
+    G.RitualMin.paint(chip, ctl.card);
+    G.HudLayout.measure();
+    chip.el.focus({ preventScroll: true });
+  }
+
+  /** Bring the card back from its chip (the child tapped it, or the step needs a tap). */
+  function restore(ctl, h, parts) {
+    if (ctl.closed || !ctl.minimised) return;
+    ctl.minimised = false;
+    ctl.by = null;
+    G.RitualMin.remove(ctl);
+    G.UI.state.root.classList.remove("kq-min-locked");
+    showSheet(ctl, h, parts);
+    ctl.rs.redraw();
+  }
+
+  /** The step now needs a tap: a game-minimised card comes back, a child-minimised one pulses its chip. */
+  function needsTap(ctl) {
+    if (!ctl.minimised) return;
+    if (ctl.by === "game") ctl.restore();
+    else G.RitualMin.pulse(ctl);
+  }
+
+  /** Switch the open card between side panel and bottom sheet (rotation) without ending it. */
+  function relayout(ctl, h, parts) {
+    if (ctl.closed || ctl.minimised || !ctl.handle) return;
+    const side = Boolean(
+      G.UI.state.sheet && G.UI.state.sheet.parentElement.classList.contains("kq-sheet-side"),
+    );
+    if (side === (variant() === "side")) return fitShift();
+    ctl.handle.close("relayout");
+    showSheet(ctl, h, parts);
+    ctl.rs.redraw();
+  }
+
+  /**
+   * The game's own action (Walk for me, the haircut scene) starts or stops. Starting tucks a visible
+   * card away so the child can watch; stopping brings it back, or pulses the chip if the child had
+   * hidden it. Only the edges count, so a card the child opened mid-action stays open.
+   */
+  function setBusy(on) {
+    const ctl = G.RitualUI.active;
+    const was = Boolean(G.RitualUI.busy);
+    G.RitualUI.busy = Boolean(on);
+    if (!ctl || was === Boolean(on)) return;
+    if (on) minimise(ctl, "game");
+    else needsTap(ctl);
+  }
+
+  /** Hide / show the active card (the H and - keys). Returns true when there was a card to toggle. */
+  function toggleMin() {
+    const ctl = G.RitualUI.active;
+    if (!ctl || ctl.closed) return false;
+    if (ctl.minimised) ctl.restore();
+    else ctl.minimise("child");
+    return true;
+  }
+
+  /**
+   * Open a stepper sheet. h: { label, onNext, onBack, onGo, onExtra(id), onClose(reason) }.
+   * Returns a controller { show(card), close(), tick(dt), minimise(by), restore(), needsTap(),
+   * relayout(), nextBtn, minimised }. `card`:
+   * { kicker, index, total, emoji | picture, title, how[], texts[] (ritual text items), counter
+   *   { count, target, unit, plural }, next { label, disabled, cls }, canBack, go, extras[], note,
+   *   chip { name, count, cue } (what the minimised chip says), key (changes when the card changes:
+   *   resets the reading position) }.
+   */
+  function open(h) {
+    if (G.RitualUI.active) G.RitualUI.active.close("replaced");
+    const rs = { cursor: null, auto: false, full: false, textIndex: 0, key: null };
+    const ctl = { rs, card: null, closed: false, minimised: false, by: null, chip: null };
+    const parts = shell(() => ctl.minimise("child"));
     rs.redraw = () => draw(ctl, h, parts);
-    ctl.show = function (card) {
-      if (ctl.closed) return;
-      if (rs.key !== card.key) Object.assign(rs, { key: card.key, cursor: null, textIndex: 0 });
-      ctl.card = card;
-      rs.redraw();
-    };
-    ctl.close = (reason) => ctl.handle.close(reason || "done");
+    ctl.show = (card) => show(ctl, card);
+    ctl.close = (reason) => closeCard(ctl, h, reason || "done");
     ctl.tick = (dt) => tick(ctl, dt);
+    ctl.minimise = (by) => minimise(ctl, by);
+    ctl.restore = () => restore(ctl, h, parts);
+    ctl.needsTap = () => needsTap(ctl);
+    ctl.relayout = () => relayout(ctl, h, parts);
+    showSheet(ctl, h, parts);
     G.RitualUI.active = ctl;
     return ctl;
   }
 
-  /** The empty sheet content: header (title, progress, Not now), the scrolling body and the pinned footer. */
-  function shell() {
+  /** A new card: redraw it, and if the card is minimised keep its chip current (counting goes on). */
+  function show(ctl, card) {
+    if (ctl.closed) return;
+    const rs = ctl.rs;
+    if (rs.key !== card.key) Object.assign(rs, { key: card.key, cursor: null, textIndex: 0 });
+    ctl.card = card;
+    rs.redraw();
+    if (ctl.minimised && ctl.chip) G.RitualMin.paint(ctl.chip, card);
+  }
+
+  /** Close the card from outside: through its sheet, or directly when it is minimised (no sheet is up). */
+  function closeCard(ctl, h, reason) {
+    if (ctl.closed) return;
+    if (ctl.minimised) endCard(ctl, h, reason);
+    else ctl.handle.close(reason);
+  }
+
+  /** The empty sheet content: header (title, Hide, Not now), progress, the scrolling body and the pinned footer. */
+  function shell(onMinimise) {
     const title = el("h2", { cls: "kq-sheet-title", text: "" });
     const prog = el("div", { cls: "kq-stepbar-host" });
     const head = el(
@@ -313,6 +426,7 @@
       { cls: "kq-sheet-head" },
       title,
       prog,
+      G.RitualMin.minimiseButton(onMinimise),
       G.UI.btn("Not now", { icon: "close", onClick: () => G.UI.closeSheet("button") }),
     );
     const body = el("div", { cls: "kq-stepper-body" });
@@ -334,12 +448,17 @@
     U.clear(parts.foot);
     parts.foot.appendChild(footOf(card, h, ctl));
     parts.body.scrollTop = keep;
+    if (!ctl.minimised) focusAfterDraw(ctl);
+    G.UI.announce(card.kicker + ". " + card.title, "caption");
+  }
+
+  /** Re-frame the hero beside the panel and keep keyboard focus inside the card (on Next by default). */
+  function focusAfterDraw(ctl) {
     fitShift();
     const sheet = G.UI.state.sheet;
     const active = document.activeElement;
     if (ctl.nextBtn && (!active || !sheet || !sheet.contains(active) || active === document.body))
       ctl.nextBtn.focus({ preventScroll: true });
-    G.UI.announce(card.kicker + ". " + card.title, "caption");
   }
 
   /** Per frame: auto-advance the highlighted word when Auto is on. */
@@ -352,11 +471,34 @@
     }
   }
 
+  /** A plain description for tests: is a card up, minimised, and what its chip says. */
+  function debug() {
+    const ctl = G.RitualUI.active;
+    const chip = ctl && ctl.chip;
+    return {
+      active: Boolean(ctl),
+      minimised: Boolean(ctl && ctl.minimised),
+      by: ctl ? ctl.by : null,
+      busy: Boolean(G.RitualUI.busy),
+      pulsing: Boolean(chip && chip.el.classList.contains("is-pulse")),
+      chip: chip ? chip.el.textContent : null,
+      kicker: ctl && ctl.card ? ctl.card.kicker : null,
+    };
+  }
+
   G.RitualUI = {
     open,
     fitShift,
     variant,
     active: null,
+    busy: false,
+    setBusy,
+    toggleMin,
+    debug,
+    /** Rotation / resize: switch the open card's panel (a minimised card re-opens in the right one). */
+    refit() {
+      if (G.RitualUI.active) G.RitualUI.active.relayout();
+    },
     tick(dt) {
       if (G.RitualUI.active) G.RitualUI.active.tick(dt);
     },

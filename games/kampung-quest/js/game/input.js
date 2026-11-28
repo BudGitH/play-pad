@@ -28,6 +28,8 @@
     KeyJ: "missions",
     KeyP: "pray",
     KeyB: "bag",
+    KeyH: "hide",
+    Minus: "hide",
     Escape: "escape",
     Digit1: "tile1",
     Digit2: "tile2",

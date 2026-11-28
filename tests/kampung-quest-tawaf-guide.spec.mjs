@@ -37,6 +37,7 @@ test.afterAll(async () => {
 async function reset() {
   await ev(() => {
     const G = window.KQ.Game;
+    if (G.RitualUI.active) G.RitualUI.active.close("test"); // a minimised card has no sheet to close
     G.UI.closeSheet("test");
     G.RitualTrek.stop();
     G.RitualLook.cancel();
@@ -119,7 +120,8 @@ test("the guide follows the hero: the dots ahead glow, the arrow leads anticlock
   await page.getByRole("button", { name: "I'll walk myself" }).click();
   await step(200);
   expect((await ritual()).guide.visible, "the guide stays up while you walk by hand").toBe(true);
-  await expect(page.locator(".kq-ritual-chip")).toContainText("Round 1 of 7");
+  await expect(page.locator(".kq-min-chip")).toContainText("Tawaf 0/7");
+  await expect(page.locator(".kq-min-chip")).toContainText("Kaaba on your left");
 });
 
 test("the hint is gentle: start line first, then keep the Kaaba on the left, 'Other way, please' for clockwise", async () => {

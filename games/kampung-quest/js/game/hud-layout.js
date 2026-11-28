@@ -54,7 +54,7 @@
     const keys = L.root.querySelector(".kq-keys");
     const list = [R.status, R.mission, R.coins, R.mute, R.pause, R.radar, R.needs];
     list.push(R.dock, R.joy, R.jump, azan, R.lane, R.portraitChip, keys);
-    return list.map(rectOf).filter(Boolean);
+    return list.concat(chipEls()).map(rectOf).filter(Boolean);
   }
 
   const touches = (a, b) =>
@@ -123,14 +123,19 @@
     t.style.top = top + dy + "px";
   }
 
-  /** Where the azan pill ends when it sits in the top lane (the toast lane starts under it). On a
-   *  phone the pill lives above the dock instead, so the lane stays at the top. */
+  /** The step chips (a minimised card, or the closed-rite chip) in the HUD. */
+  const chipEls = () => Array.from(L.root.querySelectorAll(".kq-min-chip"));
+
+  /** Where the azan pill or a step chip ends when it sits in the top lane (the toast lane starts under
+   *  it). On a portrait phone they live above the controls instead, so the lane stays at the top. */
   function laneTop() {
     const top = parseFloat(getComputedStyle(L.root).getPropertyValue("--kq-top")) || 12;
+    if (isPortraitPhone()) return top;
     const pill = document.getElementById("kqAzan");
-    const r = pill && pill.classList.contains("is-bar") ? rectOf(pill) : null;
-    const inTopLane = r && r.top < window.innerHeight / 2;
-    return inTopLane && !isPortraitPhone() ? Math.max(top, r.bottom + 6) : top;
+    const boxes = [pill && pill.classList.contains("is-bar") ? rectOf(pill) : null];
+    chipEls().forEach((c) => boxes.push(rectOf(c)));
+    const inTop = boxes.filter((r) => r && r.top < window.innerHeight / 2);
+    return inTop.reduce((low, r) => Math.max(low, r.bottom + 6), top);
   }
 
   /** Publish the measured sizes the CSS hangs from (status card height, top HUD end, lane top). */

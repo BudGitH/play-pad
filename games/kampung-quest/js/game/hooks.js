@@ -212,6 +212,7 @@
     input: (action, on) => G.Input.virtual(action, on),
     forcePrayer,
     ritual: () => G.RitualFlow.debug(),
+    card: () => G.RitualUI.debug(),
     openRite: (rite) => G.RitualFlow.open(rite),
     wardrobe: () => G.Wardrobe.debug(),
     openWardrobe: () => G.Wardrobe.open(),

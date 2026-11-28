@@ -828,16 +828,13 @@
     if (wasFull && !(shown && !bar)) G.UI.releaseToasts();
   }
 
-  /** After a resize or rotation: switch the prayer panel between side and bottom, then re-frame. */
+  /**
+   * After a resize or rotation: switch the open card between side panel and bottom sheet (a minimised
+   * card stays minimised: the same card is kept, not rebuilt), then re-frame the shot.
+   */
   function refit() {
-    const open = F.wui ? "wudu" : F.pui ? "pray" : null;
-    if (!open) return;
-    const box = G.UI.state.sheet;
-    const isSide = Boolean(box && box.parentElement.classList.contains("kq-sheet-side"));
-    if (isSide === G.PrayerUI.wantsSide()) return frameAgain();
-    G.UI.closeSheet("refit");
-    if (open === "wudu") openWudu(F.lastTap, F.lastHere);
-    else openPray(F.lastHere);
+    G.RitualUI.refit();
+    if (F.wui || F.pui) frameAgain();
   }
 
   /** Re-apply the shot after a resize or rotation that kept the same panel layout. */
@@ -917,6 +914,7 @@
     pickTile(i) {
       const ui = F.pui || F.wui;
       if (!ui || i !== 0 || !ui.ctl.nextBtn) return false;
+      if (ui.ctl.minimised) return ui.ctl.restore(), true; // key 1 brings a tucked-away card back first
       ui.ctl.nextBtn.click();
       return true;
     },

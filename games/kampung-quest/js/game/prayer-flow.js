@@ -16,11 +16,24 @@
   const G = (KQ.Game = KQ.Game || {});
   const U = G.U;
   const KAMPUNG_HALL = { x: -45, z: -33, heading: -Math.PI / 2 };
-  /** The hero's prayer spot: the kampung mosque's, or the current holy city's (Haramain region). */
-  const hallNow = () =>
+  /** The men's spot as a function of the region: the kampung mosque's, or the current holy city's. */
+  const menHall = () =>
     KQ.region === "haramain" && KQ.Holy && KQ.Holy.world
       ? KQ.Holy.HALL[KQ.Holy.world.city()]
       : KAMPUNG_HALL;
+  /**
+   * The hero's prayer spot. The girl hero prays in the women's rows (AC-P10): the kampung mosque's
+   * women's section behind the screen (`G.NpcGoals.HERO_SPOT_WOMEN`), or the world's
+   * `prayer_spot_women` in the holy cities; same qibla heading. Prayer rules are untouched.
+   */
+  function hallNow() {
+    const men = menHall();
+    if (!G.Hero || !G.Hero.isGirl()) return men;
+    if (KQ.region !== "haramain")
+      return Object.assign({}, G.NpcGoals.HERO_SPOT_WOMEN, { heading: men.heading });
+    const it = G.S && G.S.world.interactables.find((i) => i.id === "prayer_spot_women");
+    return it ? { x: it.pos.x, z: it.pos.z, heading: men.heading } : men;
+  }
   const HALL_SPOT = {
     get x() {
       return hallNow().x;

@@ -28,7 +28,7 @@
       band: "#f6f5f0",
       shoes: "#d7232c",
       head: { type: "cap", colour: "#1d4fc6", peak: "#1a45ad", badge: "#f6c945", hair: "#3a2416" },
-      face: { mouth: "grin", focused: true, freckles: true },
+      face: { mouth: "grin", focused: true, freckles: true, hero: true },
     },
     nenek: {
       id: "nenek",
@@ -288,6 +288,30 @@
       head: { type: "cap", colour: "#2f5788", band: "#f2b134", hair: "#2a1c14" },
       face: { mouth: "grin" },
     },
+  };
+
+  /**
+   * The girl hero (AC-P9): the same toy body and skeleton as the boy (dressed onto the hero's rig by
+   * KQ.Figures.dressHero), with her own softer face (lashes, gentle brows, blush, a small smile)
+   * and skin hands. Her clothes come from KQ.Sim.Hero's girl wardrobe and her head is her hair or
+   * hijab choice, so the spec below is only the base those overrides go on. Not in CAST (CAST is
+   * the neighbourhood's people).
+   */
+  F.HERO_GIRL = {
+    id: "hero_girl",
+    name: "Hana",
+    scale: 1.0,
+    skin: SKIN.tan,
+    torso: "#2f9a8a",
+    print: { style: "kurung", accent: "#f7a8c4", accent2: "#fff4cf" },
+    sleeves: "long",
+    arms: "#2f9a8a",
+    hands: null,
+    legs: "#28806f",
+    shoes: "#7a4a3a",
+    skirt: { top: "#2f9a8a", upper: "#2f9a8a", lower: "#28806f" },
+    head: { type: "hijab", colour: "#e46f9c", accent: "#fbd3e2" },
+    face: { mouth: "smile", lashes: true, blush: true, hero: true, browColour: "#4a2e1c" },
   };
 
   /** Cast ids in a stable order (hero first). */

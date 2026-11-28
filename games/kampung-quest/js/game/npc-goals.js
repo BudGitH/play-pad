@@ -13,6 +13,8 @@
   const G = (KQ.Game = KQ.Game || {});
   const U = G.U;
   const HERO_SPOT = { x: -45, z: -33 };
+  /** The girl hero's place in the women's section (front rows, behind the screen); no NPC slot sits on it. */
+  const HERO_SPOT_WOMEN = { x: -44.2, z: -22.7 };
   const SEAT_RANGE = 14;
   /** A standing agent turns away from a wall closer than this, and a walker needs this much room. */
   const LOOK_REACH = 0.9;
@@ -44,7 +46,9 @@
     const women = [];
     for (let x = -37; x >= -49; x -= 2.4) {
       [-24, -22.7, -21.4].forEach(function (z) {
-        if (!G.Collide.blockedAt(world.colliders, x, z, 0.6)) women.push({ x, z, taken: null });
+        const hers = U.dist(x, z, HERO_SPOT_WOMEN.x, HERO_SPOT_WOMEN.z) < 1.2;
+        if (!hers && !G.Collide.blockedAt(world.colliders, x, z, 0.6))
+          women.push({ x, z, taken: null });
       });
     }
     return { men, women };
@@ -184,5 +188,5 @@
     return n ? { x: n.x, z: n.z } : null;
   }
 
-  G.NpcGoals = { buildSlots, goalFor, pickWander, releaseSlot, HERO_SPOT };
+  G.NpcGoals = { buildSlots, goalFor, pickWander, releaseSlot, HERO_SPOT, HERO_SPOT_WOMEN };
 })((window.KQ = window.KQ || {}));

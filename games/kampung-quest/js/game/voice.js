@@ -37,6 +37,8 @@
    * How each cast member sounds: pitch (0..2), rate (about 0.5..1.5), "f" / "m" (picks a matching
    * device voice when one exists). Children are high, elders slow, and everyone differs.
    */
+  /** The girl hero's voice (AC-P9): a girl's pitch, a female device voice when there is one. */
+  const GIRL_HERO = { pitch: 1.45, rate: 1.0, sex: "f" };
   const PROFILES = {
     hero: { pitch: 1.32, rate: 1.0, sex: "m" },
     nenek: { pitch: 1.05, rate: 0.8, sex: "f" },
@@ -139,7 +141,8 @@
     if (PROFILES[key]) return key;
     const ids = KQ.Sim.NPC_IDS || [];
     return (
-      ids.find((id) => KQ.Sim.NPC_PROFILE[id].name === key) || (key === "Adam" ? "hero" : null)
+      ids.find((id) => KQ.Sim.NPC_PROFILE[id].name === key) ||
+      (key === "Adam" || key === "Hana" ? "hero" : null)
     );
   }
 
@@ -155,6 +158,7 @@
   /** How `who` (a cast id, a name, or a crowd id) sounds. */
   function profileOf(who) {
     const id = castId(who);
+    if (id === "hero" && G.Hero && G.Hero.isGirl()) return GIRL_HERO;
     return id ? PROFILES[id] : crowdProfile(String(who));
   }
 

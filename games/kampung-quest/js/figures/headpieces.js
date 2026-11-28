@@ -132,7 +132,11 @@
   /** Tudung: one sculpted hood (crown, face frame, under-chin) flowing into a shoulder drape. */
   function tudung(hd) {
     const kid = hd.type === "tudung_kid";
-    const hem = kid ? -0.072 : -0.095;
+    return hood(hd, kid ? -0.072 : -0.095, kid ? 0.3 : 0.5);
+  }
+
+  /** The hood itself: `hem` is how low the drape reaches, `fall` how far it slopes forward-down. */
+  function hood(hd, hem, fall) {
     const prof = [
       0.13,
       hem,
@@ -154,7 +158,7 @@
       const y = pos.getY(i);
       if (y >= 0) continue;
       const z = pos.getZ(i) * 0.82;
-      pos.setXYZ(i, pos.getX(i), y - Math.max(0, z) * (kid ? 0.3 : 0.5) * (y / hem), z);
+      pos.setXYZ(i, pos.getX(i), y - Math.max(0, z) * fall * (y / hem), z);
     }
     g.computeVertexNormals();
     const list = [G.paint(g, hd.colour)];
@@ -188,6 +192,108 @@
     return list;
   }
 
+  /** The girl hero's plain hijab: a snug hood to the shoulders with a little pin at the chin. */
+  function hijab(hd) {
+    return hood(hd, -0.085, 0.42);
+  }
+
+  /** A sporty hijab: shorter and snug, with a band round the crown in the second colour. */
+  function hijabSport(hd) {
+    const list = hood({ type: "hijab", colour: hd.colour }, -0.06, 0.25);
+    const band = new THREE.TorusGeometry(0.1235, 0.0075, 6, 40);
+    list.push(
+      G.place(G.paint(band, hd.accent || hd.colour), [0, 0.15, -0.004], [Math.PI / 2.1, 0, 0]),
+    );
+    return list;
+  }
+
+  /** A five-petal flower of little blobs facing out from the head at (x, y, z). */
+  function flower(p, r, petal, centre) {
+    const list = [];
+    const out = Math.atan2(p[0], p[2]);
+    for (let i = 0; i < 5; i += 1) {
+      const a = (i / 5) * TAU;
+      const dx = Math.cos(a) * r * Math.cos(out);
+      const dz = -Math.cos(a) * r * Math.sin(out);
+      const q = [p[0] + dx, p[1] + Math.sin(a) * r, p[2] + dz];
+      list.push(blob([r * 0.8, r * 0.8, r * 0.45], q, [0, out, 0], petal));
+    }
+    list.push(blob([r * 0.55, r * 0.55, r * 0.5], p, null, centre));
+    return list;
+  }
+
+  /** A flower hijab: the plain one with a cluster of little flowers at the side of the face. */
+  function hijabFlower(hd) {
+    const list = hood({ type: "hijab", colour: hd.colour }, -0.085, 0.42);
+    const petal = hd.accent || "#ffffff";
+    const centre = "#f2c230";
+    return list.concat(
+      flower([0.098, 0.15, 0.052], 0.013, petal, centre),
+      flower([0.11, 0.11, 0.02], 0.009, petal, centre),
+      flower([0.084, 0.182, 0.026], 0.008, petal, centre),
+    );
+  }
+
+  /** The girl's own hair: a rounded cap a little longer at the sides, with a soft fringe across the brow. */
+  function girlHair(hd, low) {
+    const y0 = low ? -0.004 : 0.03;
+    const w = low ? 0.128 : 0.12;
+    const prof = [w - 0.012, y0, w, y0 + 0.024, w, 0.12, 0.118, 0.162, 0.108, 0.2];
+    prof.push(0.083, 0.228, 0.04, 0.241, 0, 0.243);
+    const g = carve(G.lathe(densify(prof, 0.016), 32), 0.92, -0.12, 0.146, 0.092); // hair frames the face
+    g.computeVertexNormals();
+    const list = [G.paint(g, hd.colour)];
+    list.push(blob([0.088, 0.03, 0.04], [0, 0.166, 0.084], [0.25, 0, 0], hd.colour)); // fringe
+    list.push(blob([0.04, 0.028, 0.03], [-0.05, 0.158, 0.088], [0.25, 0, 0.3], hd.colour));
+    return list;
+  }
+
+  /** A hair tie or scrunchie: a small torus in the accent colour. */
+  function tie(hd, p, r, s) {
+    const t = new THREE.TorusGeometry(s || 0.016, 0.006, 6, 16);
+    return G.place(G.paint(t, hd.accent || "#e46f9c"), p, r || null);
+  }
+
+  /** Ponytail: hair tied high at the back with a ribbon, the tail swinging down to the neck. */
+  function girlPonytail(hd) {
+    const list = girlHair(hd, false);
+    list.push(tie(hd, [0, 0.19, -0.118], [0.3, 0, 0], 0.018));
+    list.push(blob([0.034, 0.075, 0.034], [0, 0.12, -0.142], [-0.28, 0, 0], hd.colour));
+    list.push(blob([0.026, 0.03, 0.026], [0, 0.05, -0.155], null, hd.colour));
+    return list;
+  }
+
+  /** Two braids: a chain of little plaits behind each ear, each tied off with a ribbon. */
+  function girlBraids(hd) {
+    const list = girlHair(hd, false);
+    for (let s = -1; s <= 1; s += 2) {
+      for (let k = 0; k < 4; k += 1) {
+        const p = [s * (0.1 - k * 0.004), 0.085 - k * 0.032, -0.03 - k * 0.008];
+        list.push(blob([0.024, 0.02, 0.024], p, [0, 0, s * 0.3], hd.colour));
+      }
+      list.push(tie(hd, [s * 0.086, -0.04, -0.06], [Math.PI / 2, 0, 0], 0.013));
+      list.push(blob([0.016, 0.018, 0.016], [s * 0.085, -0.058, -0.062], null, hd.colour));
+    }
+    return list;
+  }
+
+  /** A round bun on top at the back, with a scrunchie. */
+  function girlBun(hd) {
+    const list = girlHair(hd, false);
+    list.push(blob([0.056, 0.05, 0.054], [0, 0.236, -0.064], null, hd.colour));
+    list.push(tie(hd, [0, 0.205, -0.06], [Math.PI / 2 - 0.5, 0, 0], 0.036));
+    return list;
+  }
+
+  /** A short bob to the jaw with a clip in the accent colour. */
+  function girlBob(hd) {
+    const list = girlHair(hd, true);
+    list.push(
+      blob([0.012, 0.02, 0.008], [0.082, 0.17, 0.072], [0, 0.7, 0.4], hd.accent || hd.colour),
+    );
+    return list;
+  }
+
   /** A trim: the same carved hair, but only a skin-thick coat close to the head (no fringe). */
   function buzz(hd) {
     const prof = [
@@ -215,6 +321,13 @@
     hair_short: hair,
     hair_bun: hair,
     hair_quiff: hair,
+    hijab: hijab,
+    hijab_sport: hijabSport,
+    hijab_flower: hijabFlower,
+    girl_ponytail: girlPonytail,
+    girl_braids: girlBraids,
+    girl_bun: girlBun,
+    girl_bob: girlBob,
   };
   F.HEAD_PIECES = Object.keys(PIECES);
 

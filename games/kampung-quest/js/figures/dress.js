@@ -57,9 +57,35 @@
     c.fillText("7", front ? 186 : 128, front ? 110 : 190);
   }
 
+  /** The girl's long dress: a round white collar, a bow at the waist and a scatter of little dots. */
+  function dress(c, s, front) {
+    const h = F.printHelpers;
+    const a = (s.print && s.print.accent) || "#ffffff";
+    for (let i = 0; i < 9; i += 1) h.dot(c, 30 + ((i * 83) % 200), 70 + ((i * 47) % 170), 5, a);
+    h.stroke(c, [0, 214, 256, 214], a, 10); // sash
+    if (!front) return;
+    h.stroke(c, [88, 0, 104, 30, 128, 36, 152, 30, 168, 0], "#fbfaf6", 12); // collar
+    h.poly(c, [128, 214, 98, 196, 98, 232], a);
+    h.poly(c, [128, 214, 158, 196, 158, 232], a);
+    h.dot(c, 128, 214, 8, a);
+  }
+
+  /** The girl's tunic: an embroidered band round the neckline and down the front, and cuffed hem. */
+  function tunic(c, s, front) {
+    const h = F.printHelpers;
+    const a = (s.print && s.print.accent) || "#f2c94c";
+    h.stroke(c, [0, 246, 256, 246], a, 8);
+    if (!front) return h.stroke(c, [86, 0, 128, 20, 170, 0], a, 6);
+    h.stroke(c, [84, 0, 128, 40, 172, 0], a, 9);
+    h.stroke(c, [128, 40, 128, 140], a, 5);
+    for (let i = 0; i < 4; i += 1) h.dot(c, 128, 58 + i * 24, 5, "#fbfaf6");
+  }
+
   if (F.TORSO_STYLES) {
     F.TORSO_STYLES.thobe = thobe;
     F.TORSO_STYLES.sports = sports;
+    F.TORSO_STYLES.dress = dress;
+    F.TORSO_STYLES.tunic = tunic;
   }
 
   /** Remember the hero's own geometry once, so undressHero can put it back. */
@@ -96,12 +122,14 @@
    * @param rig the hero's rig (KQ.Figures.build("hero").userData.rig)
    * @param {object|null} over spec overrides from KQ.Sim.Wardrobe.specFor; null / undefined puts the
    *   hero's own clothes back.
+   * @param {object} [base] the spec the overrides go on: the boy (CAST.hero, default) or the girl
+   *   (HERO_GIRL, whose face and hands differ). Same rig, same skeleton either way.
    */
-  F.dressHero = function (rig, over) {
+  F.dressHero = function (rig, over, base) {
     if (!over) return F.undressHero(rig);
     rememberOwn(rig);
     const id = rig.dressId === IDS[0] ? IDS[1] : IDS[0];
-    const spec = Object.assign({}, F.CAST.hero, over, { id });
+    const spec = Object.assign({}, base || F.CAST.hero, over, { id });
     const parts = F.partsFor(spec, rig.dims);
     const mat = dressMaterial(F.makeAtlas(spec));
     SLOTS.forEach((s) => (rig[s[0]].geometry = parts[s[1]]));

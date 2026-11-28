@@ -24,6 +24,8 @@
   const DEFAULT_OUTFIT = { hair: "classic", hat: "none" };
   /** The hero's wardrobe choice (outfit + colour); the same look is worn in every region. */
   const DEFAULT_WARDROBE = { wear: "classic", tone: "royal" };
+  /** Who the hero is (boy or girl, the girl's hair / hijab style and scarf colour; KQ.Sim.Hero). */
+  const DEFAULT_HERO = { gender: "boy", style: "hijab", scarf: "rose" };
   /** The look (barber style + wardrobe) is shared by every region's save slot under this key. */
   const LOOK_KEY = "kampung-quest:look";
   /** The walkable world is about +/-72 m (edge colliders); a saved position must sit inside it. */
@@ -66,6 +68,7 @@
       hints: { nudged: false, ate: false, foodDay: 0, energyDay: 0 },
       outfit: Object.assign({}, DEFAULT_OUTFIT),
       wardrobe: Object.assign({}, DEFAULT_WARDROBE),
+      hero: Object.assign({}, DEFAULT_HERO),
       pos: null,
       settings: { muted: false, quality: "med" },
     };
@@ -109,12 +112,22 @@
     };
   }
 
-  /** Whitelist the saved wardrobe choice (outfit and colour ids) through the wardrobe module. */
-  function cleanWardrobe(raw) {
-    const wardrobe = KQ.Sim.Wardrobe;
+  /**
+   * Whitelist the saved wardrobe choice (outfit and colour ids) through the wardrobe rules of the
+   * hero's gender (a girl's outfit id is not a boy's, and the other way round).
+   */
+  function cleanWardrobe(raw, gender) {
+    const hero = KQ.Sim.Hero;
+    const wardrobe = hero && gender ? hero.wardrobeFor(gender) : KQ.Sim.Wardrobe;
     return wardrobe && wardrobe.sanitize
       ? wardrobe.sanitize(raw)
       : Object.assign({}, DEFAULT_WARDROBE);
+  }
+
+  /** Whitelist the saved hero choice (gender, style, scarf) through the hero module. */
+  function cleanHero(raw) {
+    const hero = KQ.Sim.Hero;
+    return hero && hero.sanitize ? hero.sanitize(raw) : Object.assign({}, DEFAULT_HERO);
   }
 
   /** A hero position inside the playable bounds, or null (the game then uses the start spot). */
@@ -159,6 +172,7 @@
     const clock = isObject(raw.clock) ? raw.clock : {};
     const needs = isObject(raw.needs) ? raw.needs : {};
     const settings = isObject(raw.settings) ? raw.settings : {};
+    const hero = cleanHero(raw.hero);
     return {
       v: VERSION,
       rev: Math.floor(clampNumber(raw.rev, 0, MAX_REV, 0)),
@@ -176,7 +190,8 @@
       rituals: cleanRituals(raw.rituals),
       hints: cleanHints(raw.hints),
       outfit: cleanOutfit(raw.outfit),
-      wardrobe: cleanWardrobe(raw.wardrobe),
+      wardrobe: cleanWardrobe(raw.wardrobe, hero.gender),
+      hero,
       pos: cleanPos(raw.pos),
       settings: {
         muted: settings.muted === true,
@@ -197,6 +212,7 @@
     return {
       outfit: Object.assign({}, DEFAULT_OUTFIT),
       wardrobe: Object.assign({}, DEFAULT_WARDROBE),
+      hero: Object.assign({}, DEFAULT_HERO),
     };
   }
 
@@ -212,7 +228,9 @@
       const d = JSON.parse(text);
       if (!isObject(d) || d.v !== VERSION) return null;
       if (d.cleared === true) return defaultLook(); // New game: every region slot starts bare again
-      return { outfit: cleanOutfit(d.outfit), wardrobe: cleanWardrobe(d.wardrobe) };
+      const look = { outfit: cleanOutfit(d.outfit), wardrobe: d.wardrobe };
+      if (isObject(d.hero)) look.hero = cleanHero(d.hero); // an older look keeps the slot's hero
+      return look;
     } catch (err) {
       return null;
     }
@@ -221,7 +239,7 @@
   /** Remember the look for the other regions (best effort: a full or blocked store is ignored). */
   function writeLook(storage, state) {
     try {
-      const look = { v: VERSION, outfit: state.outfit, wardrobe: state.wardrobe };
+      const look = { v: VERSION, outfit: state.outfit, wardrobe: state.wardrobe, hero: state.hero };
       storage.setItem(LOOK_KEY, JSON.stringify(look));
     } catch (err) {
       /* the slot itself still holds the look; only the other regions miss out */
@@ -246,7 +264,11 @@
   function withLook(result, storage) {
     if (result.status !== "loaded" && result.status !== "new") return result;
     const look = readLook(storage);
-    if (look) Object.assign(result.state, look);
+    if (!look) return result;
+    Object.assign(result.state, look);
+    const st = result.state;
+    st.hero = cleanHero(st.hero);
+    st.wardrobe = cleanWardrobe(st.wardrobe, st.hero.gender); // the look's ids must fit the hero's gender
     return result;
   }
 
@@ -341,6 +363,7 @@
       hints: sim.hints ? sim.hints.snapshot() : base.hints,
       outfit: sim.outfit || base.outfit,
       wardrobe: sim.wardrobe || base.wardrobe,
+      hero: sim.hero || base.hero,
       pos: sim.pos || null,
       settings: sim.settings || base.settings,
     };

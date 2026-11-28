@@ -314,13 +314,18 @@
   /** The way a new hero faces: west in the void deck (the qibla there), south toward the Haram's gate. */
   const startHeading = () => (KQ.region === "haramain" ? 0 : -Math.PI / 2);
 
-  /** Start or continue the game from a title button; New game also clears the save. */
+  /**
+   * Start or continue the game from a title button; New game also clears the save. A new game
+   * wears the hero picked on the title card (boy or girl, in that hero's own default clothes).
+   */
   function begin(s, saved, fresh) {
     G.Audio.unlock();
     G.Audio.loadAzan();
     if (fresh && s.storage) KQ.Sim.Save.clear(s.storage);
-    const state = fresh || saved.status !== "loaded" ? KQ.Sim.Save.defaultState() : saved.state;
+    const isNew = fresh || saved.status !== "loaded";
+    const state = isNew ? KQ.Sim.Save.defaultState() : saved.state;
     if (fresh) state.settings.quality = s.quality;
+    if (isNew) Object.assign(state, KQ.Sim.Hero.start(G.Hero.choice(), saved.state.hero));
     launch(s, state);
     G.HudLayout.armTurnHint();
   }
@@ -342,6 +347,7 @@
       : { state: KQ.Sim.Save.defaultState(), status: "unavailable" };
     const s = (G.S = makeState(root));
     s.storage = storage;
+    G.Hero.initPicker(saved.status !== "loaded", saved.state.hero && saved.state.hero.gender);
     G.UI.init(root);
     G.Speech.init();
     createRenderer(s, pickTier(saved));
@@ -366,7 +372,8 @@
     titleOrbit(s);
     const refs = BU().refs;
     refs.start.addEventListener("click", () => begin(s, saved, false));
-    refs.newGame.addEventListener("click", () => begin(s, saved, true));
+    // New game with a save: the first press puts up "Who are you?", the next one starts
+    refs.newGame.addEventListener("click", () => G.Hero.reveal() || begin(s, saved, true));
     compileAbove(s, s.quality);
     G.Boot.ready = true;
   }

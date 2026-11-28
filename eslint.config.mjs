@@ -18,6 +18,7 @@ export default [
       "dist/**",
       "Old prototype/**",
       "node_modules/**",
+      ".claude/**", // local Claude Code state, incl. agent worktrees (full copies of the repo)
       "docs/.brain-backup/**",
       "**/three.min.js",
       "**/GLTFLoader.js",

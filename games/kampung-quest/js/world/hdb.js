@@ -33,7 +33,8 @@
   /** Ground floor: tiled void deck, pillars (colliders), slab overhead. */
   function voidDeck(B, f, col, ctx) {
     const b = f.b;
-    B.aabb("tiles", b.x0 - 1, 0, b.z0 - 1, b.x1 + 1, 0.14, b.z1 + 1);
+    // Light cream terrazzo (AC-P20): the brown speckled tiles read muddy in the deck's shade.
+    B.aabb("terrazzo", b.x0 - 1, 0, b.z0 - 1, b.x1 + 1, 0.14, b.z1 + 1, 0xffe2bd);
     const rows = [b.z0 + 0.5, (b.z0 + b.z1) / 2, b.z1 - 0.5];
     for (let x = b.x0 + 0.5; x <= b.x1 - 0.4; x += BAY) {
       rows.forEach((z, ri) => {

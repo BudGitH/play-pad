@@ -124,6 +124,7 @@
     s.markers = G.Markers.create(s.scene);
     s.collect = G.Collectibles.create(s.scene, s.world);
     G.Vehicles.prepare(G.Defer); // queued, drained behind the loading bar (before the crowd's first prune)
+    G.Defer.add(() => G.Crowd.prune(s.crowd), "crowd prune"); // after every vehicle job above
     G.Loop.studioShine(s);
     BU().setStep(1, "done");
     BU().setProgress(0.5, "Waking up the neighbours...");

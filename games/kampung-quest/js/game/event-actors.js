@@ -29,6 +29,7 @@
     const group = KQ.Figures.build(key);
     group.visible = false;
     S().scene.add(group);
+    KQ.Figures.mergeRig(group); // one draw call per actor, not 14 (AC-14 budget)
     const rig = group.userData.rig;
     const kid = Boolean(KQ.Figures.CAST[key] && KQ.Figures.CAST[key].kid);
     POOL[key] = {

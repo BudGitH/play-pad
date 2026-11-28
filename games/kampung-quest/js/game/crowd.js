@@ -223,10 +223,7 @@
 
   /** The twice-a-second job: decide who is here. */
   function reconcile(C, hero, minute) {
-    if (!C.pruned) {
-      C.slots = G.CrowdZones.prune(C.world, C.slots);
-      C.pruned = true;
-    }
+    prune(C);
     const cap = SC().capFor(C.tier);
     const target = SC().walkerTarget(minute, C.tier);
     reconcileSpots(C, hero, minute, Math.max(0, cap - target));
@@ -337,5 +334,16 @@
     KQ.Figures.CrowdKit.showAll(C.kit, on);
   }
 
-  G.Crowd = { create, update, debug, positions, showAll, SPAWN_R, DESPAWN_R };
+  /**
+   * Drop the spots that something placed after the crowd (vehicles, decor) now covers. Runs once.
+   * Boot queues it on KQ.Game.Defer right after the vehicle jobs, so it is done behind the loading
+   * bar; otherwise the first reconcile does it.
+   */
+  function prune(C) {
+    if (C.pruned) return;
+    C.slots = G.CrowdZones.prune(C.world, C.slots);
+    C.pruned = true;
+  }
+
+  G.Crowd = { create, update, prune, debug, positions, showAll, SPAWN_R, DESPAWN_R };
 })((window.KQ = window.KQ || {}));

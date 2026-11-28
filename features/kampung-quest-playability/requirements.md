@@ -81,3 +81,10 @@
 - [ ] **AC-P21:** iPad (iPadOS reports "Macintosh" + touch) is detected as a touch tablet: touch controls, low/med tier start, pixel ratio cap.
 - [ ] **AC-P22:** boot work is cut: the loading screen shows real progress; heavy work (textures, shader compiles, higher tiers, the other region) is deferred or streamed; time-to-Start-enabled and peak memory are measured before/after (iPad emulation + 4x CPU throttle) and improve.
 - [ ] **AC-P23:** no long main-thread stalls (> 200 ms) after Start in the first 10 s of play on the throttled iPad profile; WebGL context loss is recovered or shown as a friendly card.
+
+### I. Simple actions for 7-year-olds (added 2026-11-28, owner follow-up)
+
+> Owner: "Users are confused in terms of the actions they need to take. If the user goes into rest, the hovering part, the praying part, it just confuses the user. Have a simple way to manage it ... it's causing frustration for some of the users who are 7 years old." Detailed ACs come from `actions-audit.md` and are implemented after the A-H merge, so they also cover the new Say hi / Ride / Go here / event actions.
+
+- [ ] **AC-P24:** one consistent way to do each action: a picture-first action control in a fixed place (no label that jumps between targets), a small picture chooser when two or more actions are in reach, spoken hints for non-readers.
+- [ ] **AC-P25:** Rest and Pray each take one obvious path (Rest: one tap, no yes/no dialog; Pray: the Pray button always does the next right thing, wudu first, with no new rule changes to `KQ.Sim.Prayer`).

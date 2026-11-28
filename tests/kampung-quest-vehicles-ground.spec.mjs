@@ -91,7 +91,7 @@ function walkIntoCar(nth) {
   const v = G.Vehicles.debug().list.filter((x) => x.kind === "car")[nth];
   const col = G.S.world.colliders.find((c) => c.vehicle === v.id);
   const side = [Math.cos(v.heading), -Math.sin(v.heading)];
-  window.__kq.place(v.x + side[0] * 2.4, v.z + side[1] * 2.4, 0);
+  window.__kq.place(v.x + side[0] * 2.4, v.z + side[1] * 2.4, 0, true);
   G.Camera.state.yaw = Math.atan2(-side[0], -side[1]);
   G.Camera.state.idle = -999;
   window.__kq.input("up", true);
@@ -190,7 +190,7 @@ function topSpeed([kind, tryOneSource, camCheckSource]) {
 /** One full-throttle run of 5 s: the top speed, the largest one-frame jump in speed, the camera's place. */
 function tryOne(G, T, v) {
   G.Vehicles.returnAll();
-  window.__kq.place(v.x + Math.cos(v.heading) * 1.6, v.z - Math.sin(v.heading) * 1.6, 0);
+  window.__kq.place(v.x + Math.cos(v.heading) * 1.6, v.z - Math.sin(v.heading) * 1.6, 0, true);
   T.frames(2);
   G.Vehicles.press("vehicle:" + v.id);
   T.frames(3);
@@ -344,7 +344,7 @@ function walkIntoBus() {
   const G = window.KQ.Game;
   const b = G.Vehicles.debug().bus;
   const col = G.S.world.colliders.find((c) => c.vehicle === "bus");
-  window.__kq.place(b.x, b.z + 2.6, Math.PI);
+  window.__kq.place(b.x, b.z + 2.6, Math.PI, true);
   G.Camera.state.yaw = Math.PI;
   G.Camera.state.idle = -999;
   window.__kq.input("up", true);
@@ -366,23 +366,23 @@ function busBrakesForHero() {
   const G = window.KQ.Game;
   const b = G.Vehicles.debug().bus;
   const ahead = b.x + b.dir * 14;
-  window.__kq.place(ahead, b.z, 0);
+  window.__kq.place(ahead, b.z, 0, true);
   let gap = Infinity;
   for (let i = 0; i < 240; i += 1) {
-    window.__kq.place(ahead, b.z, 0);
+    window.__kq.place(ahead, b.z, 0, true);
     G.Loop.frame(1 / 30, true);
     const now = G.Vehicles.debug().bus;
     gap = Math.min(gap, (ahead - now.x) * now.dir - 5.05);
   }
   const end = G.Vehicles.debug().bus;
-  window.__kq.place(30, 8, 0);
+  window.__kq.place(30, 8, 0, true);
   return { gap, speed: end.speed, braked: end.braked };
 }
 
 /** The bus: it loops, stops at the stop with its doors open, is solid, and brakes for the hero. */
 function busTests(getPage) {
   test("the bus pulls in at the stop, opens its left doors, waits, then drives on", async () => {
-    await kq(getPage(), () => window.__kq.place(30, 8, 0));
+    await kq(getPage(), () => window.__kq.place(30, 8, 0, true));
     const at = await kq(getPage(), runBus, [80, '(b) => b.state === "stop" && b.doors > 0.95']);
     const why = JSON.stringify(at);
     expect(at.state, why).toBe("stop");

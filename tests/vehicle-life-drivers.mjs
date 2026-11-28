@@ -35,9 +35,9 @@ export function installHelpers() {
     return rec;
   };
   const stand = (x, z, h) => {
-    window.__kq.place(x, z, h);
+    window.__kq.place(x, z, h, true);
     G.Camera.state.yaw = h;
-    window.__kq.step(150);
+    window.__kq.step(150, true);
   };
   window.__vl = { frames, veh, car, tcar, stubRig, stand };
 }
@@ -96,7 +96,7 @@ export function installViews() {
     for (let i = 0; i < 4000 && !(veh().bus.state === "stop" && veh().bus.doors > 0.9); i += 1)
       G.Loop.frame(1 / 30, true);
     const b = veh().bus;
-    window.__kq.place(b.x - 7.6, 4.4, Math.PI / 2);
+    window.__kq.place(b.x - 7.6, 4.4, Math.PI / 2, true);
     G.Camera.shot({
       target: { x: b.x - 2, y: 0, z: b.z },
       yaw: 1.85,
@@ -297,7 +297,7 @@ export function trafficRuns() {
   window.__kq.setMinute(210); // 03:30, a quiet hour
   G.Traffic.clear();
   G.Traffic.setHold(false);
-  window.__kq.place(30, -45, 0);
+  window.__kq.place(30, -45, 0, true);
   const out = { max: 0, moved: 0, empty: false };
   T.frames(2700, function () {
     const list = G.Traffic.debug().cars.filter((c) => c.state !== "away");
@@ -343,7 +343,7 @@ export function laneCase() {
   let gap = Infinity;
   const honks = G.Traffic.debug().honks;
   T.frames(330, function () {
-    window.__kq.place(0.95, -20, 0);
+    window.__kq.place(0.95, -20, 0, true);
     gap = Math.min(gap, -20 - T.tcar().z - 1.9);
   });
   const c = T.tcar();
@@ -398,8 +398,9 @@ export function scooterApproaches() {
       [1.8, -1.57],
       [2.0, 0.8],
     ]) {
-      window.__kq.place(v.x + Math.sin(ang) * dist, v.z + Math.cos(ang) * dist, ang + Math.PI);
-      window.__kq.step(300);
+      const [px, pz] = [v.x + Math.sin(ang) * dist, v.z + Math.cos(ang) * dist];
+      window.__kq.place(px, pz, ang + Math.PI, true);
+      window.__kq.step(300, true);
       const t = window.__kq.state().target;
       if (!t || t.id.indexOf("vehicle:moto") !== 0) continue;
       tries += 1;
@@ -488,7 +489,7 @@ export function busStop() {
   G.Traffic.setHold(true);
   window.__kq.setMinute(450);
   T.stand(30, 8, -Math.PI / 2);
-  window.__kq.step(1500);
+  window.__kq.step(1500, true);
   const s0 = T.veh().bus;
   const out = { seated: 0, door: 0 };
   T.frames(30 * 120, function () {
@@ -515,7 +516,7 @@ export function busLights() {
   const T = window.__vl;
   const seen = { L: false, R: false, brake: false };
   T.stand(30, 8, -Math.PI / 2);
-  window.__kq.step(1500);
+  window.__kq.step(1500, true);
   T.frames(30 * 120, () => {
     const b = T.veh().bus;
     if (b.state === "away") return true;

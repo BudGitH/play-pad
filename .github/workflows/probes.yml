@@ -10,7 +10,8 @@
 # path the list missed).
 #
 # Fork-safe like ci.yml: `pull_request` (not pull_request_target), read-only token, no secrets.
-# On failure a leg uploads its Playwright test-results/ (traces, screenshots) as a 7-day artifact.
+# On failure a leg uploads its Playwright test-results/ (traces, screenshots) as an artifact
+# (retention-days: 7, capped by the repo's Actions setting, 1 day today).
 # Chromium comes from `npx playwright install` (PW_CHROMIUM_PATH is unset, so every probe uses Playwright's own browser).
 name: Probes
 

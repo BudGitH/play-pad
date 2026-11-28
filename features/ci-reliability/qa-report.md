@@ -23,6 +23,8 @@
 | Q11 | LOW | RISK                  | `prepare`                                 | `hooksPath` points at repo-controlled scripts.                                                                                                                                                                                               | Accepted: same as the documented manual setup. Hook changes show in the diff.                                                                 |
 | Q12 | LOW | ACCURACY              | `ci:local`                                | It does not run the `Kampung Quest (AC/Phone)` legs.                                                                                                                                                                                         | Accepted: CONVENTIONS lists those commands next to it.                                                                                        |
 
+| Q13 | HIGH | CI run on `0753d82` | `vehicle-life:214`, `vehicles-ground:408` | Recurring 240 s timeouts. The previous test's drivers called `__kq.place()` once per sim frame, and each call drew a software-GL frame, so about 580 queued frames left a GPU backlog that the next test waited on. | Fixed: a `quiet` option on `Loop.step` / `__kq.place`, passed by the sim-only drivers. Leg 6.2 → 1.2 min on 2 CPUs, 38/38. Evidence: `notes-sim-slowdown.md`. |
+
 ## Verified clean (with evidence)
 
 - **Gate truth table (local simulation).** These combinations pass: `success/false/skipped` and `success/true/success`. These fail: `true/failure`, `true/cancelled`, `true/skipped`, and changes `failure` or `cancelled`.

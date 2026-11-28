@@ -470,10 +470,16 @@
     requestAnimationFrame(raf);
   }
 
-  /** Deterministic advance for tests / probes: `ms` of game-loop time in 1/30 s steps. */
-  function step(ms) {
+  /**
+   * Deterministic advance for tests / probes: `ms` of game-loop time in 1/30 s steps; the last step
+   * draws a frame so `stats()` and screenshots see the result. With `quiet` no frame is drawn at all:
+   * a sim-only driver that moves the hero in a loop must pass it, because every drawn frame is queued
+   * to the GPU process (software GL: ~0.4 s each on 2 CPUs) and the NEXT page task waits for the whole
+   * backlog, which on a CI runner outlasts a test's timeout (notes-sim-slowdown.md).
+   */
+  function step(ms, quiet) {
     const n = Math.max(1, Math.round(ms / 33.3));
-    for (let i = 0; i < n; i += 1) frame(1 / 30, i < n - 1);
+    for (let i = 0; i < n; i += 1) frame(1 / 30, quiet || i < n - 1);
     return n;
   }
 

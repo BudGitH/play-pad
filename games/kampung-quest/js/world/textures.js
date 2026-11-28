@@ -136,14 +136,55 @@
    * never renders black: the procedural texture for colour maps, a neutral 1x1 for the rest.
    */
   function loadPhoto(file, srgb, standIn) {
-    const loader = (P.Tex.loader = P.Tex.loader || new THREE.TextureLoader());
-    const tex = loader.load(P.Tex.base + "textures/" + file, undefined, undefined, () => {
+    const url = P.Tex.base + "textures/" + (P.Tex.half && HALF.has(file) ? "half/" : "") + file;
+    const tex = new THREE.Texture();
+    const mgr = THREE.DefaultLoadingManager; // boot.js waits on it and shows its progress
+    const img = new Image();
+    mgr.itemStart(url);
+    img.crossOrigin = "anonymous";
+    img.decoding = "async";
+    img.onload = () =>
+      decodeOffThread(img).then(() => {
+        tex.image = img;
+        tex.needsUpdate = true;
+        mgr.itemEnd(url);
+      });
+    img.onerror = () => {
       console.warn("[KQ.World] texture failed, using the procedural stand-in:", file);
       tex.image = standIn();
       tex.needsUpdate = true;
-    });
+      mgr.itemEnd(url);
+    };
+    img.src = url;
     return prep(tex, srgb);
   }
+
+  /**
+   * Decode a loaded image before WebGL sees it (`img.decode()` decodes off the main thread), so
+   * the upload in texImage2D does not also decode the JPEG on the main thread (AC-P22). Resolves
+   * either way: a failed decode only means the upload decodes it as before.
+   */
+  function decodeOffThread(img) {
+    if (typeof img.decode !== "function") return Promise.resolve();
+    return img.decode().catch(() => undefined);
+  }
+
+  /**
+   * The 1024 px photos that have a half-size copy in assets/textures/half/ (same CC0 files,
+   * resized). Boot sets `Tex.half` on the low tier: about a quarter of the texture memory for
+   * these, which matters on iPad Safari's per-tab memory budget (AC-P22).
+   */
+  const HALF = new Set([
+    "asphalt.jpg",
+    "asphalt_n.jpg",
+    "grass.jpg",
+    "leaves.jpg",
+    "leaves_a.jpg",
+    "paving.jpg",
+    "paving_n.jpg",
+    "plaster.jpg",
+    "terrazzo.jpg",
+  ]);
 
   const cache = new Map();
   /** Stand-in factories for one set's photo files. */
@@ -193,5 +234,14 @@
     return true;
   }
 
-  P.Tex = { base: "assets/", anisotropy: 4, SETS, set, setAnisotropy, valueNoise, image };
+  P.Tex = {
+    base: "assets/",
+    anisotropy: 4,
+    half: false,
+    SETS,
+    set,
+    setAnisotropy,
+    valueNoise,
+    image,
+  };
 })((window.KQ = window.KQ || {}));

@@ -18,17 +18,17 @@ Build notes from the "life" workstream. Fold into `docs/ARCHITECTURE.md`, the ga
 - **Director (pure):** `js/sim/events.js` (`KQ.Sim.Events`): first event after 75 s of free play, then one every 140-260 s; weighted choice by region and time of day, the last 2 are not repeated; **one at a time**; the play clock only runs while nothing blocks (`paused, modal, azan, prayerDue, prayerScreen, ritual, eating, mounted`); a running event is ended at once with the reason when something blocks. Seeded rng, 14 unit tests (`tests/kampung-quest/events.test.mjs`).
 - **Presentation:** `js/game/world-events.js` (manager: flags, free-spot search, prompt, radar blip, hint chip, teardown) + scripts in `world-events-kampung.js`, `world-events-town.js`, `world-events-holy.js`. People are full toy figures from a pool (`event-actors.js`, specs in `js/figures/life-cast.js`, built on first use, hidden between events); props are plain meshes freed (geometry and materials disposed) at the end; the idle town costs nothing. `life-chip.js` is the little hint chip under the top of the screen.
 
-| Event | Region | What happens | Optional reward |
-| --- | --- | --- | --- |
-| football | kampung, 08:00-18:00 | three kids kick a ball about 6-11 m ahead; walk into the ball and it rolls | 3 kicks: "You joined the game!" +2 coins |
-| icecream | kampung, 10:00-18:00 | seller and cart roll up with a bell; **Ice cream** prompt, 2 coins, a little food | none (it is food) |
-| catchase | kampung, daytime | Mimi chases a butterfly; **Pet** her | first pat +1 coin |
-| kompang | kampung, 09:00-18:00 | wedding procession (drummers, groom, bride) walks past with kompang beats; stay near 6 s | +2 coins and the Wedding guest sticker |
-| rain | kampung, any time | one-draw-call rain streaks follow the hero, two passers-by with umbrellas run through, a rainbow shows as it stops | none |
-| balloon | kampung, 08:00-18:00 | a kid's balloon floats up and away; **Catch** it and hand it back (it simply floats off if not, "It's okay!") | +2 coins |
-| pigeons | Makkah / Madinah | a child runs at a flock and the whole flock takes off (`world.burstPigeons`) | none |
-| dates | Makkah / Madinah | a volunteer at a table: **Dates**, then **Zamzam** | both: +1 coin and the Dates and zamzam sticker |
-| photo | Makkah / Madinah | a family asks for a photo: **Photo** (flash) | +2 coins |
+| Event    | Region               | What happens                                                                                                       | Optional reward                                |
+| -------- | -------------------- | ------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------- |
+| football | kampung, 08:00-18:00 | three kids kick a ball about 6-11 m ahead; walk into the ball and it rolls                                         | 3 kicks: "You joined the game!" +2 coins       |
+| icecream | kampung, 10:00-18:00 | seller and cart roll up with a bell; **Ice cream** prompt, 2 coins, a little food                                  | none (it is food)                              |
+| catchase | kampung, daytime     | Mimi chases a butterfly; **Pet** her                                                                               | first pat +1 coin                              |
+| kompang  | kampung, 09:00-18:00 | wedding procession (drummers, groom, bride) walks past with kompang beats; stay near 6 s                           | +2 coins and the Wedding guest sticker         |
+| rain     | kampung, any time    | one-draw-call rain streaks follow the hero, two passers-by with umbrellas run through, a rainbow shows as it stops | none                                           |
+| balloon  | kampung, 08:00-18:00 | a kid's balloon floats up and away; **Catch** it and hand it back (it simply floats off if not, "It's okay!")      | +2 coins                                       |
+| pigeons  | Makkah / Madinah     | a child runs at a flock and the whole flock takes off (`world.burstPigeons`)                                       | none                                           |
+| dates    | Makkah / Madinah     | a volunteer at a table: **Dates**, then **Zamzam**                                                                 | both: +1 coin and the Dates and zamzam sticker |
+| photo    | Makkah / Madinah     | a family asks for a photo: **Photo** (flash)                                                                       | +2 coins                                       |
 
 Rewards are capped (12 coins per sitting for all events). Each event shows a hint chip and a purple radar / full-map blip (`map-markers.js`, new kind `event`, 3 lines) while active, and goes quiet in the background if the hero walks 70 m away.
 

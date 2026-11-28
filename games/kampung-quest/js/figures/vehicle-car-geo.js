@@ -215,7 +215,7 @@
   function plate(z, y, dir) {
     const parts = [P.block(0.44, 0.1, 0.03, [0, y, z], "#f4f4f0")];
     for (let i = -2; i <= 2; i += 1) {
-      parts.push(P.block(0.035, 0.055, 0.012, [i * 0.075, y, z + dir * 0.016], "#23252b"));
+      parts.push(P.box(0.035, 0.055, 0.012, [i * 0.075, y, z + dir * 0.016], "#23252b"));
     }
     return parts;
   }
@@ -267,7 +267,7 @@
       ),
     ];
     [s.A - 0.02, -0.45].forEach((z) =>
-      parts.push(P.block(0.012, s.belt - 0.32, 0.014, [x * 0.995, (s.belt + 0.3) / 2, z], BLACK)),
+      parts.push(P.box(0.012, s.belt - 0.32, 0.014, [x * 0.995, (s.belt + 0.3) / 2, z], BLACK)),
     );
     [-0.1, -0.8].forEach((z) =>
       parts.push(P.block(0.024, 0.03, 0.16, [x, s.belt - 0.08, z], CHROME)),
@@ -324,11 +324,11 @@
     const tail = s.tail - 0.24;
     const side = k * (s.w / 2) * 0.93;
     return [
-      P.lens(0.32, 0.12, 0.12, [k * 0.5, head, s.zf - 0.02], "#fff6d6", [0, k * 0.3, 0], 16),
+      P.lens(0.32, 0.12, 0.12, [k * 0.5, head, s.zf - 0.02], "#fff6d6", [0, k * 0.3, 0], 12),
       P.lens(0.12, 0.08, 0.1, [k * 0.48, head, s.zf + 0.02], "#ffffff", [0, k * 0.3, 0]),
       P.lens(0.06, 0.1, 0.2, [side, head, s.zf - 0.18], "#fff6d6"),
       P.lens(0.12, 0.05, 0.08, [k * 0.68, head - 0.1, s.zf], "#f2a51c"),
-      P.lens(0.36, 0.12, 0.12, [k * 0.54, tail, s.zr], "#d62b2b", [0, -k * 0.3, 0], 16),
+      P.lens(0.36, 0.12, 0.12, [k * 0.54, tail, s.zr], "#d62b2b", [0, -k * 0.3, 0], 12),
       P.lens(0.06, 0.12, 0.22, [side, tail, s.zr + 0.16], "#d62b2b"),
       P.lens(0.1, 0.06, 0.08, [k * 0.3, tail, s.zr - 0.01], "#f4f4f0"),
       P.drum("z", 0.045, 0.06, [k * 0.55, 0.3, s.zf + 0.02], "#fffbe8", 14),

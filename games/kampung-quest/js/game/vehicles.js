@@ -35,10 +35,10 @@
   const MAX_LEG = 0.2;
   /** Seconds between two "let's walk" notes. */
   const NOTE_GAP = 4;
-  const POSE = { car: "drive", bike: "pedal", moto: "drive" };
-  const NOUN = { car: "car", bike: "bicycle", moto: "scooter" };
+  const POSE = { car: "drive", bike: "pedal", moto: "drive", lorry: "drive" };
+  const NOUN = { car: "car", bike: "bicycle", moto: "scooter", lorry: "lorry" };
   /** The Jump button's word while mounted, per kind. */
-  const HORN_WORD = { car: "Honk", bike: "Ring", moto: "Beep" };
+  const HORN_WORD = { car: "Honk", bike: "Ring", moto: "Beep", lorry: "Honk" };
   const IDLE = { x: 0, y: 0, mag: 0, run: false };
   /** A parked bicycle leans on its kickstand by this much (radians, toward its right, where the stand is). */
   const STAND_LEAN = 0.1;
@@ -419,9 +419,10 @@
     KQ.Figures.Vehicles.setOccupied(v.mesh, true);
     V.cam = { eased: false, extra: 0, dist: G.Camera.state.dist, pitch: G.Camera.state.pitch };
     s.player.group.visible = true;
-    G.Player.place(s.player, v.sim.x, v.sim.z, v.sim.heading, groundAt);
     v.sim.speed = 0;
     V.seat = seatOf(v);
+    // straight into the seat: a lorry's cab seat is far ahead of its middle, which read as "displaced"
+    G.Player.place(s.player, V.seat.x, V.seat.z, v.sim.heading, groundAt);
     labelHorn(v.kind);
     G.Audio.play("pose");
     s.hudDirty = true;
@@ -430,7 +431,7 @@
 
   /** Candidate places beside a vehicle for the hero to step out to: left, right, behind, ahead (x, z). */
   function exitSpots(v) {
-    const side = v.kind === "car" ? 1.55 : 0.85;
+    const side = v.kind === "bike" || v.kind === "moto" ? 0.85 : v.sim.spec.halfWid + 0.75;
     const end = v.sim.spec.halfLen + 0.9;
     const h = v.sim.heading;
     const fx = Math.sin(h);
@@ -531,7 +532,7 @@
       z: v.sim.z,
       dist,
       enabled: true,
-      h: v.kind === "car" ? 1.9 : 1.4,
+      h: { car: 1.9, lorry: 2.6 }[v.kind] || 1.4,
     };
   }
 
@@ -607,6 +608,7 @@
     const P = S().player;
     sendHome(P.pos, dt);
     cull(P.pos, dt);
+    if (G.Bus) G.Bus.update(dt);
     if (!V.mounted) return false;
     if (displaced(P)) {
       finishExit(false);
@@ -639,6 +641,7 @@
       braked: V.braked,
       bumped: V.bumped,
       sound: G.VehicleSound.debug(),
+      bus: G.Bus ? G.Bus.debug() : null,
       list: V.list.map((v) => ({
         id: v.id,
         kind: v.kind,
@@ -683,6 +686,8 @@
     spawn,
     debug,
     mounted: () => Boolean(V.mounted),
+    /** Where every drivable vehicle is (their sim states: x, z, heading, speed); the bus brakes for them. */
+    sims: () => V.list.map((v) => v.sim),
     exiting: () => V.exiting,
   };
 })((window.KQ = window.KQ || {}));

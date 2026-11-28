@@ -10,10 +10,10 @@ import { test, expect } from "@playwright/test";
 const BASE = "/games/kampung-quest/index.html?still=1&autoq=0&q=low";
 const SHOTS = process.env.KQ_SHOTS ? "features/kampung-quest-haramain/shots/" : null;
 const kq = (page, fn, arg) => page.evaluate(fn, arg);
-const POSE = { car: "drive", bike: "pedal", moto: "drive" };
-const WORD = { car: "Honk", bike: "Ring", moto: "Beep" };
+const POSE = { car: "drive", bike: "pedal", moto: "drive", lorry: "drive" };
+const WORD = { car: "Honk", bike: "Ring", moto: "Beep", lorry: "Honk" };
 /** What the prompt button says, by kind. */
-const LABEL = { car: "Drive", bike: "Ride", moto: "Ride" };
+const LABEL = { car: "Drive", bike: "Ride", moto: "Ride", lorry: "Drive" };
 
 async function boot(page, region) {
   await page.goto(BASE + (region === "haramain" ? "&region=haramain" : ""));
@@ -31,8 +31,8 @@ function installHelpers() {
   };
   /** A free place to stand beside (or, failing that, in front of / behind) a vehicle, within reach of its prompt. */
   const standBeside = (v) => {
-    const half = v.kind === "car" ? 1.9 : 0.96;
-    const wide = v.kind === "car" ? 1.25 : 0.85;
+    const half = { car: 1.9, lorry: 2.65 }[v.kind] || 0.96;
+    const wide = { car: 1.25, lorry: 1.4 }[v.kind] || 0.85;
     const f = [Math.sin(v.heading), Math.cos(v.heading)];
     const side = [Math.cos(v.heading), -Math.sin(v.heading)];
     const offsets = [
@@ -113,7 +113,7 @@ function spotProblems() {
   const list = G.Vehicles.debug().list;
   const out = [];
   list.forEach((v) => {
-    const r = v.kind === "car" ? 0.8 : 0.4;
+    const r = { car: 0.8, lorry: 0.95 }[v.kind] || 0.4;
     const others = G.S.world.colliders.filter((c) => c.vehicle !== v.id);
     if (window.KQ.Sim.Vehicle.zoneAt(zones, v.x, v.z, r)) out.push(v.id + " in a no-drive zone");
     if (G.Collide.blockedAt(others, v.x, v.z, r * 0.8)) out.push(v.id + " inside a wall or prop");
@@ -144,7 +144,10 @@ function inventoryTests(region, getPage) {
     const n = (k) => d.list.filter((v) => v.kind === k).length;
     const styles = new Set(d.list.filter((v) => v.kind === "car").map((v) => v.style));
     if (region === "kampung") {
-      expect([n("car"), n("bike"), n("moto")]).toEqual([10, 10, 6]);
+      expect([n("car"), n("bike"), n("moto"), n("lorry")]).toEqual([10, 10, 6, 1]);
+      // the town bus is ambient (bus.js): it runs its own loop and is not in the drivable list
+      expect(d.list.some((v) => v.kind === "bus")).toBe(false);
+      expect(d.bus.ready).toBe(true);
       expect(styles.size).toBeGreaterThanOrEqual(5);
     } else {
       expect(n("car")).toBeGreaterThanOrEqual(50);

@@ -68,7 +68,7 @@
    * the carpark, the bicycles and scooters by the paths, the shops and the flats. Heading PI / 2 faces +x.
    */
   const KAMPUNG_CARS = [
-    [-22, 2.1, PI / 2],
+    [-22, 2.6, PI / 2],
     [-17.5, 34.25, PI / 2],
     [-17.5, 29.25, PI / 2],
     [-17.5, 31.75, PI / 2],
@@ -76,8 +76,8 @@
     [-10.5, 29.25, -PI / 2],
     [-10.5, 34.25, -PI / 2],
     [-10.5, 41.75, -PI / 2],
-    [60, 2, PI / 2],
-    [-62, -2, -PI / 2],
+    [60, 2.6, PI / 2],
+    [-62, -2.6, -PI / 2],
   ];
   const KAMPUNG_BIKES = [
     [-33, 8.4, PI / 2],
@@ -100,6 +100,13 @@
     [-21.5, 50.5, PI / 2],
   ];
 
+  /**
+   * The delivery lorry: kerbside on the E-W road's north side, in front of the hawker centre and the minimart
+   * (between the zebra crossing at x 30 and the shops), facing east. Kerbside cars and the lorry keep 2.4 m or
+   * more from the road's middle so the bus (bus.js, lanes at z = +-0.3) passes them.
+   */
+  const KAMPUNG_LORRY = [[36.5, -2.5, PI / 2]];
+
   /** Rows of [x, z, heading] into kampung spots of one kind with colours / looks taken round the pool. */
   function kampungOf(kind, rows, look) {
     return rows.map((r, i) => Object.assign({ kind, x: r[0], z: r[1], heading: r[2] }, look(i)));
@@ -113,7 +120,8 @@
       )
       .concat(
         kampungOf("moto", KAMPUNG_MOTOS, (i) => ({ color: MOTO_COLOURS[i % MOTO_COLOURS.length] })),
-      );
+      )
+      .concat(kampungOf("lorry", KAMPUNG_LORRY, () => ({ color: 0x2f5fa8 })));
   }
 
   /** The look of the nth spot of a kind in Makkah and Madinah (the spot's own `style` / `color` win). */

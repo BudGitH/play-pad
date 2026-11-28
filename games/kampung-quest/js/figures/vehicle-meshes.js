@@ -17,12 +17,20 @@
   const F = (KQ.Figures = KQ.Figures || {});
   const Cars = () => F.VehicleCars;
   const TW = () => F.VehicleTwoWheel;
-  const WHEEL_R = { car: 0.3, bike: 0.28, moto: 0.24 };
+  const Big = () => F.VehicleBig;
+  const WHEEL_R = { car: 0.3, bike: 0.28, moto: 0.24, lorry: 0.38, bus: 0.48 };
   /** The figure's origin when seated: the seat top minus the drop to the thighs (see F.seatDrop), and its z. */
-  const SEAT = { car: { y: 0.315, z: 0 }, bike: { y: 0.2, z: -0.1 }, moto: { y: 0.405, z: 0.1 } };
+  const SEAT = {
+    car: { y: 0.315, z: 0 },
+    bike: { y: 0.2, z: -0.1 },
+    moto: { y: 0.405, z: 0.1 },
+    lorry: { y: 0.705, z: 1.72 },
+  };
   /** The wheel's inset from the body's side. */
   const WHEEL_INSET = 0.17;
-  const STEER_LOCK = { car: 0.5, bike: 0.35, moto: 0.4 };
+  const STEER_LOCK = { car: 0.5, bike: 0.35, moto: 0.4, lorry: 0.45, bus: 0.3 };
+  /** Tyre widths of the four-wheelers. */
+  const TYRE_W = { car: 0.2, lorry: 0.26, bus: 0.3 };
   /** How see-through the roof is while the hero drives. */
   const ROOF_FADE = 0.22;
   const cache = {};
@@ -70,11 +78,19 @@
     return new THREE.MeshStandardMaterial({ color: hex, roughness: 0.3, metalness: 0.2 });
   }
 
-  /** The rear pair of a car's wheels as one mesh (cached per track width). */
-  function axleGeo(x) {
+  /** The pair of wheels of an axle as one mesh (cached per radius, width and track). */
+  function axleGeo(x, r, width) {
     const w = wheelGeos();
-    const key = x.toFixed(3);
-    if (!w.axles[key]) w.axles[key] = F.VehicleParts.carAxle(WHEEL_R.car, 0.2, x);
+    const key = [x, r, width].map((n) => n.toFixed(3)).join();
+    if (!w.axles[key]) w.axles[key] = F.VehicleParts.carAxle(r, width, x);
+    return w.axles[key];
+  }
+
+  /** One wheel of a four-wheeler (cached per radius and width). */
+  function wheelGeo(r, width) {
+    const w = wheelGeos();
+    const key = "w" + r.toFixed(3) + width.toFixed(3);
+    if (!w.axles[key]) w.axles[key] = F.VehicleParts.carWheel(r, width);
     return w.axles[key];
   }
 
@@ -106,38 +122,102 @@
     return pivot;
   }
 
-  /** The steering wheel, tilted toward the driver, on the driver's side. */
-  function addSteering(v, x) {
+  /** The steering wheel, tilted toward the driver, on the driver's side (`at` = [y, z], a car's by default). */
+  function addSteering(v, x, at) {
     const tilt = new THREE.Group();
-    tilt.position.set(x, 0.85, 0.27);
+    tilt.position.set(x, at ? at[0] : 0.85, at ? at[1] : 0.27);
     tilt.rotation.x = 0.64;
     v.steering = mesh(wheelGeos().steer, mats().trim, "steering", false);
     tilt.add(v.steering);
     v.group.add(tilt);
   }
 
-  /** Build a car: body, trim, glass, lamps, steering wheel and four wheels (the front pair steer). */
+  /** Build a car (one of the five styles). */
   function buildCar(hex, opts) {
-    const geo = Cars().build(opts.style, opts.lhd);
+    return buildFourWheel("car", hex, Cars().build(opts.style, opts.lhd));
+  }
+
+  /**
+   * Build a four-wheeler from its geometry set: body (painted), trim, glass, lamps, an optional roof (it fades
+   * while the hero drives), the steering wheel when it has a driver's seat, and the wheels.
+   */
+  function buildFourWheel(kind, hex, geo) {
     const m = mats();
     const group = new THREE.Group();
-    group.name = "vehicle-car";
-    group.add(mesh(geo.body, paintMat(hex), "body"), mesh(geo.trim, m.trim, "trim"));
-    group.add(mesh(geo.glass, m.glass, "glass", false), mesh(geo.lamp, m.lamp, "lamps", false));
-    const v = record("car", group, geo.style);
-    v.roofMat = paintMat(hex);
-    group.add(mesh(geo.roof, v.roofMat, "roof"));
-    v.seatX = geo.driverX;
-    addSteering(v, v.seatX);
-    const x = geo.width / 2 - WHEEL_INSET;
-    const [front, rear] = geo.axles;
-    [-1, 1].forEach((s) => addWheel(v, group, wheelGeos().car, [s * x, WHEEL_R.car, front], true));
-    v.axle = addWheel(v, group, axleGeo(x), [0, WHEEL_R.car, rear], false, [-x, x]);
-    v.track = x;
-    v.contacts = [front, rear].flatMap((z) => [-1, 1].map((s) => ({ fwd: z, lat: s * x })));
+    group.name = "vehicle-" + kind;
+    group.add(mesh(geo.body, paintMat(hex), "body"), mesh(geo.trim, m.trim, "trim", !geo.lean));
+    if (geo.glass) group.add(mesh(geo.glass, m.glass, "glass", false));
+    if (geo.lamp) group.add(mesh(geo.lamp, m.lamp, "lamps", false));
+    const v = record(kind, group, geo.style || kind);
+    if (geo.roof) {
+      v.roofMat = paintMat(hex);
+      group.add(mesh(geo.roof, v.roofMat, "roof"));
+    }
+    if (geo.driverX !== undefined) {
+      v.seatX = geo.driverX;
+      addSteering(v, v.seatX, geo.steerAt);
+    }
+    addAxles(v, group, geo);
     v.foot = { mid: geo.mid, hl: geo.length / 2 + 0.02, hw: geo.width / 2 + 0.01 };
-    group.add(blobFor(geo.width + 0.5, geo.length + 0.5));
+    if (!geo.lean) group.add(blobFor(geo.width + 0.5, geo.length + 0.5));
     return v;
+  }
+
+  /** The wheels: the front pair steer on their own pivots (a bus's front axle is one mesh), the rear axle is one mesh. */
+  function addAxles(v, group, geo) {
+    const r = geo.wheelR || WHEEL_R.car;
+    const tw = TYRE_W[v.kind] || 0.2;
+    const x = geo.width / 2 - (geo.inset || WHEEL_INSET);
+    const [front, rear] = geo.axles;
+    v.wheelR = r;
+    v.track = x;
+    if (v.kind === "bus")
+      v.front = addWheel(v, group, axleGeo(x, r, tw), [0, r, front], false, [-x, x]);
+    else [-1, 1].forEach((s) => addWheel(v, group, wheelGeo(r, tw), [s * x, r, front], true));
+    v.axle = addWheel(v, group, axleGeo(x, r, tw), [0, r, rear], false, [-x, x]);
+    v.contacts = [front, rear].flatMap((z) => [-1, 1].map((s) => ({ fwd: z, lat: s * x })));
+  }
+
+  /** The destination sign's canvas: "Kampung 21" in amber on black (drawn once). */
+  function signTexture() {
+    if (cache.sign) return cache.sign;
+    const c = document.createElement("canvas");
+    c.width = 256;
+    c.height = 48;
+    const x = c.getContext("2d");
+    x.fillStyle = "#111";
+    x.fillRect(0, 0, 256, 48);
+    x.fillStyle = "#ffb627";
+    x.font = "bold 28px sans-serif";
+    x.textAlign = "center";
+    x.textBaseline = "middle";
+    x.fillText("Kampung 21", 128, 25);
+    cache.sign = new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c) });
+    return cache.sign;
+  }
+
+  /** Build the town bus: the four-wheeler plus its two left-side doors and its destination signs. */
+  function buildBus(hex) {
+    const geo = Big().bus();
+    const v = buildFourWheel("bus", hex, geo);
+    const doors = mesh(geo.door, mats().trim, "door", false);
+    doors.position.set(geo.doorX, 0, 0);
+    v.group.add(doors);
+    v.doors = [{ mesh: doors, z: 0 }];
+    v.doorSlide = geo.doorSlide;
+    v.doorX = geo.doorX;
+    v.group.add(mesh(geo.signs, signTexture(), "sign", false));
+    return v;
+  }
+
+  /** Open the bus doors by `open` (0 shut .. 1 open): each plug door steps out and slides back. */
+  function setDoors(v, open) {
+    if (!v.doors) return;
+    const t = Math.max(0, Math.min(1, open));
+    v.doors.forEach(function (d) {
+      d.mesh.position.x = v.doorX + Math.min(t * 3, 1) * 0.07;
+      d.mesh.position.z = d.z - t * v.doorSlide;
+    });
   }
 
   /** Build a two-wheeler from its geometry set: frame, trim, (lamps), the rear wheel and a turning front end. */
@@ -185,6 +265,9 @@
   function build(kind, hex, opts) {
     const o = opts || {};
     if (kind === "car") return buildCar(hex === undefined ? 0xd0453a : hex, o);
+    if (kind === "lorry")
+      return buildFourWheel(kind, hex === undefined ? 0x2f5fa8 : hex, Big().lorry(o.lhd));
+    if (kind === "bus") return buildBus(hex === undefined ? 0xf2f4f0 : hex);
     if (kind === "bike")
       return buildTwoWheel(kind, hex === undefined ? 0x2f8f5b : hex, TW().bike());
     if (kind === "moto")
@@ -199,17 +282,23 @@
    * Two-wheelers rest on both tyres already (two points always fit a plane).
    */
   function suspend(v, off) {
-    if (v.kind !== "car" || !off || off.length !== 4) return;
+    if (!v.axle || !off || off.length !== 4) return;
     const c = (k) => Math.max(-0.12, Math.min(0.12, off[k] || 0));
-    v.pivots[0].position.y = WHEEL_R.car + c(0);
-    v.pivots[1].position.y = WHEEL_R.car + c(1);
-    v.axle.position.y = WHEEL_R.car + (c(2) + c(3)) / 2;
+    const r = v.wheelR;
+    if (v.front) {
+      v.front.position.y = r + (c(0) + c(1)) / 2;
+      v.front.rotation.z = Math.atan2(c(1) - c(0), 2 * v.track);
+    } else {
+      v.pivots[0].position.y = r + c(0);
+      v.pivots[1].position.y = r + c(1);
+    }
+    v.axle.position.y = r + (c(2) + c(3)) / 2;
     v.axle.rotation.z = Math.atan2(c(3) - c(2), 2 * v.track);
   }
 
   /** Roll the wheels by the distance travelled and turn the front end (steer > 0 = right). */
   function animate(v, dt, speed, steer) {
-    v.rolled += (speed * dt) / WHEEL_R[v.kind];
+    v.rolled += (speed * dt) / (v.wheelR || WHEEL_R[v.kind]);
     v.wheels.forEach((w) => (w.rotation.x = v.rolled));
     const yaw = -steer * STEER_LOCK[v.kind];
     v.pivots.forEach((p) => (p.rotation.y = yaw));
@@ -221,5 +310,14 @@
     }
   }
 
-  F.Vehicles = { build, animate, suspend, setOccupied, SEAT, WHEEL_R, STYLES: () => Cars().STYLES };
+  F.Vehicles = {
+    build,
+    animate,
+    suspend,
+    setDoors,
+    setOccupied,
+    SEAT,
+    WHEEL_R,
+    STYLES: () => Cars().STYLES,
+  };
 })((window.KQ = window.KQ || {}));

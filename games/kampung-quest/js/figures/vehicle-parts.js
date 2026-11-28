@@ -34,11 +34,16 @@
     return G.place(paint(G.roundedBox(w, h, d, r, 1), hex), p, rot || [0, 0, 0]);
   }
 
+  /** A plain painted box (12 triangles) for tiny details where rounding would not show: plate letters, seams. */
+  function box(w, h, d, p, hex) {
+    return G.place(paint(new THREE.BoxGeometry(w, h, d), hex), p);
+  }
+
   /** A painted cylinder (round rod) of radius r between two 3D points a and b. */
   function rod(a, b, r, hex, sides) {
     const from = new THREE.Vector3(a[0], a[1], a[2]);
     const dir = new THREE.Vector3(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
-    const g = paint(new THREE.CylinderGeometry(r, r, dir.length(), sides || 10, 1), hex);
+    const g = paint(new THREE.CylinderGeometry(r, r, dir.length(), sides || 8, 1), hex);
     g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(UP, dir.clone().normalize()));
     g.translate(from.x + dir.x / 2, from.y + dir.y / 2, from.z + dir.z / 2);
     return g;
@@ -167,15 +172,17 @@
 
   /** A painted ellipsoid (lamp lens, mirror shell, saddle, headlight cowl) of size w, h, d centred on p. */
   function lens(w, h, d, p, hex, rot, segs) {
-    const n = segs || 12;
+    const n = segs || 8;
     const g = new THREE.SphereGeometry(0.5, n, Math.max(6, Math.round(n * 0.6)));
     return G.place(paint(g, hex), p, rot || [0, 0, 0], [w, h, d]);
   }
 
   /** A painted round tube of radius r swept smoothly through 3D points (handlebars, frame bends, an exhaust). */
   function bent(points, r, hex, segs) {
-    const curve = new THREE.CatmullRomCurve3(points.map((p) => new THREE.Vector3(p[0], p[1], p[2])));
-    return paint(new THREE.TubeGeometry(curve, segs || 12, r, 8, false), hex);
+    const curve = new THREE.CatmullRomCurve3(
+      points.map((p) => new THREE.Vector3(p[0], p[1], p[2])),
+    );
+    return paint(new THREE.TubeGeometry(curve, segs || 10, r, 6, false), hex);
   }
 
   /** 0 below a, 1 above b, a smooth S between. */
@@ -186,7 +193,7 @@
 
   /** Half a ring (the upper half of a thin torus in the y-z plane) of radius r round (y, z), at side x. */
   function halfRing(x, y, z, r, thick, hex) {
-    const g = new THREE.TorusGeometry(r, thick, 6, 18, PI).rotateY(PI / 2);
+    const g = new THREE.TorusGeometry(r, thick, 5, 14, PI).rotateY(PI / 2);
     return paint(g, hex).translate(x, y, z);
   }
 
@@ -213,7 +220,7 @@
   /** The pieces of one car wheel centred on x: a fat tyre with a sidewall, a pale alloy rim, five spokes, a hub. */
   function carWheelParts(r, width, x) {
     const tube = 0.1;
-    const tyre = new THREE.TorusGeometry(r - tube, tube, 8, 22).rotateY(PI / 2);
+    const tyre = new THREE.TorusGeometry(r - tube, tube, 6, 20).rotateY(PI / 2);
     const parts = [G.place(paint(tyre, TYRE), [x, 0, 0], [0, 0, 0], [width / (2 * tube), 1, 1])];
     parts.push(drum("x", r * 0.66, width * 0.8, [x, 0, 0], "#c9ccd2", 16));
     parts.push(drum("x", r * 0.5, width * 0.84, [x, 0, 0], "#3b3e45", 16));
@@ -239,7 +246,7 @@
    * to alternate points of the rim (so they cross like a real wheel's).
    */
   function spokedWheel(r, thick, width) {
-    const tyre = new THREE.TorusGeometry(r - thick, thick, 8, 32).rotateY(PI / 2);
+    const tyre = new THREE.TorusGeometry(r - thick, thick, 6, 28).rotateY(PI / 2);
     const parts = [G.place(paint(tyre, TYRE), [0, 0, 0], [0, 0, 0], [width / (2 * thick), 1, 1])];
     const rimR = r - thick * 2;
     parts.push(paint(new THREE.TorusGeometry(rimR, 0.012, 4, 28).rotateY(PI / 2), "#c4c8ce"));
@@ -257,7 +264,7 @@
   /** A scooter wheel: a round tyre, a body-grey hub disc with five spokes and a brake drum. */
   function scooterWheel(r, width) {
     const t = 0.075;
-    const tyre = new THREE.TorusGeometry(r - t, t, 8, 22).rotateY(PI / 2);
+    const tyre = new THREE.TorusGeometry(r - t, t, 6, 20).rotateY(PI / 2);
     const parts = [G.place(paint(tyre, TYRE), [0, 0, 0], [0, 0, 0], [width / (2 * t), 1, 1])];
     parts.push(drum("x", r * 0.62, width * 0.8, [0, 0, 0], "#c4c8ce", 14));
     parts.push(drum("x", r * 0.38, width * 0.9, [0, 0, 0], "#5d6168", 12));
@@ -316,6 +323,7 @@
     steering,
     paint,
     block,
+    box,
     rod,
     tube,
     drum,

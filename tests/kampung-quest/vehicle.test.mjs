@@ -37,9 +37,10 @@ test("the bicycle is faster than the hero can run, the scooter faster still, the
 });
 
 test("every kind of vehicle is known, labelled Drive / Ride and has a body that fits its two rings", () => {
-  assert.deepEqual(Object.keys(Veh.SPECS).sort(), ["bike", "car", "moto"]);
+  assert.deepEqual(Object.keys(Veh.SPECS).sort(), ["bike", "bus", "car", "lorry", "moto"]);
+  const LABEL = { car: "Drive", lorry: "Drive", bike: "Ride", moto: "Ride", bus: "" }; // the bus is never driven
   Object.entries(Veh.SPECS).forEach(([kind, spec]) => {
-    assert.equal(spec.label, kind === "car" ? "Drive" : "Ride");
+    assert.equal(spec.label, LABEL[kind]);
     assert.ok(spec.ring.off + spec.ring.r >= spec.halfLen - 0.1, kind + ": rings cover the length");
     assert.ok(spec.ring.r >= spec.halfWid - 0.05, kind + ": rings cover the width");
   });
@@ -215,6 +216,11 @@ test("AC-P13: each vehicle is clearly worth taking over running (car 2.5x, scoot
   assert.ok(Veh.SPECS.car.maxFwd >= 2.5 * Veh.RUN, "car");
   assert.ok(Veh.SPECS.moto.maxFwd >= 2 * Veh.RUN, "scooter");
   assert.ok(Veh.SPECS.bike.maxFwd >= 1.5 * Veh.RUN, "bicycle");
+  const lorry = Veh.SPECS.lorry.maxFwd;
+  assert.ok(
+    lorry < Veh.SPECS.car.maxFwd && lorry > Veh.SPECS.bike.maxFwd,
+    "the lorry: slower than a car, faster than a bike",
+  );
 });
 
 test("AC-P13: top speed comes smoothly (no frame adds more than half a metre per second)", () => {

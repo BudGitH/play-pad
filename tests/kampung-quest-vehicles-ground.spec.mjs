@@ -265,8 +265,8 @@ function solidAndFastTests(getPage) {
   });
 
   test("AC-P13: top speeds beat the hero's run (car 2.5x, scooter 2x, bicycle 1.5x), smoothly, camera behind", async () => {
-    const want = { car: 2.5, moto: 2, bike: 1.5 };
-    for (const kind of ["car", "moto", "bike"]) {
+    const want = { car: 2.5, moto: 2, bike: 1.5, lorry: 2 };
+    for (const kind of ["car", "moto", "bike", "lorry"]) {
       const r = await kq(getPage(), topSpeed, [kind, tryOne.toString(), camCheck.toString()]);
       const why = kind + " " + JSON.stringify(r);
       expect(r.maxFwd / r.run, why).toBeGreaterThanOrEqual(want[kind]);
@@ -274,8 +274,100 @@ function solidAndFastTests(getPage) {
       expect(r.at05, "no instant jump to top speed: " + why).toBeLessThan(r.maxFwd * 0.5);
       expect(r.jump, "smooth acceleration: " + why).toBeLessThan(0.5);
       expect(r.camBehind, "the camera stays behind: " + why).toBeGreaterThan(0.6);
-      expect(r.camDist, "and keeps up: " + why).toBeLessThan(9);
+      expect(r.camDist, "and keeps up: " + why).toBeLessThan(kind === "lorry" ? 11.5 : 9);
     }
+  });
+}
+
+/** Browser-side: run the town (up to `secs`) until the bus test `until(bus)` holds; returns the bus state. */
+function runBus([secs, untilSource]) {
+  const G = window.KQ.Game;
+  const until = new Function("b", "return (" + untilSource + ")")();
+  for (let i = 0; i < secs * 30; i += 1) {
+    G.Loop.frame(1 / 30, true);
+    if (until(G.Vehicles.debug().bus)) break;
+  }
+  return G.Vehicles.debug().bus;
+}
+
+/**
+ * Browser-side: while the bus stands at the stop, walk the hero from the pavement straight at its middle for
+ * 1.5 s. Returns how close his centre got to the bus's side (its centre line + half width), and whether the
+ * bus's collider is one oriented box at the bus.
+ */
+function walkIntoBus() {
+  const G = window.KQ.Game;
+  const b = G.Vehicles.debug().bus;
+  const col = G.S.world.colliders.find((c) => c.vehicle === "bus");
+  window.__kq.place(b.x, b.z + 2.6, Math.PI);
+  G.Camera.state.yaw = Math.PI;
+  G.Camera.state.idle = -999;
+  window.__kq.input("up", true);
+  let nearest = Infinity;
+  for (let i = 0; i < 45; i += 1) {
+    G.Camera.state.yaw = Math.PI;
+    G.Loop.frame(1 / 30, true);
+    nearest = Math.min(nearest, window.__kq.state().pos.z - b.z);
+  }
+  window.__kq.input("up", false);
+  return { nearest, hw: col.obb.hx, onBus: Math.abs(col.obb.x - b.x) < 0.1 };
+}
+
+/**
+ * Browser-side: once the bus is driving out of the stop, stand the hero in its lane 14 m ahead; the bus must
+ * slow and stop short of him (the gap between its nose and him stays positive) and never touch him.
+ */
+function busBrakesForHero() {
+  const G = window.KQ.Game;
+  const b = G.Vehicles.debug().bus;
+  const ahead = b.x + b.dir * 14;
+  window.__kq.place(ahead, b.z, 0);
+  let gap = Infinity;
+  for (let i = 0; i < 240; i += 1) {
+    window.__kq.place(ahead, b.z, 0);
+    G.Loop.frame(1 / 30, true);
+    const now = G.Vehicles.debug().bus;
+    gap = Math.min(gap, (ahead - now.x) * now.dir - 5.05);
+  }
+  const end = G.Vehicles.debug().bus;
+  window.__kq.place(30, 8, 0);
+  return { gap, speed: end.speed, braked: end.braked };
+}
+
+/** The bus: it loops, stops at the stop with its doors open, is solid, and brakes for the hero. */
+function busTests(getPage) {
+  test("the bus pulls in at the stop, opens its left doors, waits, then drives on", async () => {
+    await kq(getPage(), () => window.__kq.place(30, 8, 0));
+    const at = await kq(getPage(), runBus, [80, '(b) => b.state === "stop" && b.doors > 0.95']);
+    const why = JSON.stringify(at);
+    expect(at.state, why).toBe("stop");
+    expect(Math.abs(at.x - at.stopX), "front door at the shelter: " + why).toBeLessThan(0.3);
+    expect(at.z, "pulled in to the kerb (left-hand traffic): " + why).toBeGreaterThan(1.5);
+    const solid = await kq(getPage(), walkIntoBus);
+    expect(solid.onBus, JSON.stringify(solid)).toBe(true);
+    expect(solid.nearest, "nobody walks into the bus: " + JSON.stringify(solid)).toBeGreaterThan(
+      solid.hw + 0.33 - 0.04,
+    );
+    const away = await kq(getPage(), runBus, [12, '(b) => b.state === "drive" && b.speed > 2']);
+    expect(away.state, JSON.stringify(away)).toBe("drive");
+    expect(away.stops).toBeGreaterThanOrEqual(1);
+  });
+
+  test("the bus brakes for the hero standing in its lane and never touches him", async () => {
+    const r = await kq(getPage(), busBrakesForHero);
+    expect(r.gap, JSON.stringify(r)).toBeGreaterThan(0.3);
+    expect(r.speed, JSON.stringify(r)).toBeLessThan(0.2);
+    expect(r.braked).toBeGreaterThan(0);
+  });
+
+  test("the bus leaves town at the end of the road and comes back the other way", async () => {
+    const before = await kq(getPage(), () => window.KQ.Game.Vehicles.debug().bus);
+    const back = "(b) => b.runs > " + before.runs + " && b.state === 'drive'";
+    const r = await kq(getPage(), runBus, [70, back]);
+    const why = JSON.stringify({ before, r });
+    expect(r.runs, why).toBe(before.runs + 1);
+    expect(r.dir, "it comes back the other way: " + why).toBe(-before.dir);
+    expect(Math.sign(r.z), "on its own left-hand lane: " + why).toBe(r.dir > 0 ? -1 : 1);
   });
 }
 
@@ -292,6 +384,7 @@ test.describe("kampung", () => {
 
   groundTests(() => page);
   solidAndFastTests(() => page);
+  busTests(() => page);
 });
 
 test.describe("haramain", () => {

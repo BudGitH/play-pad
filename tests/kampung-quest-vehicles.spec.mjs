@@ -123,7 +123,7 @@ test("the kampung's cars, bicycles and scooters are all vehicles, each in a free
     page,
     () => window.KQ.Game.S.world.colliders.filter((c) => c.vehicle).length,
   );
-  expect(solid).toBe(26);
+  expect(solid).toBe(28); // 26 cars, bikes and scooters + the lorry + the moving bus (bus.js)
 });
 
 test("beside a car the prompt says Drive, beside a bicycle Ride, and far away there is none", async () => {
@@ -222,7 +222,7 @@ test("a no-drive zone stops the car (and the bicycle) with a friendly line", asy
   await standAt(page, -22, 4.1, Math.PI);
   await kq(page, () => window.__kq.interact());
   await input(page, "up", true);
-  await step(page, 6000);
+  await step(page, 4500); // the car is faster now (AC-P13): its "let's walk" toast (2.8 s) must still be up
   const d = await veh(page);
   const car = d.list.find((v) => v.id === "car1");
   expect(d.blocked).toBeGreaterThan(0);
@@ -331,7 +331,7 @@ test("a vehicle left far away goes back to its parking spot", async () => {
   await step(page, 2500);
   const home = (await veh(page)).list.find((v) => v.id === "car1");
   expect(home.x).toBeCloseTo(-22, 0);
-  expect(home.z).toBeCloseTo(2.1, 0);
+  expect(home.z).toBeCloseTo(2.6, 1);
 });
 
 test("one vehicle adds only a few draw calls, and the whole street stays inside the budget", async () => {

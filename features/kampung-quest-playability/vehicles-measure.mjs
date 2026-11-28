@@ -54,8 +54,8 @@ function measure() {
 function frame([x, z, h, k, side]) {
   const f = [Math.sin(h), Math.cos(h)];
   const l = [Math.cos(h), -Math.sin(h)];
-  const lat = (k === "car" ? 1.45 : 0.75) * side;
-  const fwd = k === "car" ? 0.6 : 0.2;
+  const lat = ({ car: 1.45, lorry: 1.75 }[k] || 0.75) * side;
+  const fwd = { car: 0.6, lorry: 1.4 }[k] || 0.2;
   window.__kq.place(x + l[0] * lat + f[0] * fwd, z + l[1] * lat + f[1] * fwd, h);
   window.__kq.step(300);
   const back = side > 0 ? 1 : -1;
@@ -67,7 +67,7 @@ function frame([x, z, h, k, side]) {
     target: { x, y: 0, z },
     yaw: Math.atan2(d[0], d[1]),
     pitch: 0.28,
-    dist: k === "car" ? 6.2 : 3.6,
+    dist: { car: 6.2, lorry: 9 }[k] || 3.6,
     lift: 0.55,
     rate: 60,
   });
@@ -86,11 +86,43 @@ function ride(id) {
     target: { x: v.x, y: 0, z: v.z },
     yaw: h - Math.PI / 2 - 0.35,
     pitch: 0.12,
-    dist: v.kind === "car" ? 5.5 : 3.2,
+    dist: { car: 5.5, lorry: 8 }[v.kind] || 3.2,
     lift: 0.6,
     rate: 60,
   });
   window.__kq.step(900);
+}
+
+/** Browser-side: run the town until the bus stands at the stop with its doors open, then frame it. */
+function busShot() {
+  const G = window.KQ.Game;
+  G.Camera.clearShot();
+  window.__kq.place(30, 8, -Math.PI / 2);
+  for (let i = 0; i < 3000; i += 1) {
+    G.Loop.frame(1 / 30, true);
+    const b = G.Vehicles.debug().bus;
+    if (b.state === "stop" && b.doors > 0.9) break;
+  }
+  const b = G.Vehicles.debug().bus;
+  window.__kq.place(b.x - 7.6, 4.4, Math.PI / 2);
+  G.Camera.shot({
+    target: { x: b.x - 2, y: 0, z: b.z },
+    yaw: 2.1,
+    pitch: 0.1,
+    dist: 13,
+    lift: 1.4,
+    rate: 60,
+  });
+  window.__kq.step(900);
+  const withBus = window.__kq.stats().calls;
+  let bus = null;
+  G.S.scene.traverse((o) => o.name === "vehicle-bus" && (bus = o));
+  bus.visible = false;
+  window.__kq.step(400);
+  const without = window.__kq.stats().calls;
+  bus.visible = true;
+  window.__kq.step(400);
+  return Object.assign({ withBus, without }, G.Vehicles.debug().bus);
 }
 
 const browser = await chromium.launch({
@@ -117,6 +149,25 @@ if (process.argv.includes("calls")) {
     return window.__kq.stats().calls;
   });
   console.log("street view draw calls (low tier, incl. shadows)", calls);
+  const tris = await page.evaluate(() => {
+    const out = {};
+    window.KQ.Game.S.scene.traverse(function (g) {
+      if (!/^vehicle-/.test(g.name || "")) return;
+      let n = 0;
+      let meshes = 0;
+      g.traverse(function (m) {
+        if (!m.isMesh) return;
+        meshes += 1;
+        const geo = m.geometry;
+        const t = (geo.index ? geo.index.count : geo.attributes.position.count) / 3;
+        n += t;
+        out[g.name + ":" + m.name] = Math.max(out[g.name + ":" + m.name] || 0, Math.round(t));
+      });
+      out[g.name] = { tris: Math.round(n), meshes };
+    });
+    return out;
+  });
+  console.log("per vehicle (one of each kind)", JSON.stringify(tris));
 }
 const rows = [];
 const skipMeasure = process.argv.includes("nomeasure");
@@ -138,7 +189,7 @@ if (rows.length)
   console.log("vehicles", rows.length, "max gap", Math.max(...gaps), "min gap", Math.min(...gaps));
 
 if (shots) {
-  for (const kind of ["car", "bike", "moto"]) {
+  for (const kind of (process.env.KINDS || "car,bike,moto").split(",")) {
     const pick = Number(process.env.PICK || 0);
     const v = list.filter((x) => x.kind === kind)[pick];
     if (!v) continue;
@@ -152,5 +203,10 @@ if (shots) {
     await page.evaluate(() => window.KQ.Game.Vehicles.press("vehicle:exit"));
     await page.evaluate(() => window.__kq.step(1500));
   }
+}
+if (process.argv.includes("bus")) {
+  const at = await page.evaluate(busShot);
+  console.log("bus", JSON.stringify(at));
+  await page.screenshot({ path: "features/kampung-quest-playability/shots/vehicles-bus.png" });
 }
 await browser.close();

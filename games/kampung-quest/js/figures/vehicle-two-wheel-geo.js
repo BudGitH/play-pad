@@ -1,18 +1,22 @@
 /* ============================================================================
  * FILE: vehicle-two-wheel-geo.js
- * PURPOSE: Kampung Quest — the two-wheelers (F.VehicleTwoWheel). The bicycle has a real diamond frame (top, down,
- *          seat and head tubes, paired chain and seat stays), 16 laced spokes, a chain ring with cranks and pedals,
- *          a chain to the rear sprocket, a shaped saddle on its post, swept-back handlebars with grips and brake
- *          levers on a fork that turns about the head tube, mudguards, a rack, a small basket, a bell, a lamp and
- *          a kickstand. The scooter is a step-through: a curved rear cowl over the rear wheel, a floorboard, a
- *          curved leg shield, a long seat, a front fender and a handlebar cowl with its headlight and mirrors.
+ * PURPOSE: Kampung Quest — the two-wheelers (F.VehicleTwoWheel), built smooth and lifelike: round tubes, swept
+ *          curves, moulded panels with smooth (crease-angle) shading; no boxes for body parts.
+ *          The bicycle has a thin round-tube diamond frame (top, down, seat and head tubes, paired chain and seat
+ *          stays), curved fork blades, 16 laced spokes on round tyres, a chain ring with cranks and pedals, a chain
+ *          to the rear sprocket, a shaped saddle on its post, a swept riser handlebar with grips and brake levers
+ *          on a fork that turns about the head tube, mudguards, a tube rack, a round lamp, reflectors, a bell and a
+ *          kickstand. The scooter is a step-through: a rounded rear cowl over the rear wheel, a floorboard, a
+ *          curved leg shield, a cushioned seat, a swept exhaust, a grab rail, a front fender and a rounded
+ *          handlebar cowl with its headlight and round mirrors.
  *          Each comes as a few merged geometries: a tinted frame / body, dark trim, the steering end (which turns
  *          with the front wheel) and, for the scooter, lamps.
  *            F.VehicleTwoWheel.bike() / .moto() -> { frame, trim, fork, wheel, pivotZ, wheelY, rearZ, frontZ, lamp? }
  *          Local frame: faces +z, left +x, the origin on the ground mid-wheelbase; pivotZ is the steering axis,
  *          frontZ the front hub (both on the ground plane's z axis).
  * BUSINESS CONTEXT: AC-R8 (realism round) and AC-P14 (playability round: "bicycle with a real frame (diamond
- *   frame, spokes, chain, handlebars); scooter recognisable"), features/kampung-quest-playability/requirements.md.
+ *   frame, spokes, chain, handlebars); scooter recognisable"; the owner asked for smooth, lifelike, not boxy),
+ *   features/kampung-quest-playability/requirements.md.
  * DEPENDENCIES: KQ.Figures.VehicleParts (vehicle-parts.js), KQ.Figures.Geo (geometry.js).
  * HOW TO TEST: npx playwright test tests/kampung-quest-vehicles-all.spec.mjs tests/kampung-quest-vehicles-ground.spec.mjs
  * ========================================================================== */
@@ -43,18 +47,28 @@
     frontZ: 0.5,
   };
 
-  /** The diamond frame, tinted: seat, top, down and head tubes and the paired chain and seat stays. */
+  /** The diamond frame, tinted: thin round seat, top, down and head tubes and the paired chain and seat stays. */
   function bikeFrame() {
     const parts = [
-      P.rod(B.bb, B.seat, 0.02, WHITE),
-      P.rod(B.seat, B.headTop, 0.019, WHITE),
-      P.rod(B.bb, B.headLow, 0.024, WHITE),
-      P.rod(B.headLow, [0, 0.61, 0.295], 0.028, WHITE),
-      P.drum("x", 0.03, 0.07, B.bb, WHITE, 10),
+      P.rod(B.bb, B.seat, 0.016, WHITE, 12),
+      P.rod(B.seat, B.headTop, 0.015, WHITE, 12),
+      P.rod(B.bb, B.headLow, 0.019, WHITE, 12),
+      P.rod(B.headLow, [0, 0.61, 0.295], 0.022, WHITE, 12),
+      P.drum("x", 0.024, 0.07, B.bb, WHITE, 12),
+      P.lens(0.04, 0.04, 0.04, B.seat, WHITE),
     ];
     [-0.05, 0.05].forEach(function (x) {
-      parts.push(P.rod([x * 0.4, 0.21, 0], [x, B.hubY, B.rear], 0.012, WHITE));
-      parts.push(P.rod([x * 0.4, 0.42, -0.1], [x, B.hubY, B.rear], 0.011, WHITE));
+      const chain = [
+        [x * 0.4, 0.21, 0],
+        [x * 0.9, 0.24, -0.25],
+        [x, B.hubY, B.rear],
+      ];
+      const stay = [
+        [x * 0.3, 0.42, -0.1],
+        [x * 0.9, 0.35, -0.3],
+        [x, B.hubY, B.rear],
+      ];
+      parts.push(P.bent(chain, 0.009, WHITE), P.bent(stay, 0.008, WHITE));
     });
     return G.merge(parts);
   }
@@ -62,93 +76,100 @@
   /** The drive train on the chain side (+x): chain ring, cranks, pedals, rear sprocket and the chain between them. */
   function driveTrain() {
     const x = 0.07;
-    const parts = [
-      P.drum("x", 0.09, 0.012, [x, 0.21, 0], GREY, 18),
-      P.drum("x", 0.04, 0.03, [x, 0.21, 0], DARK, 10),
-      P.drum("x", 0.04, 0.012, [x, B.hubY, B.rear], GREY, 12),
-      P.rod([x, 0.3, 0], [x, B.hubY + 0.04, B.rear], 0.006, BLACK, 4),
-      P.rod([x, 0.12, 0], [x, B.hubY - 0.04, B.rear], 0.006, BLACK, 4),
-      P.rod([0.09, 0.21, 0], [0.09, 0.12, 0.14], 0.013, GREY),
-      P.rod([-0.09, 0.21, 0], [-0.09, 0.3, -0.14], 0.013, GREY),
-      P.block(0.1, 0.025, 0.06, [0.13, 0.12, 0.14], DARK),
-      P.block(0.1, 0.025, 0.06, [-0.13, 0.3, -0.14], DARK),
+    return [
+      P.drum("x", 0.09, 0.01, [x, 0.21, 0], GREY, 24),
+      P.drum("x", 0.03, 0.03, [x, 0.21, 0], DARK, 12),
+      P.drum("x", 0.04, 0.01, [x, B.hubY, B.rear], GREY, 16),
+      P.rod([x, 0.3, 0], [x, B.hubY + 0.04, B.rear], 0.005, BLACK, 4),
+      P.rod([x, 0.12, 0], [x, B.hubY - 0.04, B.rear], 0.005, BLACK, 4),
+      P.rod([0.09, 0.21, 0], [0.09, 0.12, 0.14], 0.01, GREY),
+      P.rod([-0.09, 0.21, 0], [-0.09, 0.3, -0.14], 0.01, GREY),
+      P.block(0.09, 0.02, 0.05, [0.13, 0.12, 0.14], DARK),
+      P.block(0.09, 0.02, 0.05, [-0.13, 0.3, -0.14], DARK),
     ];
+  }
+
+  /** A tube rack over the rear wheel, on two struts each side. */
+  function rack() {
+    const y = 0.58;
+    const parts = [];
+    [-0.07, 0.07].forEach(function (x) {
+      parts.push(P.rod([x, y, -0.36], [x, y, -0.7], 0.007, GREY, 6));
+      parts.push(P.rod([x, y, -0.62], [x * 0.7, B.hubY, B.rear], 0.006, GREY, 6));
+    });
+    [-0.36, -0.5, -0.7].forEach((z) =>
+      parts.push(P.rod([-0.07, y, z], [0.07, y, z], 0.006, GREY, 6)),
+    );
+    parts.push(P.rod([0, y - 0.01, -0.36], [0, 0.42, -0.13], 0.006, GREY, 6));
     return parts;
   }
 
   /** The fixed dark bits: shaped saddle and post, rack, rear mudguard and reflector, kickstand, drive train. */
   function bikeTrim() {
-    const parts = [
-      P.block(0.16, 0.05, 0.13, [0, 0.445, -0.18], DARK),
-      P.block(0.08, 0.04, 0.13, [0, 0.448, -0.07], DARK),
-      P.rod(B.seat, [0, 0.42, -0.14], 0.014, STEEL),
-      P.block(0.18, 0.018, 0.3, [0, 0.6, -0.55], DARK),
-      P.rod([0.07, 0.6, -0.45], [0.05, B.hubY, B.rear], 0.008, GREY),
-      P.rod([-0.07, 0.6, -0.45], [-0.05, B.hubY, B.rear], 0.008, GREY),
-      P.halfRing(0, B.hubY, B.rear, 0.31, 0.014, DARK),
-      P.block(0.05, 0.03, 0.02, [0, 0.58, -0.71], "#d62b2b"),
-      P.rod([-0.05, 0.2, -0.12], [-0.14, 0.01, -0.21], 0.01, GREY),
+    const stand = [
+      [-0.04, 0.2, -0.12],
+      [-0.1, 0.1, -0.17],
+      [-0.14, 0.01, -0.21],
     ];
-    return G.merge(parts.concat(driveTrain()));
+    const parts = [
+      P.lens(0.15, 0.05, 0.15, [0, 0.462, -0.17], DARK, [0.06, 0, 0], 14),
+      P.lens(0.07, 0.04, 0.16, [0, 0.458, -0.07], DARK, [-0.06, 0, 0], 12),
+      P.rod(B.seat, [0, 0.445, -0.14], 0.011, STEEL),
+      P.halfRing(0, B.hubY, B.rear, 0.31, 0.012, DARK),
+      P.lens(0.05, 0.03, 0.015, [0, 0.55, -0.72], "#d62b2b", [-0.5, 0, 0]),
+      P.bent(stand, 0.008, GREY),
+    ];
+    return G.merge(parts.concat(rack(), driveTrain()));
   }
 
-  /** The wire basket, as twelve thin rods, local to the steering axis (in front of the handlebar). */
-  function basket() {
-    const parts = [];
-    const [x, z0, z1, y0, y1] = [0.13, 0.08, 0.27, 0.62, 0.74];
-    [y0, y1].forEach(function (y) {
-      parts.push(
-        ...P.tube(
-          [
-            [-x, y, z0],
-            [x, y, z0],
-            [x, y, z1],
-            [-x, y, z1],
-            [-x, y, z0],
-          ],
-          0.006,
-          GREY,
-        ),
-      );
-    });
-    [
-      [-x, z0],
-      [x, z0],
-      [-x, z1],
-      [x, z1],
-    ].forEach((c) => parts.push(P.rod([c[0], y0, c[1]], [c[0], y1, c[1]], 0.006, GREY)));
-    return parts;
-  }
-
-  /** The handlebar, local to the steering axis: stem, swept-back bar, grips, brake levers, bell. */
+  /** The handlebar, local to the steering axis: stem, swept riser bar, grips, brake levers, bell. */
   function handlebar() {
     const bar = [
-      [-0.25, 0.66, -0.06],
-      [-0.12, 0.665, 0.02],
-      [0.12, 0.665, 0.02],
-      [0.25, 0.66, -0.06],
+      [-0.26, 0.665, -0.09],
+      [-0.17, 0.665, -0.02],
+      [-0.06, 0.655, 0.03],
+      [0.06, 0.655, 0.03],
+      [0.17, 0.665, -0.02],
+      [0.26, 0.665, -0.09],
     ];
-    const parts = P.tube(bar, 0.012, DARK);
-    parts.push(P.rod([0, 0.6, -0.01], [0, 0.665, 0.02], 0.016, STEEL));
+    const stem = [
+      [0, 0.6, -0.01],
+      [0, 0.65, 0.0],
+      [0, 0.655, 0.03],
+    ];
+    const parts = [P.bent(bar, 0.01, DARK, 24), P.bent(stem, 0.013, STEEL, 6)];
     [-1, 1].forEach(function (k) {
-      parts.push(P.rod([k * 0.21, 0.66, -0.03], [k * 0.27, 0.66, -0.08], 0.02, "#d7232c"));
-      parts.push(P.rod([k * 0.15, 0.67, 0.01], [k * 0.2, 0.655, 0.06], 0.006, DARK));
+      const lever = [
+        [k * 0.15, 0.67, 0],
+        [k * 0.18, 0.66, 0.05],
+        [k * 0.21, 0.64, 0.07],
+      ];
+      parts.push(P.rod([k * 0.22, 0.665, -0.055], [k * 0.27, 0.665, -0.1], 0.016, BLACK, 10));
+      parts.push(P.bent(lever, 0.005, DARK, 6));
     });
-    parts.push(P.drum("y", 0.028, 0.02, [0.09, 0.69, 0.02], "#f2c230", 10));
+    parts.push(P.lens(0.045, 0.025, 0.045, [0.1, 0.685, 0.02], "#e6c34a"));
     return parts;
   }
 
-  /** The steering end, local to the steering axis: fork blades to the front hub, handlebar, lamp, basket, mudguard. */
+  /** The steering end, local to the steering axis: curved fork blades to the front hub, handlebar, lamp, mudguard. */
   function bikeFork() {
     const hz = B.frontZ - B.pivotZ;
     const parts = [
-      P.rod([-0.04, B.hubY, hz], [-0.03, 0.5, 0.01], 0.013, STEEL),
-      P.rod([0.04, B.hubY, hz], [0.03, 0.5, 0.01], 0.013, STEEL),
-      P.block(0.1, 0.03, 0.05, [0, 0.5, 0.01], STEEL),
-      P.block(0.08, 0.07, 0.06, [0, 0.58, 0.05], "#fff3c4"),
-      P.halfRing(0, B.hubY, hz, 0.31, 0.014, DARK),
+      P.lens(0.1, 0.035, 0.05, [0, 0.5, 0.01], STEEL),
+      P.lens(0.07, 0.06, 0.08, [0, 0.58, 0.05], "#e9e9e4"),
+      P.lens(0.05, 0.045, 0.02, [0, 0.58, 0.09], "#fff6d6"),
+      P.halfRing(0, B.hubY, hz, 0.31, 0.012, DARK),
+      P.lens(0.03, 0.03, 0.01, [0, 0.42, hz + 0.29], "#f4f4f0"),
     ];
-    return G.merge(parts.concat(handlebar(), basket()));
+    [-0.04, 0.04].forEach(function (x) {
+      const blade = [
+        [x, B.hubY, hz],
+        [x * 0.95, 0.38, hz - 0.08],
+        [x * 0.75, 0.5, 0.01],
+      ];
+      parts.push(P.bent(blade, 0.011, STEEL));
+    });
+    return G.merge(parts.concat(handlebar()));
   }
 
   /** The bicycle's shared geometries. */
@@ -158,7 +179,7 @@
       frame: bikeFrame(),
       trim: bikeTrim(),
       fork: bikeFork(),
-      wheel: P.spokedWheel(0.28, 0.025, 0.05),
+      wheel: P.spokedWheel(0.28, 0.022, 0.044),
       pivotZ: B.pivotZ,
       frontZ: B.frontZ,
       wheelY: B.hubY,
@@ -174,96 +195,148 @@
   function cowlShape() {
     const p = new THREE.Shape();
     p.moveTo(0.22, 0.3);
-    p.lineTo(0.22, 0.5);
-    p.quadraticCurveTo(0.2, 0.58, 0.05, 0.58);
-    p.lineTo(-0.8, 0.58);
-    p.quadraticCurveTo(-1.08, 0.58, -1.08, 0.42);
-    p.quadraticCurveTo(-1.06, 0.3, -0.95, 0.3);
+    p.quadraticCurveTo(0.24, 0.42, 0.2, 0.5);
+    p.quadraticCurveTo(0.16, 0.57, 0.02, 0.57);
+    p.lineTo(-0.75, 0.57);
+    p.quadraticCurveTo(-1.1, 0.58, -1.08, 0.4);
+    p.quadraticCurveTo(-1.05, 0.3, -0.94, 0.3);
     p.absarc(-0.62, 0.24, 0.3, Math.PI, 0, true);
     p.lineTo(0.22, 0.3);
     return p;
   }
 
-  /** The leg shield's side view: a curved panel rising from the floor to the handlebar. */
+  /** The leg shield's side view: a curved apron rising from the floor to the handlebar. */
   function shieldShape() {
     const p = new THREE.Shape();
-    p.moveTo(0.3, 0.3);
-    p.quadraticCurveTo(0.5, 0.32, 0.5, 0.6);
-    p.lineTo(0.55, 0.92);
-    p.lineTo(0.48, 0.92);
-    p.quadraticCurveTo(0.44, 0.46, 0.26, 0.38);
-    p.lineTo(0.3, 0.3);
+    p.moveTo(0.28, 0.3);
+    p.quadraticCurveTo(0.52, 0.3, 0.52, 0.6);
+    p.quadraticCurveTo(0.53, 0.8, 0.56, 0.92);
+    p.lineTo(0.49, 0.92);
+    p.quadraticCurveTo(0.45, 0.48, 0.26, 0.39);
+    p.lineTo(0.28, 0.3);
     return p;
   }
 
-  /** The scooter's painted body: the bulbous rear cowl, the floorboard and the curved leg shield. */
-  function motoBody() {
-    const cowl = P.squeeze(
-      P.sideShape(cowlShape(), 0.42, WHITE, 0.04, 6),
-      (y, z) => (1 - 0.3 * P.smooth(0.42, 0.62, y)) * (1 - 0.25 * P.smooth(-0.7, -1.1, z)),
-    );
-    const shield = P.squeeze(
-      P.sideShape(shieldShape(), 0.44, WHITE, 0.02, 6),
-      (y) => 1 - 0.35 * P.smooth(0.5, 0.95, y),
-    );
-    return G.merge([cowl, shield, P.block(0.34, 0.06, 0.34, [0, 0.33, 0.36], WHITE)]);
+  /** The seat's side view: a cushion, rounded at both ends, its top about 0.665 m up. */
+  function seatShape() {
+    const p = new THREE.Shape();
+    p.moveTo(-0.76, 0.56);
+    p.quadraticCurveTo(-0.8, 0.65, -0.66, 0.66);
+    p.quadraticCurveTo(-0.3, 0.67, 0.08, 0.66);
+    p.quadraticCurveTo(0.2, 0.655, 0.18, 0.58);
+    p.lineTo(-0.76, 0.56);
+    return p;
   }
 
-  /** The scooter's fixed dark bits: seat, floor mat, grab rail, exhaust, side stand, number plate, side trim. */
+  /** The scooter's painted body: the rounded rear cowl, the floorboard and the curved leg shield. */
+  function motoBody() {
+    const cowl = P.squeeze(
+      P.sideShape(cowlShape(), 0.42, WHITE, 0.07, 10, 3),
+      (y, z) => (1 - 0.3 * P.smooth(0.4, 0.62, y)) * (1 - 0.3 * P.smooth(-0.7, -1.12, z)),
+    );
+    const shield = P.squeeze(
+      P.sideShape(shieldShape(), 0.46, WHITE, 0.035, 10, 3),
+      (y, z) => (1 - 0.35 * P.smooth(0.5, 0.95, y)) * (1 - 0.2 * P.smooth(0.42, 0.56, z)),
+    );
+    const floor = P.block(0.34, 0.06, 0.34, [0, 0.33, 0.36], WHITE);
+    return G.merge([P.smoothed(cowl, 50), P.smoothed(shield, 50), floor]);
+  }
+
+  /** The exhaust: a pipe swept from under the floor back along the right side to a silencer with a tip. */
+  function exhaust() {
+    const pipe = [
+      [-0.05, 0.22, 0.1],
+      [-0.14, 0.2, -0.2],
+      [-0.2, 0.24, -0.5],
+    ];
+    return [
+      P.bent(pipe, 0.022, CHROME_DARK, 10),
+      P.drum("z", 0.05, 0.36, [-0.2, 0.25, -0.68], "#5d6168", 14),
+      P.drum("z", 0.028, 0.08, [-0.2, 0.26, -0.89], STEEL, 10),
+    ];
+  }
+
+  /** The scooter's fixed dark bits: cushioned seat, floor mat, grab rail, exhaust, side stand, number plate, trim. */
   function motoTrim() {
+    const rail = [
+      [-0.14, 0.66, -0.66],
+      [-0.15, 0.7, -0.9],
+      [0, 0.71, -1.0],
+      [0.15, 0.7, -0.9],
+      [0.14, 0.66, -0.66],
+    ];
+    const stand = [
+      [0.16, 0.24, -0.3],
+      [0.2, 0.12, -0.34],
+      [0.22, 0.01, -0.38],
+    ];
     const parts = [
-      P.block(0.3, 0.1, 0.92, [0, 0.62, -0.3], "#23252b"),
+      P.smoothed(P.sideShape(seatShape(), 0.3, "#23252b", 0.05, 10, 3), 55),
       P.block(0.3, 0.012, 0.3, [0, 0.365, 0.36], "#23252b"),
-      ...P.tube(
-        [
-          [-0.14, 0.7, -0.68],
-          [-0.15, 0.72, -0.95],
-          [0.15, 0.72, -0.95],
-          [0.14, 0.7, -0.68],
-        ],
-        0.014,
-        GREY,
-      ),
-      P.drum("z", 0.045, 0.4, [0.2, 0.24, -0.66], GREY, 10),
-      P.drum("z", 0.03, 0.06, [0.2, 0.24, -0.89], "#3b3e45", 8),
-      P.rod([-0.16, 0.24, -0.3], [-0.22, 0.01, -0.38], 0.014, DARK),
+      P.bent(rail, 0.013, GREY, 20),
+      P.bent(stand, 0.012, DARK, 6),
       P.block(0.2, 0.1, 0.012, [0, 0.42, -1.1], "#f4f4f0"),
     ];
     [-1, 1].forEach((k) =>
-      parts.push(P.block(0.012, 0.03, 0.9, [k * 0.205, 0.44, -0.45], CHROME_DARK)),
+      parts.push(P.rod([k * 0.2, 0.44, 0.0], [k * 0.2, 0.44, -0.9], 0.008, CHROME_DARK, 6)),
     );
-    return G.merge(parts);
+    return G.merge(parts.concat(exhaust()));
   }
 
-  /** The scooter's lamps: a tail light, a stop light, four indicators. */
+  /** The scooter's lamps: a tail light, four indicators. */
   function motoLamp() {
-    const parts = [P.block(0.18, 0.07, 0.05, [0, 0.52, -1.08], "#d62b2b")];
+    const parts = [P.lens(0.2, 0.08, 0.06, [0, 0.52, -1.08], "#d62b2b", [0, 0, 0], 14)];
     [-1, 1].forEach(function (k) {
-      parts.push(P.block(0.05, 0.05, 0.05, [k * 0.15, 0.5, -1.06], "#f2a51c"));
-      parts.push(P.block(0.05, 0.05, 0.05, [k * 0.2, 0.92, 0.6], "#f2a51c"));
+      parts.push(P.lens(0.06, 0.05, 0.06, [k * 0.15, 0.5, -1.06], "#f2a51c"));
+      parts.push(P.lens(0.06, 0.05, 0.06, [k * 0.2, 0.92, 0.6], "#f2a51c"));
     });
     return G.merge(parts);
   }
 
-  /** The scooter's steering end, local to the front hub: column, bars, grips, mirrors, headlight cowl, fender. */
+  /** One round mirror on its stalk (k = side). */
+  function mirror(k) {
+    const stalk = [
+      [k * 0.22, 0.99, -0.34],
+      [k * 0.27, 1.08, -0.36],
+      [k * 0.3, 1.15, -0.37],
+    ];
+    return [
+      P.bent(stalk, 0.008, DARK, 6),
+      P.lens(0.11, 0.075, 0.025, [k * 0.31, 1.18, -0.37], "#23252b", [0, 0, 0], 14),
+      P.lens(0.09, 0.06, 0.01, [k * 0.31, 1.18, -0.385], "#9fb0c2", [0, 0, 0], 14),
+    ];
+  }
+
+  /** The scooter's handlebar cowl, local to the front hub: rounded shell, headlight, swept bar, grips, mirrors. */
+  function motoHead() {
+    const bar = [
+      [-0.31, 0.97, -0.38],
+      [-0.15, 0.98, -0.32],
+      [0.15, 0.98, -0.32],
+      [0.31, 0.97, -0.38],
+    ];
+    const parts = [
+      P.lens(0.34, 0.18, 0.3, [0, 0.96, -0.28], "#ecebe6", [0, 0, 0], 16),
+      P.lens(0.17, 0.12, 0.06, [0, 0.95, -0.14], "#fff6d6", [0, 0, 0], 16),
+      P.bent(bar, 0.016, DARK, 16),
+      P.lens(0.12, 0.05, 0.08, [0, 1.05, -0.34], "#23252b"),
+    ];
+    [-1, 1].forEach(function (k) {
+      parts.push(P.rod([k * 0.27, 0.975, -0.365], [k * 0.34, 0.97, -0.395], 0.022, BLACK, 10));
+      parts.push(...mirror(k));
+    });
+    return parts;
+  }
+
+  /** The scooter's steering end, local to the front hub: telescopic fork, column, handlebar cowl, front fender. */
   function motoFork() {
     const parts = [
       P.rod([-0.05, 0.24, 0], [-0.04, 0.6, -0.12], 0.02, GREY),
       P.rod([0.05, 0.24, 0], [0.04, 0.6, -0.12], 0.02, GREY),
       P.rod([0, 0.6, -0.12], [0, 0.93, -0.3], 0.03, GREY),
-      P.rod([-0.3, 0.95, -0.34], [0.3, 0.95, -0.34], 0.018, DARK),
-      P.block(0.1, 0.045, 0.045, [-0.3, 0.95, -0.34], "#23252b"),
-      P.block(0.1, 0.045, 0.045, [0.3, 0.95, -0.34], "#23252b"),
-      P.block(0.3, 0.16, 0.2, [0, 0.96, -0.26], "#e9e6dc"),
-      P.drum("z", 0.07, 0.04, [0, 0.97, -0.15], "#fff6d6", 14),
-      P.block(0.18, 0.05, 0.1, [0, 1.05, -0.34], "#23252b"),
       P.halfRing(0, 0.24, 0, 0.29, 0.04, "#e4e6ea"),
     ];
-    [-1, 1].forEach(function (k) {
-      parts.push(P.rod([k * 0.24, 0.97, -0.34], [k * 0.3, 1.15, -0.36], 0.009, DARK));
-      parts.push(P.block(0.11, 0.07, 0.025, [k * 0.31, 1.18, -0.36], "#23252b"));
-    });
-    return G.merge(parts);
+    return G.merge(parts.concat(motoHead()));
   }
 
   /** The scooter's shared geometries. */

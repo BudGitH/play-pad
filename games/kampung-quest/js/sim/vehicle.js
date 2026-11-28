@@ -78,6 +78,42 @@
       camPitch: 0.3,
       camFar: 1.2,
     },
+    /** The delivery lorry: driven like a car, a little slower (2.2x a run, still faster than a bicycle). */
+    lorry: {
+      label: "Drive",
+      maxFwd: 9.6,
+      maxRev: 2.4,
+      accel: 3.8,
+      brake: 10,
+      coast: 2.6,
+      turn: 1.45,
+      turnSpeed: 1.6,
+      minGrip: 0,
+      halfLen: 2.62,
+      halfWid: 0.97,
+      ring: { off: 1.65, r: 0.98 },
+      camDist: 7.2,
+      camPitch: 0.38,
+      camFar: 1.6,
+    },
+    /** The town bus: never driven by the hero (it runs its own loop, bus.js); these numbers drive its braking. */
+    bus: {
+      label: "",
+      maxFwd: 7,
+      maxRev: 0,
+      accel: 1.6,
+      brake: 6,
+      coast: 2,
+      turn: 0,
+      turnSpeed: 1,
+      minGrip: 0,
+      halfLen: 5.05,
+      halfWid: 1.2,
+      ring: { off: 3.85, r: 1.2 },
+      camDist: 9,
+      camPitch: 0.4,
+      camFar: 0,
+    },
   };
   /** The hero's running speed (m/s, Player RUN), the yardstick for the vehicles' top speeds. */
   const RUN = 4.4;

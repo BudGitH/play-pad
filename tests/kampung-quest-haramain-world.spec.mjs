@@ -72,7 +72,8 @@ test.afterAll(async () => {
   if (sharedPage) await sharedPage.close();
 });
 
-test.describe.configure({ mode: "serial" });
+// The crowd survey runs 8 x 240 sim frames in one go (about 9 s here, over 30 s on a shared 2-core runner).
+test.describe.configure({ mode: "serial", timeout: 120_000 });
 
 test("AC-H1: loads with no console errors; Makkah, the Haram and the Prophet's Mosque all exist", async ({
   browser,

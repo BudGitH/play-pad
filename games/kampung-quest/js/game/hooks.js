@@ -189,7 +189,8 @@
       return started();
     },
     get loaded() {
-      return G.Boot.ready;
+      // hooks.js loads before boot.js: a poll that lands between the two must read false, not throw.
+      return Boolean(G.Boot && G.Boot.ready);
     },
     state,
     stats,

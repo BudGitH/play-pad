@@ -264,6 +264,8 @@ for (const vp of ROUND_VIEWPORTS) {
 
     for (const game of LIVE_GAMES) {
       test(`${game.title} reaches its in-round state`, async ({ page }) => {
+        const budget = ROUND_DRIVERS[game.id]?.testTimeoutMs; // a game that boots slowly on CI
+        if (budget) test.setTimeout(budget);
         await startRoundInGame(page, game, vp);
       });
     }

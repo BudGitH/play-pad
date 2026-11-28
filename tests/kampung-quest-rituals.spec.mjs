@@ -18,6 +18,30 @@ const state = () => ev(() => window.__kq.state());
 const step = (ms) => ev((t) => window.__kq.step(t), ms);
 const next = () => page.locator(".kq-step-next").click();
 
+/**
+ * Let the hero's "Walk for me" run to its end, one 18 s chunk of game time per call, and return what was
+ * sampled every `every` frames ({ z, pose }). Only the last frame of a chunk is drawn: a drawn frame costs
+ * ~0.6 s of software GL (the page cannot answer anything until the GPU has finished it), a sim frame ~3 ms,
+ * so drawing every 2 s of a 4-minute tawaf is what made it outlast its timeout on a 2-core runner.
+ */
+async function walkToEnd(every, maxChunks = 40) {
+  const samples = [];
+  for (let c = 0; c < maxChunks && (await ritual()).auto; c += 1) {
+    const got = await ev((n) => {
+      const G = window.KQ.Game;
+      const out = [];
+      for (let f = 0; f < 540 && G.RitualTrek.isAuto(); f += 1) {
+        if (f % n === 0) out.push({ z: G.S.player.pos.z, pose: G.S.player.forcedPose });
+        G.Loop.frame(1 / 30, true);
+      }
+      G.Loop.frame(1 / 30, false);
+      return out;
+    }, every);
+    samples.push(...got);
+  }
+  return samples;
+}
+
 test.beforeAll(async ({ browser }) => {
   page = await browser.newPage({ viewport: { width: 1180, height: 820 } });
   page.on("pageerror", (e) => problems.push("pageerror: " + e.message));
@@ -254,7 +278,7 @@ test("tawaf by Walk for me: the hero circles anticlockwise with the Kaaba on the
   expect(b.kaabaOnLeft && a.kaabaOnLeft, "the Kaaba is on the hero's left").toBe(true);
   expect(RW_wrap(b.angle - a.angle), "the angle grows: anticlockwise").toBeGreaterThan(0);
   expect(a).toMatchObject({ pose: "walk", locked: true });
-  for (let i = 0; i < 160 && (await ritual()).auto; i += 1) await step(2000);
+  await walkToEnd(60);
   expect(await ritual()).toMatchObject({ auto: false, count: 7, step: "tawaf" });
   expect(await ev(() => window.KQ.Game.S.player.locked), "the hero is free again").toBe(false);
   await next();
@@ -283,15 +307,7 @@ test("sa'i starts at Safa and ends at Marwa: 7 legs, brisk only between the gree
   const start = await ev(() => window.KQ.Game.S.player.pos);
   const safa = await ev(() => window.KQ.HOLY.makkah.safa);
   expect(Math.hypot(start.x - safa.x, start.z - safa.z), "the walk starts at Safa").toBeLessThan(3);
-  const poses = [];
-  for (let i = 0; i < 160 && (await ritual()).auto; i += 1) {
-    const s = await ev(() => ({
-      z: window.KQ.Game.S.player.pos.z,
-      pose: window.KQ.Game.S.player.forcedPose,
-    }));
-    poses.push(s);
-    await step(1500);
-  }
+  const poses = await walkToEnd(45); // a sample every 1.5 s of game time
   expect(await ritual()).toMatchObject({ auto: false, count: 7 });
   const end = await ev(() => window.KQ.Game.S.player.pos);
   const marwa = await ev(() => window.KQ.HOLY.makkah.marwa);

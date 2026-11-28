@@ -105,7 +105,10 @@ const kinds = async (page) => (await state(page)).targets.map((t) => t.kind);
 let page;
 const errors = [];
 
-test.describe.configure({ mode: "serial" });
+// Every goTo / nearNpc draws a frame in software GL (about 0.6 s here, several seconds on a shared 2-core
+// runner), so the first test (four goTo and a nearNpc) outlasted the default 30 s there; the rest of the
+// file already sets its own budget.
+test.describe.configure({ mode: "serial", timeout: 120_000 });
 test.beforeAll(async ({ browser }) => {
   test.setTimeout(240_000);
   page = await browser.newPage({ viewport: { width: 1280, height: 720 } });

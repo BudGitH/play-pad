@@ -582,7 +582,11 @@ test("a11y: after a mouse click on the Action control (and a dock button), Space
   await kq(page, () => window.KQ.Game.ActionBar.render([]));
   // a dock button: open its sheet with a click, close it, then Space
   await page.locator("#kqDock-bag").click();
+  // wait for the sheet to really be open before closing it: closing a sheet that has not opened yet
+  // leaves it open, and an open sheet blocks the jump, so the press below would test nothing
+  await expect.poll(() => kq(page, () => window.KQ.Game.UI.modalOpen())).toBe(true);
   await kq(page, () => window.KQ.Game.UI.closeSheet("test"));
+  await expect.poll(() => kq(page, () => window.KQ.Game.Actions.canJump())).toBe(true);
   await step(page, 400);
   await page.keyboard.press("Space");
   await step(page, 150);

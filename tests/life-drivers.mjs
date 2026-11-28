@@ -281,18 +281,24 @@ export function escortScenario() {
   return out;
 }
 
-/** "Ride to the library" counts when the hero arrives on any ride (a mount from another build too). */
+/** "Ride to the library" counts when the hero arrives on any ride (including a camel, horse or pony). */
 export function rideScenario() {
   const k = window.__kq;
   const G = window.KQ.Game;
   const sim = G.S.sim;
   sim.missions.abandon();
-  G.Mounts = { mounted: () => true };
-  sim.missions.accept("bike_to_library");
-  k.teleport("library");
-  run(1);
-  const afterRide = sim.missions.progress();
-  delete G.Mounts;
+  // Pretend the hero is on an animal (G.Mounts.riding) for this one arrival, then put the real check back.
+  const realRiding = G.Mounts.riding;
+  G.Mounts.riding = () => true;
+  let afterRide;
+  try {
+    sim.missions.accept("bike_to_library");
+    k.teleport("library");
+    run(1);
+    afterRide = sim.missions.progress();
+  } finally {
+    G.Mounts.riding = realRiding;
+  }
   sim.missions.abandon();
   return { afterRide };
 }

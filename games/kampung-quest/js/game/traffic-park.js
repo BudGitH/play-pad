@@ -3,7 +3,7 @@
  * PURPOSE: What a traffic car does once it has pulled into a kerbside bay: the people inside get out (the door
  *          opens, each steps out and walks off into the crowd), the car waits a while, then new people walk up,
  *          the door opens, they climb in, it closes and it drives off.
- * BUSINESS CONTEXT: owner request "cars occasionally park in a free spot, and the people get out or get in and
+ * BUSINESS CONTEXT: AC-P26 (features/kampung-quest-playability/requirements.md). Owner request "cars occasionally park in a free spot, and the people get out or get in and
  *   drive off". Everyone is polite: no one is ever pulled out, and the people getting in come from the pavement.
  * HOW IT FITS: traffic.js owns the car records and calls arrive(c) when a car stops in its bay and step(c, dt)
  *   every frame while it is parked; step() returns true when the car should pull out again. The people on foot are

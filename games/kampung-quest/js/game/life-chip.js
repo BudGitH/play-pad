@@ -19,29 +19,35 @@
     "padding:6px 14px;border-radius:16px;background:rgba(255,253,247,0.92);color:#15151c;" +
     "font:700 14px/1.25 system-ui,sans-serif;box-shadow:0 2px 8px rgba(0,0,0,0.25);" +
     "text-align:center;";
-  const L = { box: null, rows: {} };
+  const L = { box: null, live: null, rows: {} };
 
-  /** The chip box, created on first use inside the game root. */
-  function box() {
+  /**
+   * Build the chip box inside the game root (once). Its event rows sit in a polite status region that
+   * exists, empty, from boot, so the first event hint is announced (a live region that is created with its
+   * text already in it is not). The "Beat the bubble" countdown is NOT in that region: it changes every
+   * second, so mission-steps.js announces only its start and its last ten seconds (G.UI.announce).
+   */
+  function init() {
     if (L.box) return L.box;
-    L.box = U.el("div", {
-      cls: "kq-life-chip",
-      style: CSS,
-      role: "status",
-      "aria-live": "polite",
-    });
+    L.live = U.el("div", { role: "status", "aria-live": "polite", style: "display:contents" });
+    L.box = U.el("div", { cls: "kq-life-chip", style: CSS }, L.live);
     G.S.root.insertBefore(L.box, G.S.hudHost);
     return L.box;
   }
 
+  /** The element a row goes in: the live status region for events, the quiet area for the countdown. */
+  function parentFor(key) {
+    init();
+    return key === "bubble" ? L.box : L.live;
+  }
+
   /** Show (or change) a row of text under a key (e.g. "event", "bubble"). */
   function set(key, text) {
-    const b = box();
     let row = L.rows[key];
     if (!row) {
       row = U.el("div", { cls: "kq-life-row", style: ROW_CSS, "data-key": key });
       L.rows[key] = row;
-      b.appendChild(row);
+      parentFor(key).appendChild(row);
     }
     if (row.textContent !== text) row.textContent = text;
     row.hidden = false;
@@ -67,5 +73,5 @@
     return out;
   }
 
-  G.LifeChip = { set, clear, update, debug };
+  G.LifeChip = { init, set, clear, update, debug };
 })((window.KQ = window.KQ || {}));

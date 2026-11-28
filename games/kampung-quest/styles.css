@@ -3071,6 +3071,24 @@ kbd {
   background: var(--kq-hud-strong);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.55);
 }
+.kq-bm-more {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  max-width: calc(100% - 20px);
+  margin: 0;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--kq-hud-strong);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  pointer-events: none;
+}
+.kq-bm-more[hidden] {
+  display: none;
+}
 .kq-bm-card[hidden] {
   display: none;
 }

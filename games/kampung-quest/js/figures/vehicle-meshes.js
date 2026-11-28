@@ -152,19 +152,17 @@
   /** Build a car (one of the five styles). */
   function buildCar(hex, o) {
     const low = Boolean(o.low);
-    const old = F.VehicleParts.setDetail(low ? 0.55 : 1);
-    const v = buildSet("car", hex, Cars().build(o.style, o.lhd, low, o.fuel), low);
-    F.VehicleParts.setDetail(old);
-    return v;
+    return F.VehicleParts.withDetail(low, () =>
+      buildSet("car", hex, Cars().build(o.style, o.lhd, low, o.fuel), low),
+    );
   }
 
   /** Build the lorry. */
   function buildLorry(hex, o) {
     const low = Boolean(o.low);
-    const old = F.VehicleParts.setDetail(low ? 0.55 : 1);
-    const v = buildSet("lorry", hex, Big().lorry(o.lhd, low), low);
-    F.VehicleParts.setDetail(old);
-    return v;
+    return F.VehicleParts.withDetail(low, () =>
+      buildSet("lorry", hex, Big().lorry(o.lhd, low), low),
+    );
   }
 
   /**
@@ -172,10 +170,7 @@
    * two left doors (own meshes on pivots), wheels and rig.
    */
   function buildBus(hex, low) {
-    const old = F.VehicleParts.setDetail(low ? 0.55 : 1);
-    const v = busParts(hex, low, Big().bus(low));
-    F.VehicleParts.setDetail(old);
-    return v;
+    return F.VehicleParts.withDetail(low, () => busParts(hex, low, Big().bus(low)));
   }
 
   /** The bus's meshes, wheels, doors and rig (inside buildBus's level of detail). */

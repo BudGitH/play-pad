@@ -3,7 +3,7 @@
  * PURPOSE: Where the ambient traffic cars drive: the road lanes they follow in each region, the kerbside parking
  *          bays they pull into, the looks of the cars, and how a car's place along its road turns into x, z and
  *          a heading.
- * BUSINESS CONTEXT: owner request for cars driven around the town. Kampung: the N-S road (the E-W road belongs to
+ * BUSINESS CONTEXT: AC-P26 (features/kampung-quest-playability/requirements.md). Owner request for cars driven around the town. Kampung: the N-S road (the E-W road belongs to
  *   the bus, whose lanes sit too close to the middle for a car to share, see notes-vehicle-life.md); Makkah: the
  *   outer streets only, always clear of every no-drive zone (checked here against KQ.Holy.inNoDrive).
  * CONVENTIONS: a route has an `axis` ("z" runs north-south, "x" east-west), a stretch `from`..`to` along it and a

@@ -22,6 +22,8 @@
   const G = (KQ.Game = KQ.Game || {});
   /** Milliseconds of queued work per frame: half a 60 fps frame, leaving room for the frame itself. */
   const BUDGET_MS = 8;
+  /** How often (ms) the pump looks again while the head job is waiting for its `when` (not every frame). */
+  const WAIT_POLL_MS = 500;
   const queue = [];
   const counters = { done: 0, added: 0, longestMs: 0, longest: "" };
   let scheduled = false;
@@ -67,17 +69,22 @@
     raf(() => setTimeout(fn, 0));
   }
 
-  /** The background pump: one slice per frame while there is work (and no drain is running it). */
+  /**
+   * The background pump: one slice per frame while there is work (and no drain is running it); while the
+   * head job waits for its `when` (e.g. play is on), it only looks again every WAIT_POLL_MS.
+   */
   function pump() {
     scheduled = false;
     if (draining || !slice(BUDGET_MS)) return;
-    schedule();
+    schedule(headReady(false) ? 0 : WAIT_POLL_MS);
   }
 
-  function schedule() {
+  /** Arrange the next pump: after the next frame, or after `delayMs` when the queue is only waiting. */
+  function schedule(delayMs) {
     if (scheduled) return;
     scheduled = true;
-    afterFrame(pump);
+    if (delayMs) setTimeout(pump, delayMs);
+    else afterFrame(pump);
   }
 
   /**
@@ -88,7 +95,7 @@
   function add(fn, label, opts) {
     queue.push({ fn, label: label || "job", when: opts && opts.when });
     counters.added += 1;
-    schedule();
+    schedule(0);
   }
 
   /**

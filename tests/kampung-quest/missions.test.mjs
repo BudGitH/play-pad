@@ -373,31 +373,7 @@ test("grantSticker only accepts known stickers, once; prayer stars exist", () =>
     );
 });
 
-// ---- ACC-1: which interaction target wins (a hawker stands ~0.15 m behind the stall counter) ----
-const NPC_NEAR = { enabled: true, dist: 1.8 };
-const NPC_FAR = { enabled: false, dist: 3.5 };
-const COUNTER = { dist: 1.7 };
-
-test("ACC-1: a neighbour with a mission offer beats the stall counter even when the counter is nearer", () => {
-  assert.equal(Missions.pickTarget(NPC_NEAR, COUNTER, true), "npc");
-});
-
-test("ACC-1: with no mission business the nearer target wins, so ordering food still works", () => {
-  assert.equal(Missions.pickTarget({ enabled: true, dist: 2.2 }, COUNTER, false), "obj");
-  assert.equal(Missions.pickTarget({ enabled: true, dist: 1.2 }, COUNTER, false), "npc");
-});
-
-test("ACC-1: pickTarget handles every empty / disabled combination", () => {
-  assert.equal(Missions.pickTarget(null, null, false), null);
-  assert.equal(Missions.pickTarget(NPC_NEAR, null, false), "npc");
-  assert.equal(Missions.pickTarget(null, COUNTER, true), "obj");
-  assert.equal(
-    Missions.pickTarget(NPC_FAR, COUNTER, true),
-    "obj",
-    "a far NPC never beats an object",
-  );
-  assert.equal(Missions.pickTarget(NPC_FAR, null, true), "npc", "the 'Walk closer' prompt remains");
-});
+// ---- ACC-1: mission business (which neighbour wants to talk). The chooser's order is in action-order.test.mjs ----
 
 test("ACC-1: wantsTalk is true for every giver with a mission available, and for step targets", () => {
   const m = Missions.create();

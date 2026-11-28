@@ -61,6 +61,15 @@ test("first run: the picker is up, Boy is chosen, arrow keys pick Girl, Start ma
     expect(box.height).toBeGreaterThanOrEqual(48);
     expect(box.width).toBeGreaterThanOrEqual(48);
   }
+  // reading order: the picker is above Start, so keyboard focus begins on the chosen card, not on Start
+  await expect(card(page, "boy"), "a first run starts focus on the picker").toBeFocused();
+  await page.keyboard.press("End");
+  await expect(card(page, "girl"), "End picks the last card").toHaveAttribute(
+    "aria-checked",
+    "true",
+  );
+  await page.keyboard.press("Home");
+  await expect(card(page, "boy"), "Home picks the first").toHaveAttribute("aria-checked", "true");
   await card(page, "boy").focus();
   await page.keyboard.press("ArrowRight");
   await expect(card(page, "girl")).toHaveAttribute("aria-checked", "true");
@@ -86,7 +95,10 @@ test("the choice survives a reload; New game puts the picker up again first", as
   await load(page, URL + "&hero=girl");
   await expect(card(page, "girl")).toHaveAttribute("aria-checked", "true");
   await startGame(page);
-  expect(await kq(page, () => window.KQ.Game.Loop.save())).toBeTruthy();
+  expect(await kq(page, () => window.KQ.Game.Loop.save()), "the save succeeded").toBe(true);
+  const saved = await kq(page, () => JSON.parse(localStorage.getItem("kampung-quest:v1")));
+  expect(saved.v, "a versioned save").toBe(1);
+  expect(saved.hero.gender, "the girl is what was saved").toBe("girl");
   await load(page);
   await expect(page.locator("#kqHeroPick")).toBeHidden(); // Continue keeps the saved hero
   await startGame(page);

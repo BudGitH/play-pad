@@ -446,8 +446,12 @@
   /** The bus's shared geometries (per tier). */
   function bus(low) {
     const key = low ? "low" : "hi";
-    if (cache[key]) return cache[key];
-    const old = P().setDetail(low ? 0.55 : 1);
+    if (!cache[key]) cache[key] = P().withDetail(low, () => busSet(low));
+    return cache[key];
+  }
+
+  /** Build the bus's geometry set at the detail already chosen (see bus). */
+  function busSet(low) {
     const sk = skin(low);
     const trim = [
       sk["trim:body"] && F.VehicleCars.recolour(sk["trim:body"], BLACK, C().gloss),
@@ -455,7 +459,7 @@
     ]
       .concat(lamps(), fittings(), signs())
       .filter(Boolean);
-    cache[key] = {
+    return {
       style: "bus",
       body: sk["paint:body"],
       trim: F.Geo.merge(trim.map((g) => (g.attributes.aSkin ? g : T(g)))),
@@ -473,8 +477,6 @@
       steerAt: [1.25, 4.35],
       noBlob: true,
     };
-    P().setDetail(old);
-    return cache[key];
   }
 
   F.VehicleBig = Object.assign(F.VehicleBig || {}, { bus, doorRig, BUS });

@@ -41,6 +41,41 @@ test("Say hi to a crowd extra: a prompt, the hero's hello, a reply bubble and a 
   expect(errors).toEqual([]);
 });
 
+test("the hero's wave never frees a hold that a prayer or rite took meanwhile, nor starts on top of one", async () => {
+  const r = await page.evaluate(D.waveLockScenario);
+  expect(r.waving, "the hero waves for a moment").toBe(true);
+  expect(r.heldAfter, "the wave timer ended but the later hold stays").toBe(true);
+  expect(r.freed).toBe(true);
+  expect(r.noWaveOnHold, "no wave pose on top of a hold").toBe(true);
+});
+
+test("a11y: the chip's status region exists from boot; the bubble countdown is not in it and is announced twice only", async () => {
+  const r = await page.evaluate(() => {
+    const G = window.KQ.Game;
+    const live = document.querySelector(".kq-life-chip [role=status]");
+    const out = { liveFromBoot: Boolean(live) && live.textContent === "" };
+    const said = [];
+    const real = G.UI.announce;
+    G.UI.announce = (t) => said.push(t);
+    G.S.sim.missions.abandon();
+    G.S.sim.missions.accept("prata_dash");
+    for (let i = 0; i < 40; i += 1) {
+      G.S.sim.missions.tick(5);
+      window.__kq.step(300); // one mission-steps check each time
+    }
+    G.UI.announce = real;
+    out.said = said.filter((t) => /bubble|bonus/i.test(t));
+    out.inLive = Boolean(live.querySelector('[data-key="bubble"]'));
+    out.row = Boolean(document.querySelector('.kq-life-chip > [data-key="bubble"]'));
+    G.S.sim.missions.abandon();
+    return out;
+  });
+  expect(r.liveFromBoot).toBe(true);
+  expect(r.inLive, "the countdown row is outside the live region").toBe(false);
+  expect(r.said.length, JSON.stringify(r.said)).toBeLessThanOrEqual(2);
+  expect(r.said[0]).toMatch(/^Beat the bubble/);
+});
+
 test("the salaam is only for Muslim people; everyone else gets a plain hello", async () => {
   const r = await page.evaluate(D.salaamRuleScenario);
   expect(r.length).toBeGreaterThanOrEqual(2);

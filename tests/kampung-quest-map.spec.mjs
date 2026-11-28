@@ -506,6 +506,57 @@ async function expectPlacesPanelUsable(page) {
   await button(page, "Places").tap(); // fold the panel
 }
 
+/** Load a region on a landscape phone (844 x 390), open the full map at its overview. */
+async function overviewOnLandscapePhone(browser, url) {
+  const page = await browser.newPage({ viewport: { width: 844, height: 390 } });
+  await boot(page, url);
+  await page.locator("#kqMap").click();
+  await expect.poll(async () => (await map(page)).open).toBe(true);
+  return page;
+}
+
+test("a landscape phone's overview still draws the horse, camel, tailor and mosque, and says how many wait", async ({
+  browser,
+}) => {
+  const errors = [];
+  for (const [url, want] of [
+    [GAME, ["pony_ride", "tailor", "mosque", "hawker", "barber"]],
+    [HOLY, ["horse_stable", "camel_yard", "tailor", "mosque", "kaaba", "salon"]],
+  ]) {
+    const page = await overviewOnLandscapePhone(browser, url);
+    errors.push(...watch(page));
+    const m = await map(page);
+    const seen = m.places.filter((p) => p.visible).map((p) => p.id);
+    for (const id of want) expect(seen, `${id} is drawn at the overview`).toContain(id);
+    const hidden = m.places.length - seen.length;
+    expect(hidden, "small stuff still waits for a zoom").toBeGreaterThan(0);
+    await expect(page.locator(".kq-bm-more")).toHaveText(/^\+\d+ more: zoom in or open Places$/);
+    await button(page, "Zoom in").click();
+    await button(page, "Zoom in").click();
+    await button(page, "Zoom in").click();
+    await expect.poll(async () => (await map(page)).level).toBeGreaterThan(2);
+    await page.close();
+  }
+  expect(errors).toEqual([]);
+});
+
+test("Go here keeps focus on its toggle (the card is rebuilt), and the canvas is a labelled map", async ({
+  browser,
+}) => {
+  const { page } = await region(browser, "kampung");
+  await openMap(page);
+  await focusOn(page, "tailor");
+  const canvas = page.locator(".kq-bm-canvas");
+  await expect(canvas).toHaveAttribute("role", "application");
+  await expect(canvas).toHaveAttribute("aria-roledescription", "map");
+  await button(page, "Go here").focus();
+  await page.keyboard.press("Enter");
+  await expect(button(page, "Stop going here")).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(button(page, "Go here")).toBeFocused();
+  await page.keyboard.press("Escape");
+});
+
 test.describe("phone portrait (Pixel 7)", () => {
   test.use(pixel);
 

@@ -34,6 +34,21 @@
     return old;
   }
 
+  /**
+   * Run `fn` with the level of detail of a tier (`low` = the low tier's 0.55, else full), then put the old
+   * level back even if `fn` throws, so one failed build never leaves every later vehicle at the wrong detail.
+   * @param {boolean} low whether to build at the low tier's detail
+   * @param {Function} fn builds the geometry; its value is returned
+   */
+  function withDetail(low, fn) {
+    const old = setDetail(low ? 0.55 : 1);
+    try {
+      return fn();
+    } finally {
+      setDetail(old);
+    }
+  }
+
   /** Paint a geometry one flat colour as it is (no sRGB conversion, to match the world's materials). */
   function paint(g, hex) {
     G.paint(g, "#ffffff");
@@ -397,6 +412,7 @@
   F.VehicleParts = {
     steering,
     setDetail,
+    withDetail,
     detail: () => LOD.k,
     paint,
     tag,

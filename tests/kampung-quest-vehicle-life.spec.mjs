@@ -77,6 +77,11 @@ function sceneTests(getPage) {
     checkGetIn(getPage()));
   test("getting out: the door opens, he steps out on the driver's side onto free ground", () =>
     checkGetOut(getPage()));
+  test("a scooter: Ride from 1.5 - 2.2 m on any side always ends in the saddle (a pushing neighbour does not abort it)", async () => {
+    const r = await kq(getPage(), D.scooterApproaches);
+    expect(r.tries, "the prompt offered Ride most of the time").toBeGreaterThan(15);
+    expect(r.fails, JSON.stringify(r)).toEqual([]);
+  });
   test("pressing the button again skips the scene in both directions", () => checkSkip(getPage()));
   test("a bicycle and a scooter: a short step and swing, no door, input locked meanwhile", () =>
     checkTwoWheelers(getPage()));
@@ -165,6 +170,15 @@ async function checkHeroInLane(page) {
   expect(r.moved).toBe(true);
 }
 
+async function checkActorLane(page) {
+  const r = await kq(page, D.actorLaneCase);
+  expect(r.listed, "a shown event actor is on the yield list").toBe(1);
+  expect(r.gap, JSON.stringify(r)).toBeGreaterThan(0.3);
+  expect(r.speed, "the car stopped for the actor").toBeLessThan(0.3);
+  expect(r.hidden, "a hidden actor is not").toBe(0);
+  expect(r.moved, "and it goes on once the actor has gone").toBe(true);
+}
+
 async function checkSolid(page) {
   const r = await kq(page, D.solidCase);
   expect(r.none).toBe(0);
@@ -197,6 +211,8 @@ function trafficTests(getPage) {
     checkCrossing(getPage()));
   test("traffic: it stops short of the hero in its lane, honks once, and goes on when he steps aside", () =>
     checkHeroInLane(getPage()));
+  test("traffic: it stops short of a scripted-event actor in its lane and goes on when the actor leaves", () =>
+    checkActorLane(getPage()));
   test("traffic: each car is a moving solid (an oriented box), not counted among the parked vehicles", () =>
     checkSolid(getPage()));
   test("traffic: a car pulls into a bay, its people step out through their doors, others get in, it drives off", () =>

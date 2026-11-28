@@ -2,7 +2,7 @@
  * FILE: exhaust.js
  * PURPOSE: Little puffs of exhaust from petrol and diesel vehicles (never electric ones): small soft grey
  *          sprites from the pipe that grow, rise and fade. Diesel is a little greyer and puffs more at pull-away.
- * BUSINESS CONTEXT: owner request "even exhaust being released if it is a diesel or petrol vehicle".
+ * BUSINESS CONTEXT: AC-P27 (features/kampung-quest-playability/requirements.md). Owner request "even exhaust being released if it is a diesel or petrol vehicle".
  * COST: ONE pooled THREE.Points (a custom shader gives each puff its own size and fade) = one draw call for every
  *   vehicle, and none when no puff is alive. The pool is capped per tier, vehicles farther than RANGE from the
  *   camera emit nothing, and puffs are plain data (no per-puff objects).

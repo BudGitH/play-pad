@@ -23,6 +23,7 @@
   /** Remember a hint as heard (a lower-case key only) and store the preferences. */
   function remember(key) {
     if (!/^[a-z-]{1,24}$/.test(key)) return;
+    if (Object.keys(G.Settings.prefs.seen).length >= G.Settings.MAX_SEEN) return; // keeps the prefs blob under its cap
     G.Settings.prefs.seen[key] = true;
     said.push(key);
     G.Settings.save(S() ? S().storage : null);
@@ -44,7 +45,7 @@
   Say.log = () => said.slice();
   /** Forget every heard hint (tests, and a fresh game). */
   Say.reset = function () {
-    G.Settings.prefs.seen = {};
+    G.Settings.prefs.seen = Object.create(null);
     said.length = 0;
   };
 

@@ -28,12 +28,16 @@
   function placeItems(ctx, view, s, city, sel) {
     ctx.font = FONT;
     const out = [];
+    out.zoomOnly = 0;
     G.MapPlaces.list(s, city).forEach(function (p) {
       const pt = MV().toScreen(view, p.x, p.z);
       if (!MV().inside(view, pt, 40)) return;
       const kind = KQ.PLACES.KINDS[p.kind];
       const force = p.id === sel || G.MapTarget.is(p);
-      if (!force && kind.prio >= SMALL_PRIO && view.scale < SMALL_SCALE) return;
+      if (!force && kind.prio >= SMALL_PRIO && view.scale < SMALL_SCALE) {
+        out.zoomOnly += 1; // small stuff waits for a closer zoom, but is still counted in the "+N more" hint
+        return;
+      }
       const lw = Math.ceil(ctx.measureText(p.label).width) + 8;
       out.push({
         id: p.id,
@@ -189,13 +193,18 @@
    */
   function render(ctx, view, s, city, ui) {
     drawRoute(ctx, view, s);
-    const kept = MV().layout(placeItems(ctx, view, s, city, ui.sel), 3);
+    const items = placeItems(ctx, view, s, city, ui.sel);
+    const kept = MV().layout(items, 3);
     drawPlaces(ctx, kept);
     if (ui.showHero) {
       drawMission(ctx, view);
       drawHero(ctx, view, s);
     }
-    return { hits: kept.map((e) => e.item), kept };
+    return {
+      hits: kept.map((e) => e.item),
+      kept,
+      hidden: items.length - kept.length + items.zoomOnly,
+    };
   }
 
   G.BigMapDraw = { render, radiusOf };

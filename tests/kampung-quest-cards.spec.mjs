@@ -196,6 +196,28 @@ test("wudu: Hide gives a chip with the step and counter, the card is gone, the c
   expect(side, "the hero steps aside for the panel again").toBeGreaterThan(0);
 });
 
+test("Hide key while Pause is open does nothing: Pause stays, the game stays paused, the wudu progress is kept", async () => {
+  await reset(page);
+  await startWuduHere();
+  await hideButton(page).click();
+  await tapHiddenNext();
+  const before = await chipText(page);
+  await ev(page, () => window.__kq.action("escape")); // Pause opens over the chip
+  await expect(page.getByRole("dialog", { name: /Pause|Paused/i })).toBeVisible();
+  expect(await ev(page, () => window.__kq.state().paused)).toBe(true);
+  await ev(page, () => window.__kq.action("hide")); // H or -
+  await page.keyboard.press("h");
+  await step(page, 100);
+  await expect(page.getByRole("dialog", { name: "Wudu steps" })).toHaveCount(0);
+  await expect(page.getByRole("dialog", { name: /Pause|Paused/i })).toBeVisible();
+  expect(await ev(page, () => window.__kq.state().paused), "still paused").toBe(true);
+  await ev(page, () => window.__kq.action("escape")); // close Pause
+  expect((await card(page)).minimised, "the wudu card is still there, tucked away").toBe(true);
+  expect(await chipText(page), "with its progress").toBe(before);
+  await page.locator(".kq-min-chip").click();
+  await expect(page.getByRole("dialog", { name: "Wudu steps" })).toBeVisible();
+});
+
 test("prayer: Hide gives a 'Rakaat n/m' chip that follows the postures; tap restores", async () => {
   await reset(page);
   await startWuduHere();

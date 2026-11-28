@@ -76,6 +76,30 @@ export function sayHiScenario() {
   return out;
 }
 
+/** The hero's wave lock must not free a hold that a prayer or rite took meanwhile; a wave never starts on top of a hold. */
+export function waveLockScenario() {
+  const k = window.__kq;
+  const G = window.KQ.Game;
+  const P = G.S.player;
+  k.setMinute(600);
+  k.teleport("playground");
+  run(2);
+  const out = {};
+  sayHiTo(greetable()[0].id);
+  out.waving = P.locked && P.forcedPose === "wave";
+  G.Player.lock(P, null, "sit"); // a rite takes the hero during the wave
+  run(2); // the 1.3 s wave timer runs out
+  out.heldAfter = P.locked && P.forcedPose === "sit";
+  G.Player.release(P); // the rite ends
+  out.freed = !P.locked;
+  G.Player.lock(P, null, "sit");
+  run(2.5);
+  sayHiTo(greetable()[0].id);
+  out.noWaveOnHold = P.forcedPose === "sit";
+  G.Player.release(P);
+  return out;
+}
+
 /** Greet one person of each kind at the hawker centre and report what the hero said and heard. */
 export function salaamRuleScenario() {
   const k = window.__kq;

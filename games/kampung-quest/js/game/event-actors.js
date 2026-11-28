@@ -153,6 +153,20 @@
     a.heading = U.dampAngle(a.heading, Math.atan2(x - a.x, z - a.z), 8, dt);
   }
 
+  /**
+   * Where the visible event actors stand, as {x, z}: the people a car, the bus or a ridden animal
+   * must yield to, like the cast neighbours and crowd extras (an actor that is hidden or has
+   * almost shrunk away does not count).
+   */
+  function positions() {
+    const out = [];
+    Object.keys(POOL).forEach((k) => {
+      const a = POOL[k];
+      if (a.busy && a.group.visible && a.show > 0.3) out.push({ x: a.x, z: a.z });
+    });
+    return out;
+  }
+
   /** How many actors are on stage (for tests). */
   function count() {
     return Object.keys(POOL).filter((k) => POOL[k].busy).length;
@@ -163,5 +177,18 @@
     return Object.keys(POOL).length;
   }
 
-  G.Actors = { get, place, walkTo, arrived, stand, step, leave, release, face, count, built };
+  G.Actors = {
+    get,
+    place,
+    walkTo,
+    arrived,
+    stand,
+    step,
+    leave,
+    release,
+    face,
+    positions,
+    count,
+    built,
+  };
 })((window.KQ = window.KQ || {}));

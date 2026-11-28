@@ -3,7 +3,7 @@
  * PURPOSE: Decides which lights a vehicle shows right now and tells its rig: brake lights when it slows or stands
  *          with the engine on, the white reverse light when it rolls backwards, the headlights from dusk, and the
  *          blinking indicators before a turn or a pull-in (traffic and the bus).
- * BUSINESS CONTEXT: owner request "the lights on the vehicles light up when they are stopping and going".
+ * BUSINESS CONTEXT: AC-P27 (features/kampung-quest-playability/requirements.md). Owner request "the lights on the vehicles light up when they are stopping and going".
  *   The rules are pure (KQ.Sim.VehicleLife.lightsFor); this file only measures the vehicle's acceleration,
  *   remembers what is lit and calls rig.lights.* when something changes (indicators every frame while they blink).
  * RIG API used: rig.lights.setBrake / setHead / setReverse / setIndicator("L"|"R"|null, t) (a no-op when absent).

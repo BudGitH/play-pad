@@ -305,8 +305,12 @@
   /** The lorry's geometry set (`lhd` puts the driver on the left), cached per side and tier. */
   function lorry(lhd, low) {
     const key = "lorry" + (lhd ? "l" : "r") + (low ? "-low" : "");
-    if (cache[key]) return cache[key];
-    const old = P().setDetail(low ? 0.55 : 1);
+    if (!cache[key]) cache[key] = P().withDetail(low, () => lorrySet(lhd, low));
+    return cache[key];
+  }
+
+  /** Build the lorry's geometry set at the detail already chosen (see lorry). */
+  function lorrySet(lhd, low) {
     const driverX = lhd ? 0.45 : -0.45;
     const scheme = F.VehicleCars.PLATES[lhd ? "plain" : "black"];
     const trim = F.Geo.merge(
@@ -319,7 +323,7 @@
       cabInside(driverX),
     );
     const doors = [0, 1].map((k) => lorryDoor(k, driverX));
-    cache[key] = F.VehicleCars.makeSet(pieces, doors, {
+    return F.VehicleCars.makeSet(pieces, doors, {
       style: "lorry",
       driverX,
       seats: [
@@ -337,8 +341,6 @@
       steerAt: [1.24, 2.02],
       height: LOR.roof,
     });
-    P().setDetail(old);
-    return cache[key];
   }
 
   /** Cab door k (0 right, 1 left): hinged on its front edge. */

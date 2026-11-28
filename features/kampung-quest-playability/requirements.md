@@ -74,6 +74,7 @@
 ### F. Life and missions
 
 - [ ] **AC-P17:** kampung kids and neighbours greet the hero and can be greeted (a "Say hi" on any nearby cast or crowd kid/neighbour gives a reply bubble + wave), like the Haramain greeting.
+  - Status (QA round 1): met for crowd extras (tested); the cast neighbours keep Talk by design (a deliberate deviation, deferred to the owner's call). Left unticked until then.
   - Note: NOT ticked. Crowd extras (kids and neighbours) get **Say hi**, and kids call out first, but the cast neighbours keep **Talk** (their dialogue opens with the greeting) and have no separate Say hi button.
 - [x] **AC-P18:** small scripted world events happen during play in both regions (e.g. kids' football match, an ice-cream cart arrival, a cat chase, a wedding procession (kompang), rain shower, a lost-balloon, pigeons scattering); each has a short bubble/sound and optional tiny reward; at most one at a time, child-safe.
   - Note: all nine events are built (one at a time, child-safe); the balloon and the wedding procession were checked by hand only, the rest by spec.
@@ -82,6 +83,7 @@
 ### G. Looks
 
 - [ ] **AC-P20:** the world is visibly brighter and more colourful in daylight (sky, ground, building paint, foliage) in both regions without blowing out highlights; night still reads as night; measured: mean scene saturation and luminance up vs the baseline screenshot in the same pose.
+  - Status (QA round 1): met by measurement; the owner's visual sign-off is deferred (it is a judgement call, not a test).
   - Note: NOT ticked. Implemented and measured (saturation +25-50 %, luminance +2-16 %, no clipped white, night unchanged; `notes-looks.md`, `tests/kampung-quest-looks.spec.mjs`); left open for the owner's visual sign-off.
 
 ### H. iPad
@@ -89,8 +91,10 @@
 - [ ] **AC-P21:** iPad (iPadOS reports "Macintosh" + touch) is detected as a touch tablet: touch controls, low/med tier start, pixel ratio cap.
   - Note: NOT ticked. Implemented and covered by `tests/kampung-quest-ipad.spec.mjs`; left open with AC-P22 / P23 until a real iPad confirms it.
 - [ ] **AC-P22:** boot work is cut: the loading screen shows real progress; heavy work (textures, shader compiles, higher tiers, the other region) is deferred or streamed; time-to-Start-enabled and peak memory are measured before/after (iPad emulation + 4x CPU throttle) and improve.
+  - Status (QA round 1): met in emulation; the real-iPad measurement is deferred (needs a device).
   - Note: NOT ticked. Start enabled is down 42-57 % in the kampung and 13-17 % in Haramain under 4x CPU throttle in emulation (`notes-ipad.md`); not yet measured on a real iPad / Safari.
 - [ ] **AC-P23:** no long main-thread stalls (> 200 ms) after Start in the first 10 s of play on the throttled iPad profile; WebGL context loss is recovered or shown as a friendly card.
+  - Status (QA round 1): met in emulation; the real-iPad check is deferred (needs a device).
   - Note: NOT ticked. No new one-off stall in the first 10 s (emulated) and a context-loss card exist; Haramain's longest load task rose 5.0 to 6.2 s (the warm-up render with culling off) and needs a real-iPad check.
 
 ### I. Simple actions for 7-year-olds (added 2026-11-28, owner follow-up)
@@ -100,3 +104,10 @@
 - [x] **AC-P24:** one consistent way to do each action: a picture-first action control in a fixed place (no label that jumps between targets), a small picture chooser when two or more actions are in reach, spoken hints for non-readers.
 - [x] **AC-P25:** Rest and Pray each take one obvious path (Rest: one tap, no yes/no dialog; Pray: the Pray button always does the next right thing, wudu first, with no new rule changes to `KQ.Sim.Prayer`).
   - Note: the existing prayer, mobile HUD and `test:kq` suites were adapted for the one Pray path; the pre-existing failures listed in `notes-actions.md` (rituals dock button, portrait azan-pill overlaps) are tracked in `docs/findings-ledger.md` (`hud-element-overlap`).
+
+### J. Vehicle life and traffic (added with the vehicle-life workstream; `notes-vehicle-life.md`)
+
+- [x] **AC-P26:** ambient traffic and the town bus: cars drive the road with a driver (and sometimes passengers) and the bus carries a driver and seated passengers who are visible; at the bus stop people get off and walk away and others walk up, board and sit (bays at the kerb do the same for a parked car). Every road user yields to people on foot (the hero, cast neighbours, crowd extras and the actors of a scripted world event) and stops before a zebra crossing while anyone is on it; vehicles are moving solids, never carjack the hero, and never hurt anyone (they only slow and stop).
+  - Covered by `tests/kampung-quest-vehicle-life.spec.mjs` (traffic and bus legs, incl. a scripted-event actor in a car's lane), `tests/kampung-quest/traffic.test.mjs`, `tests/kampung-quest/vehicle.test.mjs` (look-ahead, braking).
+- [x] **AC-P27:** vehicle life: getting in and out plays a short door scene (walk to the door, it opens, climb, it shuts; a bicycle or scooter gets a step and a swing; input locked, skippable); brake, head, reverse and indicator lights follow what the vehicle does (and go off when the hero gets out); exhaust only from petrol and diesel (never electric or bicycles), pooled into one draw call; subtle synthesised sounds (engine, bicycle tick, doors, horn) that obey mute, pause, a hidden tab and the azan.
+  - Covered by `tests/kampung-quest-vehicle-life.spec.mjs`, `tests/kampung-quest-vehicle-rig.spec.mjs` (the model's doors and lamps), `tests/kampung-quest/vehicle-life.test.mjs` (timeline, lights, puff rates) and `tests/kampung-quest/vehicle-mix.test.mjs` (the sound mix numbers).

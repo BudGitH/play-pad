@@ -1,7 +1,13 @@
-// Kampung Quest — the extra faces of the town's little moments: the two Makkah / Madinah guides who
-// give missions, and the people who appear in world events (a wedding party, a volunteer, a
-// family, kids with a ball, an ice-cream seller). All modestly dressed, same toy style as the cast
-// (they are copies of cast specs with new colours, so the figure builder needs nothing new).
+/* ============================================================================
+ * FILE: life-cast.js
+ * PURPOSE: The extra faces of the town's little moments: the two Makkah / Madinah guides who give missions, and the people
+ *          who appear in world events (a wedding party, a volunteer, a family, kids with a ball, an ice-cream
+ *          seller). All modestly dressed, same toy style as the cast (copies of cast specs with new colours, so
+ *          the figure builder needs nothing new).
+ * BUSINESS CONTEXT: AC-P18 and AC-P19 (features/kampung-quest-playability/requirements.md, group F: world events and missions).
+ * DEPENDENCIES: KQ.Figures.CAST (cast.js); read by game/event-actors.js and the guides in npc-manager.js.
+ * HOW TO TEST: npx playwright test tests/kampung-quest-life.spec.mjs tests/kampung-quest-life-holy.spec.mjs.
+ * ========================================================================== */
 (function (KQ) {
   "use strict";
   const F = (KQ.Figures = KQ.Figures || {});

@@ -354,6 +354,72 @@ export function laneCase() {
   return out;
 }
 
+/** An event actor (not a cast neighbour) stands in a car's lane 20 m ahead: it stops short; the actor leaves and it goes on. */
+export function actorLaneCase() {
+  const G = window.KQ.Game;
+  const T = window.__vl;
+  G.Traffic.clear();
+  window.__kq.setMinute(210);
+  T.stand(8, -60, 0); // the hero is out of the way, well off the lane
+  const actor = G.Actors.get(window.KQ.Figures.LIFE_CAST[0]);
+  G.Actors.place(actor, 0.95, -20, 0);
+  actor.show = 1; // fully grown in
+  G.Traffic.force({ dir: 1, u: -50, speed: 7, passengers: 0 });
+  const listed = G.Actors.positions().length;
+  let gap = Infinity;
+  T.frames(330, () => {
+    gap = Math.min(gap, -20 - T.tcar().z - 1.9);
+  });
+  const out = { listed, gap, speed: T.tcar().speed };
+  G.Actors.release(actor); // the event is over
+  out.hidden = G.Actors.positions().length;
+  T.frames(150);
+  out.moved = T.tcar() ? T.tcar().z > -18 : true;
+  return out;
+}
+
+/**
+ * Press Ride on every kampung scooter from 1.5 - 2.2 m away, from several sides, as the Action button does
+ * (the prompt's own vehicle), and report the tries that did not end with the hero in the saddle. The scooters
+ * stand close together by the flats, where a neighbour who cannot give way nudges the hero mid-scene.
+ */
+export function scooterApproaches() {
+  const G = window.KQ.Game;
+  window.__kq.setMinute(600);
+  const fails = [];
+  let tries = 0;
+  const motos = G.Vehicles.debug().list.filter((v) => v.kind === "moto");
+  for (const v of motos) {
+    for (const [dist, ang] of [
+      [1.5, 0],
+      [2.2, 0],
+      [1.8, 1.57],
+      [1.8, 3.14],
+      [1.8, -1.57],
+      [2.0, 0.8],
+    ]) {
+      window.__kq.place(v.x + Math.sin(ang) * dist, v.z + Math.cos(ang) * dist, ang + Math.PI);
+      window.__kq.step(300);
+      const t = window.__kq.state().target;
+      if (!t || t.id.indexOf("vehicle:moto") !== 0) continue;
+      tries += 1;
+      G.Vehicles.press(t.id);
+      window.__vl.frames(90);
+      const d = G.Vehicles.debug();
+      if (!d.mounted) fails.push([t.id, dist, ang]);
+      if (d.mounted) {
+        G.Vehicles.press("vehicle:exit");
+        window.__vl.frames(150, () => {
+          if (G.Vehicles.debug().scene) G.Vehicles.finishScene();
+          return G.Vehicles.debug().mounted !== null;
+        });
+      }
+      G.Vehicles.returnAll();
+    }
+  }
+  return { tries, fails };
+}
+
 /** A traffic car's collider: an oriented box on the car, not counted among the parked vehicles, gone when it leaves. */
 export function solidCase() {
   const G = window.KQ.Game;

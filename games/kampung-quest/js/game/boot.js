@@ -386,6 +386,7 @@
     createRenderer(s, pickTier(saved));
     G.BootPerf.watchContext(s);
     G.Hud.build(s.hudHost, G.Actions.handle);
+    G.LifeChip.init(); // an empty status region from the start, so the first event hint is announced
     G.Input.attach({ stage: s.stage, joystick: G.Hud.refs.joy, knob: G.Hud.refs.knob });
     G.Input.setHandler((name) => G.Actions.handle(name));
     window.addEventListener("keydown", G.UI.trap);

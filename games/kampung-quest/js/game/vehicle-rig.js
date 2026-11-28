@@ -1,16 +1,18 @@
 /* ============================================================================
  * FILE: vehicle-rig.js
  * PURPOSE: One guarded door to what a built vehicle model (the "rig") offers: its doors that open, its seats,
- *          its lights, its exhaust pipe. The looks workstream adds `rig.doors`, `rig.seats`, `rig.lights`,
- *          `rig.exhaust` (and the bicycle's `pedals` / `wheels` / `steer`); every call here checks the feature
- *          is there and does nothing (or uses the numbers the model has always had) when it is not, so this
- *          code works before and after that branch merges.
- * RIG API it relies on (names exactly as agreed):
+ *          its lights, its exhaust pipe (and the bicycle's pedals, wheels and steering). Every call here checks the
+ *          feature is there and does nothing (or uses the numbers the model has always had) when it is not, so the
+ *          game code and the test stubs (a plain record with the same names) work with or without a built rig.
+ * RIG API it relies on (names exactly as figures/vehicle-rig.js builds them):
  *   rig.doors   [{side:"L"|"R", seat, pivot, open(t 0..1)}]
  *   rig.seats   [{pos (local Vector3), heading, kind:"driver"|"front"|"rear"|"bus"}]
  *   rig.lights  {setBrake(on), setHead(on), setIndicator("L"|"R"|null, t), setReverse(on)}
  *   rig.exhaust {pos (local), fuel:"petrol"|"diesel"|"electric"}
+ * BUSINESS CONTEXT: AC-P26 and AC-P27 (features/kampung-quest-playability/requirements.md): the doors, lamps, seats
+ *   and exhaust that traffic, the bus, the get-in scene and the sounds drive; notes-vehicle-life.md ("Rig API").
  * DEPENDENCIES: KQ.Figures.Vehicles (SEAT, setDoors), KQ.Figures.VehicleCars (rows), KQ.Sim.VehicleLife (fuel).
+ * HOW TO TEST: npx playwright test tests/kampung-quest-vehicle-rig.spec.mjs tests/kampung-quest-vehicle-life.spec.mjs
  * ========================================================================== */
 (function (KQ) {
   "use strict";

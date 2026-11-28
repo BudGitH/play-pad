@@ -20,6 +20,17 @@
   const RETRY = 0.6;
   const B = { sig: "", words: [], tryAt: -99 };
 
+  /**
+   * The accessible name of a control: it starts with the word the control shows (WCAG 2.5.3 Label in
+   * Name), so "Eat" is "Eat: order food" and "Buy" is "Buy: pay at the till". A name that already
+   * starts with the word ("Talk to Nenek", "Pray") is kept as it is.
+   */
+  function nameFor(word, aria) {
+    const text = String(aria || word);
+    if (text.toLowerCase().indexOf(String(word).toLowerCase()) === 0) return text;
+    return word + ": " + text.charAt(0).toLowerCase() + text.slice(1);
+  }
+
   /** A picture + one word, as the content of a tile or the big button. */
   function fill(node, info, aria, keyText, showKey) {
     U.clear(node);
@@ -28,7 +39,7 @@
     const key = U.el("kbd", { text: keyText });
     key.hidden = !showKey;
     node.appendChild(U.el("span", { cls: "kq-talk-row" }, word, key));
-    node.setAttribute("aria-label", aria);
+    node.setAttribute("aria-label", nameFor(info.word, aria));
   }
 
   /** Build the Action control, its tray and the world pointer; `on(action)` is the HUD's click handler. */
@@ -53,7 +64,6 @@
       { cls: "kq-pointer", id: "kqPointer", "aria-hidden": "true", hidden: true },
       G.Pictures.icon("arrow"),
     );
-    R.talkIconName = "";
     return R.action;
   }
 
@@ -64,15 +74,42 @@
       type: "button",
       cls: "kq-talk-more",
       "data-n": String(n),
-      on: { click: () => G.Interact.activate(t) },
+      on: { click: () => pick(n) }, // the live target of tile n (the list may have changed since it was drawn)
     });
     fill(b, info, t.aria || info.word, String(n), !G.Env.coarse);
     return b;
   }
 
-  /** A signature of what is on show, so the DOM is only touched when it changes. */
+  /**
+   * A signature of what the child SEES (picture, word, spoken name), so the DOM is only touched when
+   * that changes. Target ids are left out on purpose: the nearest crowd person's id (`walker:7`,
+   * `queue:3`) changes all the time while the button still says "Say hi", and rebuilding it would
+   * drop keyboard focus.
+   */
   function sigOf(list) {
-    return list.map((t) => t.id + "|" + t.label + "|" + G.ActionWords.keyOf(t)).join("~");
+    return list
+      .map(function (t) {
+        const info = G.ActionWords.info(t);
+        return info.icon + "|" + info.word + "|" + (t.aria || t.label);
+      })
+      .join("~");
+  }
+
+  /** Keep keyboard focus through a rebuild: the same tile number, else the big button, else the stage. */
+  function restoreFocus(had) {
+    const R = G.Hud.refs;
+    if (!had) return;
+    const tile = had === "big" ? null : R.tray.querySelector('[data-n="' + had + '"]');
+    const next = tile || (!R.talk.hidden ? R.talk : document.getElementById("kqStage"));
+    if (next && next.focus) next.focus({ preventScroll: true });
+  }
+
+  /** Which of the control's buttons has keyboard focus: "big", a tile number, or "" when none. */
+  function focusedPart() {
+    const R = G.Hud.refs;
+    const a = document.activeElement;
+    if (a === R.talk) return "big";
+    return a && R.tray.contains(a) ? a.getAttribute("data-n") : "";
   }
 
   /** Draw the big button and the tray for `list` (the arranged targets, first = the big one). */
@@ -109,6 +146,7 @@
     const R = G.Hud.refs;
     const sig = list.length ? sigOf(list) : "";
     if (sig !== B.sig) {
+      const had = focusedPart();
       B.sig = sig;
       R.talk.hidden = list.length === 0;
       R.talk.disabled = false;
@@ -119,6 +157,7 @@
         R.action.classList.remove("has-tray");
         S().root.classList.remove("kq-tray-on");
       }
+      restoreFocus(had);
     }
     if (list.length) hintFor(list[0]);
   }

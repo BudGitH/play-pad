@@ -40,6 +40,23 @@ test("a neighbour with no business does not silently beat the ice-cream cart or 
   );
 });
 
+test("the mosque hall's Pray fallback never outranks a neighbour with mission business, nor hides one who can be talked to", () => {
+  const pray = t("prayer_spot", "obj", 0.5, { fallback: true });
+  const business = t("nenek", "npc", 6, { rank: Actions.RANK.business });
+  assert.deepEqual(ids(Actions.arrange([pray, business])), ["nenek", "prayer_spot"]);
+  const chat = t("uncle", "npc", 2);
+  assert.deepEqual(
+    ids(Actions.arrange([pray, chat])).sort(),
+    ["prayer_spot", "uncle"],
+    "both are offered",
+  );
+  assert.deepEqual(ids(Actions.arrange([pray, t("far", "npc", 4, { enabled: false })])), [
+    "prayer_spot",
+  ]);
+  assert.deepEqual(ids(Actions.arrange([null, pray])), ["prayer_spot"]);
+  assert.deepEqual(Actions.arrange([]), [], "nothing in reach: no action");
+});
+
 test("Say hi and the tired Rest come last, even when they are nearest", () => {
   const out = Actions.arrange([
     t("hi", "hi", 0.2),

@@ -40,6 +40,15 @@
     });
     B.hits = out.hits;
     B.sig = signature();
+    showMore(out.hidden);
+  }
+
+  /** The "+N more" hint: some places in the window wait for a closer zoom (or the Places list). */
+  function showMore(n) {
+    const more = B.refs.more;
+    if (!more) return;
+    more.hidden = !(n > 0);
+    more.textContent = n > 0 ? "+" + n + " more: zoom in or open Places" : "";
   }
 
   /** ... or at the next frame (a drag or a wheel fires many events per frame). */
@@ -137,6 +146,9 @@
     return "About " + Math.max(10, Math.round(d / 10) * 10) + " m away.";
   }
 
+  /** A kind's chip colours: its colour, and its own ink for the icon when the kind has one (contrast). */
+  const chipStyle = (k) => "background:" + k.color + (k.ink ? ";color:" + k.ink : "");
+
   /** The name card: a colour chip with the icon, the name, how far, and Go here / Stop going here. */
   function refreshCard() {
     const card = B.refs.card;
@@ -146,11 +158,7 @@
     if (!p) return;
     const k = KQ.PLACES.KINDS[p.kind];
     B.refs.dist = U.el("p", { cls: "kq-small kq-bm-dist", text: infoText(p) });
-    const chip = U.el(
-      "span",
-      { cls: "kq-bm-chip", style: "background:" + k.color },
-      G.Pictures.icon(k.icon),
-    );
+    const chip = U.el("span", { cls: "kq-bm-chip", style: chipStyle(k) }, G.Pictures.icon(k.icon));
     const close = G.UI.btn("", {
       icon: "close",
       cls: "kq-icon-btn",
@@ -166,7 +174,8 @@
     );
     card.appendChild(head);
     card.appendChild(B.refs.dist);
-    if (p.city === B.heroCity) card.appendChild(goButton(p));
+    B.refs.goBtn = p.city === B.heroCity ? goButton(p) : null;
+    if (B.refs.goBtn) card.appendChild(B.refs.goBtn);
   }
 
   /** The Go here / Stop going here button of the card. */
@@ -179,6 +188,7 @@
         G.MapTarget.toggle(p);
         refreshCard();
         render();
+        if (B.refs.goBtn) B.refs.goBtn.focus({ preventScroll: true }); // the card was rebuilt: keep focus on its toggle
       },
     });
   }
@@ -206,7 +216,7 @@
     return U.el(
       "button",
       { type: "button", cls: "kq-bm-item", "data-place": p.id, on: { click: () => focus(p.id) } },
-      U.el("span", { cls: "kq-bm-chip", style: "background:" + k.color }, G.Pictures.icon(k.icon)),
+      U.el("span", { cls: "kq-bm-chip", style: chipStyle(k) }, G.Pictures.icon(k.icon)),
       U.el("span", { text: p.label }),
     );
   }
@@ -341,9 +351,10 @@
     const canvas = U.el("canvas", {
       cls: "kq-bm-canvas",
       tabindex: "0",
-      role: "img",
+      role: "application",
+      "aria-roledescription": "map",
       "aria-label":
-        "Map. Drag to move, pinch or use plus and minus to zoom, arrow keys move, C centres on you.",
+        "Map. Drag to move, pinch or use plus and minus to zoom, arrow keys move, 0 shows everything, C centres on you.",
     });
     ["pointerdown", "pointermove", "pointerup", "pointercancel"].forEach((t) =>
       canvas.addEventListener(
@@ -393,7 +404,15 @@
       role: "group",
       "aria-label": "Place",
     });
-    B.refs.stage = U.el("div", { cls: "kq-bm-stage" }, canvas, controls(), B.refs.card);
+    B.refs.more = U.el("p", { cls: "kq-bm-more", hidden: true });
+    B.refs.stage = U.el(
+      "div",
+      { cls: "kq-bm-stage" },
+      canvas,
+      controls(),
+      B.refs.card,
+      B.refs.more,
+    );
     B.refs.list = U.el("aside", { cls: "kq-bm-list", "aria-label": "Places" });
     const body = U.el("div", { cls: "kq-bm-body" }, B.refs.stage, B.refs.list);
     const root = U.el(

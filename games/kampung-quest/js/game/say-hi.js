@@ -132,11 +132,11 @@
   }
 
   /** Pay out what the tally says (a coin, a sticker) with a small toast; also tells the missions. */
-  function reward(person) {
+  function reward(person, id) {
     const r = H.tally.note();
     const sim = S().sim;
-    G.MissionFlow.notify({ type: "greet", target: "people" });
-    if (person && person.kid) G.MissionFlow.notify({ type: "greet", target: "kids" });
+    G.MissionFlow.notify({ type: "greet", target: "people", who: id }); // each person counts once per mission step
+    if (person && person.kid) G.MissionFlow.notify({ type: "greet", target: "kids", who: id });
     if (r.coins > 0) {
       sim.economy.add(r.coins);
       G.Audio.play("coin");
@@ -153,10 +153,11 @@
   /** The hero turns to a point and raises a hand for a moment. */
   function heroWave(at) {
     const P = S().player;
+    if (P.locked) return; // a prayer, a rite or a ride already holds the hero: no wave on top of it
     P.heading = Math.atan2(at.x - P.pos.x, at.z - P.pos.z);
     G.Player.sync(P);
-    G.Player.lock(P, null, "wave");
-    S().after(1.3, () => G.Player.release(P));
+    const ticket = G.Player.lock(P, null, "wave");
+    S().after(1.3, () => G.Player.release(P, ticket));
   }
 
   /** Say hi to an extra: the hero's hello, their reply a moment later, a wave, the tally. */
@@ -171,7 +172,7 @@
     H.seen[m.id] = H.now + PERSON_COOLDOWN;
     H.lastAt = H.now;
     H.last = { id: m.id, hero: words.hero, reply: words.reply, band: words.band };
-    reward(who);
+    reward(who, m.id);
     return true;
   }
 
@@ -185,14 +186,14 @@
     H.seen[m.id] = H.now + PERSON_COOLDOWN;
     H.lastAt = H.kidAt = H.now;
     H.last = { id: m.id, kid: words.kid, hero: words.hero, first: true };
-    reward(who);
+    reward(who, m.id);
   }
 
   /** A hello with a cast neighbour (small talk) also counts for the tally and the "say hi" missions. */
-  function noteTalk() {
+  function noteTalk(id) {
     ensure();
     H.lastAt = H.now;
-    reward({ kid: false });
+    reward({ kid: false }, id);
   }
 
   /** Look for a kid close by who may call out first (only now and then, and never in a hurry). */

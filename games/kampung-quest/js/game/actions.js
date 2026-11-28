@@ -172,6 +172,16 @@
     if (!G.UI.modalOpen()) G.ActionBar.pick(n + 1); // walking about: 1 = the big Action button, 2 and 3 = its tiles
   }
 
+  /**
+   * May the Hide key act now: with no sheet open (a minimised chip comes back), or when the open sheet is
+   * the steps card itself (it tucks away). Never over Pause or any other sheet: that would replace it.
+   */
+  function canHide() {
+    const card = G.RitualUI.active;
+    const cardOpen = Boolean(card && !card.closed && !card.minimised);
+    return !G.UI.modalOpen() || cardOpen;
+  }
+
   /** Handle a named action from a button, shortcut or test hook. */
   function handle(name) {
     if (!S() || !S().started) return;
@@ -180,7 +190,7 @@
     if (name.indexOf("tile") === 0) return tileKey(Number(name.slice(4)) - 1);
     if (name === "camLeft" || name === "camRight") return nudgeCamera(name === "camLeft" ? -1 : 1);
     if (name === "map" && mapOpen()) return G.UI.closeSheet("map-key");
-    if (name === "hide") return void G.RitualUI.toggleMin(); // H or -: tuck the steps card away / bring it back
+    if (name === "hide") return void (canHide() && G.RitualUI.toggleMin()); // H or -: tuck the steps card away / bring it back
     if (G.UI.modalOpen() && name !== "mute") return;
     if (name === "interact") return G.Interact.activate(S().target);
     if (name === "mute") return setMuted(!G.Audio.isMuted());

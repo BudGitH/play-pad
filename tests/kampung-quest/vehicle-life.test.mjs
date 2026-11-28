@@ -101,9 +101,9 @@ test("reverse light only when rolling backwards; speeding up backwards is not br
 });
 
 test("headlights come on at dusk and do not flicker around the threshold", () => {
-  assert.equal(VL.lightsFor({ speed: 0, accel: 0, engine: true, night: 0.35 }).head, true);
-  assert.equal(VL.lightsFor({ speed: 0, accel: 0, engine: true, night: 0.1 }).head, false);
-  const mid = { speed: 0, accel: 0, engine: true, night: 0.24 };
+  assert.equal(VL.lightsFor({ speed: 0, accel: 0, engine: true, night: 0.3 }).head, true);
+  assert.equal(VL.lightsFor({ speed: 0, accel: 0, engine: true, night: 0.05 }).head, false);
+  const mid = { speed: 0, accel: 0, engine: true, night: 0.17 };
   assert.equal(VL.lightsFor(Object.assign({ headWas: false }, mid)).head, false);
   assert.equal(VL.lightsFor(Object.assign({ headWas: true }, mid)).head, true);
 });

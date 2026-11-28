@@ -459,6 +459,7 @@
     labelHorn(v.kind);
     G.Audio.play("pose");
     G.VehicleSound.cue("start");
+    if (v.kind === "bike" || v.kind === "moto") G.Rig.helmet(v.mesh, s.player.group, true);
     s.hudDirty = true;
     G.Camera.state.idle = 0;
   }
@@ -515,6 +516,7 @@
       G.Camera.snapBehind(s.player.heading);
     }
     park(v);
+    if (v.kind === "bike" || v.kind === "moto") G.Rig.helmet(v.mesh, s.player.group, false);
     G.VehicleSound.stop();
     G.VehicleLights.allOff(v);
     labelHorn(null);
@@ -716,13 +718,6 @@
     return V.seat && U.dist(P.pos.x, P.pos.z, V.seat.x, V.seat.z) > 0.6;
   }
 
-  /** Pedal, wheel and steer details of a two-wheeler's rig when it has them (the looks branch). */
-  function animateTwoWheeler(v, dt) {
-    if (v.kind !== "bike" && v.kind !== "moto") return;
-    v.crank = (v.crank || 0) + (Math.abs(v.sim.speed) * dt * 2.4) / (2 * Math.PI * 0.3);
-    G.Rig.animateBike(v.mesh, v.crank * 2 * Math.PI, v.mesh.rolled, v.sim.steer);
-  }
-
   /** The sound at the wheel: the hum for its fuel (a bicycle's chain whirr and ticks). */
   function soundAtWheel(v, dt, move) {
     const ex = G.Rig.exhaustOf(v);
@@ -742,7 +737,6 @@
     follow(v, dt);
     syncMesh(v);
     KQ.Figures.Vehicles.animate(v.mesh, dt, v.sim.speed, v.sim.steer);
-    animateTwoWheeler(v, dt);
     seatHero(v, dt);
     steerCamera(v, dt);
     soundAtWheel(v, dt, move);

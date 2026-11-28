@@ -20,6 +20,7 @@
   /** The lights record kept on a vehicle (created on first use). */
   function recordOf(v) {
     if (!v.life) {
+      G.Rig.takeLights(v.mesh);
       v.life = {
         prev: v.sim.speed,
         acc: 0,

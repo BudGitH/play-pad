@@ -101,7 +101,7 @@ async function checkBrakeLights(page) {
 async function checkHeadLights(page) {
   const r = await kq(page, D.headLights);
   expect(r.day, "no headlights at noon").toBe(false);
-  expect(r.dusk, "headlights at 19:00").toBe(true);
+  expect(r.dusk, "headlights at dusk (18:52)").toBe(true);
   expect(r.off).toEqual({ brake: false, head: false, engine: false });
   expect(r.mounted).toBeNull();
 }

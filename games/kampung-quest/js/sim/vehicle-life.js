@@ -211,8 +211,8 @@
   const BRAKE_DECEL = 0.8;
   const STOPPED = 0.25;
   /** Night level (0..1) at which the headlights come on, and the lower level they go off at. */
-  const HEAD_ON = 0.3;
-  const HEAD_OFF = 0.18;
+  const HEAD_ON = 0.22;
+  const HEAD_OFF = 0.12;
 
   /**
    * Which lights a vehicle shows.

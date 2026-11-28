@@ -38,11 +38,15 @@
     [0.75, 2.6],
   ];
 
+  /** The rig of a built model: `mesh.rig` (the looks branch), or the record itself (a stub in a test). */
+  const rigOf = (mesh) => (mesh && mesh.rig) || mesh;
+
   /** Does this value look like the new door API (an object with an open function)? */
   const isDoor = (d) => Boolean(d) && typeof d.open === "function";
 
   /** The rig's doors in the new API shape, or []. */
-  function doorsOf(rig) {
+  function doorsOf(mesh) {
+    const rig = rigOf(mesh);
     return rig && Array.isArray(rig.doors) ? rig.doors.filter(isDoor) : [];
   }
 
@@ -50,11 +54,12 @@
   const sideOf = (pos) => (pos.x >= 0 ? "L" : "R");
 
   /** The door for a side, preferring the one the seat names; null when the rig has no doors. */
-  function doorFor(rig, side, seat) {
-    const list = doorsOf(rig).filter((d) => d.side === side);
-    if (!list.length) return null;
-    const named = seat && list.find((d) => d.seat === seat.index || d.seat === seat.kind);
-    return named || list[0];
+  function doorFor(mesh, side, seat) {
+    const all = doorsOf(mesh);
+    const named = seat && all.find((d) => d.seat === seat.index || d.seat === seat.kind);
+    if (named && named.side === side) return named;
+    const list = all.filter((d) => d.side === side);
+    return list.length ? list[0] : null;
   }
 
   /** Open a door by t 0..1 (a no-op for null). */
@@ -63,29 +68,29 @@
   }
 
   /** Open or close every door of the bus: the new API when it has it, the old plug-door slide otherwise. */
-  function setBusDoors(rig, t) {
-    const doors = doorsOf(rig);
+  function setBusDoors(mesh, t) {
+    const doors = doorsOf(mesh);
     if (doors.length) {
       doors.forEach((d) => d.open(Math.max(0, Math.min(1, t))));
       return;
     }
-    if (rig && Array.isArray(rig.doors) && rig.doors.every((d) => d && d.mesh))
-      KQ.Figures.Vehicles.setDoors(rig, t);
+    if (mesh && Array.isArray(mesh.doors) && mesh.doors.every((d) => d && d.mesh))
+      KQ.Figures.Vehicles.setDoors(mesh, t);
   }
 
   /** The seats of a vehicle as {x, z, y (seat top above the ground), heading, kind, side, index}. */
   function seatsOf(v) {
-    const rig = v.mesh;
+    const rig = rigOf(v.mesh);
     if (rig && Array.isArray(rig.seats) && rig.seats.length) return fromRig(v, rig.seats);
     return fallbackSeats(v);
   }
 
   /** Seats the rig lists, in the vehicle's frame. */
   function fromRig(v, list) {
-    const top = seatTop(v.kind);
+    const drop = heroDrop();
     return list.map(function (s, i) {
-      const p = s.pos || { x: 0, y: top, z: 0 };
-      const y = typeof p.y === "number" && p.y > 0.2 ? p.y : top;
+      const p = s.pos || { x: 0, y: 0, z: 0 };
+      const y = (typeof p.y === "number" ? p.y : 0) + drop; // pos is the seated figure's origin: add his drop to the seat
       return {
         x: p.x,
         z: p.z,
@@ -98,13 +103,17 @@
     });
   }
 
+  /** The hero's drop from his figure origin to the seat (m). */
+  function heroDrop() {
+    const P = G.S && G.S.player;
+    return P && P.rig ? KQ.Figures.seatDrop(P.rig) : 0.4;
+  }
+
   /** The seat top height of a kind: the hero's seat origin plus his drop to the seat. */
   function seatTop(kind) {
     if (kind === "bus") return BUS_SEAT_TOP;
     const seat = KQ.Figures.Vehicles.SEAT[kind];
-    const P = G.S && G.S.player;
-    const drop = P && P.rig ? KQ.Figures.seatDrop(P.rig) : 0.4;
-    return (seat ? seat.y : 0.3) + drop;
+    return (seat ? seat.y : 0.3) + heroDrop();
   }
 
   /** The seats a model has always had: the driver, a front passenger and the rear rows. */
@@ -140,26 +149,27 @@
   }
 
   /** The rig's lights, or an object whose methods do nothing. */
-  function lightsOf(rig) {
-    const l = rig && rig.lights;
+  function lightsOf(mesh) {
+    const l = rigOf(mesh) && rigOf(mesh).lights;
     return l && typeof l.setBrake === "function" ? l : NOOP_LIGHTS;
   }
 
   /** Does the rig have its own lights (so the lit state is real)? */
-  const hasLights = (rig) =>
-    Boolean(rig && rig.lights && typeof rig.lights.setBrake === "function");
+  const hasLights = (mesh) =>
+    Boolean(rigOf(mesh) && rigOf(mesh).lights && typeof rigOf(mesh).lights.setBrake === "function");
 
   /** Where the exhaust pipe is in the vehicle's frame, and what it burns: {x, y, z, fuel} or null (a bicycle). */
   function exhaustOf(v) {
-    const rig = v.mesh;
+    const rig = rigOf(v.mesh);
     const fuel =
       rig.exhaust && rig.exhaust.fuel
         ? rig.exhaust.fuel
         : KQ.Sim.VehicleLife.fuelOf(v.kind, v.style);
     const p = rig.exhaust && rig.exhaust.pos;
     if (p) return { x: p.x, y: p.y, z: p.z, fuel };
-    if (v.kind === "bike") return null;
-    const f = rig.foot || { mid: 0, hl: 1 };
+    if (v.kind === "bike" || rig.exhaust === null) return null;
+    if (rig.exhaust && fuel === "electric") return { x: 0, y: 0, z: 0, fuel }; // no pipe, never puffs
+    const f = v.mesh.foot || { mid: 0, hl: 1 };
     const back = f.mid - f.hl;
     const at = { car: [0.45, 0.28], lorry: [0.7, 0.42], moto: [-0.15, 0.3], bus: [0.7, 0.5] }[
       v.kind
@@ -177,11 +187,18 @@
     };
   }
 
-  /** The bicycle's pedals / wheels / steer when the model has them (all optional). */
-  function animateBike(rig, phase, spin, steer) {
-    if (rig && typeof rig.pedals === "function") rig.pedals(phase);
-    if (rig && typeof rig.wheels === "function") rig.wheels(spin);
-    if (rig && typeof rig.steer === "function") rig.steer(steer);
+  /** Put the rider's helmet on (or take it off) when the model has one (two-wheelers: the looks branch). */
+  function helmet(mesh, figureGroup, on) {
+    const h = rigOf(mesh) && rigOf(mesh).helmet;
+    if (!h) return;
+    if (on && typeof h.wear === "function") h.wear(figureGroup);
+    if (!on && typeof h.remove === "function") h.remove(figureGroup);
+  }
+
+  /** Drive the lamps ourselves (the rig's automatic brake / reverse lamps off), for vehicles whose lights we run. */
+  function takeLights(mesh) {
+    const rig = rigOf(mesh);
+    if (rig && "auto" in rig) rig.auto = false;
   }
 
   G.Rig = {
@@ -195,7 +212,9 @@
     hasLights,
     exhaustOf,
     toWorld,
-    animateBike,
+    helmet,
+    takeLights,
+    rigOf,
     sideOf,
   };
 })((window.KQ = window.KQ || {}));

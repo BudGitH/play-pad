@@ -18,16 +18,19 @@ export function installHelpers() {
   /** A rig stand-in: doors that record how open they are, and lamps that record what is lit. */
   const stubRig = (id, side) => {
     const mesh = G.Vehicles.byId(id).mesh;
+    const rig = mesh.rig || mesh; // the looks branch's rig, or the record
     const rec = { door: [], lamps: {}, other: [] };
-    mesh.doors = [
+    rig.doors = [
       { side: side === "R" ? "L" : "R", seat: 1, open: (t) => rec.other.push(t) },
       { side, seat: "driver", open: (t) => rec.door.push(t) },
     ];
-    mesh.lights = {
+    rig.lights = {
       setBrake: (on) => (rec.lamps.brake = on),
       setHead: (on) => (rec.lamps.head = on),
       setReverse: (on) => (rec.lamps.reverse = on),
       setIndicator: (s) => (rec.lamps.indicator = s),
+      setRunning: () => null,
+      state: () => ({}),
     };
     return rec;
   };
@@ -223,9 +226,12 @@ export function headLights() {
   window.__kq.setMinute(12 * 60);
   T.frames(5);
   const day = T.veh().lights.head;
-  window.__kq.setMinute(19 * 60);
+  window.__kq.setMinute(1132); // 18:52, dusk, just before the Maghrib azan
   T.frames(5);
   const dusk = T.veh().lights.head;
+  G.Audio.stopAzan(); // jumping the clock forward fired the earlier prayers' azans
+  window.__kq.setMinute(12 * 60); // and back to noon rebuilds the prayer tracker
+  T.frames(3);
   T.leave();
   const off = G.Vehicles.byId("car1").life;
   return {
@@ -241,7 +247,8 @@ export function exhaustDrive([id, fuel]) {
   const G = window.KQ.Game;
   const T = window.__vl;
   const v = G.Vehicles.byId(id);
-  if (fuel) v.mesh.exhaust = { pos: { x: 0.4, y: 0.3, z: -(v.mesh.foot.hl || 1.9) }, fuel };
+  if (fuel)
+    (v.mesh.rig || v.mesh).exhaust = { pos: { x: 0.4, y: 0.3, z: -(v.mesh.foot.hl || 1.9) }, fuel };
   const before = { puffs: v.puffs || 0, silent: v.silent || 0 };
   T.stand(v.sim.x + 1.4, v.sim.z + 1.2, 0);
   G.Vehicles.press("vehicle:" + id);
@@ -390,7 +397,7 @@ export function parkCase() {
   });
   const L = [];
   const R = [];
-  G.Traffic.byId(id).mesh.doors = [
+  (G.Traffic.byId(id).mesh.rig || G.Traffic.byId(id).mesh).doors = [
     { side: "L", seat: 1, open: (t) => L.push(t) },
     { side: "R", seat: "driver", open: (t) => R.push(t) },
   ];

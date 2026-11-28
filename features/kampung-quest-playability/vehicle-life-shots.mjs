@@ -85,7 +85,10 @@ function exhaustShot() {
   G.Traffic.clear();
   T.stand(0.95, 3, 0);
   const id = G.Traffic.force({ dir: 1, u: -14, speed: 4, passengers: 1 });
-  G.Traffic.byId(id).mesh.exhaust = { pos: { x: 0.45, y: 0.3, z: -1.95 }, fuel: "diesel" };
+  (G.Traffic.byId(id).mesh.rig || G.Traffic.byId(id).mesh).exhaust = {
+    pos: { x: 0.45, y: 0.3, z: -1.95 },
+    fuel: "diesel",
+  };
   T.frames(30 * 6, () => {
     window.__kq.place(0.95, 3, 0);
     return !(T.tcar().speed < 0.2);

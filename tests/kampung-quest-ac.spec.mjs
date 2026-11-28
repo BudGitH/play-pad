@@ -509,7 +509,8 @@ async function checkPrayedAtHome(page) {
     document.querySelector("#kqStatus").getAttribute("aria-label"),
   );
   expect(spoken).toMatch(/Subuh prayed at home/);
-  await page.locator("#kqMap").click();
+  // the day's prayer list lives on the prayer card (the Pray button); the full map is only a map now
+  await page.locator("#kqStatus").click();
   await expect(page.locator(".kq-day")).toContainText("Prayed at home");
   await expect(page.locator(".kq-day")).not.toContainText(/Prayed(?! at home)/);
   await page.keyboard.press("Escape");

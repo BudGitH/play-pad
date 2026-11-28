@@ -195,6 +195,7 @@
     crowd: () => (S() && S().crowd ? G.Crowd.debug(S().crowd) : null),
     holy: () => (KQ.Holy && KQ.Holy.debug ? KQ.Holy.debug() : null),
     greetings: () => G.Greetings.debug(),
+    map: () => G.BigMap.debug(),
     vehicles: () => G.Vehicles.debug(),
     voice: () => G.Voice.debug(),
     greetChance: (p) => G.Greetings.setChance(p),

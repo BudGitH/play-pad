@@ -1,39 +1,33 @@
 /* ============================================================================
  * FILE: map-markers.js
- * PURPOSE: Decides which blips the radar and the full map show: the objective (pink, with a rim
- *          arrow), the mosque (green; big + arrow while a prayer is due), the hawker centre
- *          (orange; big while the first-meal nudge is on; the mosque, food and the holy sites also
- *          ride the rim of the radar when they are out of range), neighbours with a mission to give
- *          (gold star), home, and in the Haramain region the Kaaba and the Prophet's Mosque.
- * BUSINESS CONTEXT: AC-11 (a radar arrow for the active mission; the hawker beacon while nudged).
- *   Marker shape: { x, z, color, big, kind, icon, arrow, rim, label } (minimap.js draws it).
- * DEPENDENCIES: mission-flow.js (targetPos), nudge.js (markerPos), KQ.HOLY. No DOM.
+ * PURPOSE: Decides which blips the radar shows: the objective (pink, with a rim arrow), every
+ *          establishment of the hero's city from the registry (map-places.js: icon, colour and
+ *          priority per kind; the mosque is big + arrow while a prayer is due, the hawker centre big
+ *          while the first-meal nudge is on; mosque, food and the holy sites also ride the rim when out
+ *          of range), neighbours with a mission to give (gold star), and the go-here target (blue,
+ *          with a rim arrow; map-target.js). The full map draws the places itself (bigmap.js).
+ * BUSINESS CONTEXT: AC-11 (a radar arrow for the active mission; the hawker beacon while nudged),
+ *   playability AC-P1 (establishments on the radar in range) and AC-P4 (go-here arrow).
+ *   Marker shape: { x, z, color, big, kind, icon, arrow, rim, label, prio, small, force } (minimap.js draws it).
+ * DEPENDENCIES: map-places.js, map-target.js, mission-flow.js (targetPos), nudge.js (markerPos). No DOM.
  * ========================================================================== */
 (function (KQ) {
   "use strict";
   const G = (KQ.Game = KQ.Game || {});
-  const COLORS = {
-    objective: "#ff6b85",
-    mosque: "#30d158",
-    food: "#ff9f0a",
-    giver: "#f4c26b",
-    home: "#f4a8b8",
-    kaaba: "#1c1c22",
-    nabawi: "#2f9e6e",
-  };
+  const COLORS = Object.assign(
+    { objective: "#ff6b85", giver: "#f4c26b", goto: "#38bdf8" },
+    Object.keys(KQ.PLACES.KINDS).reduce(function (o, k) {
+      o[k] = KQ.PLACES.KINDS[k].color;
+      return o;
+    }, {}),
+  );
 
-  /** Make one marker of a kind at a position; `extra` overrides (big, arrow, label, ink). */
+  /** Make one marker of a kind at a position; `extra` overrides (big, arrow, label, ink, prio, small). */
   function mark(kind, icon, pos, extra) {
     return Object.assign(
       { x: pos.x, z: pos.z, color: COLORS[kind], big: false, kind, icon, arrow: false, rim: false },
       extra || {},
     );
-  }
-
-  /** A world point of a POI by id, or null when this region's world has no such place. */
-  function poiPos(s, id) {
-    const p = s.world.pois && s.world.pois[id];
-    return p ? p.pos : null;
   }
 
   /** The neighbours who have a mission to give (only while no mission is under way and they are in view). */
@@ -44,49 +38,55 @@
     return s.npcs.agents
       .filter((A) => !A.hidden && want.indexOf(A.id) !== -1)
       .filter((A) => !(A.goal && A.goal.kind === "pray"))
-      .map((A) => mark("giver", "star", A, { ink: "#5a4300", label: "Mission" }));
+      .map((A) => mark("giver", "star", A, { ink: "#5a4300", label: "Mission", prio: 1 }));
   }
 
-  /** The mosque blip: always there, big with a rim arrow while a prayer is due or being prayed. */
-  function mosque(s, out) {
-    const pos = poiPos(s, "mosque_gate");
-    if (!pos) return;
-    const ps = s.sim.prayer.state();
-    const urgent = Boolean(ps.due || ps.flow);
-    out.push(
-      mark("mosque", "mosque", pos, { big: urgent, arrow: urgent, rim: true, label: "Mosque" }),
-    );
-  }
-
-  /** Kampung places: mosque, hawker centre (big during the first-meal nudge) and home. */
-  function kampung(s, out) {
-    mosque(s, out);
-    const hawker = poiPos(s, "hawker");
-    const home = poiPos(s, "home");
-    if (hawker) {
-      const nudge = Boolean(G.Nudge.markerPos());
-      out.push(mark("food", "bowl", hawker, { big: nudge, rim: true, label: "Hawker centre" }));
+  /** Is this place calling the hero right now: the mosque while a prayer is due, the hawker centre while nudged? */
+  function urgent(s, p) {
+    if (p.id === "mosque") {
+      const ps = s.sim.prayer.state();
+      return Boolean(ps.due || ps.flow);
     }
-    if (home) out.push(mark("home", "home", home, { label: "Home" }));
+    return p.kind === "food" && Boolean(G.Nudge.markerPos());
   }
 
-  /** Haramain places: the Kaaba and the Prophet's Mosque (green dome), from KQ.HOLY. */
-  function haramain(s, out) {
-    const k = KQ.HOLY.makkah.kaaba;
-    const n = KQ.HOLY.madinah.nabawi;
-    out.push(mark("kaaba", "star", k, { rim: true, label: "Kaaba" }));
-    out.push(mark("nabawi", "mosque", n, { rim: true, label: "Prophet's Mosque" }));
-    mosque(s, out);
+  /** The marker of one place: its kind's icon, colour and priority; big (and pointing, for the mosque) when urgent. */
+  function placeMark(s, p) {
+    const k = KQ.PLACES.KINDS[p.kind];
+    const hot = urgent(s, p);
+    return mark(p.kind, k.icon, p, {
+      big: hot,
+      arrow: hot && p.id === "mosque",
+      rim: Boolean(k.rim),
+      label: p.label,
+      ink: k.ink,
+      prio: hot ? 0 : k.prio,
+      small: k.prio >= 4,
+    });
   }
 
-  /** Every blip for the current region, objective first (so it is drawn under, and found first). */
+  /** Every establishment of the hero's city that belongs on the radar. */
+  function places(s) {
+    return G.MapPlaces.list(s, G.MapPlaces.cityNow(s))
+      .filter((p) => KQ.PLACES.KINDS[p.kind].radar)
+      .map((p) => placeMark(s, p));
+  }
+
+  /** The go-here target as a marker (blue, always pointing), or nothing. */
+  function target(s) {
+    const t = G.MapTarget.pos(s);
+    if (!t) return [];
+    const label = G.MapTarget.active().label;
+    return [mark("goto", "pin", t, { big: true, arrow: true, force: true, prio: 0, label })];
+  }
+
+  /** Every blip for the radar: the mission objective first (so it is drawn under, and found first). */
   function build(s) {
     const out = [];
     const t = G.MissionFlow.targetPos();
-    if (t) out.push(mark("objective", "pin", t, { big: true, arrow: true, label: "Mission" }));
-    if (KQ.region === "haramain" && KQ.HOLY) haramain(s, out);
-    else kampung(s, out);
-    return out.concat(givers(s));
+    if (t)
+      out.push(mark("objective", "pin", t, { big: true, arrow: true, prio: 0, label: "Mission" }));
+    return out.concat(places(s), givers(s), target(s));
   }
 
   G.MapMarkers = { build, COLORS };

@@ -101,13 +101,14 @@
       mission: makeBeacon(0xff6b85),
       mosque: makeBeacon(0x30d158),
       food: makeBeacon(0xff9f0a),
+      goto: makeBeacon(0x38bdf8), // the "go here" place picked on the full map (blue; the mission stays pink)
       trail: makeTrail(scene),
       starTex: starTexture(),
       trailPts: [],
       time: 0,
       stars: {},
     };
-    scene.add(M.mission, M.mosque, M.food);
+    scene.add(M.mission, M.mosque, M.food, M.goto);
     return M;
   }
 
@@ -194,6 +195,7 @@
     placeBeacon(M.mission, view.mission, view.missionY || 0, M.time, still);
     placeBeacon(M.mosque, view.mosque, view.mosqueY || 0, M.time, still);
     placeBeacon(M.food, view.food, view.foodY || 0, M.time, still);
+    placeBeacon(M.goto, view.goto, view.gotoY || 0, M.time, still);
     M.trail.material.opacity = still ? 0.8 : 0.55 + Math.sin(M.time * 4) * 0.3;
     Object.keys(M.stars).forEach(function (id) {
       const spr = M.stars[id];

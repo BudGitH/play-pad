@@ -103,11 +103,13 @@
       s.uiT = 0;
       s.hudDirty = false;
       G.HudView.update(s.sim, G.Audio.isMuted());
+      G.MapTarget.check(s);
       refreshMarkers();
       G.Collectibles.sync(s.collect, s.sim.missions.progress(), s.sim.missions.isPausedNow());
       G.MissionFlow.syncStars();
       G.MissionFlow.checkGoto();
       drawMinimap();
+      G.BigMap.refresh();
     }
   }
 
@@ -120,8 +122,11 @@
       mission: G.MissionFlow.targetPos(),
       mosque: mosque && { x: mosque.x, z: mosque.z },
       food: G.Nudge.markerPos(),
+      goto: G.MapTarget.pos(s),
       reduced: G.Settings.reduced(),
     };
+    if (s.markerView.goto)
+      s.markerView.gotoY = s.world.heightAt(s.markerView.goto.x, s.markerView.goto.z);
   }
 
   /** What the radar / map draws for a span in metres: centred on the hero, with heading and blips (map-markers.js). `opts`: { rotate, labels }. */

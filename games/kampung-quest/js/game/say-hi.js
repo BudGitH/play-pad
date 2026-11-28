@@ -5,10 +5,12 @@
  *          reply show as speech bubbles, the person turns and waves, and a tiny tally pays a
  *          capped "Friendly" reward. Kids nearby also sometimes call out first.
  * BUSINESS CONTEXT: playability round AC-P17 ("like the Haramain greeting"). Extras are still NOT
- *   talkable (no dialogue page): a hello is a bubble pair, nothing more. Words and the reward
+ *   talkable (no dialogue page): a hello is a bubble pair, nothing more. A free cast neighbour
+ *   gets the same hello as a second tile beside Talk (`castTarget` / `sayHiCast`, one shared
+ *   `exchange`); it never opens the dialogue. Words and the reward
  *   rule are pure, in js/sim/hi.js; the salaam is only between Muslim people (a Malay-group
  *   extra in the kampung, every pilgrim in Makkah and Madinah), others get "Hello!".
- * DEPENDENCIES: crowd.js (members), greetings.js (bubbles), mission-flow.js (greet steps), player.js,
+ * DEPENDENCIES: crowd.js (members), greetings.js (bubbles, castFree), npc-manager.js (hold), mission-flow.js (greet steps), player.js,
  *   KQ.Sim.Hi. No new meshes: the wave is the crowd kit's own "wave" pose (a baked bank entry).
  * ========================================================================== */
 (function (KQ) {
@@ -160,20 +162,71 @@
     S().after(1.3, () => G.Player.release(P, ticket));
   }
 
-  /** Say hi to an extra: the hero's hello, their reply a moment later, a wave, the tally. */
-  function sayHi(m) {
+  /**
+   * The one hello, for a crowd extra and a cast neighbour alike: the hero's words, the other
+   * person's reply a moment later, the hero's wave, the cooldown and the tally. `wave()` makes
+   * the other person stop and wave (their own kind of rig).
+   */
+  function exchange(id, who, at, wave) {
     ensure();
-    const who = { kid: m.kid, age: m.outfit && m.outfit.age, muslim: muslimOf(m) };
     const words = KQ.Sim.Hi.say(who, H.rng);
     G.Greetings.say("hero", words.hero, 0, 2.4);
-    G.Greetings.say(m.id, words.reply, 1, 3);
-    startWave(m, WAVE_SECONDS);
-    heroWave(m);
-    H.seen[m.id] = H.now + PERSON_COOLDOWN;
+    G.Greetings.say(id, words.reply, 1, 3);
+    wave();
+    heroWave(at);
+    H.seen[id] = H.now + PERSON_COOLDOWN;
     H.lastAt = H.now;
-    H.last = { id: m.id, hero: words.hero, reply: words.reply, band: words.band };
-    reward(who, m.id);
+    H.last = { id, hero: words.hero, reply: words.reply, band: words.band };
+    reward(who, id);
     return true;
+  }
+
+  /** Say hi to an extra: the hero's hello, their reply a moment later, a wave, the tally. */
+  function sayHi(m) {
+    const who = { kid: m.kid, age: m.outfit && m.outfit.age, muslim: muslimOf(m) };
+    return exchange(m.id, who, m, () => startWave(m, WAVE_SECONDS));
+  }
+
+  /** Is this cast neighbour free to be greeted (not seated, praying, cooking, in a scene or talking)? */
+  function castGreetable(A) {
+    return G.Greetings.castFree(A) && !A.escort && (H.seen[A.id] || -1e9) <= H.now;
+  }
+
+  /**
+   * The "Say hi" tile beside a cast neighbour's Talk (`talk` is that Talk target), or null when
+   * the neighbour is busy, out of reach, was greeted lately, or the hero is busy. It ranks just
+   * after the Talk it belongs to (mission business keeps Talk first).
+   */
+  function castTarget(talk) {
+    ensure();
+    if (!talk || !talk.agent || !talk.enabled || !castGreetable(talk.agent)) return null;
+    if (busy() || H.now - H.lastAt < GLOBAL_GAP) return null;
+    const A = talk.agent;
+    const kid = !KQ.Sim.NPC_PROFILE[A.id].adult;
+    return {
+      kind: "hi",
+      id: A.id,
+      label: "Say hi",
+      aria: "Say hi to " + A.name,
+      x: A.x,
+      z: A.z,
+      dist: talk.dist,
+      enabled: true,
+      h: kid ? 1.35 : 1.5,
+      agent: A,
+      rank: KQ.Sim.Actions.hiRank(talk.rank),
+    };
+  }
+
+  /** Say hi to a cast neighbour: the same hello as for an extra, a wave on their full rig, no dialogue. */
+  function sayHiCast(A) {
+    const who = KQ.Sim.Hi.castPerson(A.id, KQ.Sim.NPC_PROFILE[A.id]);
+    return exchange(A.id, who, A, () => G.Npcs.hold(A, WAVE_SECONDS));
+  }
+
+  /** Run a "Say hi" target: a cast neighbour or a crowd extra. */
+  function press(t) {
+    return t.agent ? sayHiCast(t.agent) : sayHi(t.member);
   }
 
   /** A kid calls out first ("Hi! Nice cap!") and the hero's reply shows over the hero. */
@@ -234,5 +287,17 @@
     };
   }
 
-  G.Hi = { target, sayHi, noteTalk, update, hold, setKidChance, debug, REACH };
+  G.Hi = {
+    target,
+    castTarget,
+    press,
+    sayHi,
+    sayHiCast,
+    noteTalk,
+    update,
+    hold,
+    setKidChance,
+    debug,
+    REACH,
+  };
 })((window.KQ = window.KQ || {}));

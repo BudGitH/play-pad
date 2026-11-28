@@ -41,6 +41,84 @@ test("Say hi to a crowd extra: a prompt, the hero's hello, a reply bubble and a 
   expect(errors).toEqual([]);
 });
 
+/** Stage a cast neighbour, tap the "Say hi" tile and report the hello (never the dialogue). */
+async function castHello(id) {
+  const stage = await page.evaluate(D.castStage, id);
+  const tile = page.locator(".kq-talk-more", { hasText: "Say hi" });
+  await expect(tile, "a Say hi tile beside Talk").toHaveCount(1);
+  await tile.click();
+  return { stage, after: await page.evaluate(D.castAfter, [id, 1.5]) };
+}
+
+test("a free cast neighbour offers Talk and Say hi; Talk stays the big button (AC-P17)", async () => {
+  const stage = await page.evaluate(D.castStage, "nenek");
+  expect(stage.labels.indexOf("Talk"), "Talk is offered").toBeGreaterThanOrEqual(0);
+  expect(stage.labels.indexOf("Say hi"), "Say hi is offered").toBeGreaterThan(
+    stage.labels.indexOf("Talk"),
+  );
+  expect(stage.labels[0], "Talk is the highlighted default (Nenek has mission business)").toBe(
+    "Talk",
+  );
+  await expect(page.locator("#kqTalk")).toContainText("Talk");
+});
+
+test("Say hi to Nenek: the salaam, a reply bubble, a wave on her rig, no dialogue (AC-P17)", async () => {
+  const { after } = await castHello("nenek");
+  const hero = after.showing.find((b) => b.who === "hero");
+  const reply = after.showing.find((b) => b.who === "nenek");
+  expect(hero && hero.text).toBe("Assalamualaikum!");
+  expect(reply && reply.text, "Nenek, a Muslim elder, answers with the salaam").toMatch(
+    /^Waalaikumsalam!/,
+  );
+  expect(after.pose, "she waves").toBe("wave");
+  expect(after.heroPose, "the hero waves too (a Player lock)").toBe("wave");
+  expect(after.talking || after.modal || after.dialogue > 0, "no dialogue opened").toBe(false);
+  expect(after.hi.last).toMatchObject({ id: "nenek" });
+  expect(after.hi.count, "counts for the tally").toBeGreaterThanOrEqual(1);
+});
+
+test("Say hi to a non-Muslim neighbour is a plain Hello, and Talk still opens the dialogue (AC-P17)", async () => {
+  const { after } = await castHello("uncle_lim");
+  expect(after.showing.find((b) => b.who === "hero").text).toBe("Hello!");
+  const reply = after.showing.find((b) => b.who === "uncle_lim");
+  expect(reply && reply.text).not.toMatch(/salam/i);
+  expect(after.talking || after.modal).toBe(false);
+  await page.evaluate(() => window.__kq.step(2000)); // the hello gap passes
+  await page.locator("#kqTalk").click();
+  await expect(page.locator(".kq-bubble")).toBeVisible();
+  expect(await page.evaluate(() => window.KQ.Game.UI.modalOpen()), "the dialogue is a sheet").toBe(
+    true,
+  );
+  await page.evaluate(() => window.KQ.Game.UI.closeSheet("test"));
+});
+
+test("a neighbour who is praying, hidden indoors or in a dialogue gets no Say hi of her own (AC-P17)", async () => {
+  await page.evaluate(D.castStage, "nenek");
+  const r = await page.evaluate(() => {
+    const G = window.KQ.Game;
+    const A = G.S.npcs.byId.nenek;
+    const labels = () =>
+      G.Interact.find()
+        .filter((t) => t.agent && t.kind === "hi")
+        .map((t) => t.id); // her own Say hi, not a child's
+    const out = {};
+    A.goal = { kind: "pray", x: A.x, z: A.z };
+    window.run(0.3);
+    out.praying = labels();
+    A.goal = { kind: "wander", x: A.x, z: A.z };
+    A.hidden = true;
+    window.run(0.3);
+    out.hidden = labels();
+    A.hidden = false;
+    A.show = 1;
+    A.talking = true;
+    window.run(0.3);
+    out.talking = labels();
+    return out;
+  });
+  for (const k of Object.keys(r)) expect(r[k], k).toEqual([]);
+});
+
 test("the hero's wave never frees a hold that a prayer or rite took meanwhile, nor starts on top of one", async () => {
   const r = await page.evaluate(D.waveLockScenario);
   expect(r.waving, "the hero waves for a moment").toBe(true);

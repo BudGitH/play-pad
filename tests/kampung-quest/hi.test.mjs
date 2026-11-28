@@ -82,3 +82,25 @@ test("the tally pays a coin every 5 hellos, at most 6 times, and a sticker once 
   assert.equal(t.count(), 0);
   assert.equal(t.note().count, 1);
 });
+
+test("a cast neighbour answers by age and faith: the salaam only from a Muslim, 'Hello' otherwise (AC-P17)", () => {
+  const { NPC_PROFILE } = loadSim().Sim;
+  const nenek = Hi.castPerson("nenek", NPC_PROFILE.nenek);
+  assert.deepEqual(plain(nenek), { kid: false, age: "elder", muslim: true });
+  const lim = Hi.castPerson("uncle_lim", NPC_PROFILE.uncle_lim);
+  assert.deepEqual(plain(lim), { kid: false, age: "adult", muslim: false });
+  assert.equal(Hi.castPerson("kid_wei", NPC_PROFILE.kid_wei).kid, true);
+  assert.equal(Hi.castPerson("kid_irfan", NPC_PROFILE.kid_irfan).muslim, true);
+  const m = Hi.say(nenek, first);
+  assert.equal(m.hero, "Assalamualaikum!");
+  assert.match(m.reply, /^Waalaikumsalam!/);
+  const o = Hi.say(lim, first);
+  assert.equal(o.hero, "Hello!");
+  assert.doesNotMatch(o.reply, /salam/i);
+  assert.equal(Hi.castPerson("nobody").muslim, false, "an unknown id never gets the salaam");
+  Object.keys(NPC_PROFILE).forEach(function (id) {
+    const p = Hi.castPerson(id, NPC_PROFILE[id]);
+    const r = Hi.say(p, () => 0.5);
+    assert.equal(/salam/i.test(r.hero + r.reply), NPC_PROFILE[id].muslim, id);
+  });
+});

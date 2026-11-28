@@ -1,5 +1,5 @@
 // Dev-only: "after" screenshots of the simple-actions round (pairs with shoot-actions.mjs "before").
-// Run: node tools/serve.mjs 5614 &  then  PW_PORT=5614 node features/kampung-quest-playability/shoot-actions-after.mjs
+// Run: node tools/serve.mjs 5614 &  then  PW_PORT=5614 node features/kampung-quest-playability/shoot-actions-after.mjs [desk|ipad|phone] [scene prefix, e.g. 08]
 import { chromium } from "@playwright/test";
 const PORT = process.env.PW_PORT || 5614;
 const URL = `http://localhost:${PORT}/games/kampung-quest/index.html?still=1&autoq=0&q=low`;
@@ -80,6 +80,27 @@ async function prayFromCard(p) {
   await step(p, 1200);
 }
 
+/** Nenek stands free beside the hero: the chooser shows Talk and Say hi (AC-P17, option a). */
+async function castSayHi(p) {
+  await ev(p, () => window.KQ.Game.UI.closeSheet("shoot"));
+  await ev(p, () => {
+    const k = window.__kq;
+    const G = window.KQ.Game;
+    k.greetChance(0); // no passer-by bubbles in the picture
+    k.setMinute(600);
+    k.teleport("playground");
+    const hero = G.S.player.pos;
+    const A = G.S.npcs.byId.nenek;
+    Object.assign(A, { hidden: false, show: 1, path: [], idleT: 999 });
+    A.group.visible = true;
+    A.goal = { kind: "wander", x: hero.x + 0.7, z: hero.z + 2 };
+    A.x = A.goal.x;
+    A.z = A.goal.z;
+    k.place(hero.x, hero.z, 0); // facing her
+  });
+  await step(p, 6000); // earlier passer-by bubbles fade away
+}
+
 const scenes = [
   ["01-neighbour", nearNenek],
   ["02-chooser", chooser],
@@ -89,6 +110,7 @@ const scenes = [
   ["05-rest-done", restDone],
   ["06-pray-offer", prayOffer],
   ["07-pray-from-status-card", prayFromCard],
+  ["08-cast-sayhi", castSayHi],
 ];
 
 async function session(name, ctxOpts) {
@@ -102,6 +124,7 @@ async function session(name, ctxOpts) {
   await ev(page, () => window.__kq.setMinute(600));
   await step(page, 400);
   for (const [id, fn] of scenes) {
+    if (process.argv[3] && !id.startsWith(process.argv[3])) continue; // e.g. "08" shoots one scene
     try {
       await fn(page);
     } catch (e) {

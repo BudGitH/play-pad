@@ -96,3 +96,36 @@ test("Needs.canRest is false only at (nearly) full energy", () => {
   assert.equal(tired.isTired(), true);
   assert.equal(Needs.create({ energy: 94 }).canRest(), true);
 });
+
+test("a cast neighbour's Say hi sits right after her Talk: Talk stays the big button (AC-P17)", () => {
+  const talk = t("nenek", "npc", 1.2, { rank: Actions.RANK.near });
+  const hi = t("nenek-hi", "hi", 1.2, { key: "say-hi", rank: Actions.hiRank(talk.rank) });
+  const counter = t("counter", "obj", 2);
+  const out = Actions.arrange([hi, counter, talk, t("kid", "hi", 0.5, { key: "say-hi" })]);
+  assert.deepEqual(ids(out), ["nenek", "counter", "nenek-hi"], "Talk, a counter, then her hello");
+  assert.deepEqual(
+    ids(Actions.arrange([hi, talk])),
+    ["nenek", "nenek-hi"],
+    "Talk first, Say hi second",
+  );
+});
+
+test("with mission business Talk is still the default and Say hi the second tile (AC-P17)", () => {
+  const talk = t("nenek", "npc", 2, { rank: Actions.RANK.business });
+  const hi = t("nenek-hi", "hi", 2, { key: "say-hi", rank: Actions.hiRank(talk.rank) });
+  const pray = t("prayer_spot", "obj", 1, { rank: Actions.RANK.prayer });
+  assert.deepEqual(ids(Actions.arrange([pray, hi, talk])), ["nenek", "nenek-hi", "prayer_spot"]);
+  assert.ok(Actions.hiRank(Actions.RANK.business) < Actions.RANK.prayer);
+  assert.equal(
+    Actions.hiRank(undefined),
+    Actions.RANK.near + 0.5,
+    "no rank given: the ordinary one",
+  );
+});
+
+test("a cast neighbour's Say hi replaces a crowd extra's (one Say hi tile), whoever is nearer", () => {
+  const talk = t("nenek", "npc", 2);
+  const hi = t("nenek-hi", "hi", 2, { key: "say-hi", rank: Actions.hiRank(talk.rank) });
+  const extra = t("extra", "hi", 0.4, { key: "say-hi" });
+  assert.deepEqual(ids(Actions.arrange([extra, talk, hi])), ["nenek", "nenek-hi"]);
+});

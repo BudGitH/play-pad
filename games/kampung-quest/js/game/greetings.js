@@ -368,5 +368,5 @@
     return true;
   }
 
-  G.Greetings = { update, debug, setChance, say, setActor, TICK };
+  G.Greetings = { update, debug, setChance, say, setActor, castFree, TICK };
 })((window.KQ = window.KQ || {}));

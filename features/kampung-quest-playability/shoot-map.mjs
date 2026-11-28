@@ -33,6 +33,7 @@ async function kampung(browser, opts, tag) {
   await kq(page, () => window.__kq.teleport("hawker"));
   await kq(page, () => window.__kq.step(600));
   await shot(page, `map-${tag}-radar-icons.png`);
+  await page.locator("#kqMap").screenshot({ path: path.join(OUT, `map-${tag}-radar-crop.png`) });
   await page.keyboard.press("m");
   await kq(page, () => window.__kq.step(200));
   await shot(page, `map-${tag}-full-kampung.png`);
@@ -52,6 +53,9 @@ async function makkah(browser, opts, tag) {
   await page.keyboard.press("m");
   await kq(page, () => window.__kq.step(200));
   await shot(page, `map-${tag}-full-makkah.png`);
+  await page.getByRole("button", { name: "Madinah", exact: true }).click();
+  await shot(page, `map-${tag}-full-madinah.png`);
+  await page.getByRole("button", { name: "Makkah", exact: true }).click();
   await kq(page, () => window.KQ.Game.BigMap.focus("camel_yard"));
   await shot(page, `map-${tag}-makkah-zoomed-camels.png`);
   await page.context().close();
@@ -72,4 +76,11 @@ await kampung(browser, ipad, "ipad");
 await makkah(browser, ipad, "ipad");
 await kampung(browser, phone, "phone");
 await makkah(browser, phone, "phone");
+const land = {
+  viewport: { width: 844, height: 390 },
+  hasTouch: true,
+  isMobile: true,
+  deviceScaleFactor: 2,
+};
+await kampung(browser, land, "phone-landscape");
 await browser.close();

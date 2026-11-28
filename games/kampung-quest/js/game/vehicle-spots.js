@@ -26,12 +26,12 @@
     { style: "suv", color: 0x8e9399 },
     { style: "sedan", color: 0xc8ccd0 },
     { style: "taxi", color: 0xf4f4f0 },
-    { style: "hatch", color: 0x7a1f26 },
+    { style: "hatch", color: 0x7a1f26, fuel: "electric" },
     { style: "sedan", color: 0x1d1d1f },
     { style: "mpv", color: 0xe9e9e6 },
     { style: "suv", color: 0x2a2d33 },
     { style: "taxi", color: 0xf4f4f0 },
-    { style: "sedan", color: 0x23395b },
+    { style: "sedan", color: 0x23395b, fuel: "electric" },
   ];
   const HOLY_LOOKS = [
     { style: "taxi", color: 0xf4f3ee },
@@ -44,7 +44,7 @@
     { style: "sedan", color: 0xd9c28a },
     { style: "hatch", color: 0xf1f0ea },
     { style: "suv", color: 0x2a2d33 },
-    { style: "mpv", color: 0xc9ccd2 },
+    { style: "mpv", color: 0xc9ccd2, fuel: "electric" },
     { style: "sedan", color: 0x8fa4b8 },
   ];
   /** Bicycle and scooter colours (the kampung's, which the Haramain streets share). */

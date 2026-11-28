@@ -945,7 +945,10 @@ kbd {
     width: min(560px, calc(100% - 2 * var(--kq-joy-x)));
   }
 }
-.kq-root.kq-touch-ui .kq-azan {
+/* :where() keeps this at the specificity of the pointer rule above: a plain `.kq-root.kq-touch-ui .kq-azan` (0,3,0)
+   beat the pill's `width: auto` and the portrait phone's full width, squeezing the card into a 76 px sliver
+   (or, on a portrait iPad, stretching the pill over the top-right buttons) */
+:where(.kq-root.kq-touch-ui) .kq-azan {
   width: min(560px, calc(100% - 2 * var(--kq-joy-x)));
 }
 .kq-azan-title {
@@ -2165,6 +2168,9 @@ kbd {
     --kq-lane-h: 64px;
     --kq-turn-h: 56px;
     --kq-ctl-bot: calc(var(--kq-bot) + var(--kq-dock-h) + 10px);
+    /* the azan slot: right above the Action control (which sits above Jump), so the card / pill never covers
+       Talk, the chooser, Jump or the joystick; a short phone has the control beside Jump (below) */
+    --kq-azan-bot: calc(var(--kq-act-bottom) + var(--kq-act-h) + 8px);
   }
   .kq-root.kq-no-turn {
     --kq-turn-h: 0px;
@@ -2225,11 +2231,11 @@ kbd {
   .kq-azan,
   .kq-azan.is-bar {
     top: auto;
-    bottom: calc(var(--kq-ctl-bot) + var(--kq-joy) + 8px);
+    bottom: var(--kq-azan-bot);
     left: 50%;
     right: auto;
     width: calc(100% - 24px);
-    max-height: calc(100% - var(--kq-top-end) - var(--kq-ctl-bot) - var(--kq-joy) - 20px);
+    max-height: calc(100% - var(--kq-top-end) - var(--kq-azan-bot) - 12px);
     transform: translateX(-50%);
     padding: 8px 12px 10px;
   }
@@ -2242,9 +2248,32 @@ kbd {
     grid-template-columns: 1fr;
   }
 }
-/* a short portrait phone (e.g. 320 x 568) has no room for the full card above the joystick: it is the pill,
-   with the meaning only (the toast lane above it stays clear) */
+/* a portrait phone under 700 px high (e.g. 360 x 640, 320 x 568) has no room for the full card above the Action
+   control: it is the pill, with the meaning only (the toast lane above it stays clear) */
+@media (orientation: portrait) and (max-width: 700px) and (max-height: 700px) {
+  .kq-azan .kq-azan-title,
+  .kq-azan .kq-tr,
+  .kq-azan .kq-ar,
+  .kq-azan .kq-big {
+    display: none;
+  }
+  .kq-azan,
+  .kq-azan.is-bar {
+    display: block;
+    padding: 5px 10px 6px;
+  }
+  .kq-azan .kq-en,
+  .kq-azan.is-large .kq-en {
+    font-size: 14px;
+    line-height: 1.25;
+  }
+}
+/* a short portrait phone (e.g. 320 x 568): the Action control moves down beside Jump (see the Action rules),
+   so the azan slot drops to just above the joystick */
 @media (orientation: portrait) and (max-width: 700px) and (max-height: 600px) {
+  .kq-root {
+    --kq-azan-bot: calc(var(--kq-ctl-bot) + var(--kq-joy) + 8px);
+  }
   /* one slim row: each need is an icon and its bar; under the low line the bar gives way to the word */
   .kq-needs {
     display: flex;
@@ -2272,22 +2301,6 @@ kbd {
   }
   .kq-root .kq-talk-more {
     height: 64px;
-  }
-  .kq-azan .kq-azan-title,
-  .kq-azan .kq-tr,
-  .kq-azan .kq-ar,
-  .kq-azan .kq-big {
-    display: none;
-  }
-  .kq-azan,
-  .kq-azan.is-bar {
-    display: block;
-    padding: 5px 10px 6px;
-  }
-  .kq-azan .kq-en,
-  .kq-azan.is-large .kq-en {
-    font-size: 14px;
-    line-height: 1.25;
   }
 }
 /* very narrow phones: the coins chip drops its word so the clock row never wraps */

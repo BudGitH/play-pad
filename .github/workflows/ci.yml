@@ -13,7 +13,8 @@ permissions:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # Cancel superseded PR runs only: every push to main must finish, so each deployed commit has a result.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   check:
@@ -57,6 +58,14 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Smoke test (everything except Kampung Quest and @slow)
         run: npm run smoke:core
+      - name: Upload test results (on failure)
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: smoke-test-results
+          path: test-results/
+          retention-days: 7
+          if-no-files-found: ignore
 
   kampung-quest:
     # Kampung Quest's browser specs, on every PR: the acceptance criteria (tests/kampung-quest-ac.spec.mjs)
@@ -88,3 +97,11 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Kampung Quest browser specs (${{ matrix.name }})
         run: ${{ matrix.run }}
+      - name: Upload test results (on failure)
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: kq-${{ matrix.name }}-test-results
+          path: test-results/
+          retention-days: 7
+          if-no-files-found: ignore

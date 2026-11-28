@@ -1,49 +1,23 @@
 # PlayPad deep AC probes (PLAY-012) — the slow, per-game acceptance probes that `ci.yml` does not run
 # (Kampung Quest's AC and phone specs run in ci.yml; its @slow frame-time probe, the realism- and playability-round specs and the older core specs are here).
 #
-# Why a separate workflow: a workflow-level `paths:` filter applies to EVERY job in the file, and the
-# fast checks in ci.yml (secrets, lint, smoke) must run on every PR. The probes take ~2-3 minutes each, so
-# on PRs they run only when something they exercise changed; the nightly run catches everything else
-# (a `styles/` tweak that a path list missed, a Playwright / Chromium bump, a flaky check).
-# Do NOT make these jobs "required" checks: a path-filtered workflow that is skipped never reports
-# a status, so a required check would block every PR that does not touch the listed paths.
+# Why a separate workflow: the probes are slow (minutes of software-GL 3D each), so on PRs and pushes
+# the legs run only when something they exercise changed. That decision is made INSIDE the workflow by
+# the `changes` job (PLAY-015), not by a workflow-level `paths:` filter, so the workflow always runs and
+# the final `Probes gate` job always reports. Make **`Probes gate`** the required check in the branch
+# ruleset; do NOT require the individual legs (they are skipped when nothing relevant changed).
+# The nightly run and manual runs always run every leg (catches a Playwright / Chromium bump or a
+# path the list missed).
 #
-# Fork-safe like ci.yml: `pull_request` (not pull_request_target), read-only token, no secrets, nothing uploaded.
+# Fork-safe like ci.yml: `pull_request` (not pull_request_target), read-only token, no secrets.
+# On failure a leg uploads its Playwright test-results/ (traces, screenshots) as a 7-day artifact.
 # Chromium comes from `npx playwright install` (PW_CHROMIUM_PATH is unset, so every probe uses Playwright's own browser).
 name: Probes
 
 on:
   pull_request:
-    paths:
-      - "games/**"
-      - "features/**/probe.mjs"
-      - "tests/probes/**"
-      - "tests/kampung-quest-*.spec.mjs"
-      - "tests/*-drivers.mjs"
-      - "tests/round-drivers.mjs"
-      - "playwright.config.mjs"
-      - "tools/serve.mjs"
-      - "styles/**"
-      - "scripts/**"
-      - "package.json"
-      - "package-lock.json"
-      - ".github/workflows/probes.yml"
   push:
     branches: [main]
-    paths:
-      - "games/**"
-      - "features/**/probe.mjs"
-      - "tests/probes/**"
-      - "tests/kampung-quest-*.spec.mjs"
-      - "tests/*-drivers.mjs"
-      - "tests/round-drivers.mjs"
-      - "playwright.config.mjs"
-      - "tools/serve.mjs"
-      - "styles/**"
-      - "scripts/**"
-      - "package.json"
-      - "package-lock.json"
-      - ".github/workflows/probes.yml"
   schedule:
     - cron: "23 3 * * *" # nightly, 03:23 UTC (default branch only)
   workflow_dispatch:
@@ -53,10 +27,50 @@ permissions:
 
 concurrency:
   group: probes-${{ github.ref }}
-  cancel-in-progress: true
+  # Cancel superseded PR runs only: every push to main must finish, so each deployed commit has a result.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  changes:
+    # Decides whether the probe legs run. Paths = everything the probes exercise.
+    name: Detect changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      run: ${{ steps.diff.outputs.run }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - id: diff
+        name: Compare against the base
+        env:
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT" = "schedule" ] || [ "$EVENT" = "workflow_dispatch" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"; echo "$EVENT: running every leg"; exit 0
+          fi
+          base="${PR_BASE:-$PUSH_BEFORE}"
+          if [ -z "$base" ] || [ "$base" = "0000000000000000000000000000000000000000" ] \
+            || ! git cat-file -e "$base^{commit}" 2>/dev/null; then
+            echo "run=true" >> "$GITHUB_OUTPUT"; echo "no usable base ($base): running every leg"; exit 0
+          fi
+          pattern='^(games/|features/.*/probe\.mjs$|tests/probes/|tests/kampung-quest-.*\.spec\.mjs$|tests/.*-drivers\.mjs$|playwright\.config\.mjs$|tools/serve\.mjs$|styles/|scripts/|package\.json$|package-lock\.json$|\.github/workflows/probes\.yml$)'
+          changed="$(git diff --name-only "$base" HEAD)"
+          if printf '%s\n' "$changed" | grep -Eq "$pattern"; then
+            echo "run=true" >> "$GITHUB_OUTPUT"; echo "relevant files changed:"
+            printf '%s\n' "$changed" | grep -E "$pattern" | head -20
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"; echo "nothing the probes exercise changed: legs skipped"
+          fi
+
   probes:
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
     # One matrix job per game so a red check names the game: "Probes / Sparkle Salon".
     name: ${{ matrix.name }}
     runs-on: ubuntu-latest
@@ -79,33 +93,55 @@ jobs:
             # The @slow AC-14 probe: main-thread frame time at 4x CPU throttle (R2-Q-02). Playwright's
             # webServer starts tools/serve.mjs on :5599 itself. The AC and phone specs run on every PR in ci.yml.
             run: npm run perf:kq
+            slug: kq-perf
           - name: Kampung Quest (realism)
             # The realism round's browser specs (guided tawaf, wardrobe / tailor, every vehicle, Makkah outskirts,
             # the crowd and its draw budget): several minutes of software-GL 3D, so they run here, path-filtered,
             # not on every PR. Playwright's webServer starts tools/serve.mjs on :5599 itself.
             run: npm run smoke:kq:realism
+            slug: kq-realism
           # The playability and core rounds are split into legs of at most 5 spec files each. One job with
           # 13 (or 9) software-GL 3D specs ran 29 minutes and lost unrelated tests to starvation (pages
           # closing, 4-minute timeouts) while the same specs passed locally and in the 5-spec realism leg.
           - name: Kampung Quest (playability 1)
-            # the Action control, the full map, the stepper cards, the hero picker
+            # the Action control, the full map, the stepper cards
             run: npm run smoke:kq:play1
+            slug: kq-play1
             timeout: 25
           - name: Kampung Quest (playability 2)
-            # rideable animals, town life in both regions, the figures audit
+            # the hero picker, rideable animals, the figures audit
             run: npm run smoke:kq:play2
+            slug: kq-play2
             timeout: 25
           - name: Kampung Quest (playability 3)
-            # looks, iPad boot, and the three vehicle suites
+            # town life in both regions
             run: npm run smoke:kq:play3
+            slug: kq-play3
+            timeout: 25
+          - name: Kampung Quest (playability 4)
+            # looks, iPad boot, the vehicle rig
+            run: npm run smoke:kq:play4
+            slug: kq-play4
+            timeout: 25
+          - name: Kampung Quest (playability 5)
+            # vehicles on the ground, vehicle life (traffic, the bus)
+            run: npm run smoke:kq:play5
+            slug: kq-play5
             timeout: 30
           - name: Kampung Quest (core 1)
             # ambience, collision, greetings, the HUD move controls
             run: npm run smoke:kq:core1
+            slug: kq-core1
             timeout: 25
           - name: Kampung Quest (core 2)
-            # prayer, the rites, the Haramain world, vehicles, voices
+            # prayer, vehicles, voices
             run: npm run smoke:kq:core2
+            slug: kq-core2
+            timeout: 25
+          - name: Kampung Quest (core 3)
+            # the rites (tawaf, sa'i), the Haramain world
+            run: npm run smoke:kq:core3
+            slug: kq-core3
             timeout: 30
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -120,3 +156,32 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Probe (${{ matrix.name }})
         run: ${{ matrix.run }}
+      - name: Upload test results (on failure)
+        if: failure() && matrix.slug
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: probes-${{ matrix.slug }}
+          path: test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  gate:
+    # The ONE check to require in the branch ruleset. Always runs and always reports, so a PR whose
+    # changes skip the legs is not blocked; fails unless every leg passed (cancelled/skipped-when-needed = fail).
+    name: Probes gate
+    needs: [changes, probes]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check the legs
+        env:
+          CHANGES: ${{ needs.changes.result }}
+          RUN: ${{ needs.changes.outputs.run }}
+          PROBES: ${{ needs.probes.result }}
+        run: |
+          echo "changes=$CHANGES run=$RUN probes=$PROBES"
+          if [ "$CHANGES" != "success" ]; then echo "::error::change detection did not succeed"; exit 1; fi
+          if [ "$RUN" = "false" ]; then echo "nothing the probes exercise changed: pass"; exit 0; fi
+          if [ "$RUN" = "true" ] && [ "$PROBES" = "success" ]; then echo "every leg passed"; exit 0; fi
+          echo "::error::probe legs did not all pass (result: $PROBES)"; exit 1

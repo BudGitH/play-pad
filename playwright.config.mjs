@@ -20,9 +20,14 @@ export default defineConfig({
     ...devices["Desktop Chrome"],
     // Optional: point at a pre-installed Chromium (e.g. cloud dev boxes) instead
     // of the one `npx playwright install` downloads.
-    launchOptions: process.env.PW_CHROMIUM_PATH
-      ? { executablePath: process.env.PW_CHROMIUM_PATH }
-      : {},
+    // `--disable-dev-shm-usage`: CI runners give a container a small /dev/shm, and software-GL
+    // (SwiftShader) 3D fills it with framebuffers, so the renderer is killed mid-test and Playwright
+    // reports "Target page, context or browser has been closed" instead of an assertion. Writing the
+    // shared memory to /tmp instead costs nothing locally (16 GB /dev/shm here) and stops the crash.
+    launchOptions: {
+      args: ["--disable-dev-shm-usage"],
+      ...(process.env.PW_CHROMIUM_PATH ? { executablePath: process.env.PW_CHROMIUM_PATH } : {}),
+    },
   },
   projects: [
     { name: "core", testIgnore: KQ_SPECS },

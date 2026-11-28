@@ -188,6 +188,18 @@
     return im;
   }
 
+  /**
+   * One stool of a table set: a stone drum (void deck), or the thin plastic seat of a hawker
+   * swing-out stool (its steel stem and arm are in the hawker batch), top at 0.60 m either way.
+   */
+  function stool(t, k) {
+    const a = (k / 4) * Math.PI * 2 + Math.PI / 4;
+    const x = t.x + Math.cos(a) * 0.95;
+    const z = t.z + Math.sin(a) * 0.95;
+    if (t.stone) return { x, y: 0.37, z, color: 0x9da3a6 };
+    return { x, y: 0.57, z, sy: 0.13, sx: 1.15, sz: 1.15, color: t.stool || 0x2e9e62 };
+  }
+
   /** Round table sets: stone (void deck) or white-top (hawker), with four stools. */
   function tables(group, mats, list, colliders) {
     const tops = [];
@@ -197,15 +209,7 @@
       const top = t.stone ? 0x9da3a6 : 0xf3f1ec;
       tops.push({ x: t.x, y: 0.86, z: t.z, sx: 1, sy: 1, sz: 1, color: top });
       legs.push({ x: t.x, y: 0.5, z: t.z, color: t.stone ? 0x8d9396 : 0x6f757a });
-      for (let k = 0; k < 4; k++) {
-        const a = (k / 4) * Math.PI * 2 + Math.PI / 4;
-        stools.push({
-          x: t.x + Math.cos(a) * 0.95,
-          y: 0.37,
-          z: t.z + Math.sin(a) * 0.95,
-          color: t.stone ? 0x9da3a6 : 0xd9663a,
-        });
-      }
+      for (let k = 0; k < 4; k++) stools.push(stool(t, k));
       P.collide(colliders, t.x - 0.75, t.x + 0.75, t.z - 0.75, t.z + 0.75, "table");
     });
     const mat = mats.paint;

@@ -100,9 +100,37 @@
     },
   };
 
+  /** True when a media query matches (false where matchMedia is missing). */
+  const media = (q) => Boolean(window.matchMedia && window.matchMedia(q).matches);
+
+  /**
+   * iPad, including iPadOS 13+ Safari, which asks for desktop sites: it reports a "Macintosh" user
+   * agent and platform "MacIntel", but a Mac has no touch points (AC-P21). With a Magic Keyboard or
+   * trackpad attached it may also report `pointer: fine`, so this must not rely on the media query.
+   */
+  function detectIpad() {
+    const nav = window.navigator || {};
+    if (/iPad/.test(nav.userAgent || "")) return true;
+    const macLike = nav.platform === "MacIntel" || /Macintosh/.test(nav.userAgent || "");
+    return macLike && (nav.maxTouchPoints || 0) > 1;
+  }
+
+  /** A touch tablet: an iPad, or a touch-first device whose short screen side is at least 600 CSS px. */
+  function detectTablet(ipad, coarse) {
+    if (ipad) return true;
+    const scr = window.screen || {};
+    return coarse && Math.min(scr.width || 0, scr.height || 0) >= 600;
+  }
+
+  const ipad = detectIpad();
+  const coarsePointer = media("(pointer: coarse)");
+
   G.Env = {
     canFetch: KQ.CAN_FETCH !== false && location.protocol !== "file:",
-    coarse: Boolean(window.matchMedia && window.matchMedia("(pointer: coarse)").matches),
+    /** Touch-first: a coarse pointer, or an iPad (even with a keyboard / trackpad attached). */
+    coarse: coarsePointer || ipad,
+    ipad,
+    tablet: detectTablet(ipad, coarsePointer || ipad),
     isPortrait: () => window.innerHeight > window.innerWidth * 1.05,
   };
 })((window.KQ = window.KQ || {}));

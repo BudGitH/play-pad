@@ -752,6 +752,13 @@ kbd {
     display: none !important;
   }
 }
+/* the same on an iPad that reports a fine pointer (Magic Keyboard / trackpad): boot.js sets the class (AC-P21) */
+.kq-root.kq-touch-ui .kq-touch {
+  display: block;
+}
+.kq-root.kq-touch-ui .kq-keys {
+  display: none !important;
+}
 .kq-keys {
   position: absolute;
   right: var(--kq-padr);
@@ -824,6 +831,9 @@ kbd {
   .kq-azan {
     width: min(560px, calc(100% - 2 * var(--kq-joy-x)));
   }
+}
+.kq-root.kq-touch-ui .kq-azan {
+  width: min(560px, calc(100% - 2 * var(--kq-joy-x)));
 }
 .kq-azan-title {
   margin: 0 0 2px;

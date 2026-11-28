@@ -208,6 +208,7 @@
     img.className = "kq-posture";
     img.alt = "";
     img.width = img.height = size || 72;
+    if (!postureImages[type]) finishPostures();
     if (postureImages[type]) img.src = postureImages[type];
     else img.className += " kq-posture-missing";
     return img;
@@ -254,28 +255,76 @@
     return { scene, fig, cam };
   }
 
-  /** Render each posture once into a small PNG data URL (called once at boot, needs WebGL). */
+  /** Render each posture once into a small PNG data URL (needs WebGL). */
   function renderPostures(renderer, az) {
-    const size = 256;
-    const rt = new THREE.WebGLRenderTarget(size, size);
-    rt.texture.encoding = THREE.sRGBEncoding;
-    const stage = postureStage(renderer);
-    const prevClear = renderer.getClearColor(new THREE.Color());
-    const prevAlpha = renderer.getClearAlpha();
-    renderer.setClearColor(0xe6eef8, 1);
-    renderer.setRenderTarget(rt);
-    Object.keys(POSTURE_POSE).forEach(function (type) {
-      aim(stage.cam, az === undefined ? POSTURE_AZ[type] || POSTURE_AZ.standing : az);
-      KQ.Figures.pose(stage.fig.userData.rig, POSTURE_POSE[type], 0, 1);
-      stage.fig.updateMatrixWorld(true);
-      renderer.clear();
-      renderer.render(stage.scene, stage.cam);
-      postureImages[type] = readPixels(renderer, rt, size);
+    postureJobs(renderer, az).forEach((job) => job());
+  }
+
+  /** Posture jobs queued by queuePostures and not run yet. */
+  const pendingPostures = [];
+
+  /**
+   * Queue the posture renders on a time-sliced queue (`defer` = KQ.Game.Defer): one picture per
+   * job, run only while the game is not being played (title screen, pause menu): a render with its
+   * GPU read-back can take a few hundred ms on a slow tablet. A prayer screen that needs a picture
+   * first renders the rest at once (finishPostures), so a picture is never missing.
+   */
+  function queuePostures(renderer, defer) {
+    postureJobs(renderer).forEach((job) => {
+      pendingPostures.push(job);
+      defer.add(
+        () => {
+          const next = pendingPostures.shift();
+          if (next) next();
+        },
+        "posture picture",
+        { when: defer.notPlaying },
+      );
     });
-    renderer.setRenderTarget(null);
-    renderer.setClearColor(prevClear, prevAlpha);
-    rt.dispose();
-    stage.scene.remove(stage.fig);
+  }
+
+  /** Render every still-queued posture now. */
+  function finishPostures() {
+    while (pendingPostures.length) pendingPostures.shift()();
+  }
+
+  /** True once every posture picture exists (none queued). */
+  const posturesReady = () => pendingPostures.length === 0;
+
+  /**
+   * The posture renders as separate jobs, one picture each (plus setup and clean-up), so boot can
+   * spread them over frames with KQ.Game.Defer instead of one long task with ten GPU read-backs
+   * (AC-P23). Each job restores the renderer's target and clear colour, so the game can draw
+   * between them.
+   */
+  function postureJobs(renderer, az) {
+    const size = 256;
+    const ctx = {};
+    const setup = () => {
+      ctx.rt = new THREE.WebGLRenderTarget(size, size);
+      ctx.rt.texture.encoding = THREE.sRGBEncoding;
+      ctx.stage = postureStage(renderer);
+    };
+    const one = (type) => () => {
+      const prevClear = renderer.getClearColor(new THREE.Color());
+      const prevAlpha = renderer.getClearAlpha();
+      const prevTarget = renderer.getRenderTarget();
+      renderer.setClearColor(0xe6eef8, 1);
+      renderer.setRenderTarget(ctx.rt);
+      aim(ctx.stage.cam, az === undefined ? POSTURE_AZ[type] || POSTURE_AZ.standing : az);
+      KQ.Figures.pose(ctx.stage.fig.userData.rig, POSTURE_POSE[type], 0, 1);
+      ctx.stage.fig.updateMatrixWorld(true);
+      renderer.clear();
+      renderer.render(ctx.stage.scene, ctx.stage.cam);
+      postureImages[type] = readPixels(renderer, ctx.rt, size);
+      renderer.setRenderTarget(prevTarget);
+      renderer.setClearColor(prevClear, prevAlpha);
+    };
+    const cleanup = () => {
+      ctx.rt.dispose();
+      ctx.stage.scene.remove(ctx.stage.fig);
+    };
+    return [setup].concat(Object.keys(POSTURE_POSE).map(one), [cleanup]);
   }
 
   const MISSION_ICON = {
@@ -300,6 +349,10 @@
     wudu,
     posture,
     renderPostures,
+    postureJobs,
+    queuePostures,
+    finishPostures,
+    posturesReady,
     missionIcon: (id) => icon(MISSION_ICON[id] || "star"),
     stepIcon: (type) => icon(STEP_ICON[type] || "star"),
     postureCount: () => Object.keys(postureImages).length,

@@ -71,13 +71,58 @@
     });
   }
 
+  /** Non-indexed copies of the shared primitives (unit box / plane / cylinders), made once each. */
+  const flatShared = new Map();
+  /** The geometry as plain triangles: shared primitives from the cache, anything else freshly. */
+  function flatOf(geo) {
+    if (!geo.index) return { g: geo, temp: false };
+    if (geo.userData.kqShared) {
+      if (!flatShared.has(geo)) flatShared.set(geo, geo.toNonIndexed());
+      return { g: flatShared.get(geo), temp: false };
+    }
+    return { g: geo.toNonIndexed(), temp: true };
+  }
+
+  const tmpN = new THREE.Matrix3();
+  /**
+   * Transform positions by `m` and normals by its normal matrix (normalised), like
+   * BufferGeometry.applyMatrix4, into new arrays, without cloning the geometry per primitive (the
+   * clone + toNonIndexed per box was a large share of the boot; notes-ipad.md).
+   */
+  function transformed(g, m) {
+    const sp = g.attributes.position.array;
+    const sn = g.attributes.normal.array;
+    const e = m.elements;
+    const ne = tmpN.getNormalMatrix(m).elements;
+    const p = new Float32Array(sp.length);
+    const n = new Float32Array(sn.length);
+    for (let i = 0; i < sp.length; i += 3) {
+      const x = sp[i];
+      const y = sp[i + 1];
+      const z = sp[i + 2];
+      const w = 1 / (e[3] * x + e[7] * y + e[11] * z + e[15]);
+      p[i] = (e[0] * x + e[4] * y + e[8] * z + e[12]) * w;
+      p[i + 1] = (e[1] * x + e[5] * y + e[9] * z + e[13]) * w;
+      p[i + 2] = (e[2] * x + e[6] * y + e[10] * z + e[14]) * w;
+      const a = sn[i];
+      const b = sn[i + 1];
+      const c = sn[i + 2];
+      const nx = ne[0] * a + ne[3] * b + ne[6] * c;
+      const ny = ne[1] * a + ne[4] * b + ne[7] * c;
+      const nz = ne[2] * a + ne[5] * b + ne[8] * c;
+      const len = Math.sqrt(nx * nx + ny * ny + nz * nz) || 1;
+      n[i] = nx / len;
+      n[i + 1] = ny / len;
+      n[i + 2] = nz / len;
+    }
+    return { p, n };
+  }
+
   /** Append a transformed geometry's triangles into a bucket. */
   function appendGeo(bucket, geo, matrix, color, uvScale) {
-    const g = geo.index ? geo.toNonIndexed() : geo.clone();
-    g.applyMatrix4(matrix);
-    const p = g.attributes.position.array;
-    const n = g.attributes.normal.array;
-    const uv = g.attributes.uv ? g.attributes.uv.array : null;
+    const flat = flatOf(geo);
+    const { p, n } = transformed(flat.g, matrix);
+    const uv = flat.g.attributes.uv ? flat.g.attributes.uv.array : null;
     const c = tmpC.set(color === undefined ? 0xffffff : color);
     const out = [0, 0];
     const first = bucket.pos.length / 3;
@@ -90,14 +135,20 @@
       bucket.uv.push(out[0], out[1]);
       bucket.col.push(c.r, c.g, c.b);
     }
-    g.dispose();
+    if (flat.temp) flat.g.dispose();
   }
 
   /** Geometry cache so repeated primitives are only built once. */
   const geoCache = new Map();
   /** Build a primitive geometry once per key and reuse it everywhere it is needed. */
   function cached(key, make) {
-    if (!geoCache.has(key)) geoCache.set(key, make());
+    if (!geoCache.has(key)) {
+      const g = make();
+      // A cached geometry never changes after creation, so appendGeo may cache its triangles
+      // (P.cached also holds materials and other shared things: only geometries are marked).
+      if (g && g.isBufferGeometry) g.userData.kqShared = true;
+      geoCache.set(key, g);
+    }
     return geoCache.get(key);
   }
   const unitBox = () => cached("box", () => new THREE.BoxGeometry(1, 1, 1));
@@ -197,14 +248,31 @@
     return cells;
   }
 
-  /** The bucket's vertex arrays restricted to the given primitives. */
+  /** Copy `src[from .. from + n)` into the typed array `dst` at `at`. */
+  function copyInto(dst, at, src, from, n) {
+    for (let i = 0; i < n; i++) dst[at + i] = src[from + i];
+  }
+
+  /**
+   * The bucket's vertex arrays restricted to the given primitives, as typed arrays sized once.
+   * (It used to `concat` per primitive, which is quadratic: about 3 s of a 14 s boot, 12 s at a
+   * 4x CPU throttle; features/kampung-quest-playability/notes-ipad.md.)
+   */
   function slice(bucket, prims) {
-    const out = new Bucket();
+    const verts = prims.reduce((n, pr) => n + pr.count, 0);
+    const out = {
+      pos: new Float32Array(verts * 3),
+      nor: new Float32Array(verts * 3),
+      col: new Float32Array(verts * 3),
+      uv: new Float32Array(verts * 2),
+    };
+    let at = 0;
     prims.forEach((pr) => {
-      const a = pr.first;
-      const b = pr.first + pr.count;
-      ["pos", "nor", "col"].forEach((k) => (out[k] = out[k].concat(bucket[k].slice(a * 3, b * 3))));
-      out.uv = out.uv.concat(bucket.uv.slice(a * 2, b * 2));
+      ["pos", "nor", "col"].forEach((k) =>
+        copyInto(out[k], at * 3, bucket[k], pr.first * 3, pr.count * 3),
+      );
+      copyInto(out.uv, at * 2, bucket.uv, pr.first * 2, pr.count * 2);
+      at += pr.count;
     });
     return out;
   }

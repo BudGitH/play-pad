@@ -83,7 +83,11 @@
     return renderer;
   }
 
-  /** Choose the quality tier: the ?q= flag, else the save, else low on touch / software GL and high elsewhere. */
+  /**
+   * Choose the quality tier: the ?q= flag, else the save, else low on touch (phones and tablets,
+   * iPads included even with a keyboard: an iPad gen 7 has a weaker GPU than the phones that
+   * already start low; AC-P21) and on software GL, and high elsewhere.
+   */
   function pickTier(saved) {
     const q = params.get("q");
     if (q === "low" || q === "med" || q === "high") return q;
@@ -94,7 +98,9 @@
   /** Build the neighbourhood behind the loading screen (step 1). */
   async function buildWorld(s, tier) {
     BU().setStep(0, "now");
+    BU().setProgress(0.04);
     await nextFrame();
+    G.BootPerf.worldBudget(tier);
     s.world = KQ.World.build(s.scene, {
       quality: tier,
       renderer: s.renderer,
@@ -104,6 +110,7 @@
     G.Loop.resize();
     BU().setStep(0, "done");
     BU().setProgress(0.4);
+    G.BootPerf.mark("world");
   }
 
   /** Create the hero, NPCs, markers and collectibles (step 2). */
@@ -118,7 +125,8 @@
     s.collect = G.Collectibles.create(s.scene, s.world);
     G.Loop.studioShine(s);
     BU().setStep(1, "done");
-    BU().setProgress(0.55);
+    BU().setProgress(0.5);
+    G.BootPerf.mark("actors");
   }
 
   /**
@@ -133,7 +141,9 @@
     s.world.setShadowTarget(startSpot());
     G.Crowd.showAll(s.crowd, true);
     s.renderer.compile(s.scene, s.camera);
-    s.renderer.render(s.scene, s.camera);
+    G.BootPerf.mark("compile-" + tier);
+    G.BootPerf.drawEverything(s.scene, () => s.renderer.render(s.scene, s.camera));
+    G.BootPerf.mark("render-" + tier);
     G.Crowd.showAll(s.crowd, false);
   }
 
@@ -148,7 +158,7 @@
    * screen keeps painting; the start tier goes last so it is the state the game begins in.
    */
   async function precompile(s) {
-    BU().setProgress(0.82, "Getting the shaders ready...");
+    BU().setProgress(0.86, "Getting the shaders ready...");
     await nextFrame();
     const start = s.quality;
     const heroShown = s.player.group.visible;
@@ -161,6 +171,7 @@
     }
     s.player.group.visible = heroShown;
     G.Loop.resize();
+    G.BootPerf.mark("shaders");
   }
 
   /**
@@ -203,8 +214,19 @@
     });
   }
 
-  /** Wait for the photo textures (over http) or note that they are drawn in code (file://). */
-  async function loadTextures() {
+  /**
+   * Wait for the photo textures (over http) or note that they are drawn in code (file://), then
+   * upload every texture a few per frame so the shader step does not do it in one long task.
+   */
+  async function loadTextures(s) {
+    await fetchTextures();
+    await G.BootPerf.uploadTextures(s.renderer, s.scene, (f) =>
+      BU().setProgress(0.66 + 0.2 * f, "Getting the textures ready..."),
+    );
+  }
+
+  /** The photo downloads (bar 50 -> 66 %), or the file:// note. */
+  async function fetchTextures() {
     if (!G.Env.canFetch) {
       BU().setStep(2, "skip", "drawn in code");
       BU().note(
@@ -215,8 +237,9 @@
     BU().setStep(2, "now");
     const mgr = THREE.DefaultLoadingManager;
     mgr.onProgress = (url, loaded, total) =>
-      BU().setProgress(0.55 + 0.25 * (loaded / Math.max(1, total)), "Loading photo textures...");
+      BU().setProgress(0.5 + 0.16 * (loaded / Math.max(1, total)), "Loading photo textures...");
     await waitUntil(() => !mgr.isLoading, 20000);
+    G.BootPerf.mark("textures-loaded");
     BU().setStep(2, "done");
   }
 
@@ -229,12 +252,16 @@
     BU().setProgress(0.9);
   }
 
-  /** Draw the posture pictures for the prayer screens; labels only if that fails. */
+  /**
+   * Queue the posture pictures for the prayer screens on the time-sliced queue, one per frame,
+   * after Start is enabled (the title screen is idle; a prayer screen opened first renders the rest
+   * at once). Labels only if that fails.
+   */
   function renderPictures(s) {
     BU().setStep(4, "now");
     try {
-      G.Pictures.renderPostures(s.renderer);
-      BU().setStep(4, "done");
+      G.Pictures.queuePostures(s.renderer, G.Defer);
+      G.Defer.add(() => BU().setStep(4, "done"), "pictures done");
     } catch (err) {
       console.warn("[KQ] posture pictures skipped:", err && err.message);
       BU().setStep(4, "skip", "labels only");
@@ -342,9 +369,11 @@
       : { state: KQ.Sim.Save.defaultState(), status: "unavailable" };
     const s = (G.S = makeState(root));
     s.storage = storage;
+    G.BootPerf.applyDeviceClass(root);
     G.UI.init(root);
     G.Speech.init();
     createRenderer(s, pickTier(saved));
+    G.BootPerf.watchContext(s);
     G.Hud.build(s.hudHost, G.Actions.handle);
     G.Input.attach({ stage: s.stage, joystick: G.Hud.refs.joy, knob: G.Hud.refs.knob });
     G.Input.setHandler((name) => G.Actions.handle(name));
@@ -356,7 +385,7 @@
     );
     await buildWorld(s, pickTier(saved));
     await buildActors(s);
-    await loadTextures();
+    await loadTextures(s);
     await precompile(s);
     await loadAzan();
     renderPictures(s);
@@ -368,6 +397,7 @@
     refs.start.addEventListener("click", () => begin(s, saved, false));
     refs.newGame.addEventListener("click", () => begin(s, saved, true));
     compileAbove(s, s.quality);
+    G.BootPerf.mark("ready");
     G.Boot.ready = true;
   }
 

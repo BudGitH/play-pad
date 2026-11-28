@@ -299,6 +299,16 @@
   /* ------------------------------ resize / quality ------------------------------ */
 
   /**
+   * The pixel-ratio cap for the device: 1.5 on phones; on tablets (iPads) 1 / 1.25 / 1.5 by tier,
+   * since an iPad screen has two to three times a phone's CSS pixels at the same ratio (AC-P21).
+   * No cap beyond the tier's own on desktop.
+   */
+  function touchCap(tier) {
+    if (G.Env.tablet) return { low: 1, med: 1.25, high: 1.5 }[tier] || 1;
+    return G.Env.coarse ? 1.5 : Infinity;
+  }
+
+  /**
    * Fit the renderer, camera and pixel ratio to the stage size (the ratio is capped by the quality
    * tier and on touch).
    */
@@ -309,7 +319,7 @@
     const w = Math.max(2, box.clientWidth);
     const h = Math.max(2, box.clientHeight);
     const hints = s.world ? s.world.qualityHints(s.quality) : { pixelRatio: 1 };
-    const cap = G.Env.coarse ? Math.min(1.5, hints.pixelRatio) : hints.pixelRatio;
+    const cap = Math.min(hints.pixelRatio, touchCap(s.quality));
     s.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, cap));
     s.renderer.setSize(w, h, false);
     s.size = { w, h };

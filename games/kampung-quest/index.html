@@ -19,6 +19,8 @@
     <link rel="stylesheet" href="../../styles/tokens.css" />
     <link rel="stylesheet" href="../../styles/base.css" />
     <link rel="stylesheet" href="styles.css" />
+    <!-- The biggest script, fetched first while the HTML and styles are still being read (AC-P22). -->
+    <link rel="preload" href="three.min.js" as="script" />
 
     <!--
     Kampung Quest — a 3D third-person open-neighbourhood life game (PlayPad game, PLAY-013).
@@ -103,6 +105,20 @@
           <div class="kq-title-actions">
             <a class="kq-btn primary kq-big" href="../../index.html">Back to PlayPad</a>
             <button id="kqRetry" class="kq-btn" type="button">Try again</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Shown when the device takes the 3D view away (iPad Safari does this to save memory). -->
+      <section id="kqLost" class="kq-title kq-error" role="alert" hidden>
+        <div class="kq-title-card">
+          <h2>The 3D view is having a rest</h2>
+          <p>
+            Your device paused the picture to save memory. Your game is saved. It may come back by
+            itself in a moment, or tap Reload to carry on.
+          </p>
+          <div class="kq-title-actions">
+            <button id="kqLostReload" class="kq-btn primary kq-big" type="button">Reload</button>
           </div>
         </div>
       </section>
@@ -291,6 +307,8 @@
     <script src="js/game/region.js"></script>
     <script src="js/game/holy-travel.js"></script>
     <script src="js/game/boot-ui.js"></script>
+    <script src="js/game/defer.js"></script>
+    <script src="js/game/boot-perf.js"></script>
     <script src="js/game/hooks.js"></script>
     <script src="js/game/boot.js"></script>
     <script>

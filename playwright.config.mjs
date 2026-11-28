@@ -36,9 +36,14 @@ export default defineConfig({
   },
   projects: [
     { name: "core", testIgnore: KQ_SPECS },
-    // No trace for Kampung Quest: its specs share one heavy 3D page per file, and starting a trace on it
-    // timed out the "trace recording" fixture (30 s) on 2 CPUs. Failure screenshots are still kept (PLAY-015).
-    { name: "kampung-quest", testMatch: KQ_SPECS, use: { trace: "off" } },
+    // Kampung Quest (PLAY-015):
+    // - timeout: every test drives a software-GL 3D world, and one `evaluate` of 20-40 s of sim (a teleport
+    //   plus a scenario) is normal on a 2-core runner. The 30 s default turned that into "Target page ...
+    //   closed" (Playwright closes the page at the timeout), which read like a crash. 120 s is the floor;
+    //   files that need more still set their own.
+    // - trace off: its specs share one heavy page per file, and starting a trace on it timed out the
+    //   "trace recording" fixture on 2 CPUs. Failure screenshots are still kept.
+    { name: "kampung-quest", testMatch: KQ_SPECS, timeout: 120_000, use: { trace: "off" } },
   ],
   webServer: {
     command: `node tools/serve.mjs ${PORT}`,

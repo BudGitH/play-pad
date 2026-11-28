@@ -840,17 +840,21 @@ test.describe("AC-13 save", () => {
   }
 });
 
+/** A first run: the hero picker is above Start, so focus begins on the chosen card; Tab reaches Start; Enter starts. */
+async function startByKeyboard(page) {
+  await expect(page.locator("#kqHeroPick .kq-hero-card.is-on")).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(page.locator("#kqStart")).toBeFocused();
+  await page.keyboard.press("Enter"); // Start, no mouse
+  await expect.poll(() => kq(page, () => window.__kq.ready), { timeout: 30_000 }).toBe(true);
+}
+
 test.describe("AC-15 accessibility", () => {
   test.describe.configure({ timeout: 150_000 });
 
   test("playable by keyboard alone, 48 px controls, visible focus", async ({ page }) => {
     await load(page);
-    // a first run: the hero picker is above Start, so the game focuses the chosen card, then Tab reaches Start
-    await expect(page.locator("#kqHeroPick .kq-hero-card.is-on")).toBeFocused();
-    await page.keyboard.press("Tab");
-    await expect(page.locator("#kqStart")).toBeFocused();
-    await page.keyboard.press("Enter"); // Start, no mouse
-    await expect.poll(() => kq(page, () => window.__kq.ready), { timeout: 30_000 }).toBe(true);
+    await startByKeyboard(page);
     await step(page, 300);
     const small = await kq(page, smallButtons);
     expect(small, "HUD buttons under 48 px").toEqual([]);

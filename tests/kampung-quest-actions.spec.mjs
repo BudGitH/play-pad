@@ -304,31 +304,6 @@ test("AC-P25.1 Rest is not offered at full energy, and the Tired bar is a one-ta
   await step(page, 500);
 });
 
-test("AC-P25.1 Rest is refused while a fard prayer is due (Pray comes first)", async () => {
-  await kq(page, () => window.KQ.Game.S.sim.needs.restore({ hunger: 80, energy: 10 }));
-  await goTo(page, "home");
-  await kq(page, () => window.__kq.forcePrayer("zohor"));
-  await step(page, 400);
-  expect((await state(page)).target?.label ?? "").not.toBe("Rest");
-  await page.locator("#kqNeeds").click();
-  await step(page, 300);
-  expect((await state(page)).energy, "no rest happened").toBeLessThan(30);
-  await expect(page.locator(".kq-toast", { hasText: /Prayer time first/ })).toBeVisible();
-});
-
-/** Hold the hero as `hold` says, tap the Tired bar, expect the kind line and no rest; then `release`. */
-async function restRefusedWhile(pg, hold, release, pattern) {
-  await kq(pg, hold);
-  const before = (await state(pg)).energy;
-  await pg.locator("#kqNeeds").click();
-  await step(pg, 300);
-  await expect(pg.locator(".kq-toast", { hasText: pattern }).last()).toBeVisible();
-  expect((await state(pg)).energy, "no rest happened").toBe(before);
-  const resting = await kq(pg, () => window.KQ.Game.S.root.classList.contains("kq-resting"));
-  expect(resting, "no rest scene started").toBe(false);
-  await kq(pg, release);
-}
-
 /* Holds for the Rest-refusal test. Each runs in the page (no outer variables); one method is patched and put back. */
 const holdDriving = () => {
   window.__real = window.KQ.Game.Vehicles.mounted;
@@ -357,6 +332,31 @@ test("AC-P25.1 Rest from the Tired bar refuses, with a kind line, while driving,
     .toBeGreaterThanOrEqual(95);
   await step(page, 500);
 });
+
+test("AC-P25.1 Rest is refused while a fard prayer is due (Pray comes first)", async () => {
+  await kq(page, () => window.KQ.Game.S.sim.needs.restore({ hunger: 80, energy: 10 }));
+  await goTo(page, "home");
+  await kq(page, () => window.__kq.forcePrayer("zohor"));
+  await step(page, 400);
+  expect((await state(page)).target?.label ?? "").not.toBe("Rest");
+  await page.locator("#kqNeeds").click();
+  await step(page, 300);
+  expect((await state(page)).energy, "no rest happened").toBeLessThan(30);
+  await expect(page.locator(".kq-toast", { hasText: /Prayer time first/ })).toBeVisible();
+});
+
+/** Hold the hero as `hold` says, tap the Tired bar, expect the kind line and no rest; then `release`. */
+async function restRefusedWhile(pg, hold, release, pattern) {
+  await kq(pg, hold);
+  const before = (await state(pg)).energy;
+  await pg.locator("#kqNeeds").click();
+  await step(pg, 300);
+  await expect(pg.locator(".kq-toast", { hasText: pattern }).last()).toBeVisible();
+  expect((await state(pg)).energy, "no rest happened").toBe(before);
+  const resting = await kq(pg, () => window.KQ.Game.S.root.classList.contains("kq-resting"));
+  expect(resting, "no rest scene started").toBe(false);
+  await kq(pg, release);
+}
 
 test("AC-P25.2 / .3 Pray from the status card: wudu, then the prayer, in one flow; no Sunat / Wudu / Show me the way", async () => {
   await kq(page, () => window.KQ.Game.UI.closeSheet("test"));
@@ -517,8 +517,12 @@ test("a11y: the accessible name starts with the visible word, and a rebuild keep
 });
 
 test("a11y: Space presses a keyboard-focused HUD button instead of jumping; after a tap it still jumps", async () => {
+  await kq(page, () => window.KQ.Game.UI.closeSheet("test"));
   await kq(page, () => window.__kq.place(10, 10, 0));
-  await step(page, 300);
+  await step(page, 2500); // let any wave or ice-cream pose from an earlier test end
+  expect(await kq(page, () => window.KQ.Game.Actions.canJump()), "in play, free to jump").toBe(
+    true,
+  );
   await kq(page, renderFake, [
     ["hi", "walker:1", "Say hi", "Say hi"],
     ["obj", "counter_a", "Eat", "Order food"],

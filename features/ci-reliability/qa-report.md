@@ -1,53 +1,37 @@
-# QA Report (Post-Run Findings): <feature name>
+# QA Report (Post-Run Findings): CI & release reliability
 
-> **Phase 4 output.** Produced by **merging** the multi-lens QA panel (ACCURACY · QUALITY · COMPLIANCE · RISK). This is the feature's "pipeline result". It is the gate: the feature is not done until this report is clean.
+**Ticket:** PLAY-015 · **Date:** 2026-11-28 · **Panel:** ACCURACY, QUALITY + COMPLIANCE, RISK (independent agents, round 1)
 
-**Feature:** <feature name>
-**Ticket:** PLAY-\_\_\_
-**Run at:** 2026-11-21 (round 1)
-**Overall result:** ☐ PASS ☐ FAIL
+## Verdict
 
----
-
-## Gate summary
-
-| Lens (dimension) | Agent verdict | Findings      | Blocking? |
-| ---------------- | ------------- | ------------- | --------- |
-| ACCURACY         | _PASS/FAIL_   | _n_           | _y/n_     |
-| QUALITY          | _PASS/FAIL_   | _n_           | _y/n_     |
-| COMPLIANCE       | _PASS/FAIL_   | _n_           | _y/n_     |
-| RISK (security)  | _PASS/FAIL_   | _n_           | _y/n_     |
-| **Tests**        | _PASS/FAIL_   | _x/y passing_ | _y/n_     |
+**Round 1: no CRITICAL / HIGH findings.** Every MEDIUM finding was fixed in `5f173b8` and `f0208f7`. The rest of the panel's LOW items were fixed or are recorded below. The final proof for AC-2, AC-5 and AC-6 is this PR's own GitHub run (see "Open" below).
 
 ## Findings
 
-> One block per finding. Severity ∈ {CRITICAL, HIGH, MEDIUM, LOW}. Dimensions are the lenses it scored on. Check the ledger for recurrence.
+| ID  | Sev | Lens                  | Where                                     | Finding                                                                                                                                                                                                                                      | Resolution                                                                                                                                    |
+| --- | --- | --------------------- | ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Q1  | MED | ACCURACY, RISK (both) | `probes.yml` changes step                 | `printf … \| grep -q` under `pipefail`: on a file list larger than about 64 KB, grep exits early, printf gets SIGPIPE, and the check reads `run=false`. The gate then passes with no legs run (a false green). Reproduced with 20,000 paths. | Fixed: here-string `grep -Eq … <<< "$changed"`; the listing line ends with `\|\| true`. Re-tested at 20,000 paths (old: NOMATCH, new: MATCH). |
+| Q2  | MED | ACCURACY              | `ci.yml`, `probes.yml` concurrency        | `cancel-in-progress: false` still lets GitHub replace a _pending_ run when a newer one joins the group, so a queued `main` push could get no result.                                                                                         | Fixed: non-PR runs are grouped by `github.sha` and event, so each commit has its own group.                                                   |
+| Q3  | MED | own run (2 CPUs)      | `playwright.config.mjs`                   | The new `trace: retain-on-failure` timed out the "trace recording" fixture (30 s) on KQ's shared 3D page, which created a new failure.                                                                                                       | Fixed: trace is off for the `kampung-quest` project; failure screenshots are kept, and the core project keeps traces.                         |
+| Q4  | MED | COMPLIANCE            | `docs/ENFORCEMENT.md`                     | The hook, CI and Probes rows were stale ("enable manually", "uploads nothing", no `ci:local`).                                                                                                                                               | Fixed.                                                                                                                                        |
+| Q5  | MED | COMPLIANCE            | `docs/IDEAS.md`                           | The out-of-scope follow-ups were not recorded.                                                                                                                                                                                               | Fixed: entries for the post-deploy live smoke and for making `serve.mjs` behave like Cloudflare.                                              |
+| Q6  | LOW | ACCURACY              | map spec                                  | `toBeVisible` became text-in-DOM, which is weaker.                                                                                                                                                                                           | Fixed: it counts only toasts that are rendered and visible.                                                                                   |
+| Q7  | LOW | ACCURACY              | `tools/install-hooks.mjs`                 | It could set `hooksPath` on a parent repository when nested inside one.                                                                                                                                                                      | Fixed: it acts only when the cwd is its own repo root and `.githooks/` exists.                                                                |
+| Q8  | LOW | QUALITY               | DECISIONS, KQ `CLAUDE.md`, probes comment | Leg-size wording and stale "path-filtered" text.                                                                                                                                                                                             | Fixed.                                                                                                                                        |
+| Q9  | LOW | COMPLIANCE            | findings-ledger                           | Non-standard status, and the related-finding ID was not explained.                                                                                                                                                                           | Fixed (`partial`; distinct-ID reason recorded).                                                                                               |
+| Q10 | LOW | RISK                  | `probes.yml` pattern                      | `games.js` / `index.html` at the root are not in the probe paths.                                                                                                                                                                            | Accepted: the probes exercise game pages, not the hub (unchanged from the old list).                                                          |
+| Q11 | LOW | RISK                  | `prepare`                                 | `hooksPath` points at repo-controlled scripts.                                                                                                                                                                                               | Accepted: same as the documented manual setup. Hook changes show in the diff.                                                                 |
+| Q12 | LOW | ACCURACY              | `ci:local`                                | It does not run the `Kampung Quest (AC/Phone)` legs.                                                                                                                                                                                         | Accepted: CONVENTIONS lists those commands next to it.                                                                                        |
 
-### FINDING-2026-11-21-001
+## Verified clean (with evidence)
 
-- **Severity:** _HIGH_
-- **Dimensions:** _quality, risk_
-- **Where:** `path/to/file` — _what/which pattern_
-- **What:** _the problem, concretely._
-- **Recommendation:** _the fix; reference `docs/CODE_QUALITY.md` section._
-- **Recurrence:** _new / Nth occurrence — update `docs/findings-ledger.md`._
-- **Status:** OPEN
+- **Gate truth table (local simulation).** These combinations pass: `success/false/skipped` and `success/true/success`. These fail: `true/failure`, `true/cancelled`, `true/skipped`, and changes `failure` or `cancelled`.
+- **Leg split.** The union of play1-5 and core1-3 equals the aggregate scripts exactly (script check, panel and author). Every `tests/kampung-quest-*.spec.mjs` runs in some job.
+- **Injection and permissions.** No untrusted `${{ }}` in `run:`. `contents: read`. No `pull_request_target`. `persist-credentials: false` everywhere. upload-artifact SHA `ea165f8…` = v4.6.2 (`git ls-remote`).
+- **Spec changes.** Nothing skipped or loosened. The five previously failing spec files pass 3 times each on 2 CPUs (`notes-specs.md`). The KQ smoke boot passes 5/5.
+- `npm run check` clean (ratchet: none new). `npm run secrets` clean. Workflows YAML-parse, and every `needs` and pin was checked by script. actionlint could not be run here: downloading its binary was refused by the session's safety policy.
 
-## Blocker classification → response
+## Open (proved only by GitHub)
 
-| Severity | ACCURACY         | QUALITY            | COMPLIANCE          | RISK             |
-| -------- | ---------------- | ------------------ | ------------------- | ---------------- |
-| CRITICAL | hotfix now       | stop-ship          | stop-ship           | stop-ship        |
-| HIGH     | blocks feature   | blocks feature     | blocks feature      | blocks feature   |
-| MEDIUM   | fix next release | ticket, ≤2 cycles  | ticket, ≤1 cycle    | ticket, ≤1 cycle |
-| LOW      | backlog          | tech-debt register | compliance register | risk register    |
-
-## Human summary
-
-_2–3 plain sentences: what was checked, what passed, what blocks, what's next. Written so a non-engineer understands the state._
-
----
-
-### Loop control
-
-If any CRITICAL/HIGH is OPEN → **FIX**, then re-spawn the panel and add a new round below. Repeat until **Overall result = PASS**. Then proceed to **Phase 5 (PRODUCT & UX VALIDATION)** — see `features/<feature-name>/product-validation.md` — and only after that gate passes, to **Phase 6 (CAPTURE)**: append learnings, update the map, update the ledger.
+- AC-2: the heavy legs pass on a 2-core runner without the "Target page … closed" crash.
+- AC-5: the gate reports on this PR and on the merge push.

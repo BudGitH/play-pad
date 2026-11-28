@@ -378,7 +378,11 @@ test("AC-P4: the target clears itself when the hero arrives (within 4 m)", async
   const cheer = await kq(page, () => {
     const G = window.KQ.Game;
     for (let i = 0; i < 30 && G.MapTarget.active(); i += 1) G.Loop.frame(1 / 30, true);
-    const t = Array.from(document.querySelectorAll(".kq-toast"));
+    const shown = (n) => {
+      const cs = getComputedStyle(n);
+      return cs.display !== "none" && cs.visibility !== "hidden" && n.getClientRects().length > 0;
+    };
+    const t = Array.from(document.querySelectorAll(".kq-toast")).filter(shown);
     return { cleared: !G.MapTarget.active(), texts: t.map((n) => n.textContent) };
   });
   expect(cheer.cleared, "the target clears itself on arrival").toBe(true);

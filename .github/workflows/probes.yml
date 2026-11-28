@@ -26,7 +26,9 @@ permissions:
   contents: read
 
 concurrency:
-  group: probes-${{ github.ref }}
+  # PR runs share one group per PR (superseded ones are cancelled). Every other run gets its own
+  # group by commit, so a queued push to main is never replaced by a newer one (GitHub keeps one pending run per group).
+  group: probes-${{ github.event_name == 'pull_request' && github.ref || github.sha }}-${{ github.event_name }}
   # Cancel superseded PR runs only: every push to main must finish, so each deployed commit has a result.
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
@@ -98,8 +100,8 @@ jobs:
             slug: kq-perf
           - name: Kampung Quest (realism)
             # The realism round's browser specs (guided tawaf, wardrobe / tailor, every vehicle, Makkah outskirts,
-            # the crowd and its draw budget): several minutes of software-GL 3D, so they run here, path-filtered,
-            # not on every PR. Playwright's webServer starts tools/serve.mjs on :5599 itself.
+            # the crowd and its draw budget): several minutes of software-GL 3D, so they run here, only when the
+            # `changes` job saw a relevant change. Playwright's webServer starts tools/serve.mjs on :5599 itself.
             run: npm run smoke:kq:realism
             slug: kq-realism
           # The playability and core rounds are split into legs of at most 5 spec files each. One job with

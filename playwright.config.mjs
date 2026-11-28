@@ -36,7 +36,9 @@ export default defineConfig({
   },
   projects: [
     { name: "core", testIgnore: KQ_SPECS },
-    { name: "kampung-quest", testMatch: KQ_SPECS },
+    // No trace for Kampung Quest: its specs share one heavy 3D page per file, and starting a trace on it
+    // timed out the "trace recording" fixture (30 s) on 2 CPUs. Failure screenshots are still kept (PLAY-015).
+    { name: "kampung-quest", testMatch: KQ_SPECS, use: { trace: "off" } },
   ],
   webServer: {
     command: `node tools/serve.mjs ${PORT}`,

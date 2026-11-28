@@ -21,7 +21,7 @@ function load(region, files) {
   vm.createContext(sandbox);
   for (const f of files) {
     const source = fs.readFileSync(path.join(JS_DIR, f), "utf8");
-    vm.runInContext(source, sandbox, { filename: f });
+    vm.runInContext(source, sandbox, { filename: path.join(JS_DIR, f) });
   }
   return sandbox.KQ;
 }
@@ -314,4 +314,33 @@ test("the holy cities keep a bigger crowd and a busier day: caps, strollers, res
     assert.ok(C.occupancy(k, 700) >= C.occupancy(k, 180), k + " busier by day");
   }
   assert.equal(C.occupancy("guard", 180), 1);
+});
+
+test("holy strollers: no joggers or cyclists, the mix is picked by the roll, prayer rows follow their group", () => {
+  const w = C.walkerWeights(12 * 60);
+  assert.equal(w.jogger, 0);
+  assert.equal(w.cyclist, 0);
+  assert.ok(w.family > 0 && w.elder > 0);
+  const type = C.walkerType(12 * 60, 0.5);
+  assert.ok(w[type] > 0, "the type picked (" + type + ") is one the mix allows");
+  assert.equal(typeof C.slotActive("pray:haram:1:25", 0.5, 12 * 60), "boolean");
+});
+
+test("prayer rows fill after each prayer time read from KQ.PRAYER_TIMES, and stay quiet without them", () => {
+  const timed = load("haramain", [
+    "sim/crowd.js",
+    "sim/crowd-pilgrim-dress.js",
+    "sim/crowd-pilgrim.js",
+  ]);
+  const none = timed.Sim.Crowd.occupancy("prayer", 13 * 60 + 12);
+  timed.PRAYER_TIMES = {
+    subuh: "05:00",
+    zohor: "13:00",
+    asar: "16:30",
+    maghrib: "19:00",
+    isyak: "20:15",
+  };
+  const at = timed.Sim.Crowd.occupancy("prayer", 13 * 60 + 12);
+  assert.ok(at > none, "just after Zohor the rows are fuller (" + at + " vs " + none + ")");
+  assert.ok(timed.Sim.Crowd.occupancy("prayer", 3 * 60) < at, "and quiet in the small hours");
 });

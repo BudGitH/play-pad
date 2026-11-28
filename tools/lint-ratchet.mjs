@@ -1,8 +1,10 @@
 // Lint ratchet (PLAY-010, ledger `function-length`). Dev-only; never shipped.
 //
 // `max-lines-per-function` and `max-depth` are ERRORS for every file except the legacy offenders in
-// eslint.config.mjs, where they stay warnings. This script keeps those warnings from growing: it runs
-// ESLint, counts the two rules' warnings per file and compares them with tools/lint-baseline.json.
+// eslint.config.mjs, where they stay warnings. `jsdoc/require-jsdoc` (CODE_QUALITY.md section 18 #2, ledger row unenforced-checkable-rules)
+// is an ERROR for Kampung Quest `js/**` and a WARNING for the other games, hub page and scripts/ (their
+// undocumented functions are baselined). This script keeps those warnings from growing: it runs
+// ESLint, counts the rules' warnings per file and compares them with tools/lint-baseline.json.
 //   - more than the baseline        -> fail (a new overlong function / deep block in a legacy file)
 //   - fewer than the baseline       -> fail too, so the baseline is lowered in the same PR as the fix
 //   - a file that is not baselined  -> any warning of these rules fails
@@ -14,7 +16,7 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const BASELINE = join(ROOT, "tools", "lint-baseline.json");
-const RULES = ["max-lines-per-function", "max-depth"];
+const RULES = ["max-lines-per-function", "max-depth", "jsdoc/require-jsdoc"];
 
 function lint() {
   const eslint = join(ROOT, "node_modules", "eslint", "bin", "eslint.js");
@@ -51,7 +53,10 @@ function compare(seen, base) {
     for (const rule of RULES) {
       const now = seen[file]?.[rule] || 0;
       const was = base[file]?.[rule] || 0;
-      if (now > was) problems.push(`${file}: ${rule} ${was} -> ${now} (new offender: split it)`);
+      if (now > was)
+        problems.push(
+          `${file}: ${rule} ${was} -> ${now} (new offender: ${rule === "jsdoc/require-jsdoc" ? "add a /** */ doc block" : "split it"})`,
+        );
       if (now < was)
         problems.push(
           `${file}: ${rule} ${was} -> ${now} (fixed! run: node tools/lint-ratchet.mjs --update)`,

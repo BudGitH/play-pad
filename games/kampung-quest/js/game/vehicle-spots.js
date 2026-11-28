@@ -232,6 +232,11 @@
 
   /** Zones added at run time (tests, future regions): the same shapes as KQ.Holy.noDrive. */
   const extra = [];
+  /**
+   * Register an extra no-drive zone.
+   * @param {object} z zone in the same shape as KQ.Holy.noDrive entries
+   * @returns {function(): void} call it to remove the zone again
+   */
   function addZone(z) {
     extra.push(z);
     return () => extra.splice(extra.indexOf(z), 1);

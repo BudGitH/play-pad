@@ -7,7 +7,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "check": "npm run lint && npm run ratchet && npm run format:check",
+    "check": "npm run lint && npm run ratchet && npm run commented-code && npm run format:check",
     "secrets": "node tools/secret-scan.mjs",
     "smoke": "playwright test --grep-invert @slow",
     "smoke:core": "playwright test --project=core --grep-invert @slow",
@@ -18,14 +18,17 @@
     "smoke:kq:playability": "playwright test tests/kampung-quest-actions.spec.mjs tests/kampung-quest-map.spec.mjs tests/kampung-quest-mounts.spec.mjs tests/kampung-quest-hero.spec.mjs tests/kampung-quest-cards.spec.mjs tests/kampung-quest-life.spec.mjs tests/kampung-quest-life-holy.spec.mjs tests/kampung-quest-looks.spec.mjs tests/kampung-quest-ipad.spec.mjs tests/kampung-quest-vehicles-ground.spec.mjs tests/kampung-quest-vehicle-rig.spec.mjs tests/kampung-quest-vehicle-life.spec.mjs tests/kampung-quest-figures.spec.mjs --project=kampung-quest --grep-invert @slow",
     "smoke:kq:core": "playwright test tests/kampung-quest-ambience.spec.mjs tests/kampung-quest-collision.spec.mjs tests/kampung-quest-greetings.spec.mjs tests/kampung-quest-hud-move.spec.mjs tests/kampung-quest-prayer.spec.mjs tests/kampung-quest-rituals.spec.mjs tests/kampung-quest-haramain-world.spec.mjs tests/kampung-quest-vehicles.spec.mjs tests/kampung-quest-voice.spec.mjs --project=kampung-quest --grep-invert @slow",
     "perf:kq": "playwright test tests/kampung-quest-ac.spec.mjs --project=kampung-quest --grep @slow",
-    "test:kq": "node --test \"tests/kampung-quest/*.test.mjs\"",
-    "ratchet": "node tools/lint-ratchet.mjs"
+    "test:kq": "node tools/check-sim-tested.mjs",
+    "test:kq:fast": "node --test \"tests/kampung-quest/*.test.mjs\"",
+    "ratchet": "node tools/lint-ratchet.mjs",
+    "commented-code": "node tools/check-commented-code.mjs"
   },
   "devDependencies": {
     "@eslint/js": "9.39.5",
     "@playwright/test": "1.65.0",
     "eslint": "9.39.5",
     "eslint-plugin-html": "8.2.1",
+    "eslint-plugin-jsdoc": "65.4.0",
     "globals": "15.14.0",
     "prettier": "3.4.2"
   }

@@ -40,6 +40,7 @@
     const group = KQ.Figures.build(id);
     group.name = "npc-" + id;
     scene.add(group);
+    KQ.Figures.mergeRig(group); // one draw call per figure (AC-14 budget)
     const rig = group.userData.rig;
     return {
       id,

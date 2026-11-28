@@ -34,6 +34,8 @@
   const HOME_FAR = 45;
   /** Parked vehicles farther than this from the hero are not drawn (m); checked twice a second. */
   const DRAW_FAR = 85;
+  /** The same on the low tier: a parked car is about 5 calls + its shadow, and past 55 m it is a few phone pixels (AC-14). */
+  const DRAW_FAR_LOW = 55;
   /** The longest move tested against walls at once (m), like the hero's own legs. */
   const MAX_LEG = 0.2;
   /** Seconds between two "let's walk" notes. */
@@ -681,8 +683,9 @@
     V.cullT -= dt;
     if (V.cullT > 0) return;
     V.cullT = 0.5;
+    const far = S().quality === "low" ? DRAW_FAR_LOW : DRAW_FAR;
     V.list.forEach(function (v) {
-      v.mesh.group.visible = v === V.mounted || U.dist(v.sim.x, v.sim.z, hero.x, hero.z) < DRAW_FAR;
+      v.mesh.group.visible = v === V.mounted || U.dist(v.sim.x, v.sim.z, hero.x, hero.z) < far;
     });
   }
 

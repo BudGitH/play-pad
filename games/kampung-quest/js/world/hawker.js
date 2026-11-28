@@ -1,7 +1,10 @@
 /* Kampung Quest — the hawker centre (KQ.WorldParts.Hawker): open-sided pavilion with a
-   two-tier terracotta roof and clerestory, ceiling fans (instanced, they spin), fluorescent
-   tubes, five halal stall fronts with lit signboards, a tray-return point and round tables.
-   Returns each stall's counter spot for POIs/interactables. */
+   two-tier terracotta roof and clerestory, a light ceiling on white trusses, warm quarry-tile
+   floor, ceiling fans (instanced, they spin), fluorescent tubes, five halal stall fronts with
+   lit signboards (number, drawn food pictures), a tray-return point and round tables with
+   swing-out stools. The stall dressing, signs, hand-wash basins, pendant lamps and wall fans
+   are in hawker-dress.js. Returns each stall's counter spot for POIs/interactables.
+   Reference: features/kampung-quest-playability/sg-reference.md. */
 (function (KQ) {
   "use strict";
   const P = (KQ.WorldParts = KQ.WorldParts || {});
@@ -18,7 +21,7 @@
     B.box("roof", (x0 + x1) / 2, cy, cz, x1 - x0, 0.14, len, 0xffffff, [th, 0, 0]);
     const nz = Math.sin(th) * 0.13;
     const ny = Math.cos(th) * 0.13;
-    B.box("paint", (x0 + x1) / 2, cy - ny, cz - nz, x1 - x0 - 0.2, 0.06, len - 0.2, 0xcdbfa4, [
+    B.box("paint", (x0 + x1) / 2, cy - ny, cz - nz, x1 - x0 - 0.2, 0.06, len - 0.2, 0xf6f1e6, [
       th,
       0,
       0,
@@ -29,7 +32,9 @@
   /** Columns, floor, roof tiers and the front name board. */
   function shell(B, H, ctx) {
     const h = H.h;
-    B.aabb("terrazzo", H.x0 - 1.5, 0, H.z0 - 1.5, H.x1 + 1.5, 0.14, H.z1 + 1.5, 0xd6d1c8);
+    B.aabb("tiles", H.x0 - 1.5, 0, H.z0 - 1.5, H.x1 + 1.5, 0.14, H.z1 + 1.5, 0xffffff);
+    // Glazed quarry tiles (beige, as in the reference photos) over the walkable floor slab.
+    B.aabb("wallTile", H.x0 - 1.5, 0.14, H.z0 - 1.5, H.x1 + 1.5, 0.147, H.z1 + 1.5, 0xf0d6b4);
     for (let x = H.x0; x <= H.x1; x += 6) {
       [H.z0, (H.z0 + H.z1) / 2, H.z1].forEach((z, i) => {
         if (x === 26 || (i === 1 && (x === H.x0 || x === H.x1))) return;
@@ -65,15 +70,15 @@
   function roofFrame(B, H, zm) {
     const h = H.h;
     for (let x = H.x0; x <= H.x1; x += 6)
-      B.box("paint", x, h + 0.12, zm, 0.2, 0.32, H.z1 - H.z0 + 3, 0x2f6b4a);
+      B.box("paint", x, h + 0.12, zm, 0.2, 0.32, H.z1 - H.z0 + 3, 0xf4f2ec);
     [H.z0, zm, H.z1].forEach((z) =>
-      B.box("paint", (H.x0 + H.x1) / 2, h + 0.1, z, H.x1 - H.x0 + 3, 0.28, 0.2, 0x2f6b4a),
+      B.box("paint", (H.x0 + H.x1) / 2, h + 0.1, z, H.x1 - H.x0 + 3, 0.28, 0.2, 0xf4f2ec),
     );
     for (let z = H.z0 - 1; z <= H.z1 + 1; z += 1.6) {
       const y =
         h + 0.3 + 1.7 * (1 - Math.min(1, Math.abs(z - zm) / ((H.z1 - H.z0) / 2 + 1.6))) * 0.95;
       if (Math.abs(z - zm) < 3.8) continue;
-      B.box("paint", (H.x0 + H.x1) / 2, y, z, H.x1 - H.x0 + 3, 0.08, 0.08, 0x3b5f4a);
+      B.box("paint", (H.x0 + H.x1) / 2, y, z, H.x1 - H.x0 + 3, 0.08, 0.08, 0xdedbd2);
     }
   }
 
@@ -117,7 +122,8 @@
     B.box("glass", xc - 0.6, 1.25, z1 - 0.35, 1.8, 0.5, 0.55);
     B.box("lamp", xc, 2.85, z0 + 1.6, 2.4, 0.05, 0.12, 0xffffff);
     B.aabb("paint", x0, 3.0, z1 - 0.1, x1, 3.9, z1, 0xf1ead8);
-    stallSigns(B, x0, x1, z0, st, idx, ctx);
+    if (P.HawkerDress) P.HawkerDress.stallFront(B, x0, x1, z0, z1, st, idx, ctx);
+    else stallSigns(B, x0, x1, z0, st, idx, ctx);
     return { x: xc, z: z1 + 0.9, counterZ: z1 };
   }
   /** Lit signboard (with the HALAL label), menu board and unit number plate. */
@@ -225,12 +231,18 @@
     B.aabb("metal", x - 1.2, 1.85, z - 6, x - 0.3, 1.9, z - 3.5, 0x9aa0a6);
   }
 
-  /** Table sets (drawn by Props from ctx.tables), avoiding the aisle to the stalls. */
-  function tables(H, ctx) {
+  /**
+   * Table sets (drawn by Trees.tables from ctx.tables), avoiding the aisle to the stalls; the
+   * stools are mostly green, a few orange, as in the reference photos.
+   */
+  function tables(B, H, ctx) {
+    let n = 0;
     [H.x0 + 3, H.x0 + 7.5, H.x1 - 7.5, H.x1 - 3].forEach((x) => {
-      [H.z0 + 6.4, H.z0 + 13.0, H.z0 + 17.2].forEach((z) =>
-        ctx.tables.push({ x, z, stone: false }),
-      );
+      [H.z0 + 6.4, H.z0 + 13.0, H.z0 + 17.2].forEach((z) => {
+        const t = { x, z, stone: false, stool: n++ % 3 === 2 ? 0xe8742c : 0x2e9e62 };
+        ctx.tables.push(t);
+        if (P.HawkerDress) P.HawkerDress.stoolFrame(B, t);
+      });
     });
   }
 
@@ -241,7 +253,8 @@
     shell(B, H, ctx);
     fans(B, H, out, ctx);
     out.spots = stalls(B, H, ctx.L, ctx);
-    tables(H, ctx);
+    tables(B, H, ctx);
+    if (P.HawkerDress) P.HawkerDress.hall(B, H, ctx);
     return out;
   }
 

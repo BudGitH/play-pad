@@ -118,12 +118,12 @@ test("the kampung's cars, bicycles and scooters are all vehicles, each in a free
     });
   });
   expect(stuck, "no parked vehicle inside a wall, prop or another vehicle").toEqual([]);
-  // each parked vehicle is solid: a collider the hero cannot walk through
+  // each parked vehicle is solid: ONE oriented-box collider the size of its body (AC-P12)
   const solid = await kq(
     page,
     () => window.KQ.Game.S.world.colliders.filter((c) => c.vehicle).length,
   );
-  expect(solid).toBe(52);
+  expect(solid).toBe(26);
 });
 
 test("beside a car the prompt says Drive, beside a bicycle Ride, and far away there is none", async () => {

@@ -11,9 +11,11 @@
  *   syncs the hero). Interact.find asks target(hero) for the Drive / Ride / Exit button.
  *   The pure rules (speeds, turning, braking, zones) are KQ.Sim.Vehicle; the meshes are
  *   KQ.Figures.Vehicles; spots and zones are vehicle-spots.js; the hum and horn vehicle-sound.js.
- * RULES: all movement ends in Collide.settle (two circles per vehicle); a parked vehicle is a
- *   collider (removed while it is driven); the hero is never settled against his own vehicle; a
- *   vehicle left far away goes back to its spot.
+ * RULES: all movement ends in Collide.settle (two circles per vehicle); a parked vehicle is ONE
+ *   oriented-box collider the size of its body (AC-P12: nobody walks through the middle of a car; it is
+ *   removed while the vehicle is driven); a driven vehicle stops when it touches a parked one; the hero
+ *   is never settled against his own vehicle; a vehicle left far away goes back to its spot. Every
+ *   vehicle sits on the plane through the ground under its wheels (AC-P11, Sim.Vehicle.groundPose).
  * DEPENDENCIES: collide.js, player.js, camera.js, ui-core.js (toast), hud.js (Jump label),
  *   vehicle-spots.js, vehicle-sound.js, KQ.Sim.Vehicle, KQ.Figures.Vehicles.
  * ========================================================================== */
@@ -38,6 +40,8 @@
   /** The Jump button's word while mounted, per kind. */
   const HORN_WORD = { car: "Honk", bike: "Ring", moto: "Beep" };
   const IDLE = { x: 0, y: 0, mag: 0, run: false };
+  /** A parked bicycle leans on its kickstand by this much (radians, toward its right, where the stand is). */
+  const STAND_LEAN = 0.1;
   const V = {
     list: [],
     mounted: null,
@@ -54,6 +58,7 @@
     seat: null,
     blocked: 0,
     braked: 0,
+    bumped: 0,
   };
 
   /* ------------------------------ setup ------------------------------ */
@@ -69,17 +74,30 @@
     return [-1, 1].map((k) => ({ x: v.sim.x + fx * r.off * k, z: v.sim.z + fz * r.off * k }));
   }
 
-  /** The collider boxes of a parked vehicle: a square around each ring circle. */
+  /** The oriented box of the body (the model's own footprint when it has one, else the spec's). */
+  function footprint(v) {
+    const f = v.mesh.foot;
+    const sim = v.sim;
+    if (!f) return SV().box(sim, 0);
+    const o = SV().box(sim, 0);
+    o.hx = f.hw;
+    o.hz = f.hl;
+    o.x = sim.x + Math.sin(sim.heading) * f.mid;
+    o.z = sim.z + Math.cos(sim.heading) * f.mid;
+    return o;
+  }
+
+  /** The collider of a parked vehicle: one oriented box the size of its body (AC-P12). */
   function boxesOf(v) {
-    const r = v.sim.spec.ring.r;
-    return rings(v).map((c) => ({
-      minX: c.x - r,
-      maxX: c.x + r,
-      minZ: c.z - r,
-      maxZ: c.z + r,
-      kind: v.kind,
-      vehicle: v.id,
-    }));
+    const b = G.Collide.orientedBox(footprint(v), v.kind);
+    b.vehicle = v.id;
+    return [b];
+  }
+
+  /** NPCs cache the colliders near them; make them look again after a vehicle moved. */
+  function refreshNear() {
+    const npcs = S().npcs;
+    if (npcs && npcs.agents) npcs.agents.forEach((A) => (A.nearAt = null));
   }
 
   /** Make a parked vehicle solid (the world colliders list is shared by hero, NPCs and camera). */
@@ -87,6 +105,7 @@
     unpark(v);
     v.boxes = boxesOf(v);
     v.boxes.forEach((b) => S().world.colliders.push(b));
+    refreshNear();
   }
 
   /** Take a vehicle's boxes out of the world (it is about to be driven). */
@@ -100,13 +119,78 @@
     v.boxes = null;
   }
 
-  /** Put a vehicle's mesh where its sim state is. */
+  /** Put a vehicle's mesh where its sim state is: on the ground under its wheels, leaning into a turn. */
   function syncMesh(v) {
     const g = v.mesh.group;
     g.position.set(v.sim.x, v.y, v.sim.z);
+    g.rotation.order = "YXZ";
     g.rotation.y = v.sim.heading;
-    g.rotation.z =
-      v.kind === "bike" ? -v.sim.steer * Math.min(1, Math.abs(v.sim.speed) / 4) * 0.22 : 0;
+    g.rotation.x = -v.pitch;
+    const turn =
+      v.kind === "car" ? 0 : -v.sim.steer * Math.min(1, Math.abs(v.sim.speed) / 4) * 0.22;
+    g.rotation.z = v.roll + turn + (v.lean || 0);
+  }
+
+  /** The ground pose under the wheels right now: {y, pitch, roll}. */
+  function poseNow(v) {
+    return SV().groundPose(v.sim, v.mesh.contacts, groundAt);
+  }
+
+  /** Snap a vehicle onto the ground under its wheels (parking, going home). */
+  function ground(v) {
+    const p = poseNow(v);
+    v.y = p.y;
+    v.pitch = p.pitch;
+    v.roll = p.roll;
+    KQ.Figures.Vehicles.suspend(v.mesh, p.off);
+  }
+
+  /** Does a tyre stand right on the edge of a kerb (the ground differs a few cm to either side of it)? */
+  function onEdge(v) {
+    const f = [Math.sin(v.sim.heading), Math.cos(v.sim.heading)];
+    const at = (p, d) =>
+      groundAt(
+        v.sim.x + f[0] * p.fwd + f[1] * (p.lat + d),
+        v.sim.z + f[1] * p.fwd - f[0] * (p.lat + d),
+      );
+    return v.mesh.contacts.some((p) => Math.abs(at(p, -0.07) - at(p, 0.07)) > 0.01);
+  }
+
+  /** Slide a vehicle parked astride a kerb edge sideways (a few cm at a time) until its tyres stand on one level. */
+  function offEdge(v) {
+    const sim = v.sim;
+    const x = sim.x;
+    const z = sim.z;
+    const side = [Math.cos(sim.heading), -Math.sin(sim.heading)];
+    for (let i = 1; i <= 10 && onEdge(v); i += 1) {
+      const d = (i % 2 ? 1 : -1) * Math.ceil(i / 2) * 0.08;
+      sim.x = x + side[0] * d;
+      sim.z = z + side[1] * d;
+      if (!bodyFree(v)) Object.assign(sim, { x, z });
+    }
+    if (onEdge(v)) Object.assign(sim, { x, z });
+  }
+
+  /** Is the whole body (both circles) clear of walls and other vehicles? */
+  function bodyFree(v) {
+    const cols = S().world.colliders;
+    const r = v.sim.spec.ring.r;
+    return rings(v).every((c) => !G.Collide.blockedAt(cols, c.x, c.z, r * 0.9));
+  }
+
+  /** Nudge a vehicle whose spot a wall or prop covers to the nearest place its whole body fits. */
+  function placeFree(v) {
+    const sim = v.sim;
+    const x = sim.x;
+    const z = sim.z;
+    for (let ring = 0; ring <= 12 && !bodyFree(v); ring += 1) {
+      for (let k = 0; k < 12; k += 1) {
+        sim.x = x + Math.cos((k / 12) * Math.PI * 2) * ring * 0.4;
+        sim.z = z + Math.sin((k / 12) * Math.PI * 2) * ring * 0.4;
+        if (bodyFree(v)) return;
+      }
+    }
+    if (!bodyFree(v)) Object.assign(sim, { x, z });
   }
 
   /**
@@ -117,13 +201,14 @@
     const sim = SV().create(spot.kind, spot.x, spot.z, spot.heading);
     const mesh = KQ.Figures.Vehicles.build(spot.kind, spot.color, spot);
     if (!sim || !mesh) return null;
-    const free = G.Collide.freeSpot(S().world.colliders, sim.x, sim.z, sim.spec.ring.r + 0.1);
-    sim.x = free.x;
-    sim.z = free.z;
     const v = { id: spot.kind + (V.list.length + 1), kind: spot.kind, sim, mesh, y: 0 };
+    v.pitch = v.roll = 0;
+    v.lean = spot.kind === "bike" ? STAND_LEAN : 0;
+    placeFree(v);
+    offEdge(v);
     v.style = mesh.style;
     v.home = { x: sim.x, z: sim.z, heading: sim.heading };
-    v.y = groundAt(sim.x, sim.z);
+    ground(v);
     S().scene.add(mesh.group);
     syncMesh(v);
     park(v);
@@ -145,7 +230,8 @@
   function peopleNear(x, z) {
     const s = S();
     const out = [];
-    const near = (p) => U.dist2(p.x, p.z, x, z) < 18 * 18;
+    const far = V.mounted ? Math.max(18, SV().lookAhead(V.mounted.sim.spec) + 3) : 18;
+    const near = (p) => U.dist2(p.x, p.z, x, z) < far * far;
     s.npcs.agents.forEach((A) => !A.hidden && A.group.visible && near(A) && out.push(A));
     if (s.crowd) s.crowd.members.forEach((m) => m.show > 0.3 && near(m) && out.push(m));
     return out;
@@ -180,19 +266,26 @@
     return null;
   }
 
-  /** Push the body out of walls with its two circles; returns how far it had to move (m). */
+  /**
+   * Push the body out of walls with its two circles; returns how far it had to move (m), the push (px, pz)
+   * and whether it touched another (parked) vehicle.
+   */
   function settleBody(v) {
     const r = v.sim.spec.ring;
     const cols = S().world.colliders;
-    let pushed = 0;
+    const out = { pushed: 0, vehicle: false, px: 0, pz: 0 };
     rings(v).forEach(function (c) {
+      const hit = G.Collide.blockedAt(cols, c.x, c.z, r.r);
+      if (hit && hit.vehicle) out.vehicle = true;
       const before = { x: c.x, z: c.z };
       G.Collide.settle(cols, c, r.r);
       v.sim.x += c.x - before.x;
       v.sim.z += c.z - before.z;
-      pushed += U.dist(before.x, before.z, c.x, c.z);
+      out.px += c.x - before.x;
+      out.pz += c.z - before.z;
+      out.pushed += U.dist(before.x, before.z, c.x, c.z);
     });
-    return pushed;
+    return out;
   }
 
   /** One short leg of movement: roll, stop gently at a zone, slide along walls (and lose a little speed). */
@@ -210,7 +303,17 @@
       note(hit.say);
       return;
     }
-    if (settleBody(v) > 0.01) sim.speed *= 0.82;
+    const touch = settleBody(v);
+    if (touch.vehicle && headOn(sim, touch)) {
+      sim.speed = 0; // a driven vehicle stops at another one (AC-P12); it never pushes it
+      V.bumped += 1;
+    } else if (touch.pushed > 0.01) sim.speed *= 0.82;
+  }
+
+  /** Was the push straight against the way it rolls (a bump, not a scrape it can steer out of)? */
+  function headOn(sim, touch) {
+    const along = touch.px * Math.sin(sim.heading) + touch.pz * Math.cos(sim.heading);
+    return along * Math.sign(sim.speed || 1) < -0.6 * touch.pushed;
   }
 
   /** Move the vehicle for dt in legs short enough not to skip a thin wall. */
@@ -230,9 +333,14 @@
     if (SV().brakeFor(sv, cap, dt)) V.braked += 1;
   }
 
-  /** Follow the terrain smoothly, like the hero does. */
+  /**
+   * Sit on the ground under the wheels every frame (height, pitch, roll). Not smoothed: a damped height sank
+   * the tyres 10 cm into a kerb for a few frames (AC-P11); the plane through the four contacts already turns
+   * a kerb into a gentle tilt as each wheel climbs it in turn. The stand lean fades once riding.
+   */
   function follow(v, dt) {
-    v.y = U.damp(v.y, groundAt(v.sim.x, v.sim.z), 18, dt);
+    ground(v);
+    v.lean = U.damp(v.lean || 0, 0, 8, dt);
   }
 
   /* ------------------------------ the rider ------------------------------ */
@@ -269,13 +377,24 @@
     G.Player.sync(P);
   }
 
-  /** Ease the camera further back (and a touch higher) the first moments of a ride. */
+  /**
+   * Ease the camera further back (and a touch higher) the first moments of a ride; then pull it a little
+   * further back as the vehicle speeds up (camFar at top speed, AC-P13) and swing it in behind the vehicle,
+   * keeping any zoom the player chose.
+   */
   function steerCamera(v, dt) {
     const C = G.Camera.state;
+    const spec = v.sim.spec;
+    const frac = U.clamp(Math.abs(v.sim.speed) / spec.maxFwd, 0, 1);
+    const extra = U.damp(V.cam.extra, spec.camFar * frac, 2, dt);
+    C.dist += extra - V.cam.extra;
+    V.cam.extra = extra;
+    if (C.idle > 0.8 && v.sim.speed > 1.5)
+      C.yaw = U.dampAngle(C.yaw, v.sim.heading, 1 + 2 * frac, dt);
     if (V.cam.eased) return;
-    C.dist = U.damp(C.dist, v.sim.spec.camDist, 3, dt);
-    C.pitch = U.damp(C.pitch, v.sim.spec.camPitch, 3, dt);
-    if (Math.abs(C.dist - v.sim.spec.camDist) < 0.1) V.cam.eased = true;
+    C.dist = U.damp(C.dist, spec.camDist + extra, 3, dt);
+    C.pitch = U.damp(C.pitch, spec.camPitch, 3, dt);
+    if (Math.abs(C.dist - spec.camDist - extra) < 0.1) V.cam.eased = true;
   }
 
   /* ------------------------------ get in / get out ------------------------------ */
@@ -298,7 +417,7 @@
     V.exiting = false;
     V.posed = false;
     KQ.Figures.Vehicles.setOccupied(v.mesh, true);
-    V.cam = { eased: false, dist: G.Camera.state.dist, pitch: G.Camera.state.pitch };
+    V.cam = { eased: false, extra: 0, dist: G.Camera.state.dist, pitch: G.Camera.state.pitch };
     s.player.group.visible = true;
     G.Player.place(s.player, v.sim.x, v.sim.z, v.sim.heading, groundAt);
     v.sim.speed = 0;
@@ -338,6 +457,8 @@
     V.mounted = null;
     V.exiting = false;
     v.sim.speed = 0;
+    v.lean = v.kind === "bike" ? STAND_LEAN : 0;
+    syncMesh(v);
     KQ.Figures.Vehicles.setOccupied(v.mesh, false);
     if (placeHero) {
       const p = pickExit(v);
@@ -446,7 +567,8 @@
     v.sim.heading = v.home.heading;
     v.sim.speed = 0;
     v.sim.steer = 0;
-    v.y = groundAt(v.sim.x, v.sim.z);
+    v.lean = v.kind === "bike" ? STAND_LEAN : 0;
+    ground(v);
     syncMesh(v);
     park(v);
   }
@@ -515,6 +637,7 @@
       zones: V.zones.length,
       blocked: V.blocked,
       braked: V.braked,
+      bumped: V.bumped,
       sound: G.VehicleSound.debug(),
       list: V.list.map((v) => ({
         id: v.id,
@@ -529,8 +652,30 @@
     };
   }
 
+  /**
+   * Test hook (AC-P11): for each vehicle, the worst gap between the bottom of a tyre and the ground height under
+   * it (m; > 0 hovers, < 0 sinks): each tyre's lowest point is carried through the drawn wheel pivot's transform
+   * (body pose, suspension and steering included); the ground under it is the highest in its footprint
+   * (Sim.Vehicle.groundUnder: on a kerb's edge the tyre stands on the kerb).
+   */
+  function groundGaps() {
+    const p = new THREE.Vector3();
+    return V.list.map(function (v) {
+      v.mesh.group.updateMatrixWorld(true);
+      let worst = 0;
+      v.mesh.feet.forEach(function (f) {
+        p.set(f.at[0], f.at[1], f.at[2]);
+        f.pivot.localToWorld(p);
+        const gap = p.y - SV().groundUnder(groundAt, p.x, p.z);
+        if (Math.abs(gap) > Math.abs(worst)) worst = gap;
+      });
+      return { id: v.id, kind: v.kind, gap: Number(worst.toFixed(3)) };
+    });
+  }
+
   G.Vehicles = {
     update,
+    groundGaps,
     target,
     press,
     horn,

@@ -1,8 +1,10 @@
 // Kampung Quest — the cars, bicycles and scooters the hero can drive and ride (AC-H6). The shapes come from
 // vehicle-car-geo.js (five car styles) and vehicle-two-wheel-geo.js (bicycle, scooter); this file dresses them
 // with materials, adds the wheels and the steering end, and animates them. Geometries and materials are cached
-// and shared by every vehicle, so a car is 8 draw calls (body, trim, glass, lamps, steering wheel, 4 wheels), a
-// bicycle 5 and a scooter 7. Local frame: the vehicle faces +z, its left is +x, the origin is on the ground in
+// and shared by every vehicle, so a car is 10 draw calls (body, roof, trim, glass, lamps, steering wheel, two front
+// wheels, the rear axle's pair of wheels, the ground blob), a bicycle 6 and a scooter 7. Each record also carries
+// `contacts` (where the tyres touch the ground, {fwd, lat}, for Sim.Vehicle.groundPose: AC-P11) and `foot` (the
+// body's footprint {mid, hl, hw}, the parked collider: AC-P12). Local frame: the vehicle faces +z, its left is +x, the origin is on the ground in
 // the middle of the wheelbase.
 //   F.Vehicles.build(kind, colourHex, {style, lhd}) -> { group, kind, style, seatX, wheels, pivots, ... }
 //   F.Vehicles.animate(v, dt, speed, steer)          wheels roll, the front end steers
@@ -50,6 +52,7 @@
     cache.w = {
       steer: P.steering(),
       car: P.carWheel(WHEEL_R.car, 0.2),
+      axles: {},
     };
     return cache.w;
   }
@@ -64,16 +67,33 @@
 
   /** The paint material for a body colour. */
   function paintMat(hex) {
-    return new THREE.MeshStandardMaterial({ color: hex, roughness: 0.4, metalness: 0.25 });
+    return new THREE.MeshStandardMaterial({ color: hex, roughness: 0.3, metalness: 0.2 });
+  }
+
+  /** The rear pair of a car's wheels as one mesh (cached per track width). */
+  function axleGeo(x) {
+    const w = wheelGeos();
+    const key = x.toFixed(3);
+    if (!w.axles[key]) w.axles[key] = F.VehicleParts.carAxle(WHEEL_R.car, 0.2, x);
+    return w.axles[key];
+  }
+
+  /** The shared blob shadow plane of a footprint (cached by size). */
+  function blobFor(w, d) {
+    return F.VehicleParts.blob(w, d);
   }
 
   /** A fresh vehicle record around a group. */
   function record(kind, group, style) {
-    return { group, kind, style, wheels: [], pivots: [], steering: null, rolled: 0, seatX: 0 };
+    const v = { group, kind, style, wheels: [], pivots: [], steering: null, rolled: 0, seatX: 0 };
+    v.contacts = [];
+    v.feet = [];
+    v.foot = null;
+    return v;
   }
 
   /** Put one wheel on a group (a steering one sits in a pivot that turns). */
-  function addWheel(v, parent, geo, at, steers) {
+  function addWheel(v, parent, geo, at, steers, sides) {
     const pivot = new THREE.Group();
     pivot.position.set(at[0], at[1], at[2]);
     // the body's shadow is enough; wheels would double the shadow pass
@@ -81,6 +101,9 @@
     parent.add(pivot);
     v.wheels.push(pivot.children[0]);
     if (steers) v.pivots.push(pivot);
+    // where each tyre touches the ground, in the pivot's frame (an axle mesh has a tyre on each side)
+    (sides || [0]).forEach((x) => v.feet.push({ pivot, at: [x, -at[1], 0] }));
+    return pivot;
   }
 
   /** The steering wheel, tilted toward the driver, on the driver's side. */
@@ -107,9 +130,13 @@
     v.seatX = geo.driverX;
     addSteering(v, v.seatX);
     const x = geo.width / 2 - WHEEL_INSET;
-    [-1, 1].forEach((s) =>
-      geo.axles.forEach((z) => addWheel(v, group, wheelGeos().car, [s * x, 0.3, z], z > 0)),
-    );
+    const [front, rear] = geo.axles;
+    [-1, 1].forEach((s) => addWheel(v, group, wheelGeos().car, [s * x, WHEEL_R.car, front], true));
+    v.axle = addWheel(v, group, axleGeo(x), [0, WHEEL_R.car, rear], false, [-x, x]);
+    v.track = x;
+    v.contacts = [front, rear].flatMap((z) => [-1, 1].map((s) => ({ fwd: z, lat: s * x })));
+    v.foot = { mid: geo.mid, hl: geo.length / 2 + 0.02, hw: geo.width / 2 + 0.01 };
+    group.add(blobFor(geo.width + 0.5, geo.length + 0.5));
     return v;
   }
 
@@ -125,9 +152,16 @@
     const fork = new THREE.Group();
     fork.position.set(0, 0, geo.pivotZ);
     fork.add(mesh(geo.fork, m.trim, "fork", false));
-    addWheel(v, fork, geo.wheel, [0, geo.wheelY, 0], false);
+    addWheel(v, fork, geo.wheel, [0, geo.wheelY, geo.frontZ - geo.pivotZ], false);
     group.add(fork);
     v.pivots.push(fork);
+    v.contacts = [
+      { fwd: geo.frontZ, lat: 0 },
+      { fwd: geo.rearZ, lat: 0 },
+    ];
+    v.fork = { z: geo.pivotZ, reach: geo.frontZ - geo.pivotZ };
+    v.foot = geo.foot;
+    group.add(blobFor(geo.foot.hw * 2 + 0.3, geo.foot.hl * 2 + 0.3));
     return v;
   }
 
@@ -158,6 +192,21 @@
     return null;
   }
 
+  /**
+   * A touch of suspension (AC-P11): `off` is how far the ground under each contact lies above (+) or below (-)
+   * the plane the body sits on, in the order of `contacts` (car: front right, front left, rear right, rear
+   * left). Each front wheel drops or lifts on its own, the rear axle tilts, so all four tyres touch a kerb.
+   * Two-wheelers rest on both tyres already (two points always fit a plane).
+   */
+  function suspend(v, off) {
+    if (v.kind !== "car" || !off || off.length !== 4) return;
+    const c = (k) => Math.max(-0.12, Math.min(0.12, off[k] || 0));
+    v.pivots[0].position.y = WHEEL_R.car + c(0);
+    v.pivots[1].position.y = WHEEL_R.car + c(1);
+    v.axle.position.y = WHEEL_R.car + (c(2) + c(3)) / 2;
+    v.axle.rotation.z = Math.atan2(c(3) - c(2), 2 * v.track);
+  }
+
   /** Roll the wheels by the distance travelled and turn the front end (steer > 0 = right). */
   function animate(v, dt, speed, steer) {
     v.rolled += (speed * dt) / WHEEL_R[v.kind];
@@ -165,7 +214,12 @@
     const yaw = -steer * STEER_LOCK[v.kind];
     v.pivots.forEach((p) => (p.rotation.y = yaw));
     if (v.steering) v.steering.rotation.z = -steer * 1.4;
+    if (v.fork) {
+      // the front tyre swings round the head tube as it steers; keep its ground contact where it really is
+      v.contacts[0].fwd = v.fork.z + v.fork.reach * Math.cos(yaw);
+      v.contacts[0].lat = v.fork.reach * Math.sin(yaw);
+    }
   }
 
-  F.Vehicles = { build, animate, setOccupied, SEAT, WHEEL_R, STYLES: () => Cars().STYLES };
+  F.Vehicles = { build, animate, suspend, setOccupied, SEAT, WHEEL_R, STYLES: () => Cars().STYLES };
 })((window.KQ = window.KQ || {}));

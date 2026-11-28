@@ -92,13 +92,13 @@
   /** A rabbit-ear mirror on a curved arm at the front corner (k = side). */
   function busMirror(k) {
     const arm = [
-      [k * 1.12, 2.7, BUS.zf - 0.1],
-      [k * 1.3, 2.75, BUS.zf + 0.25],
-      [k * 1.25, 2.4, BUS.zf + 0.45],
+      [k * 1.12, 2.45, BUS.zf - 0.1],
+      [k * 1.3, 2.5, BUS.zf + 0.25],
+      [k * 1.25, 2.15, BUS.zf + 0.45],
     ];
     return [
       P.bent(arm, 0.025, BLACK, 10),
-      P.lens(0.12, 0.34, 0.06, [k * 1.25, 2.2, BUS.zf + 0.45], BLACK),
+      P.lens(0.12, 0.34, 0.06, [k * 1.25, 1.95, BUS.zf + 0.45], BLACK),
     ];
   }
 
@@ -152,8 +152,8 @@
 
   /** The destination sign's face (a canvas: amber letters on black), front and left side. */
   function busSign() {
-    const front = new THREE.PlaneGeometry(1.7, 0.32);
-    front.translate(0, BUS.roof - 0.6, BUS.zf + 0.19);
+    const front = new THREE.PlaneGeometry(1.5, 0.28);
+    front.translate(0, BUS.roof - 0.38, BUS.zf + 0.12); // above the mirrors, so nothing hides its text
     const side = new THREE.PlaneGeometry(1.2, 0.26).rotateY(PI / 2);
     side.translate(BUS.w / 2 + 0.04, 2.75, BUS.zf - 2.2);
     return [front, side];

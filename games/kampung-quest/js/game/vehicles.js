@@ -199,7 +199,8 @@
    */
   function spawn(spot) {
     const sim = SV().create(spot.kind, spot.x, spot.z, spot.heading);
-    const mesh = KQ.Figures.Vehicles.build(spot.kind, spot.color, spot);
+    const low = S().quality === "low"; // the low tier builds lighter cars (fewer segments, fewer calls)
+    const mesh = KQ.Figures.Vehicles.build(spot.kind, spot.color, Object.assign({ low }, spot));
     if (!sim || !mesh) return null;
     const v = { id: spot.kind + (V.list.length + 1), kind: spot.kind, sim, mesh, y: 0 };
     v.pitch = v.roll = 0;
@@ -218,10 +219,26 @@
 
   /** Build the parked vehicles once the world exists (lazily, from the first update). */
   function ensure() {
+    prepare(null);
+  }
+
+  /**
+   * Place every vehicle (and the bus). Boot calls it with KQ.Game.Defer while the loading bar runs, so the
+   * placing (about half a second on an iPad-class CPU) never lands in the Start tap: one job per vehicle.
+   * Without a queue (a page that skipped boot's call) it places them at once, from the first update.
+   * Either way it happens before the crowd's first update, whose CrowdZones.prune drops slots they cover.
+   */
+  function prepare(defer) {
     const s = S();
     if (V.ready || !s || !s.world || !s.scene) return;
     V.ready = true;
-    G.VehicleSpots.spots().forEach(spawn);
+    const spots = G.VehicleSpots.spots();
+    if (!defer) {
+      spots.forEach(spawn);
+      return;
+    }
+    spots.forEach((spot) => defer.add(() => void spawn(spot), "vehicle " + spot.kind));
+    if (G.Bus) defer.add(() => G.Bus.update(0), "bus");
   }
 
   /* ------------------------------ who is around ------------------------------ */
@@ -678,6 +695,7 @@
 
   G.Vehicles = {
     update,
+    prepare,
     groundGaps,
     target,
     press,

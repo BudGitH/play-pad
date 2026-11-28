@@ -15,20 +15,23 @@
   const PI = Math.PI;
   const MASJID = "Let's walk inside the masjid";
   /**
-   * Car looks: a body style and a colour. The kampung mixes bright hatchbacks, sedans, taxis, an SUV and an MPV;
-   * Makkah and Madinah are mostly white, silver and black (white taxis, SUVs, family MPVs) with the odd gold car.
+   * Car looks: a body style and a colour. The kampung follows Singapore's streets
+   * (features/kampung-quest-playability/sg-cars-reference.md): mostly compact sedans and compact SUVs, an MPV, a
+   * hatchback and two taxis (plain two-tone livery, "TAXI" roof sign; the spot colour is not used for them), in
+   * white, silver, grey and black with one dark blue and one deep red. Makkah and Madinah are mostly white, silver
+   * and black (white taxis, SUVs, family MPVs) with the odd gold car.
    */
   const KAMPUNG_LOOKS = [
-    { style: "hatch", color: 0xd0453a },
+    { style: "sedan", color: 0xf1f1ee },
+    { style: "suv", color: 0x8e9399 },
     { style: "sedan", color: 0xc8ccd0 },
-    { style: "hatch", color: 0x2a3c5c },
-    { style: "suv", color: 0xb02a2a },
-    { style: "taxi", color: 0xf2f2f0 },
+    { style: "taxi", color: 0xf4f4f0 },
+    { style: "hatch", color: 0x7a1f26 },
     { style: "sedan", color: 0x1d1d1f },
-    { style: "mpv", color: 0x5a7d9a },
-    { style: "hatch", color: 0x2f9d8f },
-    { style: "taxi", color: 0xe8b818 },
-    { style: "sedan", color: 0x2f6fb0 },
+    { style: "mpv", color: 0xe9e9e6 },
+    { style: "suv", color: 0x2a2d33 },
+    { style: "taxi", color: 0xf4f4f0 },
+    { style: "sedan", color: 0x23395b },
   ];
   const HOLY_LOOKS = [
     { style: "taxi", color: 0xf4f3ee },

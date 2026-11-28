@@ -18,6 +18,21 @@
   const PI = Math.PI;
   const UP = new THREE.Vector3(0, 1, 0);
   const TYRE = "#26272c";
+  /**
+   * Level of detail for the geometry built next (1 = full; the low quality tier builds its vehicles at about
+   * 0.55, fewer segments on every curve, so a car stays near 8k triangles). Set with setDetail, read by seg().
+   */
+  const LOD = { k: 1 };
+
+  /** A segment count scaled by the current level of detail, never below `min`. */
+  const seg = (n, min) => Math.max(min || 3, Math.round(n * LOD.k));
+
+  /** Build the next geometries at this level of detail (1 full, under 1 fewer segments); returns the old one. */
+  function setDetail(k) {
+    const old = LOD.k;
+    LOD.k = Number.isFinite(k) ? Math.max(0.3, Math.min(1, k)) : 1;
+    return old;
+  }
 
   /** Paint a geometry one flat colour as it is (no sRGB conversion, to match the world's materials). */
   function paint(g, hex) {
@@ -43,7 +58,7 @@
   function rod(a, b, r, hex, sides) {
     const from = new THREE.Vector3(a[0], a[1], a[2]);
     const dir = new THREE.Vector3(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
-    const g = paint(new THREE.CylinderGeometry(r, r, dir.length(), sides || 8, 1), hex);
+    const g = paint(new THREE.CylinderGeometry(r, r, dir.length(), seg(sides || 8, 4), 1), hex);
     g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(UP, dir.clone().normalize()));
     g.translate(from.x + dir.x / 2, from.y + dir.y / 2, from.z + dir.z / 2);
     return g;
@@ -58,7 +73,7 @@
 
   /** A painted cylinder of radius r, length len, lying along an axis ("x" | "y" | "z"), centred on p. */
   function drum(axis, r, len, p, hex, sides) {
-    const g = paint(new THREE.CylinderGeometry(r, r, len, sides || 10, 1), hex);
+    const g = paint(new THREE.CylinderGeometry(r, r, len, seg(sides || 10, 6), 1), hex);
     if (axis === "x") g.rotateZ(PI / 2);
     if (axis === "z") g.rotateX(PI / 2);
     return g.translate(p[0], p[1], p[2]);
@@ -84,8 +99,8 @@
       bevelEnabled: true,
       bevelThickness: b,
       bevelSize: b,
-      bevelSegments: bevelSegs || 2,
-      curveSegments: segs || 6,
+      bevelSegments: seg(bevelSegs || 2, 1),
+      curveSegments: seg(segs || 6, 3),
     });
     g.translate(0, 0, -(width - 2 * b) / 2);
     g.rotateY(-PI / 2);
@@ -172,7 +187,7 @@
 
   /** A painted ellipsoid (lamp lens, mirror shell, saddle, headlight cowl) of size w, h, d centred on p. */
   function lens(w, h, d, p, hex, rot, segs) {
-    const n = segs || 8;
+    const n = seg(segs || 8, 6);
     const g = new THREE.SphereGeometry(0.5, n, Math.max(6, Math.round(n * 0.6)));
     return G.place(paint(g, hex), p, rot || [0, 0, 0], [w, h, d]);
   }
@@ -182,7 +197,7 @@
     const curve = new THREE.CatmullRomCurve3(
       points.map((p) => new THREE.Vector3(p[0], p[1], p[2])),
     );
-    return paint(new THREE.TubeGeometry(curve, segs || 10, r, 6, false), hex);
+    return paint(new THREE.TubeGeometry(curve, seg(segs || 10, 4), r, seg(6, 4), false), hex);
   }
 
   /** 0 below a, 1 above b, a smooth S between. */
@@ -193,7 +208,7 @@
 
   /** Half a ring (the upper half of a thin torus in the y-z plane) of radius r round (y, z), at side x. */
   function halfRing(x, y, z, r, thick, hex) {
-    const g = new THREE.TorusGeometry(r, thick, 5, 14, PI).rotateY(PI / 2);
+    const g = new THREE.TorusGeometry(r, thick, seg(5, 3), seg(14, 8), PI).rotateY(PI / 2);
     return paint(g, hex).translate(x, y, z);
   }
 
@@ -220,7 +235,7 @@
   /** The pieces of one car wheel centred on x: a fat tyre with a sidewall, a pale alloy rim, five spokes, a hub. */
   function carWheelParts(r, width, x) {
     const tube = 0.1;
-    const tyre = new THREE.TorusGeometry(r - tube, tube, 6, 20).rotateY(PI / 2);
+    const tyre = new THREE.TorusGeometry(r - tube, tube, seg(6, 4), seg(20, 12)).rotateY(PI / 2);
     const parts = [G.place(paint(tyre, TYRE), [x, 0, 0], [0, 0, 0], [width / (2 * tube), 1, 1])];
     parts.push(drum("x", r * 0.66, width * 0.8, [x, 0, 0], "#c9ccd2", 16));
     parts.push(drum("x", r * 0.5, width * 0.84, [x, 0, 0], "#3b3e45", 16));
@@ -321,6 +336,8 @@
 
   F.VehicleParts = {
     steering,
+    setDetail,
+    detail: () => LOD.k,
     paint,
     block,
     box,

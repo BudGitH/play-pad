@@ -14,6 +14,20 @@ For the orchestrator to fold into the brain docs (ARCHITECTURE, LEARNINGS, DECIS
 | Lorry (owner) | Small canopy lorry: blue cab-over cab, tray with drop sides, green canvas canopy on a rounded section, dual rear wheels; drivable (`kind: "lorry"`, label Drive, pose drive, horn Honk), 9.6 m/s. Parked kerbside on the E-W road's north side in front of the hawker centre / minimart: (36.5, -2.5), facing east. | `vehicle-big-geo.js`, `vehicle-spots.js`, `vehicles.js` |
 | Kerbside cars | The three E-W road kerbside cars moved from z = +-2.0/2.1 to +-2.6 so the bus passes them (car1 (-22, 2.6), car9 (60, 2.6), car10 (-62, -2.6)). | `vehicle-spots.js` |
 
+## Fix round 2 (after the screenshot review and the owner's "real Singapore cars")
+
+- **Roof bug.** The roof cap was a thin shell only about 0.5 m long, so the car read as an open frame. It is now the cabin's own outline cut 8 cm under the roof line. Points below the cut are pulled onto the windscreen and rear-glass lines (`cutSpan`), so the cap covers the glass exactly. It is solid on every parked car and fades only on the car being driven (spec asserts this).
+- **Fronts.** Flatter bonnet, small nose radius, bumper with a lip, straight boot deck, crisper shoulder (bevel 0.035, crease angle 34 degrees, less tuck), more raked windscreen with tighter roof corners.
+- **Singapore look** (`sg-cars-reference.md`): kampung mix of sedans, SUVs, an MPV, a hatch and 2 taxis, in white, silver, grey, black, dark blue and deep red. Singapore plates front and rear: black plates on sedans, taxis and the MPV; white-front / yellow-rear on the hatch and SUVs. Taxis have a two-tone teal/white livery and a "TAXI" sign. Haramain cars keep their looks with plain white plates.
+- **Low-tier LOD** (`VehicleParts.setDetail`, `S.quality === "low"` when spawning): car ~6.3k triangles, down from 9.9k. On the low tier the lamps merge into the trim, and only the body casts a shadow (cars, two-wheelers, lorry).
+- **Placed at boot.** `Vehicles.prepare(G.Defer)` is called in `boot.js` `buildActors`, queuing one job per vehicle plus one for the bus. The texture-upload drain runs them behind the loading bar, so they are placed before Start and before the crowd's first update and prune. `ensure()` falls back to placing them at once.
+- **Bus sign.** The sign now sits above the mirrors, the mirrors are lowered, and the text fits. The earlier "clipping" in the shot was a lamp post in front of the camera.
+- **Numbers (low tier, incl. shadows).**
+  - Kampung vehicles street view: 260 -> 230 calls.
+  - Bus-stop view at the old camera angle: 394 with the bus, 387 without. Second angle: 367 / 359. Was 406 / 399.
+  - Haramain view: 149 -> 138.
+  - Per model: car 9 meshes / ~6.4k triangles (low), bus 6 meshes / 5.8k.
+
 ## Measured
 
 - Wheel-to-ground gap (tyre bottom through the drawn wheel pivots vs ground under it): every parked vehicle within 3 cm in both regions; driven car / bike / scooter (kampung, across kerbs) and car / scooter (Makkah) within 3 cm.

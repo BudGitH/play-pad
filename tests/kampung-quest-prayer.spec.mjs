@@ -92,22 +92,25 @@ async function checkPromptZone(page) {
   await step(page, 400);
   const far = (await state(page)).target;
   expect(far, "a prompt inside the hall").toMatchObject({ id: "prayer_spot", enabled: true });
-  expect(far.label).toBe("Sunat prayer");
-  await expect(page.locator(".kq-talk")).toHaveAttribute("aria-label", "Sunat prayer (2 raka'at)");
+  expect(far.label, "one plain word on the button (no 'Sunat')").toBe("Pray");
+  await expect(page.locator(".kq-talk")).toHaveAttribute("aria-label", "Pray");
   await kq(page, () => window.__kq.place(-20, -15, 0));
   await step(page, 400);
   expect((await state(page)).target?.id ?? null).not.toBe("prayer_spot");
 }
 
-/** Pressing Pray before wudu gives a kind hint, starts no flow and leads to the taps. */
+/** Pressing Pray in the hall before wudu takes wudu first, right there (one path, no second prompt). */
 async function checkNeedsWuduFirst(page) {
   await kq(page, () => window.__kq.place(-36, -40, -Math.PI / 2));
   await step(page, 400);
   await page.keyboard.press("e");
   await step(page, 300);
+  await expect(page.getByRole("dialog", { name: "Wudu steps" })).toBeVisible();
   const st = await state(page);
-  expect(st.prayer.flow, "no flow until wudu begins").toBeNull();
-  expect(st.ui.guideDest).toBe("mosque_wudu");
+  expect(st.prayer.flow).toMatchObject({ name: "sunat", phase: "wudu" });
+  await page.keyboard.press("Escape"); // "Not now": the optional prayer ends, nothing is owed
+  await expect(page.getByRole("dialog", { name: "Wudu steps" })).toBeHidden();
+  expect((await state(page)).prayer.flow).toBeNull();
 }
 
 /** Praise card of a finished sunat prayer: no coins; closing it releases the hero. */
@@ -118,16 +121,14 @@ async function closeSunatCard(page) {
   await card.getByRole("button", { name: "Alhamdulillah" }).click();
 }
 
-/** The first sunat prayer, end to end through the UI: wudu at the taps, then 2 raka'at in the hall. */
+/** The first sunat prayer, end to end through the UI: one Pray press at the taps, wudu, then 2 raka'at in the same place. */
 async function prayFirstSunat(page) {
   await kq(page, () => window.__kq.teleport("mosque_wudu"));
+  await step(page, 300);
+  expect((await state(page)).target.label).toBe("Pray");
   await page.keyboard.press("e");
   await doWudu(page);
   expect((await state(page)).prayer.flow).toMatchObject({ name: "sunat", kind: "sunat" });
-  await kq(page, () => window.__kq.teleport("mosque_hall"));
-  await step(page, 300);
-  expect((await state(page)).target.label).toBe("Sunat prayer");
-  await page.keyboard.press("e");
   const panel = page.getByRole("dialog", { name: "Prayer steps" });
   await expect(panel).toBeVisible();
   await expect(panel).toContainText("Sunat prayer · raka'at 1 of 2");
@@ -177,11 +178,19 @@ async function checkFardWins(page) {
   expect(sunat, "the sim refuses a sunat flow over a running Zohor").toBe(false);
 }
 
-/** Wudu done for a sunat prayer, the hero left standing at the taps: a flow with no screen open. */
+/**
+ * Wudu done for a sunat prayer, the hero left standing at the taps: a flow with no screen open. The
+ * Pray button now opens the prayer straight after wudu, so this state is made through the sim (it
+ * still exists: a saved game, a closed screen) to keep the "a fard prayer outranks it" rules covered.
+ */
 async function startIdleSunat(page) {
-  await kq(page, () => window.__kq.teleport("mosque_wudu"));
-  await page.keyboard.press("e");
-  await doWudu(page);
+  await kq(page, () => {
+    window.__kq.teleport("mosque_wudu");
+    const prayer = window.KQ.Game.S.sim.prayer;
+    prayer.startFlow("sunat");
+    for (let s = prayer.nextWuduStep(); s; s = prayer.nextWuduStep()) prayer.wuduStep(s.id);
+  });
+  await step(page, 300);
   await expect(page.getByRole("dialog", { name: "Wudu steps" })).toBeHidden();
   const st = await state(page);
   expect(st.prayer.flow).toMatchObject({ name: "sunat", phase: "pray" });

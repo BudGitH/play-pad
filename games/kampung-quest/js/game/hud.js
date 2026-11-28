@@ -4,8 +4,9 @@
  *          five-prayer strip (icons only on a phone; the whole card is the Pray button), picture
  *          mission card (a one-line chip on a phone), a two-button dock (Missions, Bag), coins,
  *          sound and Pause (top-right corner), a GTA-style round radar (a tap opens the full Map)
- *          with the food / energy bars hanging under it, joystick (push to the rim to run) + Jump,
- *          and the floating Talk button.
+ *          with the food / energy bars hanging under it (the Tired bar is a Rest button), joystick
+ *          (push to the rim to run) + Jump, and the Action control (action-bar.js, id kqTalk) in
+ *          its fixed place above Jump.
  *          One control per action: Map = the radar, Pray = the prayer-time card, Pause = the corner
  *          button, so the dock holds only the two menus that have no other home; there is no Run
  *          button; the keyboard hints do not repeat the Pause button (shortcuts M, P, J, B, Esc).
@@ -230,7 +231,7 @@
    * Build the food and energy bars that hang under the radar. One element, one spoken label (the
    * numbers and the low notes), so a screen reader gets a sentence, not four fragments.
    */
-  function buildNeeds() {
+  function buildNeeds(on) {
     R.needs = U.el(
       "div",
       {
@@ -243,6 +244,7 @@
       needRow("food", "bowl", "Food"),
       needRow("energy", "bolt", "Energy"),
     );
+    bindPress(R.needs, () => R.needs.classList.contains("is-rest") && on("rest"));
     return R.needs;
   }
 
@@ -281,7 +283,7 @@
     );
     R.dockBtns.pause = R.pause;
     R.trRow = U.el("div", { cls: "kq-tr-row" }, R.coins, R.mute, R.pause);
-    R.topright = U.el("div", { cls: "kq-topright" }, R.trRow, buildRadar(on), buildNeeds());
+    R.topright = U.el("div", { cls: "kq-topright" }, R.trRow, buildRadar(on), buildNeeds(on));
     return R.topright;
   }
 
@@ -325,28 +327,10 @@
     );
   }
 
-  /** Build the floating Talk / interact button, hidden until something is within reach. */
-  function buildTalk(on) {
-    R.talkLabel = U.el("span", { cls: "kq-talk-label", text: "Talk" });
-    R.talkKey = U.el("kbd", { text: "E" });
-    R.talk = U.el(
-      "button",
-      {
-        type: "button",
-        cls: "kq-talk",
-        id: "kqTalk",
-        hidden: true,
-        on: { click: () => on("interact") },
-      },
-      P().icon("talk", "kq-ic-xl"),
-      U.el("span", { cls: "kq-talk-row" }, R.talkLabel, R.talkKey),
-    );
-    return R.talk;
-  }
-
   /** Build the HUD into `host`. on(action) receives dock / button actions. */
   function build(host, on) {
-    host.appendChild(buildTalk(on));
+    host.appendChild(G.ActionBar.build(on));
+    host.appendChild(G.Hud.refs.pointer);
     R.tl = U.el("div", { cls: "kq-tl" }, buildStatus(on), buildMission());
     host.appendChild(R.tl);
     host.appendChild(buildDock(on));

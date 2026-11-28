@@ -101,6 +101,7 @@
       muted: G.Audio.isMuted(),
       quality: s.quality,
       target: targetInfo(s.target),
+      targets: (s.targets || []).map(targetInfo), // the chooser: first = the big button, then tiles 2 and 3
       ui: uiInfo(),
       audio: G.Audio.debug(),
       reduced: G.Settings.reduced(),
@@ -205,6 +206,7 @@
     hi: () => G.Hi.debug(),
     kidChance: (p) => G.Hi.setKidChance(p),
     events: () => G.WorldEvents.debug(),
+    say: () => (started() ? G.Say.log() : []), // the action hints spoken so far (G.Say)
     forceEvent: (id) => (started() ? G.WorldEvents.force(id) : false),
     stopEvent: () => G.WorldEvents.stop(),
     lifeChip: () => G.LifeChip.debug(),

@@ -148,7 +148,7 @@
     focusDockButton(id);
     if (id === "missions") G.Screens.missions(ctxFor());
     else if (id === "map") openMap();
-    else if (id === "pray") G.PrayerFlow.openDayCard();
+    else if (id === "pray") G.PrayerFlow.pressPray();
     else if (id === "rites") G.RitualFlow.openMenu();
     else if (id === "bag") openBag();
     else if (id === "pause") openPause();
@@ -168,7 +168,8 @@
   function tileKey(n) {
     if (G.PrayerFlow.pickTile(n)) return;
     const tiles = G.UI.state.sheet && G.UI.state.sheet.querySelectorAll(".kq-tile");
-    if (tiles && tiles[n]) tiles[n].click();
+    if (tiles && tiles[n]) return void tiles[n].click();
+    if (!G.UI.modalOpen()) G.ActionBar.pick(n + 1); // walking about: 1 = the big Action button, 2 and 3 = its tiles
   }
 
   /** Handle a named action from a button, shortcut or test hook. */
@@ -183,6 +184,7 @@
     if (G.UI.modalOpen() && name !== "mute") return;
     if (name === "interact") return G.Interact.activate(S().target);
     if (name === "mute") return setMuted(!G.Audio.isMuted());
+    if (name === "rest") return G.Services.tiredRest();
     if (name === "jump")
       return G.Vehicles.mounted()
         ? G.Vehicles.horn()

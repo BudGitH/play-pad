@@ -380,7 +380,7 @@ test("phone landscape (touch): Drive, Exit and Honk fit, and the joystick drives
   await talk.tap();
   await step(ph, 2000); // the get-in scene (vehicle-enter.js) plays first
   expect((await veh(ph)).mounted).toBe("car1");
-  await expect(talk).toContainText("Exit");
+  await expect(talk).toContainText("Get off");
   await expect(talk).toBeInViewport({ ratio: 1 });
   const jump = ph.locator("#kqJump");
   await expect(jump).toContainText("Honk");

@@ -240,6 +240,35 @@
     return { shown: placed, hidden: list.slice(MAX_SHOWN) };
   }
 
+  /**
+   * The Action control's box in stage pixels (null when it is hidden): a bubble never sits on it, so
+   * "Say hi" or a hawker's bubble cannot cover the one big button.
+   */
+  function actionBox(s) {
+    const R = G.Hud.refs;
+    if (!R.action || R.talk.hidden) return null;
+    const a = R.action.getBoundingClientRect();
+    const o = s.root.getBoundingClientRect();
+    return {
+      left: a.left - o.left,
+      right: a.right - o.left,
+      top: a.top - o.top,
+      bottom: a.bottom - o.top,
+    };
+  }
+
+  /** Slide a bubble sideways, left of the Action control, if it would cover it. */
+  function clearOfAction(p, box) {
+    if (!box) return;
+    const half = p.b.w / 2;
+    const hits =
+      p.px + half > box.left - 6 &&
+      p.px - half < box.right + 6 &&
+      p.py > box.top &&
+      p.py - p.b.h < box.bottom;
+    if (hits) p.px = Math.max(half + 4, box.left - 8 - half);
+  }
+
   /** Put one laid-out bubble on screen (and speak it the first time). */
   function put(s, st, p) {
     const el = p.b.node.el;
@@ -268,7 +297,8 @@
     });
     const lay = layout(list);
     lay.hidden.forEach((p) => (p.b.node.el.hidden = true));
-    lay.shown.forEach((p) => put(s, st, p));
+    const box = actionBox(s);
+    lay.shown.forEach((p) => (clearOfAction(p, box), put(s, st, p)));
   }
 
   /** Look at who is passing whom and start any new greeting. */

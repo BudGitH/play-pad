@@ -99,9 +99,11 @@
   function stepUi(dt) {
     const s = S();
     s.uiT += dt;
-    const target = G.Interact.find();
-    s.target = target;
-    G.Interact.place(target, s.camera, s.size.w, s.size.h);
+    const targets = G.Interact.find();
+    s.targets = targets;
+    s.target = targets[0] || null;
+    G.ActionBar.render(targets);
+    G.ActionBar.point(s.target || G.Interact.far(), s.camera, s.size.w, s.size.h);
     G.PrayerFlow.update(dt);
     G.Nudge.update(dt);
     if (s.uiT >= 0.12 || s.hudDirty) {

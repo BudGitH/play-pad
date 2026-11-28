@@ -27,6 +27,7 @@ export const SIM_FILES = [
   "schedule",
   "greet",
   "hi",
+  "actions",
   "events",
   "ambience-mix",
   "recite",

@@ -108,7 +108,7 @@
    */
   function ensureCard() {
     if (F.card) return F.card;
-    F.card = G.PrayerUI.azanCard(() => showWay());
+    F.card = G.PrayerUI.azanCard(() => next());
     S().hudHost.insertBefore(F.card.el, S().hudHost.firstChild);
     return F.card;
   }
@@ -320,7 +320,7 @@
   }
 
   /**
-   * The child tapped 'Show me the way': turn the guide on, fold the azan card and draw the trail.
+   * Far from the mosque the Pray button leads the way: turn the guide on, fold the azan card and draw the trail.
    */
   function showWay() {
     F.guide = true;
@@ -333,7 +333,7 @@
   }
 
   /**
-   * The 'Show me the way' button folds away with the azan card; if keyboard focus was on it (or
+   * The azan card's Pray button folds away with the card; if keyboard focus was on it (or
    * lost), move it to the Pray dock button so it never drops to the page body.
    */
   function keepFocus() {
@@ -382,18 +382,6 @@
     G.Camera.clearShot();
     G.Camera.setShift(0, 0);
     F.shotSpot = null;
-  }
-
-  /** The wudu tap closest to the hero, or null if none is registered. */
-  function nearestTap() {
-    const hero = S().player.pos;
-    let best = null;
-    S().world.interactables.forEach(function (it) {
-      if (it.id.indexOf("wudu_tap_") !== 0) return;
-      const d = U.dist(hero.x, hero.z, it.pos.x, it.pos.z);
-      if (!best || d < best.d) best = { it, d };
-    });
-    return best ? best.it : null;
   }
 
   /* ------------------------------ wudu ------------------------------ */
@@ -674,27 +662,6 @@
     );
   }
 
-  /** The hero used a wudu tap: wudu for the due, qada or (when none is owed) sunat prayer. */
-  function atTaps() {
-    const name = startable() || SUNAT();
-    const prayer = S().sim.prayer;
-    const res = prayer.startFlow(name);
-    if (!res.ok) return notNow();
-    clearGuide();
-    quietCard();
-    if (res.phase === "pray") {
-      G.UI.toast(
-        "You are still clean from your last wudu. Walk into the prayer hall.",
-        "good",
-        5000,
-      );
-      F.guide = true;
-      return computeGuide();
-    }
-    const tap = nearestTap();
-    if (tap) openWudu(tap);
-  }
-
   /**
    * The heading that faces the qibla from a spot: from the region (KQ.Holy.qiblaAt, in Makkah and
    * Madinah) when it knows, else the mosque hall's heading (the kampung's qibla is west).
@@ -714,88 +681,85 @@
     return { x: p.x, z: p.z, y: S().world.heightAt(p.x, p.z), heading: qiblaHeading(p.x, p.z) };
   }
 
+  /** How far from the taps or the hall (m) still counts as "at the mosque": prayer starts there without walking. */
+  const COMPOUND_M = 25;
+  /** The same in Makkah and Madinah, where the whole Haram is one mosque (m from the men's prayer spot). */
+  const HARAM_M = 150;
+  /** Standing this close to the hall's prayer spot (m) prays on the spot itself, in the rows. */
+  const AT_SPOT_M = 3;
+
+  /** Metres from the hero to a place of the world (Infinity when this world has no such place). */
+  function distTo(poi) {
+    const p = S().world.pois[poi];
+    const hero = S().player.pos;
+    return p ? U.dist(hero.x, hero.z, p.pos.x, p.pos.z) : Infinity;
+  }
+
+  /** Is the hero at the mosque (near the taps or the hall; anywhere in the Haram), so praying needs no walking? */
+  function inCompound() {
+    const hero = S().player.pos;
+    const hall = menHall();
+    if (KQ.region === "haramain") return U.dist(hero.x, hero.z, hall.x, hall.z) <= HARAM_M;
+    return Math.min(distTo("mosque_wudu"), distTo("mosque_hall")) <= COMPOUND_M;
+  }
+
+  /** Where the prayer happens: the hall's own spot when the hero stands at it, else where they stand, facing the qibla. */
+  function prayerSpot() {
+    const hero = S().player.pos;
+    if (U.dist(hero.x, hero.z, HALL_SPOT.x, HALL_SPOT.z) > AT_SPOT_M) return heroHere();
+    const y = S().world.heightAt(HALL_SPOT.x, HALL_SPOT.z);
+    return { x: HALL_SPOT.x, y, z: HALL_SPOT.z, heading: HALL_SPOT.heading };
+  }
+
   /**
-   * "Wudu and prayer right here" (no walking): start the owed prayer (or the voluntary sunat one)
-   * and open its stepper where the hero stands. Used by the Pray card, so a child never has to
-   * find the taps or the hall to take part.
+   * Start the owed prayer (or the extra, voluntary one) and open its stepper at `spot` (where the
+   * hero stands by default): wudu first when it is not clean, and the prayer opens in the same
+   * place when the wudu is done. A fard prayer always replaces a sunat flow.
    */
-  function startHere() {
+  function startHere(spot) {
     const res = S().sim.prayer.startFlow(startable() || SUNAT());
     if (!res.ok) return notNow(res.hint);
     clearGuide();
     quietCard();
-    const here = heroHere();
+    const here = spot && Number.isFinite(spot.x) ? spot : heroHere();
     if (res.phase === "wudu") openWudu(null, here);
     else openPray(here);
   }
 
-  /** A sunat prayer from the hall: straight to the prayer steps when still clean, else wudu first. */
-  function sunatAtHall() {
-    if (!S().sim.prayer.state().wuduClean) {
-      G.UI.toast(
-        G.PrayerText.SUNAT_LABEL + " begins with wudu. Let's go to the taps first.",
-        "hint",
-        5000,
-      );
-      F.wayTo = "mosque_wudu";
-      F.guide = true;
-      return computeGuide();
-    }
-    if (!S().sim.prayer.startFlow(SUNAT()).ok) return notNow();
-    clearGuide();
-    openPray();
+  /** Far from the mosque: draw the footprints and say so kindly ("Pray here" is offered meanwhile). */
+  function goToMosque() {
+    if (!startable()) F.wayTo = "mosque_wudu";
+    showWay();
+    G.Say("pray-way", "Let's walk to the mosque. Follow the footprints.");
   }
 
   /**
-   * The flow the hall's Pray action works on, with a fard prayer always winning: a sunat flow is
-   * replaced by the owed prayer, and with no flow but a clean wudu (carried over from a dropped
-   * sunat flow) the owed prayer starts straight at its prayer phase.
+   * The ONE prayer path behind every door (the status card, the azan card, the mosque taps and hall,
+   * the dock): wudu first, then the prayer, in the same flow; guided to the mosque with footprints
+   * when the hero is far away. Does nothing while a wudu or prayer screen is already open.
    */
-  function hallFlow() {
-    const flow = flowState();
-    const owed = startable();
-    const prayer = S().sim.prayer;
-    if (flow && flow.kind !== "sunat") return flow;
-    if (!owed) return flow;
-    if (flow || prayer.state().wuduClean) prayer.startFlow(owed);
-    return flowState();
+  function next() {
+    if (screenOpen()) return;
+    if (inCompound()) startHere(prayerSpot());
+    else goToMosque();
   }
 
-  /** Say, kindly, that wudu comes first, and lead the hero to the taps. */
-  function wuduFirst() {
-    G.UI.toast("Let's take wudu at the taps first, then come into the hall.", "hint", 5000);
-    F.guide = true;
-    computeGuide();
+  /** Is a fard prayer in the way of a rest: due, being prayed, or its azan playing? */
+  function restBlocked() {
+    return Boolean(S().sim.prayer.due()) || fardFlowRunning() || F.azanLive || screenOpen();
   }
 
-  /** The hero used the prayer spot in the hall (or the Pray button anywhere inside it). */
-  function atHall() {
-    const flow = hallFlow();
-    if (!flow) {
-      if (!startable()) return sunatAtHall();
-      return G.UI.toast(
-        "Let's take wudu at the taps first, then come into the hall.",
-        "hint",
-        5000,
-      );
-    }
-    if (flow.phase !== "pray") return wuduFirst();
-    clearGuide();
-    quietCard();
-    openPray();
+  /** The Pray card was pressed: an owed or running prayer goes straight on; otherwise today's prayers show. */
+  function pressPray() {
+    if (screenOpen()) return;
+    const ps = S().sim.prayer.state();
+    if (ps.due || ps.qada.length || (ps.flow && ps.flow.kind !== "sunat")) return next();
+    openDayCard();
   }
 
-  /** Open the day card listing today's prayers, with ways to start a guide or a qada prayer. */
+  /** The day card (nothing owed): today's prayers, with one button for a little extra prayer. */
   function openDayCard() {
-    return G.PrayerUI.dayCard({
-      sim: S().sim,
-      onWay: showWay,
-      onHere: startHere,
-      onQada(name) {
-        S().sim.prayer.startFlow(name);
-        showWay();
-      },
-    });
+    return G.PrayerUI.dayCard({ sim: S().sim, onPray: next });
   }
 
   /** Continue a flow that was saved mid-way (reload): place the hero and open the step screen. */
@@ -912,8 +876,10 @@
   G.PrayerFlow = {
     onEvents,
     update,
-    atTaps,
-    atHall,
+    next,
+    pressPray,
+    restBlocked,
+    inCompound,
     openDayCard,
     showWay,
     collapse,

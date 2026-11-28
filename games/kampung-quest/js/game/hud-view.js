@@ -82,7 +82,7 @@
   function needsLabel(food, energy, needs) {
     let text = "Food " + food + " of 100, energy " + energy + " of 100.";
     if (needs.isHungry()) text += " Food low \u2014 time to eat.";
-    if (needs.isTired()) text += " Energy low \u2014 time to rest.";
+    if (needs.isTired()) text += " Energy low \u2014 time to rest. Tap to rest.";
     return text;
   }
 
@@ -119,7 +119,15 @@
     paintNeed("food", food, needs.isHungry(), ["Food", "Hungry"]);
     paintNeed("energy", energy, needs.isTired(), ["Energy", "Tired"]);
     R.needs.setAttribute("aria-label", needsLabel(food, energy, needs));
-    R.needs.title = "Food " + food + ", energy " + energy;
+    R.needs.title = needs.isTired() ? "Tap to rest" : "Food " + food + ", energy " + energy;
+    markRest(needs.isTired());
+  }
+
+  /** The Tired bar is a Rest button (one tap, no question); a bar that is not low is just a picture. */
+  function markRest(tired) {
+    const R = H().refs;
+    R.needs.classList.toggle("is-rest", tired);
+    R.needs.setAttribute("role", tired ? "button" : "img");
   }
 
   /**

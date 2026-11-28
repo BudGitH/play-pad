@@ -116,11 +116,11 @@ test("a real conversation: talking to Nenek speaks her line in her own voice", a
     k.interact();
     return document.querySelector(".kq-bubble-text").textContent;
   });
-  const said = await spoken(page);
-  expect(said.length).toBeGreaterThanOrEqual(1);
-  expect(said[0].text).toBe(text);
-  expect(said[0].pitch).toBeCloseTo(1.05, 2);
-  expect(said[0].rate).toBeCloseTo(0.8, 2);
+  // the one-time spoken hint for the Talk button ("Tap the big button to talk.") may come first
+  const line = (await spoken(page)).find((s) => s.text === text);
+  expect(line, "Nenek's line was spoken").toBeDefined();
+  expect(line.pitch).toBeCloseTo(1.05, 2);
+  expect(line.rate).toBeCloseTo(0.8, 2);
 });
 
 test("each character sounds different: kids high, elders low and slow, women and men get matching voices", async () => {

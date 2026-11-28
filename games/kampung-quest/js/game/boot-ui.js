@@ -14,8 +14,8 @@
   const U = G.U;
   const DEFAULT_STEPS = [
     "Streets and blocks",
-    "Neighbours (16 figures)",
-    "Photo textures",
+    "Waking up the neighbours",
+    "Painting the town",
     "Azan recording",
     "Pictures",
   ];
@@ -55,7 +55,7 @@
     const pct = Math.round(U.clamp(p, 0, 1) * 100);
     B.bar.style.width = pct + "%";
     B.bar.parentElement.setAttribute("aria-valuenow", String(pct));
-    B.status.textContent = (text || "Building the neighbourhood...") + " " + pct + "%";
+    B.status.textContent = (text || "Building the town...") + " " + pct + "%";
   }
 
   /** state: "todo" | "now" | "done" | "skip" */

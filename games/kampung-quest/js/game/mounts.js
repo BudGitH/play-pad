@@ -29,7 +29,6 @@
   const DRAW_FAR = 60;
   /** An animal left this far from home goes back once the hero is this far from it (m). */
   const HOME_FAR = 45;
-  const NOUN = { camel: "Camel", horse: "Horse", pony: "Pony" };
   const HI_SECS = 1.6;
   const M = { list: [], ready: false, t: 0, cullT: 0, homeT: 0, hi: 0, menus: 0 };
 
@@ -165,28 +164,47 @@
     return Math.min(...rings(a).map((c) => U.dist(hero.x, hero.z, c.x, c.z) - r));
   }
 
-  /** The Talk-button target: Exit while riding, else the nearest standing animal in reach. */
-  function target(hero) {
-    if (!M.ready) return null;
-    if (G.MountRide.riding()) return G.MountRide.exitTarget();
+  /** The animal in reach (nearest standing one within REACH) and how far, or null. */
+  function inReach(hero) {
     let best = null;
     M.list.forEach(function (a) {
       const d = gapTo(a, hero);
       if (d <= REACH && (!best || d < best.d)) best = { a, d };
     });
-    if (!best) return null;
-    const a = best.a;
+    return best;
+  }
+
+  /** An action prompt for an animal: id "mount:<verb>:<id>" so press() runs it straight away. */
+  function promptFor(hit, verb, label, aria) {
+    const a = hit.a;
     return {
       kind: "obj",
-      id: "mount:" + a.id,
-      label: NOUN[a.kind],
-      aria: "Say hi to or ride " + a.name + " the " + a.kind,
+      id: "mount:" + verb + ":" + a.id,
+      label,
+      aria,
       x: a.sim.x,
       z: a.sim.z,
-      dist: best.d,
+      dist: hit.d,
       enabled: true,
       h: (a.kind === "camel" ? 2.6 : 1.9) * a.rig.scale,
     };
+  }
+
+  /** The Action target: Get off while riding, else "Ride" for the nearest standing animal in reach. */
+  function target(hero) {
+    if (!M.ready) return null;
+    if (G.MountRide.riding()) return G.MountRide.exitTarget();
+    const hit = inReach(hero);
+    if (!hit) return null;
+    return promptFor(hit, "ride", "Ride", "Ride " + hit.a.name + " the " + hit.a.kind);
+  }
+
+  /** The second tile for the same animal: "Say hi" (it turns its head and calls), or null when none is in reach. */
+  function hiTarget(hero) {
+    if (!M.ready || G.MountRide.riding()) return null;
+    const hit = inReach(hero);
+    if (!hit) return null;
+    return promptFor(hit, "hi", "Say hi", "Say hi to " + hit.a.name + " the " + hit.a.kind);
   }
 
   /* ------------------------------ per frame ------------------------------ */
@@ -287,6 +305,7 @@
   G.Mounts = {
     update,
     target,
+    hiTarget,
     press,
     sayHi: (id) => (byId(id) ? sayHi(byId(id)) : false),
     byId,

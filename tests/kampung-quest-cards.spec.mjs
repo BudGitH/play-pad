@@ -154,12 +154,12 @@ test.afterAll(async () => {
   await page.context().close();
 });
 
-/** Start wudu "right here" from the Pray card (any prayer time will do). */
+/** Start wudu from the Pray card at the mosque: one tap, no second prompt (any prayer time will do). */
 async function startWuduHere() {
   await ev(page, () => window.__kq.forcePrayer("zohor"));
+  await ev(page, () => window.__kq.teleport("mosque_wudu"));
   await step(page, 300);
   await page.locator("#kqStatus").click();
-  await page.locator(".kq-pray-here").click();
   await expect(page.getByRole("dialog", { name: "Wudu steps" })).toBeVisible();
 }
 
@@ -404,23 +404,15 @@ async function expectChipClear(p, chip) {
   }
 }
 
-/** Put the Talk button on the chip, let the layout nudge it, and return where it ended up. */
-function talkNearChip(p, chip) {
-  return ev(
-    p,
-    (c) => {
-      const G = window.KQ.Game;
-      const t = G.Hud.refs.talk;
-      t.hidden = false;
-      t.style.left = (c.left + c.right) / 2 + "px";
-      t.style.top = c.bottom + 90 + "px";
-      G.HudLayout.fitTalk();
-      const r = t.getBoundingClientRect();
-      t.hidden = true;
-      return { left: r.left, top: r.top, right: r.right, bottom: r.bottom };
-    },
-    chip,
-  );
+/** Show the Action control (it has one fixed place, above Jump) and return where it sits. */
+function actionBox(p) {
+  return ev(p, () => {
+    const t = window.KQ.Game.Hud.refs.talk;
+    t.hidden = false;
+    const r = t.getBoundingClientRect();
+    t.hidden = true;
+    return { left: r.left, top: r.top, right: r.right, bottom: r.bottom };
+  });
 }
 
 for (const [name, opts] of Object.entries(SIZES)) {
@@ -436,7 +428,9 @@ for (const [name, opts] of Object.entries(SIZES)) {
     const chip = await boxOf(p, ".kq-min-chip");
     expect(chip, "the chip is shown").not.toBeNull();
     await expectChipClear(p, chip);
-    expect(overlap(chip, await talkNearChip(p, chip)), "Talk keeps clear of the chip").toBe(false);
+    expect(overlap(chip, await actionBox(p)), "the Action control keeps clear of the chip").toBe(
+      false,
+    );
     await ev(p, () => window.KQ.Game.UI.toast("A toast for the lane", "good", 6000));
     await step(p, 200);
     const toast = await boxOf(p, ".kq-toast");

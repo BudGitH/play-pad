@@ -152,4 +152,63 @@ Notes on the table: "Start tap to playing" is dominated by Playwright's tap acti
 - **iPad start tier = low, not med.** No reliable way to tell an iPad gen 7 (A10) from an M-series iPad in Safari (the GPU string is "Apple GPU" for all); low is safe and the player can raise it in Pause. Rejected: med for all iPads (risk on the oldest supported iPads), UA-version heuristics (iPadOS reports a Mac UA).
 - **Half-size photos as files, not runtime downscaling.** Rejected: canvas downscale (main-thread draw + a readback upload per texture), `createImageBitmap` with resize options (uneven Safari support).
 - **Keep Makkah + Madinah built together.** Madinah is ~0.26 s of a ~2.1 s holy-world build at 4x; splitting `holy-world.js` would collide with the camel / horse work for little gain.
-- **Posture pictures only while not playing**, with a synchronous fallback, rather than before Start (keeps Start sooner) or during play (each render is a GPU read-back).
+- **Posture pictures only while the game is idle** (started and paused or hidden; `Defer.whileIdle`), rendered through one atlas with a single read-back, with a synchronous fallback. Rejected: before Start (it is the load path again), on the title screen (it delays the press of Start), during play (a read-back stalls the frame).
+
+---
+
+## Round 3 (2026-11-28, on the integrated branch): the Start tap, and the title screen
+
+The round had moved work off page load and onto the Start tap: on the integration commit, desktop
+1366x800 software GL, `Start -> __kq.ready` had grown to ~7 s while load fell to ~10 s. The smoke
+test's round driver budgets only that half (`ROUND_TIMEOUT_MS` 15 s, test timeout 45 s), and it
+failed twice in CI.
+
+Measured with `perf/start.mjs` (same shape as `tests/round-drivers.mjs`: wait for `__kq.loaded`,
+click Start, wait for `__kq.ready`), 3 runs, median, on this box:
+
+|                                       |       load (ms) | Start -> ready (ms) |
+| ------------------------------------- | --------------: | ------------------: |
+| base 4dc684c (orchestrator's figures) | 12 700 - 14 000 |       4 400 - 5 600 |
+| integrated head 940d99b               |          10 343 |           **6 958** |
+| this change                           |          10 046 |           **4 890** |
+
+The two rows below the base were measured back to back, alternating, one run each over three
+rounds, on a quiet box: head 10 863 / 10 343 / 10 325 ms load and 6 958 / 7 759 / 6 191 ms
+Start -> ready; this change 10 046 / 9 982 / 10 159 and 4 213 / 4 890 / 5 123.
+
+Where the time went (head): of the ~7 s, about **5.3 s was Playwright's click actionability wait**,
+not the game's own `launch()`. Two things kept the main thread busy on the title screen:
+
+1. the **posture pictures**, queued with `when: Defer.notPlaying`, which is true on the title screen:
+   24 jobs, each a render plus a `readRenderTargetPixels` stall, 300-533 ms each in software GL;
+2. the **title orbit**, which rendered the whole town at full resolution with a fresh shadow map on
+   every third animation frame.
+
+Changes:
+
+- **The posture atlas.** All of a hero's postures now render into cells of one render target (4
+  columns of 256 px) and the set is read back **once**, instead of one read-back per picture
+  (`readAtlas`, `postureJob` writes a cell, `readJob` reads the sheet). Whole set, both heroes, in
+  software GL: **734 ms** for all 24 jobs, down from ~10 s.
+- **Postures wait for a real idle moment.** `Defer.whileIdle` (started and paused or hidden) replaces
+  `Defer.notPlaying` for them: never on the title screen, where the player is about to press Start.
+  `Pictures.finishPostures()` still renders the rest at once if a prayer screen needs one first.
+- **The title backdrop is cheap.** It renders at half resolution (`TITLE_SCALE` in `loop.js`, applied
+  while `!s.started`; `launch` resizes back) and on one animation frame in six (`ORBIT_EVERY`, the
+  orbit speed compensates), and its shadow map — whose target never moves there — is drawn once
+  (`shadowMap.autoUpdate = false`, turned back on in `launch`).
+- **Nothing the world needs waits on real time.** `launch` now calls `Defer.flushUngated()`: every
+  queued job without a `when` gate (vehicles, traffic, the bus, the crowd's slot prune) is finished
+  before the first frame, so a spec that drives game time with `__kq.step` never waits for the
+  queue's own animation frames. Checked with `perf/at-ready.mjs`: at `__kq.ready` under `?still=1`
+  the kampung already has 27 parked vehicles, `traffic.ready`, `bus.ready` (state `drive`),
+  ambience on; the only jobs left pending are the postures.
+
+Evidence on the orchestrator's starvation theory: the world was in fact already placed at `ready`
+(the texture-upload `drain()` in `boot.js` runs the _whole_ queue, which at that point holds the
+vehicle, bus, traffic and crowd-prune jobs), and `traffic.js`, `bus.js`, `crowd.js`, `ambience.js`,
+`mounts.js` and `world-events.js` contain no `setTimeout` / `setInterval` / `Date.now` — they all
+advance in `Loop.frame`, which `__kq.step` drives. `flushUngated` makes that a guarantee rather than
+an accident. What _was_ a real regression from this workstream: pausing woke the posture queue, so
+`AMB-4` (which pauses, then waits 400 ms of real time with a 10 s budget) timed out locally; the
+atlas fixes that.

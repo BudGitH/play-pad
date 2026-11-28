@@ -311,6 +311,13 @@
   /* ------------------------------ resize / quality ------------------------------ */
 
   /**
+   * The title screen's orbiting backdrop renders at this share of the play resolution: it sits
+   * behind a modal card, and a full-size software-GL frame there delays the player's press of
+   * Start (notes-ipad.md). `launch` resizes back to 1 as soon as the game starts.
+   */
+  const TITLE_SCALE = 0.5;
+
+  /**
    * The pixel-ratio cap for the device: 1.5 on phones; on tablets (iPads) 1 / 1.25 / 1.5 by tier,
    * since an iPad screen has two to three times a phone's CSS pixels at the same ratio (AC-P21).
    * No cap beyond the tier's own on desktop.
@@ -331,7 +338,7 @@
     const w = Math.max(2, box.clientWidth);
     const h = Math.max(2, box.clientHeight);
     const hints = s.world ? s.world.qualityHints(s.quality) : { pixelRatio: 1 };
-    const cap = Math.min(hints.pixelRatio, touchCap(s.quality));
+    const cap = Math.min(hints.pixelRatio, touchCap(s.quality)) * (s.started ? 1 : TITLE_SCALE);
     s.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, cap));
     s.renderer.setSize(w, h, false);
     s.size = { w, h };

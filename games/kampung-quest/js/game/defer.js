@@ -13,6 +13,8 @@
  *   await Defer.drain(onStep)   run everything now, sliced, yielding a frame between slices
  *                               (onStep(done, total) drives a progress bar)
  *   Defer.flush()               run every queued job at once (tests, or work needed this instant)
+ *   Defer.flushUngated()        run every job that has no `when` gate now (launch does this, so the
+ *                               world is complete the instant the game starts)
  *   Defer.stats()               { pending, done, longestMs, label of the longest job }
  * Jobs run in the order added. The queue starts itself when a job is added and stops when empty.
  * DEPENDENCIES: none (game layer; loads before boot.js).
@@ -29,9 +31,8 @@
   let scheduled = false;
   let draining = 0;
 
-  /** Run one job; it stays at the head of the queue while it returns true. Notes the slowest. */
-  function runOne() {
-    const job = queue[0];
+  /** Run one slice of a job; true means it asked to be called again. Notes the slowest. */
+  function runJob(job) {
     const t0 = performance.now();
     let again = false;
     try {
@@ -44,10 +45,13 @@
       counters.longestMs = ms;
       counters.longest = job.label;
     }
-    if (!again) {
-      queue.shift();
-      counters.done += 1;
-    }
+    if (!again) counters.done += 1;
+    return again;
+  }
+
+  /** Run one job; it stays at the head of the queue while it returns true. */
+  function runOne() {
+    if (!runJob(queue[0])) queue.shift();
   }
 
   /** May the head job run now? A job with a `when` test waits (in order) until it passes. */
@@ -123,6 +127,25 @@
     while (queue.length) runOne();
   }
 
+  /**
+   * Run every queued job that has no `when` gate, now, leaving the gated ones (the posture
+   * pictures) for their own moment. `launch` calls it, so anything the world needs is placed and
+   * running the instant the game starts — a spec that drives game time with `__kq.step` never
+   * waits on a real-time rAF queue (notes-ipad.md).
+   */
+  function flushUngated() {
+    const gated = [];
+    while (queue.length) {
+      const job = queue.shift();
+      if (job.when) gated.push(job);
+      else {
+        while (runJob(job));
+      }
+    }
+    gated.forEach((job) => queue.push(job));
+    if (queue.length) schedule();
+  }
+
   /** Counters for the probes and tests. */
   function stats() {
     return {
@@ -140,5 +163,15 @@
     return !s || !s.started || s.paused || s.hidden;
   }
 
-  G.Defer = { add, drain, flush, stats, notPlaying, BUDGET_MS };
+  /**
+   * A `when` for work that must not hitch play OR the title screen: the pause menu and a hidden
+   * tab only. The title screen looks idle but is not — it orbits the town and the player is about
+   * to press Start, and a long job there delays that press (notes-ipad.md, the Start-tap round).
+   */
+  function whileIdle() {
+    const s = G.S;
+    return Boolean(s && s.started && (s.paused || s.hidden));
+  }
+
+  G.Defer = { add, drain, flush, flushUngated, stats, notPlaying, whileIdle, BUDGET_MS };
 })((window.KQ = window.KQ || {}));

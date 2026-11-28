@@ -232,22 +232,39 @@
     return img;
   }
 
+  /** The posture atlas: one 256 px cell per picture, 4 to a row (CELL * COLS wide). */
+  const CELL = 256;
+  const COLS = 4;
+  /** Where a posture's cell sits in the atlas, in WebGL coordinates (row 0 at the bottom). */
+  function cellAt(i) {
+    return { x: (i % COLS) * CELL, y: Math.floor(i / COLS) * CELL };
+  }
+
   /**
-   * Read a render target into a 160 px PNG data URL, flipped upright (WebGL reads rows bottom-up).
+   * Read the whole posture atlas back from the GPU once and cut it into 160 px PNG data URLs,
+   * flipped upright (WebGL reads rows bottom-up). One read-back for every picture of a set: a
+   * read-back stalls the GPU, and on a slow device (or software GL) each one costs hundreds of
+   * milliseconds (notes-ipad.md).
    */
-  function readPixels(renderer, rt, size) {
-    const buf = new Uint8Array(size * size * 4);
-    renderer.readRenderTargetPixels(rt, 0, 0, size, size, buf);
+  function readAtlas(renderer, rt, types, out) {
+    const w = rt.width;
+    const h = rt.height;
+    const buf = new Uint8Array(w * h * 4);
+    renderer.readRenderTargetPixels(rt, 0, 0, w, h, buf);
     const tmp = document.createElement("canvas");
-    tmp.width = tmp.height = size;
-    tmp.getContext("2d").putImageData(new ImageData(new Uint8ClampedArray(buf), size, size), 0, 0);
-    const out = document.createElement("canvas");
-    out.width = out.height = 160;
-    const ctx = out.getContext("2d");
-    ctx.translate(0, 160);
-    ctx.scale(1, -1);
-    ctx.drawImage(tmp, 0, 0, 160, 160);
-    return out.toDataURL("image/png");
+    tmp.width = w;
+    tmp.height = h;
+    tmp.getContext("2d").putImageData(new ImageData(new Uint8ClampedArray(buf), w, h), 0, 0);
+    types.forEach(function (type, i) {
+      const at = cellAt(i);
+      const pic = document.createElement("canvas");
+      pic.width = pic.height = 160;
+      const ctx = pic.getContext("2d");
+      ctx.translate(0, 160);
+      ctx.scale(1, -1);
+      ctx.drawImage(tmp, at.x, at.y, CELL, CELL, 0, 0, 160, 160);
+      out[type] = pic.toDataURL("image/png");
+    });
   }
 
   /**
@@ -283,9 +300,11 @@
 
   /**
    * Queue the posture renders on a time-sliced queue (`defer` = KQ.Game.Defer): one picture per
-   * job, run only while the game is not being played (title screen, pause menu): a render with its
-   * GPU read-back can take a few hundred ms on a slow tablet. A prayer screen that needs a picture
-   * first renders the rest at once (finishPostures), so a picture is never missing.
+   * job, run only while the game is idle (the Pause menu or a hidden tab), never during play and
+   * never on the title screen: a render with its GPU read-back can take a few hundred ms on a slow
+   * tablet, and on the title screen that delays the player's press of Start (notes-ipad.md).
+   * A prayer screen that needs a picture first renders the rest at once (finishPostures), so a
+   * picture is never missing.
    */
   function queuePostures(renderer, defer) {
     postureJobs(renderer).forEach((job) => {
@@ -296,7 +315,7 @@
           if (next) next();
         },
         "posture picture",
-        { when: defer.notPlaying },
+        { when: defer.whileIdle },
       );
     });
   }
@@ -321,22 +340,57 @@
     return sets;
   }
 
-  /** One job: draw one posture of the current stage's figure into `out`, then restore the renderer. */
-  function postureJob(renderer, ctx, out, type, az) {
+  /** What the renderer looked like before a posture job, so the game's own frame is unaffected. */
+  function keepRenderer(renderer) {
+    const keep = {
+      clear: renderer.getClearColor(new THREE.Color()),
+      alpha: renderer.getClearAlpha(),
+      target: renderer.getRenderTarget(),
+    };
+    keep.restore = function () {
+      renderer.setRenderTarget(keep.target); // also restores the renderer's own viewport / scissor
+      renderer.setClearColor(keep.clear, keep.alpha);
+    };
+    return keep;
+  }
+
+  /**
+   * Aim the atlas at one cell. The viewport and scissor live on the render target, not on the
+   * renderer: `setRenderTarget` applies a target's own pair as they are, while
+   * `renderer.setViewport` would scale them by the device pixel ratio (wrong for a render target).
+   */
+  function aimCell(rt, i, whole) {
+    const at = whole ? { x: 0, y: 0 } : cellAt(i);
+    const w = whole ? rt.width : CELL;
+    const h = whole ? rt.height : CELL;
+    rt.viewport.set(at.x, at.y, w, h);
+    rt.scissor.set(at.x, at.y, w, h);
+    rt.scissorTest = !whole;
+  }
+
+  /** One job: draw one posture into its cell of the atlas (no read-back), then restore the renderer. */
+  function postureJob(renderer, ctx, type, i, az) {
     return () => {
-      const prevClear = renderer.getClearColor(new THREE.Color());
-      const prevAlpha = renderer.getClearAlpha();
-      const prevTarget = renderer.getRenderTarget();
+      const keep = keepRenderer(renderer);
       renderer.setClearColor(0xe6eef8, 1);
+      aimCell(ctx.rt, i, false);
       renderer.setRenderTarget(ctx.rt);
       aim(ctx.stage.cam, az === undefined ? POSTURE_AZ[type] || POSTURE_AZ.standing : az);
       KQ.Figures.pose(ctx.stage.fig.userData.rig, POSTURE_POSE[type], 0, 1);
       ctx.stage.fig.updateMatrixWorld(true);
       renderer.clear();
       renderer.render(ctx.stage.scene, ctx.stage.cam);
-      out[type] = readPixels(renderer, ctx.rt, 256);
-      renderer.setRenderTarget(prevTarget);
-      renderer.setClearColor(prevClear, prevAlpha);
+      keep.restore();
+    };
+  }
+
+  /** One job per set: read the finished atlas back once and cut it into the set's pictures. */
+  function readJob(renderer, ctx, out, types) {
+    return () => {
+      const keep = keepRenderer(renderer);
+      aimCell(ctx.rt, 0, true); // the whole sheet again: no scissor while it is read
+      readAtlas(renderer, ctx.rt, types, out);
+      keep.restore();
     };
   }
 
@@ -348,10 +402,12 @@
    */
   function postureJobs(renderer, az) {
     const ctx = {};
+    const types = Object.keys(POSTURE_POSE);
+    const rows = Math.ceil(types.length / COLS);
     const dropStage = () => ctx.stage && ctx.stage.scene.remove(ctx.stage.fig);
     const jobs = [
       () => {
-        ctx.rt = new THREE.WebGLRenderTarget(256, 256);
+        ctx.rt = new THREE.WebGLRenderTarget(COLS * CELL, rows * CELL);
         ctx.rt.texture.encoding = THREE.sRGBEncoding;
       },
     ];
@@ -360,9 +416,8 @@
         dropStage();
         ctx.stage = postureStage(renderer, set.spec);
       });
-      Object.keys(POSTURE_POSE).forEach((type) =>
-        jobs.push(postureJob(renderer, ctx, set.out, type, az)),
-      );
+      types.forEach((type, i) => jobs.push(postureJob(renderer, ctx, type, i, az)));
+      jobs.push(readJob(renderer, ctx, set.out, types));
     });
     jobs.push(() => {
       dropStage();

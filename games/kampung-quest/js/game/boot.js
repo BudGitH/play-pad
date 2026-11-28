@@ -15,6 +15,9 @@
   const nextFrame = () => new Promise((res) => requestAnimationFrame(() => setTimeout(res, 0)));
   const params = new URLSearchParams(location.search);
   const TIERS = ["low", "med", "high"];
+  /** The title backdrop draws on one rAF in this many: a software-GL frame there is a long task,
+   *  and the player is waiting to press Start (notes-ipad.md). The orbit speed compensates. */
+  const ORBIT_EVERY = 6;
   /** A new game starts in the void deck of Block 118, a few steps from Nenek (and clear of the lift). */
   const KAMPUNG_START = { x: -42.6, z: 22.4 };
   /** Where a new game starts: the void deck (kampung) or the hotel forecourt (Haramain). */
@@ -278,13 +281,17 @@
    */
   function titleOrbit(s) {
     let a = 0;
+    // The backdrop is a wide view of the town behind a modal card, and the player is about to press
+    // Start: it renders at half resolution (Loop.resize, while the game has not started) and its
+    // shadow map, whose target never moves here, is drawn once (notes-ipad.md, the Start-tap round).
+    G.Loop.resize();
     (function loop() {
       if (s.started) return;
       requestAnimationFrame(loop);
       if (s.frozen) return;
       s.orbitSkip = (s.orbitSkip || 0) + 1;
-      if (s.orbitSkip % 3) return;
-      a += 0.01;
+      if (s.orbitSkip % ORBIT_EVERY) return;
+      a += 0.01 * ORBIT_EVERY * 0.33;
       const cam = G.Region.titleCamera(a);
       if (cam) {
         s.camera.position.set(cam.pos[0], cam.pos[1], cam.pos[2]);
@@ -296,6 +303,7 @@
       s.world.update(0, { minute: 640 });
       s.world.setShadowTarget(cam ? cam.target : { x: 20, z: -20 });
       s.renderer.render(s.scene, s.camera);
+      s.renderer.shadowMap.autoUpdate = false; // the target is fixed here; launch() turns it back on
     })();
   }
 
@@ -306,6 +314,10 @@
    * start the loop.
    */
   function launch(s, state) {
+    // Anything queued without a `when` gate (vehicles, the bus, traffic, the crowd's slot prune)
+    // belongs to the world and must exist before the first frame: a test that drives game time
+    // with __kq.step never waits for the queue's own animation frames (notes-ipad.md).
+    G.Defer.flushUngated();
     s.sim = G.Sim.create(state);
     G.Audio.setMuted(state.settings.muted);
     G.Player.applyOutfit(s.player, s.sim.outfit);
@@ -318,6 +330,8 @@
     G.Npcs.snapAll(s.npcs);
     G.Loop.setQuality(s.quality);
     s.started = true;
+    s.renderer.shadowMap.autoUpdate = true; // the title backdrop drew its shadow map once
+    G.Loop.resize(); // back to full resolution: the backdrop rendered at half (titleOrbit)
     document.body.classList.add("kq-playing");
     s.hudHost.hidden = false;
     BU().hideTitle();

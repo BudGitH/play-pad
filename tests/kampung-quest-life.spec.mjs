@@ -127,6 +127,16 @@ test("the hero's wave never frees a hold that a prayer or rite took meanwhile, n
   expect(r.noWaveOnHold, "no wave pose on top of a hold").toBe(true);
 });
 
+test("the playground pose and the dates pose are timed holds: they never free a later hold, nor start on one", async () => {
+  const r = await page.evaluate(D.happyLockScenario);
+  expect(r.waving, "the hero waves at the playground").toBe(true);
+  expect(r.heldAfter, "the timer ended but the later hold stays").toBe(true);
+  expect(r.noStart, "no pose starts on a hold").toBe(true);
+  expect(r.freed).toBe(true);
+  expect(r.started, "a free hero gets the pose").toBe(true);
+  expect(r.ended, "and it ends by itself").toBe(true);
+});
+
 test("a11y: the chip's status region exists from boot; the bubble countdown is not in it and is announced twice only", async () => {
   const r = await page.evaluate(() => {
     const G = window.KQ.Game;

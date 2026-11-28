@@ -540,6 +540,35 @@ test("a landscape phone's overview still draws the horse, camel, tailor and mosq
   expect(errors).toEqual([]);
 });
 
+test("every icon the overview keeps lies fully inside the canvas (390x844 and 844x390, kampung and Makkah)", async ({
+  browser,
+}) => {
+  const errors = [];
+  for (const size of [
+    { width: 390, height: 844 },
+    { width: 844, height: 390 },
+  ]) {
+    for (const url of [GAME, HOLY]) {
+      const page = await browser.newPage({ viewport: size });
+      errors.push(...watch(page));
+      await boot(page, url);
+      await page.locator("#kqMap").click();
+      await expect.poll(async () => (await map(page)).open).toBe(true);
+      const m = await map(page);
+      expect(m.hits.length, "the overview keeps some icons").toBeGreaterThan(3);
+      for (const h of m.hits) {
+        const where = `${h.id} at ${Math.round(h.x)},${Math.round(h.y)} r${h.r} in ${m.size.w}x${m.size.h}`;
+        expect(h.x - h.r, where).toBeGreaterThanOrEqual(0);
+        expect(h.y - h.r, where).toBeGreaterThanOrEqual(0);
+        expect(h.x + h.r, where).toBeLessThanOrEqual(m.size.w);
+        expect(h.y + h.r, where).toBeLessThanOrEqual(m.size.h);
+      }
+      await page.close();
+    }
+  }
+  expect(errors).toEqual([]);
+});
+
 test("Go here keeps focus on its toggle (the card is rebuilt), and the canvas is a labelled map", async ({
   browser,
 }) => {

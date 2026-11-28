@@ -145,6 +145,29 @@ export function castAfter([id, secs]) {
   };
 }
 
+/** The playground's happy pose and the dates pose are timed holds: neither frees a later hold, and neither starts on one. */
+export function happyLockScenario() {
+  const k = window.__kq;
+  const G = window.KQ.Game;
+  const P = G.S.player;
+  k.setMinute(600);
+  k.teleport("playground");
+  run(2);
+  const out = {};
+  G.Services.play(); // a wave for 2 s
+  out.waving = P.locked && P.forcedPose === "wave";
+  G.Player.lock(P, null, "sit"); // a rite takes the hero during the wave
+  run(3); // the 2 s timer runs out
+  out.heldAfter = P.locked && P.forcedPose === "sit";
+  out.noStart = G.Player.lockFor(P, 1, "eat") === false && P.forcedPose === "sit";
+  G.Player.release(P);
+  out.freed = !P.locked;
+  out.started = G.Player.lockFor(P, 1, "eat") === true && P.forcedPose === "eat";
+  run(2);
+  out.ended = !P.locked && P.forcedPose === null;
+  return out;
+}
+
 /** Greet one person of each kind at the hawker centre and report what the hero said and heard. */
 export function salaamRuleScenario() {
   const k = window.__kq;

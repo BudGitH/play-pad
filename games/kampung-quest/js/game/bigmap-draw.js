@@ -194,7 +194,7 @@
   function render(ctx, view, s, city, ui) {
     drawRoute(ctx, view, s);
     const items = placeItems(ctx, view, s, city, ui.sel);
-    const kept = MV().layout(items, 3);
+    const kept = MV().layout(items, 3, view);
     drawPlaces(ctx, kept);
     if (ui.showHero) {
       drawMission(ctx, view);

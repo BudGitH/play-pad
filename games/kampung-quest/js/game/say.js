@@ -20,10 +20,21 @@
     return Boolean(G.Settings.prefs.seen[key]);
   }
 
+  /**
+   * Make room for one more heard hint: forget the oldest keys (insertion order; the keys are letters
+   * and dashes, never integer-like, so the order holds) until there are fewer than MAX_SEEN. This
+   * keeps the prefs blob under its cap, and a new hint is always heard once instead of being refused.
+   */
+  function evictOldest(seen) {
+    const keys = Object.keys(seen);
+    while (keys.length >= G.Settings.MAX_SEEN) delete seen[keys.shift()];
+  }
+
   /** Remember a hint as heard (a lower-case key only) and store the preferences. */
   function remember(key) {
     if (!/^[a-z-]{1,24}$/.test(key)) return;
-    if (Object.keys(G.Settings.prefs.seen).length >= G.Settings.MAX_SEEN) return; // keeps the prefs blob under its cap
+    evictOldest(G.Settings.prefs.seen);
+    delete G.Settings.prefs.seen[key]; // re-inserted last, so it is the newest
     G.Settings.prefs.seen[key] = true;
     said.push(key);
     G.Settings.save(S() ? S().storage : null);

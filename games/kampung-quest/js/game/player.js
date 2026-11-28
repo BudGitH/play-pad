@@ -297,12 +297,26 @@
     P.forcedPose = null;
   }
 
+  /**
+   * A short timed hold (a wave, a happy pose, a bite of dates): lock the hero with `pose` and release
+   * after `seconds` game seconds, but only that same hold (the ticket), so it never frees a prayer,
+   * rite or ride that took the hero meanwhile. Does nothing when the hero is already held.
+   * Returns true when the hold started.
+   */
+  function lockFor(P, seconds, pose) {
+    if (P.locked) return false;
+    const ticket = lock(P, null, pose);
+    KQ.Game.S.after(seconds, () => release(P, ticket));
+    return true;
+  }
+
   G.Player = {
     create,
     update,
     jump,
     place,
     lock,
+    lockFor,
     release,
     applyOutfit,
     headSpecFor,

@@ -65,11 +65,10 @@
 
   /**
    * Play a short happy pose (wave, etc.) on the hero after a purchase or play, then give control
-   * back.
+   * back (unless something else holds the hero, then there is no pose).
    */
   function happy(pose, seconds) {
-    G.Player.lock(S().player, null, pose);
-    S().after(seconds, () => G.Player.release(S().player));
+    G.Player.lockFor(S().player, seconds, pose);
   }
 
   /**

@@ -109,6 +109,42 @@ test("layout slides a headline icon (prio <= 5) aside instead of dropping it, an
   assert.equal(b.id, "horse_stable");
 });
 
+test("layout keeps every icon inside the window: a headline icon near the edge slides in, a lesser one is dropped", () => {
+  const box = { w: 354, h: 600 };
+  const clinic = { id: "clinic", x: 323, y: 200, r: 16, prio: 3, lw: 0, lh: 0 };
+  const school = { id: "school", x: 323, y: 200, r: 16, prio: 2, lw: 0, lh: 0 }; // the clinic is pushed aside
+  const bin = { id: "bin", x: 350, y: 300, r: 14, prio: 8, lw: 0, lh: 0 };
+  const edge = { id: "edge", x: 354, y: 100, r: 14, prio: 4, lw: 0, lh: 0 }; // half off the right edge
+  const out = M.layout([clinic, school, bin, edge], 3, box);
+  const ids = plain(out.map((e) => e.item.id));
+  assert.deepEqual(
+    ids.sort(),
+    ["clinic", "edge", "school"],
+    "the bin is dropped (it would be cut off)",
+  );
+  out.forEach(function (e) {
+    const it = e.item;
+    assert.ok(it.x - it.r >= 0 && it.x + it.r <= box.w, it.id + " is inside across");
+    assert.ok(it.y - it.r >= 0 && it.y + it.r <= box.h, it.id + " is inside down");
+  });
+  const [a, b] = ["clinic", "school"].map((id) => out.find((e) => e.item.id === id).item);
+  assert.ok(
+    Math.hypot(a.x - b.x, a.y - b.y) >= a.r + b.r + 3,
+    "the slid icon is clear of the other",
+  );
+});
+
+test("layout without a window leaves positions alone, and a headline icon with no room inside is dropped", () => {
+  const edge = { id: "edge", x: 354, y: 100, r: 14, prio: 4, lw: 0, lh: 0 };
+  assert.equal(M.layout([edge], 3).length, 1);
+  assert.equal(M.layout([edge], 3, { w: 20, h: 20 }).length, 0, "a window too small for the icon");
+  // boxed in: the right and left rings are off-screen or taken, and every other spot clashes
+  const tiny = { w: 50, h: 40 };
+  const a = { id: "a", x: 25, y: 20, r: 18, prio: 1, lw: 0, lh: 0 };
+  const b = { id: "b", x: 25, y: 20, r: 18, prio: 2, lw: 0, lh: 0 };
+  assert.deepEqual(plain(M.layout([a, b], 3, tiny).map((e) => e.item.id)), ["a"]);
+});
+
 test("layout always keeps forced items (the go-here target)", () => {
   const a = { id: "a", x: 50, y: 50, r: 14, prio: 1, lw: 0, lh: 0 };
   const t = { id: "target", x: 52, y: 50, r: 14, prio: 9, force: true, lw: 0, lh: 0 };

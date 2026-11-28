@@ -115,9 +115,26 @@ test("men at the tawaf wear ihram (two white cloths, arms bare), women a modest 
       assert.equal(o.legs, "#f6f4ee");
       assert.equal(o.long, false, "arms bare in ihram");
       assert.notEqual(o.head, "tudung");
+      assert.ok(
+        ["hair", "none"].includes(o.head),
+        "man " + i + " in ihram keeps his head uncovered",
+      );
     }
   }
   assert.ok(men > 15 && women > 15, "both genders appear: " + men + "/" + women);
+});
+
+test("a man in ihram never covers his head, not even in a tour group that wears matching caps", () => {
+  let men = 0;
+  for (let t = 0; t < 8; t += 1) {
+    for (let i = 0; i < 40; i += 1) {
+      const o = C.outfit("tawaf:tour" + t + ":" + i, "adult");
+      if (o.kid || o.female) continue;
+      men += 1;
+      assert.ok(["hair", "none"].includes(o.head), "tour " + t + " man " + i + ": " + o.head);
+    }
+  }
+  assert.ok(men > 40, "enough men in ihram tours checked: " + men);
 });
 
 test("outfits are deterministic, and Madinah dress codes are a thobe, kurta, baju Melayu and more", () => {

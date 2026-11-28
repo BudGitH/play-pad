@@ -183,8 +183,23 @@
     return svg("0 0 48 48", WUDU_ART[stepId] || WUDU_ART.niat, size || 56, "kq-pic");
   }
 
-  /** Posture pictures: data-URL renders of the toy-figure poses, filled in by renderPostures. */
+  /**
+   * Posture pictures: data-URL renders of the toy-figure poses, filled in by renderPostures. One set
+   * per hero: the boy, and the girl in her hijab (picked by the hero's gender when shown).
+   */
   const postureImages = {};
+  const girlImages = {};
+  /** The girl hero as she prays: her own face and modest clothes, in a white hijab. */
+  const GIRL_PRAYER_LOOK = {
+    id: "hero_girl_prayer",
+    head: { type: "hijab", colour: "#fbfaf5", accent: "#e46f9c" },
+  };
+
+  /** The picture set for the hero now (the girl's when the hero is a girl). */
+  function imagesNow() {
+    const girl = G.Hero && G.Hero.isGirl && G.Hero.isGirl();
+    return girl && Object.keys(girlImages).length ? girlImages : postureImages;
+  }
   const POSTURE_POSE = {
     takbir: "takbir",
     qiyam: "qiyam",
@@ -210,8 +225,9 @@
     img.className = "kq-posture";
     img.alt = "";
     img.width = img.height = size || 72;
-    if (!postureImages[type]) finishPostures();
-    if (postureImages[type]) img.src = postureImages[type];
+    if (!imagesNow()[type]) finishPostures(); // a picture still queued: render the rest now
+    const set = imagesNow();
+    if (set[type]) img.src = set[type];
     else img.className += " kq-posture-missing";
     return img;
   }
@@ -243,21 +259,21 @@
     cam.lookAt(0, 0, 0);
   }
 
-  /** Build the tiny posture-render stage: lit scene, the hero figure and an orthographic camera. */
-  function postureStage(renderer) {
+  /** Build the tiny posture-render stage: lit scene, a hero figure and an orthographic camera. */
+  function postureStage(renderer, spec) {
     const scene = new THREE.Scene();
     scene.environment = KQ.Figures.makeEnv(renderer);
     scene.add(new THREE.HemisphereLight(0xffffff, 0x8899aa, 0.9));
     const sun = new THREE.DirectionalLight(0xffffff, 1.6);
     sun.position.set(-2, 3, 2);
     scene.add(sun);
-    const fig = KQ.Figures.build("hero");
+    const fig = KQ.Figures.build(spec);
     scene.add(fig);
     const cam = new THREE.OrthographicCamera(-0.66, 0.66, 1.16, -0.16, 0.1, 10);
     return { scene, fig, cam };
   }
 
-  /** Render each posture once into a small PNG data URL (needs WebGL). */
+  /** Render each posture once into a small PNG data URL (needs WebGL): the boy, then the girl. */
   function renderPostures(renderer, az) {
     postureJobs(renderer, az).forEach((job) => job());
   }
@@ -293,21 +309,21 @@
   /** True once every posture picture exists (none queued). */
   const posturesReady = () => pendingPostures.length === 0;
 
-  /**
-   * The posture renders as separate jobs, one picture each (plus setup and clean-up), so boot can
-   * spread them over frames with KQ.Game.Defer instead of one long task with ten GPU read-backs
-   * (AC-P23). Each job restores the renderer's target and clear colour, so the game can draw
-   * between them.
-   */
-  function postureJobs(renderer, az) {
-    const size = 256;
-    const ctx = {};
-    const setup = () => {
-      ctx.rt = new THREE.WebGLRenderTarget(size, size);
-      ctx.rt.texture.encoding = THREE.sRGBEncoding;
-      ctx.stage = postureStage(renderer);
-    };
-    const one = (type) => () => {
+  /** The hero figures to draw: the boy into postureImages, the girl in her white hijab into girlImages. */
+  function postureSets() {
+    const sets = [{ spec: "hero", out: postureImages }];
+    if (KQ.Figures.HERO_GIRL) {
+      sets.push({
+        spec: Object.assign({}, KQ.Figures.HERO_GIRL, GIRL_PRAYER_LOOK),
+        out: girlImages,
+      });
+    }
+    return sets;
+  }
+
+  /** One job: draw one posture of the current stage's figure into `out`, then restore the renderer. */
+  function postureJob(renderer, ctx, out, type, az) {
+    return () => {
       const prevClear = renderer.getClearColor(new THREE.Color());
       const prevAlpha = renderer.getClearAlpha();
       const prevTarget = renderer.getRenderTarget();
@@ -318,15 +334,41 @@
       ctx.stage.fig.updateMatrixWorld(true);
       renderer.clear();
       renderer.render(ctx.stage.scene, ctx.stage.cam);
-      postureImages[type] = readPixels(renderer, ctx.rt, size);
+      out[type] = readPixels(renderer, ctx.rt, 256);
       renderer.setRenderTarget(prevTarget);
       renderer.setClearColor(prevClear, prevAlpha);
     };
-    const cleanup = () => {
+  }
+
+  /**
+   * The posture renders as separate jobs, one picture each (plus a stage per hero and clean-up), so
+   * boot can spread them over frames with KQ.Game.Defer instead of one long task with many GPU
+   * read-backs (AC-P23). Each job restores the renderer's target and clear colour, so the game can
+   * draw between them.
+   */
+  function postureJobs(renderer, az) {
+    const ctx = {};
+    const dropStage = () => ctx.stage && ctx.stage.scene.remove(ctx.stage.fig);
+    const jobs = [
+      () => {
+        ctx.rt = new THREE.WebGLRenderTarget(256, 256);
+        ctx.rt.texture.encoding = THREE.sRGBEncoding;
+      },
+    ];
+    postureSets().forEach((set) => {
+      jobs.push(() => {
+        dropStage();
+        ctx.stage = postureStage(renderer, set.spec);
+      });
+      Object.keys(POSTURE_POSE).forEach((type) =>
+        jobs.push(postureJob(renderer, ctx, set.out, type, az)),
+      );
+    });
+    jobs.push(() => {
+      dropStage();
       ctx.rt.dispose();
-      ctx.stage.scene.remove(ctx.stage.fig);
-    };
-    return [setup].concat(Object.keys(POSTURE_POSE).map(one), [cleanup]);
+    });
+    return jobs;
   }
 
   const MISSION_ICON = {
@@ -382,6 +424,7 @@
     stepIcon: (type) => icon(STEP_ICON[type] || "star"),
     postureCount: () => Object.keys(postureImages).length,
     postureImages: () => postureImages,
+    girlPostureImages: () => girlImages,
     POSTURE_POSE,
     ICONS,
   };

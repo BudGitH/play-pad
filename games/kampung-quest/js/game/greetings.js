@@ -20,10 +20,16 @@
   const TICK = 0.2;
   /** Two bubbles per greeting, three greetings at once. */
   const MAX_BUBBLES = 6;
-  /** Metres from the ground to the top of a head: the toy hero, a cast neighbour, a crowd adult / kid. */
-  const HEAD = { hero: 1.0, cast: 1.7, adult: 1.65, kid: 1.25 };
-  /** The gap the bubble floats above a head, and the least height on screen (clear of the HUD top). */
-  const FLOAT = 0.35;
+  /** At most this many bubbles show at once (the hero's first, then the nearest): more is unreadable. */
+  const MAX_SHOWN = 3;
+  /**
+   * Metres from the ground to the top of a head (measured on the built figures: the toy hero 0.99,
+   * a cast neighbour 1.05-1.07, a crowd adult about 1.0 x their size, a kid 0.9). The old values
+   * (1.7 m for a neighbour) floated the bubbles a metre over their heads.
+   */
+  const HEAD = { hero: 0.99, cast: 1.07, adult: 1.0, kid: 0.82 };
+  /** The gap the bubble's tail floats above a head, and the least height on screen (clear of the HUD top). */
+  const FLOAT = 0.16;
   const TOP_PX = 96;
   /** The hero is moving when faster than this (m/s). */
   const HERO_MOVING = 0.3;
@@ -153,7 +159,9 @@
     if (A) return A.hidden ? null : { x: A.x, y: A.y, z: A.z, head: HEAD.cast };
     const m = s.crowd.byId.get(who);
     if (m)
-      return m.leaving ? null : { x: m.x, y: m.y, z: m.z, head: m.kid ? HEAD.kid : HEAD.adult };
+      return m.leaving
+        ? null
+        : { x: m.x, y: m.y, z: m.z, head: (m.kid ? HEAD.kid : HEAD.adult) * (m.scale || 1) };
     const ext = s.greet && s.greet.actors[who];
     return ext ? ext() : null;
   }
@@ -172,37 +180,95 @@
     G.Voice.bubble({ who: b.who, text: b.text, dist: U.dist(at.x, at.z, hero.x, hero.z) });
   }
 
-  /** Put one bubble over its owner (or hide it when it is not time, they are gone or off screen). */
-  function place(s, st, b) {
-    const el = b.node.el;
+  /**
+   * Where one bubble wants to sit on screen: { b, px, py (the tail tip), dist (m from the hero) }, or
+   * null when it is not time yet, its owner is gone or off screen.
+   */
+  function anchor(s, st, b) {
     const at = st.now >= b.from ? whereIs(s, b.who) : null;
     if (at && !b.started) startBubble(s, b);
-    if (!at) {
-      el.hidden = true;
-      return;
-    }
+    if (!at) return null;
     tmp.set(at.x, at.y + at.head + FLOAT, at.z).project(s.camera);
-    const out = tmp.z > 1 || Math.abs(tmp.x) > 1.1 || Math.abs(tmp.y) > 1.1;
-    el.hidden = out;
-    if (out) return;
-    if (!b.spoken) voiceBubble(s, b, at);
+    if (tmp.z > 1 || Math.abs(tmp.x) > 1.1 || Math.abs(tmp.y) > 1.1) return null;
+    const hero = s.player.pos;
     const px = (tmp.x * 0.5 + 0.5) * s.size.w;
     const py = Math.max(TOP_PX, (-tmp.y * 0.5 + 0.5) * s.size.h);
-    el.style.transform =
-      "translate(" + px.toFixed(1) + "px," + py.toFixed(1) + "px) translate(-50%,-100%)";
-    el.style.opacity = String(U.clamp((b.until - st.now) / FADE, 0, 1));
+    return { b, at, px, py, dist: U.dist(at.x, at.z, hero.x, hero.z) };
   }
 
-  /** Place every live bubble and retire the finished (or ownerless) ones. */
+  /** The bubble's size in px (measured once, the first time it is shown; the words never change). */
+  function size(b) {
+    if (!b.w) {
+      b.node.el.hidden = false;
+      b.w = b.node.el.offsetWidth || 90;
+      b.h = (b.node.el.offsetHeight || 28) + 6; // + the tail
+    }
+    return b;
+  }
+
+  /** Does rectangle a (bubble at px, py: centred, bottom at py) overlap b, with a small margin? */
+  function overlaps(a, c) {
+    const m = 4;
+    return (
+      Math.abs(a.px - c.px) < (a.b.w + c.b.w) / 2 + m &&
+      a.py - a.b.h - m < c.py &&
+      c.py - c.b.h - m < a.py
+    );
+  }
+
+  /**
+   * Keep the readable few: the hero's bubble first, then the nearest people, at most MAX_SHOWN; and
+   * stack them so none overlaps another on screen (a lower bubble keeps its place, the one behind
+   * it moves up above it).
+   */
+  function layout(list) {
+    const hero = KQ.Sim.Greet.HERO;
+    list.sort(
+      (a, c) => (a.b.who === hero ? -1 : 0) - (c.b.who === hero ? -1 : 0) || a.dist - c.dist,
+    );
+    const shown = list.slice(0, MAX_SHOWN).map((p) => size(p.b) && p);
+    shown.sort((a, c) => c.py - a.py);
+    const placed = [];
+    shown.forEach((p) => {
+      let hit = placed.find((q) => overlaps(p, q));
+      while (hit) {
+        p.py = hit.py - hit.b.h - 4; // only ever moves up, so this ends
+        hit = placed.find((q) => overlaps(p, q));
+      }
+      placed.push(p);
+    });
+    return { shown: placed, hidden: list.slice(MAX_SHOWN) };
+  }
+
+  /** Put one laid-out bubble on screen (and speak it the first time). */
+  function put(s, st, p) {
+    const el = p.b.node.el;
+    el.hidden = false;
+    if (!p.b.spoken) voiceBubble(s, p.b, p.at);
+    el.style.transform =
+      "translate(" + p.px.toFixed(1) + "px," + p.py.toFixed(1) + "px) translate(-50%,-100%)";
+    el.style.opacity = String(U.clamp((p.b.until - st.now) / FADE, 0, 1));
+  }
+
+  /** Place every live bubble (at most MAX_SHOWN, never overlapping) and retire the finished ones. */
   function placeAll(s, st) {
     st.bubbles = st.bubbles.filter(function (b) {
       const done = st.now >= b.until || (b.started && !whereIs(s, b.who));
       if (done) {
         b.node.el.hidden = true;
         st.pool.push(b.node);
-      } else place(s, st, b);
+      }
       return !done;
     });
+    const list = [];
+    st.bubbles.forEach((b) => {
+      const p = anchor(s, st, b);
+      if (p) list.push(p);
+      else b.node.el.hidden = true;
+    });
+    const lay = layout(list);
+    lay.hidden.forEach((p) => (p.b.node.el.hidden = true));
+    lay.shown.forEach((p) => put(s, st, p));
   }
 
   /** Look at who is passing whom and start any new greeting. */

@@ -79,7 +79,8 @@
       B.start.lastElementChild.textContent = saved;
       B.newGame.hidden = false;
     }
-    B.start.focus({ preventScroll: true });
+    // a first run has the hero picker above Start: keyboard focus begins there (WCAG 2.4.3, reading order)
+    if (!(KQ.Game.Hero && KQ.Game.Hero.focusPicker())) B.start.focus({ preventScroll: true });
   }
 
   /** Show a small notice on the title screen (e.g. saving is unavailable). */

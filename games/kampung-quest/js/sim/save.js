@@ -88,9 +88,11 @@
   }
 
   /** Sanitise the saved rituals section (Umrah / Hajj / Ziarah progress); null (or a save from before it existed) starts them fresh. */
-  function cleanRituals(raw) {
+  function cleanRituals(raw, gender) {
     const umrah = KQ.Sim.Umrah;
-    return umrah && umrah.sanitize ? umrah.sanitize(raw) : null;
+    const clean = umrah && umrah.sanitize ? umrah.sanitize(raw) : null;
+    if (clean && umrah.cutFor) clean.cut = umrah.cutFor(clean.cut, gender === "girl"); // a girl's cut is a lock only
+    return clean;
   }
 
   /** Sanitise the saved hints section (what was already nudged); a save from before hints gets the defaults. */
@@ -187,7 +189,7 @@
       },
       missions: cleanMissions(raw.missions),
       prayers: cleanPrayers(raw.prayers),
-      rituals: cleanRituals(raw.rituals),
+      rituals: cleanRituals(raw.rituals, hero.gender),
       hints: cleanHints(raw.hints),
       outfit: cleanOutfit(raw.outfit),
       wardrobe: cleanWardrobe(raw.wardrobe, hero.gender),

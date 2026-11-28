@@ -4,7 +4,7 @@
  *          diesel, electric whine), a scooter's putter, a bicycle's freewheel ticks and chain whirr, how a
  *          passing car or the bus is heard from a distance, and the short one-off sounds (doors, hiss,
  *          engine start). No Web Audio, no DOM: js/game/vehicle-sound.js turns these numbers into sound.
- * BUSINESS CONTEXT: owner request "some sounds of the vehicle, subtle, never overpowering". Levels sit
+ * BUSINESS CONTEXT: AC-P27 (features/kampung-quest-playability/requirements.md). Owner request "some sounds of the vehicle, subtle, never overpowering". Levels sit
  *   below the ambience's beds and the footsteps; nothing here decides when sound is allowed (mute, pause,
  *   hidden tab, azan, prayer screen: that is wiring in vehicle-sound.js).
  * DEPENDENCIES: none. HOW TO TEST: npm run test:kq (tests/kampung-quest/vehicle-mix.test.mjs).

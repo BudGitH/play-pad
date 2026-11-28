@@ -81,8 +81,9 @@
    * the hair gets shorter, then the hero stands up. Calls `done()` at the end. Always finishes, even
    * if the card is closed meanwhile: the cut is recorded at once, only the picture is staged.
    */
-  function haircut(kind, done) {
+  function haircut(asked, done) {
     const umrah = S().sim.umrah;
+    const kind = KQ.Sim.Umrah.cutFor(asked, G.Hero.isGirl()); // a girl only ever snips a lock
     umrah.setCut(kind);
     const token = (scene.token += 1);
     scene.active = true;

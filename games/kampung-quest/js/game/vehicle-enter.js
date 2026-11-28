@@ -1,10 +1,10 @@
 /* ============================================================================
  * FILE: vehicle-enter.js
  * PURPOSE: The little get-in / get-out scene. Getting in: the hero walks to the driver's door, the door opens,
- *          he climbs into the seat, the door closes (about 1.2-1.8 s). Getting out is the same turned round and
- *          sets him down on free ground. A bicycle or scooter gets a short step and a swing over. Input is
+ *          the hero climbs into the seat, the door closes (about 1.2-1.8 s). Getting out is the same turned round and
+ *          sets the hero down on free ground. A bicycle or scooter gets a short step and a swing over. Input is
  *          locked while it plays and pressing the button again skips to the end.
- * BUSINESS CONTEXT: owner request: "something similar to GTA, opening the car and going in". Only the feel is
+ * BUSINESS CONTEXT: AC-P27 (features/kampung-quest-playability/requirements.md). Owner request: "something similar to GTA, opening the car and going in". Only the feel is
  *   borrowed: this is the hero's own car, nobody is ever pulled out of one.
  * HOW IT FITS: vehicles.js starts it from press() and from the stop-then-exit step and calls step(dt) every sim
  *   frame while active(); the timeline and the geometry of the path are pure (KQ.Sim.VehicleLife), the doors
@@ -21,6 +21,8 @@
   const SEATED = { car: "drive", bike: "pedal", moto: "drive", lorry: "drive" };
   /** How far outside the body the door point is (m): the hero's radius plus a step. */
   const DOOR_GAP = 0.6;
+  /** How far (m) the hero may be pushed off the scene's place before the scene counts as interrupted. */
+  const DISPLACED_M = 2.5;
   const E = { on: false };
   let scene = null;
 
@@ -88,7 +90,7 @@
     return { x: p.x, y, z: p.z, heading: facing(d, s, p) };
   }
 
-  /** Which way he faces: along the walk, toward the car at the door, then the way the vehicle points once seated. */
+  /** Which way the hero faces: along the walk, toward the car at the door, then the way the vehicle points once seated. */
   function facing(d, s, p) {
     const sim = d.o.sim;
     const toCar = Math.atan2(d.o.seatPt.x - d.doorW.x, d.o.seatPt.z - d.doorW.z);
@@ -99,7 +101,7 @@
     return toCar;
   }
 
-  /** The way he heads while walking in: toward the next point of the path (toward the car at its end). */
+  /** The way the hero heads while walking in: toward the next point of the path (toward the car at its end). */
   function walkHeading(d, s, p) {
     const ahead = worldOf(d.o.sim, VL().alongPath(d.path, Math.min(1, s.approach + 0.08)));
     const dx = ahead.x - p.x;
@@ -107,7 +109,7 @@
     return Math.hypot(dx, dz) > 0.02 ? Math.atan2(dx, dz) : d.o.sim.heading;
   }
 
-  /** The way he heads stepping away after getting out: from the door toward the place he is set down. */
+  /** The way the hero heads stepping away after getting out: from the door toward the place they are set down. */
   function walkHeadingOut(d, p) {
     const to = d.o.away;
     const dx = to.x - p.x;
@@ -147,7 +149,7 @@
     if (cue && G.VehicleSound) G.VehicleSound.door(cue);
   }
 
-  /** Put the hero where the timeline says and animate him; open or shut the door. */
+  /** Put the hero where the timeline says and animate the hero; open or shut the door. */
   function apply(P, dt) {
     const d = E.d;
     const s = E.s;
@@ -168,7 +170,7 @@
 
   /**
    * One sim step. Returns true while the scene is still playing, false the moment it ends (the caller then
-   * finishes: seats the hero or sets him down). Skipping jumps straight to the end state.
+   * finishes: seats the hero or sets them down). Skipping jumps straight to the end state.
    */
   function step(dt, P) {
     if (!E.on) return false;
@@ -186,16 +188,21 @@
     if (E.on) E.skipped = true;
   }
 
-  /** Stop at once (the hero was moved away, a flow took him): shut the door, no end state. */
+  /** Stop at once (the hero was moved away, a flow took the hero): shut the door, no end state. */
   function abort() {
     if (!E.on) return;
     G.Rig.openDoor(E.door, 0);
     E.on = false;
   }
 
-  /** Has someone else moved the hero away from where the scene put him? */
+  /**
+   * Has someone else moved the hero away from where the scene put them (a teleport, a flow)? A nudge
+   * is not that: a neighbour who cannot give way pushes the hero by up to about a metre (npc-manager
+   * separate), and the scene sets the hero's place afresh every frame, so a push heals itself. A
+   * tighter limit used to abort the scooter scene when an NPC stood near its door.
+   */
   function displaced(P) {
-    return E.on && E.last && U.dist(P.pos.x, P.pos.z, E.last.x, E.last.z) > 0.6;
+    return E.on && E.last && U.dist(P.pos.x, P.pos.z, E.last.x, E.last.z) > DISPLACED_M;
   }
 
   G.VehicleEnter = {

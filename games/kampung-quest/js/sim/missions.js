@@ -6,8 +6,8 @@
  *   progress pauses (accepting AND progressing); the active mission is kept and
  *   resumes after the prayer. There is no fail state - missions can be abandoned
  *   and re-accepted at any time.
- *   Event contract for notify(): { type: goto|talk|buy|deliver|collect, target: poi/npc id,
- *   item?: string, count?: number }.
+ *   Event contract for notify(): { type: goto|talk|buy|deliver|collect|greet, target: poi/npc id,
+ *   item?: string, count?: number, who?: string (a person's id: a counted step takes each once) }.
  * DEPENDENCIES: missions-data.js (KQ.Sim.MISSIONS, KQ.Sim.STICKERS, KQ.Sim.CHAT).
  * HOW TO TEST: npm run test:kq (tests/kampung-quest/missions.test.mjs)
  * ========================================================================== */
@@ -131,11 +131,25 @@
     return Math.max(0, mission.beat.secs - M.active.clock);
   }
 
+  /**
+   * Is this a repeat hello to a person already counted for this step? A counted step ("Say hi to 5
+   * people") takes each person (`event.who`, an id) once, so greeting the same neighbour five times
+   * does not finish it. An event with no `who` always counts. Remembers the person otherwise.
+   */
+  function repeatPerson(M, step, event) {
+    if (event.who === undefined || event.who === null || !(step.count > 1)) return false;
+    const seen = M.active.seen || (M.active.seen = []);
+    if (seen.indexOf(event.who) !== -1) return true;
+    seen.push(event.who);
+    return false;
+  }
+
   /** Feed a world event to the active mission; advances a step (counting collects) and completes it on the last one. */
   function notify(M, event) {
     const none = { changed: false, stepDone: false, completed: false };
     const step = currentStep(M);
     if (isPaused(M) || !stepMatches(step, event)) return none;
+    if (repeatPerson(M, step, event)) return none;
     const mission = missionById(M.active.id);
     const gained = Number.isFinite(event.count) && event.count > 0 ? Math.floor(event.count) : 1;
     M.active.count = Math.min(step.count || 1, M.active.count + gained);
@@ -143,6 +157,7 @@
       return { changed: true, stepDone: false, completed: false, mission };
     M.active.step += 1;
     M.active.count = 0;
+    M.active.seen = null;
     if (M.active.step >= mission.steps.length) return complete(M, mission);
     return { changed: true, stepDone: true, completed: false, mission, line: step.line || null };
   }
@@ -181,25 +196,6 @@
     }
     const step = currentStep(M);
     return Boolean(step && NPC_STEP_TYPES.indexOf(step.type) !== -1 && step.target === npcId);
-  }
-
-  /**
-   * Which of two interaction targets wins when the hero is in range of both. A neighbour with
-   * mission business beats a nearby object (a stall counter is ~0.15 m from its hawker, so
-   * distance alone never picks the hawker); otherwise the nearer one wins, with a small bias
-   * towards the neighbour. A zone-wide `fallback` object (the Pray prompt inside the mosque hall)
-   * never outranks a neighbour who can be talked to now.
-   * @param {{enabled:boolean, dist:number}|null} npc
-   * @param {{dist:number, fallback?:boolean}|null} obj
-   * @param {boolean} wants whether the neighbour has mission business
-   * @returns {"npc"|"obj"|null} null when neither is a usable choice
-   */
-  function pickTarget(npc, obj, wants) {
-    const npcOk = Boolean(npc && npc.enabled);
-    if (obj && obj.fallback) return npcOk ? "npc" : "obj";
-    if (npcOk && (!obj || wants || npc.dist - 0.4 <= obj.dist)) return "npc";
-    if (obj) return "obj";
-    return npc ? "npc" : null;
   }
 
   // TRUST_BOUNDARY: localStorage -> mission tracker (untrusted; unknown ids and counts are dropped)
@@ -358,7 +354,6 @@
   KQ.Sim.Missions = {
     create,
     chatLine,
-    pickTarget,
     sanitizeSnapshot,
     stepReply,
     completionLines,

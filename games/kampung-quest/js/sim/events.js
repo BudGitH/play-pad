@@ -85,6 +85,7 @@
     "ritual",
     "eating",
     "mounted",
+    "riding",
   ];
 
   /**

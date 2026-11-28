@@ -1,10 +1,15 @@
-/* Kampung Quest — dressing for an HDB void deck (KQ.WorldParts.HdbDeck), after the reference
-   photos in features/kampung-quest-playability/sg-reference.md: a white ceiling with downstand
-   beams, grey tiles and a chess board under the stone table sets (two stools with the steel
-   back rail), drain gratings along the open edges, a bicycle rack, wall fans and a friendly
-   "gentle play" sign on the lift core, downpipes at the corners, and a community unit at one
-   end of block B (RC centre) and block C (kindergarten). Everything goes into the shared batch
-   with existing materials, so it adds no draw calls. Called from HDB.block. */
+/* ============================================================================
+ * FILE: hdb-deck.js
+ * PURPOSE: Dressing for an HDB void deck (KQ.WorldParts.HdbDeck): a white ceiling with downstand beams, grey tiles and a
+ *          chess board under the stone table sets (two stools with the steel back rail), drain gratings along the
+ *          open edges, a bicycle rack, wall fans and a friendly "gentle play" sign on the lift core, downpipes at the
+ *          corners, and a community unit at one end of block B (RC centre) and block C (kindergarten). Everything
+ *          goes into the shared batch with existing materials, so it adds no draw calls. Called from HDB.block.
+ * BUSINESS CONTEXT: the playability round's Singapore realism pass (features/kampung-quest-playability/requirements.md, AC-P20 and the cross-cutting Singapore dressing in test-plan.md; reference photos
+ *   in features/kampung-quest-playability/sg-reference.md); the draw-call budget of AC-14 stays under 400.
+ * DEPENDENCIES: KQ.WorldParts.HDB (block geometry, VOID_H), the shared batch and materials.
+ * HOW TO TEST: npx playwright test tests/kampung-quest-ac.spec.mjs (draw calls at the void deck are asserted).
+ * ========================================================================== */
 (function (KQ) {
   "use strict";
   const P = (KQ.WorldParts = KQ.WorldParts || {});

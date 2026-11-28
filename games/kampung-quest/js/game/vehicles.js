@@ -261,6 +261,7 @@
     const near = (p) => U.dist2(p.x, p.z, x, z) < far * far;
     s.npcs.agents.forEach((A) => !A.hidden && A.group.visible && near(A) && out.push(A));
     if (s.crowd) s.crowd.members.forEach((m) => m.show > 0.3 && near(m) && out.push(m));
+    G.Actors.positions().forEach((p) => near(p) && out.push(p));
     return out;
   }
 

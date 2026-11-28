@@ -286,6 +286,38 @@ test("a saved 'voices off' is honoured on load and a junk value falls back to on
   expect(clean).toEqual([false, true, true]);
 });
 
+test("saved heard-hints are clean: no inherited keys, at most MAX_SEEN keys, and the blob always fits its cap", async () => {
+  const r = await kq(page, () => {
+    const G = window.KQ.Game;
+    const seen = { constructor: true, toString: true, __proto__: true };
+    for (let i = 0; i < 200; i += 1)
+      seen[
+        "k" +
+          "abcdefghijklmnopqrstuvwxyz"[i % 26].repeat(2) +
+          "-" +
+          "x".repeat(18) +
+          String.fromCharCode(97 + (i % 26)) +
+          String.fromCharCode(97 + ((i / 26) | 0))
+      ] = true;
+    localStorage.setItem("kampung-quest:prefs", JSON.stringify({ seen }));
+    G.Settings.load(G.S.storage);
+    const keys = Object.keys(G.Settings.prefs.seen);
+    G.Settings.save(G.S.storage);
+    const stored = localStorage.getItem("kampung-quest:prefs");
+    G.Say.reset();
+    G.Settings.save(G.S.storage);
+    return {
+      heard: G.Say.heard("constructor"),
+      count: keys.length,
+      max: G.Settings.MAX_SEEN,
+      chars: stored.length,
+    };
+  });
+  expect(r.heard, "'constructor' is not a heard hint").toBe(false);
+  expect(r.count).toBeLessThanOrEqual(r.max);
+  expect(r.chars, "a full set of the longest keys still loads back").toBeLessThan(2000);
+});
+
 test("a device with no speechSynthesis: the game still talks on screen, silently, with no error", async ({
   browser,
 }) => {

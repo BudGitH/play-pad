@@ -272,6 +272,18 @@
     resting = false;
   }
 
+  /** A kind line when the hero cannot rest because they are in a vehicle, on an animal or held by something else; else "". */
+  function busyWord() {
+    if (G.Vehicles.mounted() || G.Mounts.riding()) return "Get off first, then rest.";
+    return S().player.locked ? "Finish this first, then rest." : "";
+  }
+
+  /** Run `fn` now, or once the game is no longer paused (a pause opened during the rest fade holds the clock). */
+  function whenPlaying(fn) {
+    if (!S().paused) return fn();
+    setTimeout(() => whenPlaying(fn), 250);
+  }
+
   /** True while the one-tap rest is playing (it cannot start twice). */
   let resting = false;
 
@@ -282,6 +294,10 @@
    */
   function restHere() {
     if (resting || restRefusal()) return false;
+    if (busyWord()) {
+      G.UI.toast(busyWord(), "hint", 3200);
+      return false;
+    }
     resting = true;
     const P = S().player;
     const here = { x: P.pos.x, z: P.pos.z, heading: P.heading };
@@ -291,7 +307,7 @@
     G.Audio.play("tap");
     setTimeout(function () {
       S().root.classList.add("kq-fading");
-      setTimeout(() => sleepAndWake(here), 600);
+      setTimeout(() => whenPlaying(() => sleepAndWake(here)), 600);
     }, 800);
     return true;
   }

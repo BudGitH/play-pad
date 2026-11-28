@@ -94,6 +94,21 @@ test("layout keeps the important icon and drops the one that would sit on it", (
   assert.deepEqual(plain(out), ["mosque", "park"]);
 });
 
+test("layout slides a headline icon (prio <= 5) aside instead of dropping it, and never onto another icon", () => {
+  const camel = { id: "camel_yard", x: 100, y: 100, r: 18, prio: 2, lw: 60, lh: 16 };
+  const horse = { id: "horse_stable", x: 108, y: 100, r: 18, prio: 2, lw: 60, lh: 16 };
+  const bin = { id: "bin", x: 104, y: 100, r: 14, prio: 8, lw: 0, lh: 0 };
+  const out = M.layout([bin, camel, horse], 3);
+  assert.deepEqual(plain(out.map((e) => e.item.id)), ["camel_yard", "horse_stable"]);
+  const [a, b] = out.map((e) => e.item);
+  assert.ok(
+    Math.hypot(a.x - b.x, a.y - b.y) >= a.r + b.r + 3,
+    "the slid icon is clear of the first",
+  );
+  assert.equal(horse.x, 108, "the caller's item is not changed");
+  assert.equal(b.id, "horse_stable");
+});
+
 test("layout always keeps forced items (the go-here target)", () => {
   const a = { id: "a", x: 50, y: 50, r: 14, prio: 1, lw: 0, lh: 0 };
   const t = { id: "target", x: 52, y: 50, r: 14, prio: 9, force: true, lw: 0, lh: 0 };

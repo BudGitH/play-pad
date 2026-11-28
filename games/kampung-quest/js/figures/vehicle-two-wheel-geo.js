@@ -321,8 +321,12 @@
   /** The bicycle's shared geometries (cached per basket and tier). */
   function bike(withBasket, low) {
     const key = "bike" + (withBasket ? "b" : "") + (low ? "l" : "");
-    if (cache[key]) return cache[key];
-    const old = P().setDetail(low ? 0.55 : 1);
+    if (!cache[key]) cache[key] = P().withDetail(low, () => bikeSet(withBasket, low));
+    return cache[key];
+  }
+
+  /** Build the bicycle's geometry set at the detail already chosen (see bike). */
+  function bikeSet(withBasket, low) {
     const set = {
       kind: "bike",
       frame: bikeFrame(),
@@ -342,8 +346,6 @@
       exhaust: null,
     };
     set.trimFor = (mask) => trimVariant(set, mask);
-    P().setDetail(old);
-    cache[key] = set;
     return set;
   }
 

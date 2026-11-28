@@ -131,7 +131,7 @@
   /** Say the NPC's next small-talk line, cycling through their lines on repeat visits. */
   function smallTalk(A) {
     chat[A.id] = (chat[A.id] || 0) + 1;
-    G.Hi.noteTalk(); // small talk is a friendly hello too
+    G.Hi.noteTalk(A.id); // small talk is a friendly hello too
     const line = KQ.Sim.Missions.chatLine(A.id, chat[A.id] - 1);
     const lines = Array.isArray(line) ? line : [line];
     say(A, lines);

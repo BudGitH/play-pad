@@ -136,10 +136,44 @@
     return labelFits(above, it, kept, boxes) ? above : null;
   }
 
+  /** The most important icons (prio up to this) are slid aside, not dropped, when they would sit on another. */
+  const NUDGE_PRIO = 5;
+
+  /** The first kept icon `it` would overlap (within `gap`), or null. */
+  const clashWith = (it, kept, g) =>
+    kept.find((k) => Math.hypot(k.x - it.x, k.y - it.y) < k.r + it.r + g) || null;
+
+  /**
+   * Where an icon can sit: where it is when nothing is in the way; else, for a headline kind (prio up to
+   * NUDGE_PRIO), a copy slid sideways or up / down until it is clear (a horse stable beside the camel yard
+   * stays on the map); else null (it waits until the map is zoomed in).
+   */
+  function clearSpot(it, kept, g) {
+    const hit = clashWith(it, kept, g);
+    if (!hit) return it;
+    if (it.prio > NUDGE_PRIO) return null;
+    const d = hit.r + it.r + g;
+    const dirs = [
+      [1, 0],
+      [-1, 0],
+      [0, 1],
+      [0, -1],
+      [0.7, 0.7],
+      [-0.7, 0.7],
+      [0.7, -0.7],
+      [-0.7, -0.7],
+    ];
+    for (const [dx, dy] of dirs) {
+      const moved = Object.assign({}, it, { x: it.x + dx * d, y: it.y + dy * d });
+      if (!clashWith(moved, kept, g)) return moved;
+    }
+    return null;
+  }
+
   /**
    * Declutter a map: items are {id, x, y (pixels), r (icon radius), prio (low wins), force, lw, lh
    * (label size, 0 = no label)}. Icons are kept in priority order unless they would overlap an icon
-   * already kept (`force` items are always kept); then labels are placed where they hide nothing.
+   * already kept (`force` items are always kept; a headline icon slides aside instead, see clearSpot); then labels are placed where they hide nothing.
    * Returns [{ item, label: box | null }] in priority order.
    */
   function layout(items, gap) {
@@ -149,8 +183,8 @@
       .sort((a, b) => a.it.prio - b.it.prio || a.i - b.i);
     const kept = [];
     sorted.forEach(function (e) {
-      const clash = kept.some((k) => Math.hypot(k.x - e.it.x, k.y - e.it.y) < k.r + e.it.r + g);
-      if (e.it.force || !clash) kept.push(e.it);
+      const at = e.it.force ? e.it : clearSpot(e.it, kept, g);
+      if (at) kept.push(at);
     });
     const boxes = [];
     return kept.map(function (it) {

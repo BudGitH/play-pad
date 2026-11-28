@@ -71,4 +71,4 @@
 - On a landscape phone in Makkah and Madinah the dock has a fourth button (Umrah); on the smallest screens (568 wide) it may come within a few pixels of the Action control (the specs run the kampung).
 - The tray row is wider than the single control; with the full azan card open on a phone the card and the tiles are close but separate in the specs.
 - `speechSynthesis` voices vary by device; with none the hints are silent and the pictures and words carry the meaning.
-- `Missions.pickTarget` (pure, unit-tested) is no longer used by the game: `Sim.Actions` replaced it. It can be removed in a clean-up round.
+- `Missions.pickTarget` was removed in QA round 1 (`Sim.Actions` replaced it; its intent is tested in `action-order.test.mjs`).

@@ -4,7 +4,7 @@
  *          other vehicles and a zebra crossing ahead, where it sits on the road while it pulls into a parking
  *          bay, how many cars a tier allows, how many people get off and on at a stop, and when a car that is
  *          held up for good quietly goes away. No THREE, no DOM.
- * BUSINESS CONTEXT: owner request "cars driven around with people in them, buses with passengers getting on
+ * BUSINESS CONTEXT: AC-P26 (features/kampung-quest-playability/requirements.md). Owner request "cars driven around with people in them, buses with passengers getting on
  *   and off". Child-friendly (CLAUDE.md): traffic only ever slows down for a person, the hero, the bus or
  *   another car; it never touches anyone and never holds the hero up for good (a car held up too long, out
  *   of sight, simply goes away).

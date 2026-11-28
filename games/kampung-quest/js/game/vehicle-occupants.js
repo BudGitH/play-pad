@@ -4,7 +4,7 @@
  *          passengers of the bus, drawn as seated crowd figures at the model's seats, plus the little scenes of
  *          them getting out (the car's door opens, the figure steps out and walks off into the crowd) and getting
  *          in (a person walks up, the door opens, they climb in, it closes).
- * BUSINESS CONTEXT: owner request "cars with other characters driving and passengers inside; people in the bus,
+ * BUSINESS CONTEXT: AC-P26 and AC-P27 (features/kampung-quest-playability/requirements.md). Owner request "cars with other characters driving and passengers inside; people in the bus,
  *   entering and leaving it". Child-friendly: no one is ever pulled out; everyone steps out and in politely.
  * COST: NO per-person meshes. Every figure goes through the crowd's instanced kit (KQ.Figures.CrowdKit) from
  *   crowd.js's stepAndDraw (`Occupants.draw(kit, C, dt)`), so a few more people add instances, not draw calls.

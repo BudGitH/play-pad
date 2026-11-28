@@ -10,7 +10,7 @@
  *   shadow pass, they alone took the busiest views from ~350 to ~500 calls. Merged, a figure
  *   costs 1 + 1. Numbers: features/kampung-quest-playability/notes-perf.md.
  * HOW IT STAYS RIGHT: the merged geometry is rebuilt whenever a part's geometry, material or
- *   visibility changes (a new head piece, a hood's drape, a hidden part): a per-render signature
+ *   visibility changes (a new head piece, a hood's drape, a hidden part): a per-render reference
  *   check, so code that dresses or hides parts needs no change. Props held in a hand (umbrella,
  *   drum, tray) are not parts and stay ordinary meshes.
  * DEPENDENCIES: THREE (r147), build.js (rig fields). Classic script.
@@ -54,11 +54,23 @@
     return p === group;
   }
 
-  /** What the merged mesh was built from: geometry, material and visibility of every part. */
-  function signature(parts, group) {
-    return parts
-      .map((o) => (shown(o, group) ? o.geometry.uuid + "/" + o.material.uuid : "-"))
-      .join("|");
+  /**
+   * Did any part's geometry, material or visibility change since the last build? Compares object
+   * references against `M.last` (geometry, material per part; null when the part is not shown), so
+   * the per-render check builds no string and allocates nothing.
+   */
+  function changed(M) {
+    let diff = false;
+    M.parts.forEach(function (o, i) {
+      const on = shown(o, M.group);
+      const geo = on ? o.geometry : null;
+      const mat = on ? o.material : null;
+      if (M.last[2 * i] === geo && M.last[2 * i + 1] === mat) return;
+      M.last[2 * i] = geo;
+      M.last[2 * i + 1] = mat;
+      diff = true;
+    });
+    return diff;
   }
 
   /** Every vertex attribute any shown part has (name -> item size): position, normal, uv, color, aSkin... */
@@ -121,9 +133,7 @@
 
   /** Rebuild the merged mesh when the parts changed since the last build. */
   function refresh(M) {
-    const sig = signature(M.parts, M.group);
-    if (sig === M.sig) return;
-    M.sig = sig;
+    if (!changed(M)) return;
     const built = buildGeometry(M.parts, M.group);
     if (M.old) M.old.dispose();
     M.old = M.mesh.geometry; // the current draw may still use it: dispose on the next rebuild
@@ -155,7 +165,7 @@
     mesh.receiveShadow = true;
     group.add(mesh);
     mesh.bind(skeleton, IDENTITY);
-    const M = { group, rig, parts, mesh, sig: null, old: null };
+    const M = { group, rig, parts, mesh, last: [], old: null };
     parts.forEach((o) => o.layers.set(HIDDEN_LAYER));
     refresh(M);
     syncShadow(M);
@@ -165,10 +175,5 @@
     };
     rig.merged = M;
     return M;
-  };
-
-  /** Rebuild now if anything changed (a caller that just re-dressed a figure may call this). */
-  F.refreshMerged = function (rig) {
-    if (rig && rig.merged) refresh(rig.merged);
   };
 })((window.KQ = window.KQ || {}));

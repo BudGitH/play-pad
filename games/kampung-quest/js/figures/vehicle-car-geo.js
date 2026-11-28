@@ -211,10 +211,11 @@
     const f = fuel === "electric" ? "electric" : "petrol";
     const key = [name, lhd ? "l" : "r", low ? "low" : "hi", f].join("-");
     if (cache[key]) return cache[key];
-    const old = P().setDetail(low ? 0.55 : 1);
-    cache[key] = assemble(name, lhd, low, f);
-    variant(cache[key], "paint", 0);
-    P().setDetail(old);
+    cache[key] = P().withDetail(low, function () {
+      const set = assemble(name, lhd, low, f);
+      variant(set, "paint", 0);
+      return set;
+    });
     return cache[key];
   }
 

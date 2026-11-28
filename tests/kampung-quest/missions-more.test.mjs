@@ -193,6 +193,34 @@ test("the save round trip keeps working with the new missions (the bubble clock 
   assert.equal(copy.progress().verb, "Say hi");
 });
 
+test("AC-P19: Say hi to N people counts distinct people, not repeat hellos to one person", () => {
+  const t = Missions.create();
+  t.accept("friendly_five");
+  const hi = (who) => t.notify({ type: "greet", target: "people", who });
+  for (let i = 0; i < 6; i += 1) hi("m1"); // the same extra, again and again
+  assert.equal(t.progress().count, 1, "one person is one hello");
+  ["m2", "m3", "m4"].forEach(hi);
+  assert.equal(t.progress().count, 4);
+  assert.equal(hi("m3").changed, false, "a repeat changes nothing");
+  hi("m5");
+  assert.equal(
+    t.progress().label,
+    "Tell Irfan how it went",
+    "the fifth different person finishes it",
+  );
+  const pilgrims = Missions.create({ region: "haramain" });
+  const g = MISSIONS.find((m) => m.steps[0].type === "greet" && m.region === "haramain");
+  pilgrims.accept(g.id);
+  for (let i = 0; i < 8; i += 1) pilgrims.notify({ type: "greet", target: "people", who: "p1" });
+  assert.equal(
+    pilgrims.progress().count,
+    1,
+    "Makkah: the same pilgrim again and again is still one",
+  );
+  pilgrims.notify({ type: "greet", target: "people" });
+  assert.equal(pilgrims.progress().count, 2);
+});
+
 test("progress carries the verb, the quick flag, the item and who to escort", () => {
   const t = Missions.create();
   t.accept("push_the_car");

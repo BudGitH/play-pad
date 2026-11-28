@@ -1,10 +1,15 @@
-/* Kampung Quest — hawker centre dressing (KQ.WorldParts.HawkerDress), after the reference photos
-   in features/kampung-quest-playability/sg-reference.md: each stall's lit signboard (stall number,
-   name, drawn food pictures, generic HALAL label), a food-picture light box, the roller-shutter
-   box and rails, a menu board with prices on the back wall (the drinks stall's is bigger), a
-   hygiene grade card; the swing-out stool frames under every table; hand-wash basins, hanging
-   pictogram signs (tray return, wash hands), pendant lamps, column fans and litter bins.
-   Everything is batched with existing materials (no extra draw calls). */
+/* ============================================================================
+ * FILE: hawker-dress.js
+ * PURPOSE: Hawker centre dressing (KQ.WorldParts.HawkerDress): each stall's lit signboard (stall number, name, drawn food
+ *          pictures, generic HALAL label), a food-picture light box, the roller-shutter box and rails, a menu board
+ *          with prices on the back wall, a hygiene grade card, swing-out stool frames under every table, hand-wash
+ *          basins, hanging pictogram signs, pendant lamps, column fans and litter bins. Everything is batched with
+ *          existing materials (no extra draw calls).
+ * BUSINESS CONTEXT: the playability round's Singapore realism pass (features/kampung-quest-playability/requirements.md, AC-P20 and the cross-cutting Singapore dressing in test-plan.md; reference photos
+ *   in features/kampung-quest-playability/sg-reference.md). Every food is halal; the HALAL label and the grade card are generic drawn signs.
+ * DEPENDENCIES: KQ.WorldParts (sg-signs.js atlas drawing, the shared batch and materials).
+ * HOW TO TEST: npx playwright test tests/kampung-quest-ac.spec.mjs (hawker view draw calls and no console errors).
+ * ========================================================================== */
 (function (KQ) {
   "use strict";
   const P = (KQ.WorldParts = KQ.WorldParts || {});

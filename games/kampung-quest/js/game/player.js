@@ -267,8 +267,13 @@
     sync(P);
   }
 
-  /** Hold the hero at a spot with a forced pose (null pose = idle). */
+  /**
+   * Hold the hero at a spot with a forced pose (null pose = idle). Returns a ticket for `release`:
+   * a timed lock (a wave, an ice cream) releases with its ticket, so it never frees a hold that
+   * a prayer or a rite took in the meantime.
+   */
   function lock(P, spot, pose) {
+    P.lockId = (P.lockId || 0) + 1;
     P.locked = true;
     P.forcedPose = pose || null;
     if (spot) {
@@ -279,10 +284,15 @@
     KQ.Sim.Jump.reset(P.jump);
     P.vx = P.vz = 0;
     sync(P);
+    return P.lockId;
   }
 
-  /** Give control back to the player after a lock (clears the forced pose). */
-  function release(P) {
+  /**
+   * Give control back to the player after a lock (clears the forced pose). With a ticket from
+   * `lock`, only if that lock is still the latest one (a later lock keeps the hero held).
+   */
+  function release(P, ticket) {
+    if (ticket !== undefined && ticket !== P.lockId) return;
     P.locked = false;
     P.forcedPose = null;
   }

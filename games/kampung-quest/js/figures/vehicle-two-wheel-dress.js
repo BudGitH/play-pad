@@ -315,8 +315,12 @@
   /** The scooter's shared geometries (cached per tier). */
   function moto(low) {
     const key = "moto" + (low ? "l" : "");
-    if (cache[key]) return cache[key];
-    const old = P().setDetail(low ? 0.55 : 1);
+    if (!cache[key]) cache[key] = P().withDetail(low, motoSet);
+    return cache[key];
+  }
+
+  /** Build the scooter's geometry set at the detail already chosen (see moto). */
+  function motoSet() {
     const set = {
       kind: "moto",
       frame: motoBody(),
@@ -337,8 +341,6 @@
       exhaust: [-0.17, 0.31, -0.88],
     };
     set.trimFor = (mask) => F.VehicleTwoWheel.trimVariant(set, mask);
-    P().setDetail(old);
-    cache[key] = set;
     return set;
   }
 

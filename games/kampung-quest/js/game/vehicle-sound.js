@@ -5,7 +5,7 @@
  *          freewheel ticks and chain whirr, the horn and bell, door clunks, the engine starting, the bus's
  *          kneel and door hiss, another car's polite horn, and one faint "other traffic" hum that follows the
  *          nearest car or bus and fades with distance.
- * BUSINESS CONTEXT: AC-H6 (vehicles) with business rule 1 and AC-16: nothing sounds under the azan or a prayer
+ * BUSINESS CONTEXT: AC-P27 (features/kampung-quest-playability/requirements.md). AC-H6 (vehicles) with business rule 1 and AC-16: nothing sounds under the azan or a prayer
  *   flow, and nothing while muted, paused or in a hidden tab. Levels follow ambience.js (the loudest vehicle sound
  *   is well under the footsteps) and there is never any music. The numbers are pure (KQ.Sim.VehicleMix).
  * LIFECYCLE (docs/LEARNINGS.md 2026-11-21): one-off sounds go through Audio.vehicle (the shared gate, counted

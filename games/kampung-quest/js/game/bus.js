@@ -7,7 +7,7 @@
  *          passengers show through its windows, at the stop the doors open, 1-3 people get off and walk away
  *          into the crowd and 1-3 waiting people get on (vehicle-occupants.js); its lights, indicators, exhaust
  *          and sounds (door hiss, kneel) come from the vehicle-life files.
- * BUSINESS CONTEXT: owner request in the playability round ("add a bus or lorry"), notes in
+ * BUSINESS CONTEXT: AC-P26 (features/kampung-quest-playability/requirements.md). Owner request in the playability round ("add a bus or lorry"), notes in
  *   features/kampung-quest-playability/notes-vehicles.md. Child-friendly: the bus brakes for anyone on foot and
  *   for every vehicle ahead (Sim.Vehicle.speedCap), never pushes or hurts anyone, and is a moving solid (one
  *   oriented-box collider updated every frame) so nobody walks through it.
@@ -140,6 +140,7 @@
     const near = (p) => Math.abs(p.x - sim.x) < NEAR && Math.abs(p.z - sim.z) < NEAR;
     s.npcs.agents.forEach((A) => !A.hidden && A.group.visible && near(A) && out.push(A));
     if (s.crowd) s.crowd.members.forEach((m) => m.show > 0.3 && near(m) && out.push(m));
+    G.Actors.positions().forEach((p) => near(p) && out.push(p));
     if (near(s.player.pos)) out.push(s.player.pos);
     G.Vehicles.sims().forEach((v) => near(v) && out.push(...ends(v)));
     if (G.Traffic) G.Traffic.obstacles().forEach((v) => near(v) && out.push(...ends(v)));

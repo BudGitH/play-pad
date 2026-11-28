@@ -1,7 +1,13 @@
-// Kampung Quest — the hero on an animal (AC-P5, AC-P6). "ride": astride a horse or pony, legs wide round
-// the barrel, knees bent, hands forward on the reins, a little bounce in the saddle. "ride_camel": sitting up
-// on the camel's cushion in front of the hump, feet hanging down its sides, both hands on the saddle horn.
-// Same joint conventions as poses.js; this file must load before animator.js, which builds its pose table once.
+/* ============================================================================
+ * FILE: ride-poses.js
+ * PURPOSE: The hero on an animal. "ride": astride a horse or pony, legs wide round the barrel, knees bent, hands
+ *          forward on the reins, a little bounce in the saddle. "ride_camel": sitting up on the camel's cushion in
+ *          front of the hump, feet hanging down its sides, both hands on the saddle horn. Same joint conventions
+ *          as poses.js; this file must load before animator.js, which builds its pose table once.
+ * BUSINESS CONTEXT: AC-P5 to AC-P7 (features/kampung-quest-playability/requirements.md, group B: riding the camel, horse and pony).
+ * DEPENDENCIES: KQ.Figures.POSES (poses.js), loaded before animator.js.
+ * HOW TO TEST: npx playwright test tests/kampung-quest-mounts.spec.mjs.
+ * ========================================================================== */
 (function (KQ) {
   "use strict";
   const F = (KQ.Figures = KQ.Figures || {});

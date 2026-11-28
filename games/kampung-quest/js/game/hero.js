@@ -71,12 +71,16 @@
     return el;
   }
 
-  /** Arrow keys move the choice between the two cards (a radio group), focus follows. */
+  /**
+   * Arrow keys move the choice between the two cards (a radio group), focus follows; Home picks the
+   * first card (Boy) and End the last (Girl).
+   */
   function onKey(e) {
-    const keys = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"];
+    const keys = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"];
     if (keys.indexOf(e.key) === -1) return;
     e.preventDefault();
-    const next = P.choice === "boy" ? "girl" : "boy";
+    const next =
+      e.key === "Home" ? "boy" : e.key === "End" ? "girl" : P.choice === "boy" ? "girl" : "boy";
     pick(next);
     P.cards[next].focus();
   }
@@ -133,6 +137,13 @@
     return true;
   }
 
+  /** Put keyboard focus on the chosen card when the picker is up (a first run); true when it did. */
+  function focusPicker() {
+    if (!P.host || P.host.hidden || !P.cards[P.choice]) return false;
+    P.cards[P.choice].focus({ preventScroll: true });
+    return true;
+  }
+
   /** What a test can see: is the picker up, and which card is chosen. */
   function debug() {
     return { picker: Boolean(P.host && !P.host.hidden), choice: P.choice, hero: current() };
@@ -144,6 +155,7 @@
     rules,
     initPicker,
     reveal,
+    focusPicker,
     choice: () => P.choice,
     debug,
     PICTURES,

@@ -59,6 +59,7 @@
       ritual: Boolean(G.RitualFlow.debug().rite),
       eating: G.EatFlow.open(),
       mounted: G.Vehicles.mounted(),
+      riding: Boolean(G.Mounts.riding()),
     };
   }
 

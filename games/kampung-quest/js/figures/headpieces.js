@@ -257,9 +257,6 @@
   F.HEAD_PIECE_FN = PIECES; // headpieces-hair.js adds the hair pieces
   F.HeadKit = { blob, densify, carve, smoothLathe };
 
-  /** Every head-piece type (hats, hoods and hair). */
-  F.headPieceTypes = () => Object.keys(PIECES);
-
   const drapeCache = {};
   /**
    * The shoulder drape of a hood (tudung, hijab), or null for every other piece. Head units with the

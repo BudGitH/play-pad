@@ -210,6 +210,29 @@ test("a hostile rituals section is clamped, whitelisted and never throws", () =>
   assert.equal(saved.rituals.cut, "none");
 });
 
+test("a girl's cut is a lock only: trim and shave become a lock (chosen or loaded); a boy's cut is kept", () => {
+  assert.equal(U.cutFor("shave", true), "lock");
+  assert.equal(U.cutFor("trim", true), "lock");
+  assert.equal(U.cutFor("lock", true), "lock");
+  assert.equal(U.cutFor("none", true), "none", "no cut yet stays no cut");
+  assert.equal(U.cutFor("shave", false), "shave");
+  assert.equal(U.cutFor("trim", false), "trim");
+  const base = KQ.Sim.Save.defaultState();
+  const load = (gender, cut) =>
+    KQ.Sim.Save.sanitize({
+      ...base,
+      hero: { ...base.hero, gender },
+      rituals: { ...U.create().snapshot(), cut },
+    });
+  assert.equal(
+    load("girl", "shave").rituals.cut,
+    "lock",
+    "a saved shave for a girl hero is dropped",
+  );
+  assert.equal(load("girl", "trim").rituals.cut, "lock");
+  assert.equal(load("boy", "shave").rituals.cut, "shave");
+});
+
 /* ------------------------------ word by word ------------------------------ */
 
 test("the reading cursor moves, jumps, clamps and auto-advances", () => {

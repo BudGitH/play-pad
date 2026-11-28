@@ -1,8 +1,14 @@
-/* Kampung Quest — estate furniture (KQ.WorldParts.Estate), after the reference sheet
-   features/kampung-quest-playability/sg-reference.md: a fitness corner on rubber flooring by
-   block C, a railed monsoon drain along the west edge of the town (broken by the road culvert)
-   and the bicycle rack in front of block A (the parked bicycles are vehicles; the rack is decor
-   without a collider so it never moves them). Batched with existing materials. */
+/* ============================================================================
+ * FILE: estate.js
+ * PURPOSE: Estate furniture (KQ.WorldParts.Estate): a fitness corner on rubber flooring by block C, a railed monsoon
+ *          drain along the west edge of the town (broken by the road culvert) and the bicycle rack in front of
+ *          block A (the parked bicycles are vehicles; the rack is decor without a collider so it never moves
+ *          them). Batched with existing materials.
+ * BUSINESS CONTEXT: the playability round's Singapore realism pass (features/kampung-quest-playability/requirements.md, AC-P20 and the cross-cutting Singapore dressing in test-plan.md; reference sheet
+ *   features/kampung-quest-playability/sg-reference.md).
+ * DEPENDENCIES: KQ.WorldParts (the shared batch and materials).
+ * HOW TO TEST: npx playwright test tests/kampung-quest-ac.spec.mjs.
+ * ========================================================================== */
 (function (KQ) {
   "use strict";
   const P = (KQ.WorldParts = KQ.WorldParts || {});

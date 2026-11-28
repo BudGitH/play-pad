@@ -217,7 +217,8 @@
    * ease down from its top speed at the comfortable rate (so a faster car never meets anyone unawares).
    */
   function lookAhead(spec) {
-    return Math.max(LOOK, (spec.maxFwd * spec.maxFwd) / (2 * COMFORT) + spec.halfLen + 3);
+    const top = Number.isFinite(spec.maxFwd) ? spec.maxFwd : spec.top; // animals have a `top` speed, not maxFwd
+    return Math.max(LOOK, (top * top) / (2 * COMFORT) + (spec.halfLen || 0) + 3);
   }
 
   /** The speed a person ahead (in the travel direction `dir`, +1 / -1) allows, or Infinity. */

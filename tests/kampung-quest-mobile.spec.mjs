@@ -355,8 +355,14 @@ async function expectHudClear(page, label) {
 async function startAt(page, size) {
   await page.goto("/games/kampung-quest/index.html?still=1&autoq=0");
   await expect.poll(() => kq(page, () => window.__kq?.loaded), { timeout: 60_000 }).toBe(true);
-  // A11Y-12: Start has keyboard focus as soon as it enables
-  expect(await kq(page, () => document.activeElement?.id)).toBe("kqStart");
+  // A11Y-12: keyboard focus starts on the first thing to do as soon as the title screen is ready: a first run
+  // has the hero picker above Start (reading order, WCAG 2.4.3), so the chosen card; otherwise Start itself
+  expect(
+    await kq(page, () => {
+      const a = document.activeElement;
+      return a && a.classList.contains("is-on") ? "heroCard" : a?.id;
+    }),
+  ).toBe("heroCard");
   await page.locator("#kqStart").click();
   await expect.poll(() => kq(page, () => window.__kq.ready), { timeout: 15_000 }).toBe(true);
   await kq(page, () => window.__kq.step(300));

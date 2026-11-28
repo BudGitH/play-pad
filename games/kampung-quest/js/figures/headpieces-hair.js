@@ -1,8 +1,14 @@
-// Kampung Quest — hair head pieces (registered into the table of headpieces.js): short / bun / quiff
-// hair, the tahallul trim and shave, the short hair under a cap or songkok, and the girl hero's own
-// hair (ponytail, braids, bun, bob) with a ribbon in her scarf colour. The ponytail and the braids are
-// shaped to read from the front and 3/4 views too (the tail peeks out beside the head, the braids hang
-// forward over the shoulders), and nothing pokes into the shoulders.
+/* ============================================================================
+ * FILE: headpieces-hair.js
+ * PURPOSE: Hair head pieces (registered into the table of headpieces.js): short / bun / quiff hair, the tahallul trim and
+ *          shave, the short hair under a cap or songkok, and the girl hero's own hair (ponytail, braids, bun, bob)
+ *          with a ribbon in her scarf colour. The ponytail and the braids are shaped to read from the front and
+ *          3/4 views too, and nothing pokes into the shoulders.
+ * BUSINESS CONTEXT: AC-P8 to AC-P10 (features/kampung-quest-playability/requirements.md, group C: choosing the hero) and the Umrah tahallul haircut
+ *   (a girl snips a lock only; the cut for the hero comes from KQ.Sim.Umrah.cutFor).
+ * DEPENDENCIES: KQ.Figures.Geo, HeadKit, HEAD and napeHair (headpieces.js, head-kit.js).
+ * HOW TO TEST: npx playwright test tests/kampung-quest-hero.spec.mjs tests/kampung-quest-figures.spec.mjs.
+ * ========================================================================== */
 (function (KQ) {
   "use strict";
   const F = (KQ.Figures = KQ.Figures || {});

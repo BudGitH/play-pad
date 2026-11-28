@@ -251,6 +251,16 @@ test("AC-P13: a fast vehicle looks far enough ahead to ease down for anyone at t
   );
 });
 
+test("AC-P13: an animal's spec (it has `top`, not `maxFwd`) gives a finite look-ahead, so a ridden animal yields in time", () => {
+  const { Mount } = loadSim(["vehicle", "mount"]).Sim;
+  Object.keys(Mount.SPECS).forEach((kind) => {
+    const s = Mount.SPECS[kind];
+    const look = Veh.lookAhead(s);
+    assert.ok(Number.isFinite(look), kind + " is not NaN");
+    assert.ok(look >= (s.top * s.top) / (2 * 6.5) + s.halfLen, kind + " eases down in time");
+  });
+});
+
 test("AC-P12: a parked vehicle's box is its body, turned with it", () => {
   const v = Veh.create("car", 10, 5, Math.PI / 2);
   const b = Veh.box(v, 0.1);

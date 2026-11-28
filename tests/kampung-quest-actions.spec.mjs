@@ -191,6 +191,7 @@ async function expectRan(pg, kind, coinsBefore) {
 }
 
 test("AC-P24.3 keys: 2 runs the next tile, 1 and E run the big button", async () => {
+  test.setTimeout(150_000);
   for (const key of ["2", "1", "e"]) {
     await neighbourAndCart(page);
     const { targets, coins } = await state(page);
@@ -303,6 +304,35 @@ test("AC-P25.1 Rest is not offered at full energy, and the Tired bar is a one-ta
   await step(page, 500);
 });
 
+/* Holds for the Rest-refusal test. Each runs in the page (no outer variables); one method is patched and put back. */
+const holdDriving = () => {
+  window.__real = window.KQ.Game.Vehicles.mounted;
+  window.KQ.Game.Vehicles.mounted = () => true; // as if driving
+};
+const freeDriving = () => (window.KQ.Game.Vehicles.mounted = window.__real);
+const holdRiding = () => {
+  window.__real = window.KQ.Game.Mounts.riding;
+  window.KQ.Game.Mounts.riding = () => ({ id: "camel" }); // as if on an animal
+};
+const freeRiding = () => (window.KQ.Game.Mounts.riding = window.__real);
+const holdLocked = () => window.KQ.Game.Player.lock(window.KQ.Game.S.player, null, "sit");
+const freeLocked = () => window.KQ.Game.Player.release(window.KQ.Game.S.player);
+
+test("AC-P25.1 Rest from the Tired bar refuses, with a kind line, while driving, riding or held by something else", async () => {
+  await kq(page, () => window.__kq.setMinute(10 * 60)); // mid-morning: no prayer is due
+  await kq(page, () => window.KQ.Game.S.sim.needs.restore({ hunger: 80, energy: 10 }));
+  await kq(page, () => window.__kq.place(10, 10, 0));
+  await step(page, 400);
+  await restRefusedWhile(page, holdDriving, freeDriving, /Get off first/);
+  await restRefusedWhile(page, holdRiding, freeRiding, /Get off first/);
+  await restRefusedWhile(page, holdLocked, freeLocked, /Finish this first/);
+  await page.locator("#kqNeeds").click(); // free again: it rests
+  await expect
+    .poll(async () => (await state(page)).energy, { timeout: 15_000 })
+    .toBeGreaterThanOrEqual(95);
+  await step(page, 500);
+});
+
 test("AC-P25.1 Rest is refused while a fard prayer is due (Pray comes first)", async () => {
   await kq(page, () => window.KQ.Game.S.sim.needs.restore({ hunger: 80, energy: 10 }));
   await goTo(page, "home");
@@ -314,6 +344,19 @@ test("AC-P25.1 Rest is refused while a fard prayer is due (Pray comes first)", a
   expect((await state(page)).energy, "no rest happened").toBeLessThan(30);
   await expect(page.locator(".kq-toast", { hasText: /Prayer time first/ })).toBeVisible();
 });
+
+/** Hold the hero as `hold` says, tap the Tired bar, expect the kind line and no rest; then `release`. */
+async function restRefusedWhile(pg, hold, release, pattern) {
+  await kq(pg, hold);
+  const before = (await state(pg)).energy;
+  await pg.locator("#kqNeeds").click();
+  await step(pg, 300);
+  await expect(pg.locator(".kq-toast", { hasText: pattern }).last()).toBeVisible();
+  expect((await state(pg)).energy, "no rest happened").toBe(before);
+  const resting = await kq(pg, () => window.KQ.Game.S.root.classList.contains("kq-resting"));
+  expect(resting, "no rest scene started").toBe(false);
+  await kq(pg, release);
+}
 
 test("AC-P25.2 / .3 Pray from the status card: wudu, then the prayer, in one flow; no Sunat / Wudu / Show me the way", async () => {
   await kq(page, () => window.KQ.Game.UI.closeSheet("test"));
@@ -419,6 +462,92 @@ function showTray() {
     return [r.left, r.top, r.width, r.height];
   });
 }
+
+/** Render fake actions as the world would: { kind, id, label, aria } by id (the first is the big button). */
+function renderFake(rows) {
+  const G = window.KQ.Game;
+  G.Hud.refs.talk.hidden = false;
+  G.ActionBar.render(
+    rows.map(([kind, id, label, aria]) => ({
+      kind,
+      id,
+      label,
+      aria,
+      enabled: true,
+      x: 0,
+      z: 0,
+      dist: 1,
+      h: 1,
+    })),
+  );
+  return [...document.querySelectorAll("#kqTalk, .kq-talk-more")].map((b) =>
+    b.getAttribute("aria-label"),
+  );
+}
+
+test("a11y: the accessible name starts with the visible word, and a rebuild keeps keyboard focus", async () => {
+  const rows = (hiId, secondWord) => [
+    ["hi", hiId, "Say hi", "Say hi"],
+    ["obj", "counter_a", "Eat", "Order food"],
+    ["obj", "minimart_till", secondWord, "Pay at the till"],
+  ];
+  const names = await kq(page, renderFake, rows("walker:1", "Buy"));
+  expect(names).toEqual(["Say hi", "Eat: order food", "Buy: pay at the till"]);
+  // the nearest crowd person changes (a new volatile id) while the tile the child focused is untouched
+  await kq(page, () => {
+    const tile = document.querySelector('.kq-talk-more[data-n="2"]');
+    tile.focus();
+    tile.dataset.mark = "same-node";
+  });
+  await kq(page, renderFake, rows("walker:2", "Buy"));
+  expect(
+    await kq(page, () => document.activeElement && document.activeElement.dataset.mark),
+    "the focused tile is the same node, not rebuilt",
+  ).toBe("same-node");
+  // what is shown does change: the DOM is rebuilt, and focus follows to the tile with the same number
+  await kq(page, renderFake, rows("walker:2", "Pay"));
+  const focus = await kq(page, () => {
+    const a = document.activeElement;
+    return a && a.getAttribute("data-n");
+  });
+  expect(focus, "focus stays on tile 2, never on the page body").toBe("2");
+  await kq(page, () => window.KQ.Game.ActionBar.render([]));
+  const after = await kq(page, () => document.activeElement && document.activeElement.id);
+  expect(after, "when the control goes away, focus moves to the stage").toBe("kqStage");
+});
+
+test("a11y: Space presses a keyboard-focused HUD button instead of jumping; after a tap it still jumps", async () => {
+  await kq(page, () => window.KQ.Game.UI.closeSheet("test"));
+  await kq(page, () => window.__kq.place(10, 10, 0));
+  await step(page, 2500); // let any wave or ice-cream pose from an earlier test end
+  expect(await kq(page, () => window.KQ.Game.Actions.canJump()), "in play, free to jump").toBe(
+    true,
+  );
+  await kq(page, renderFake, [
+    ["hi", "walker:1", "Say hi", "Say hi"],
+    ["obj", "counter_a", "Eat", "Order food"],
+  ]);
+  await page.keyboard.press("Shift"); // the keyboard is the input now
+  const clicked = await kq(page, () => {
+    const tile = document.querySelector('.kq-talk-more[data-n="2"]');
+    window.__tileClicks = 0;
+    tile.addEventListener("click", () => (window.__tileClicks += 1));
+    tile.focus();
+    return tile.matches(":focus-visible");
+  });
+  expect(clicked, "the tile is keyboard-focused").toBe(true);
+  await page.keyboard.press("Space");
+  await step(page, 150);
+  expect(await kq(page, () => window.__tileClicks), "Space pressed the tile").toBe(1);
+  expect((await state(page)).airborne, "and did not make the hero jump").toBe(false);
+  // after a tap (focus without :focus-visible) Space jumps as before
+  await kq(page, () => document.getElementById("kqStage").focus());
+  await page.keyboard.press("Space");
+  await step(page, 150);
+  expect((await state(page)).airborne, "Space jumps again with focus on the world").toBe(true);
+  await step(page, 1200);
+  await kq(page, () => window.KQ.Game.ActionBar.render([]));
+});
 
 /** The boxes of the HUD pieces the Action control must keep clear of (those that exist right now). */
 async function neighbourBoxes(pg) {

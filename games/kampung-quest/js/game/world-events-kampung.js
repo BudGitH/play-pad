@@ -301,8 +301,11 @@
     G.Audio.play("coin");
     G.UI.toast("Sedap! Ice cream. -" + PRICE + " coins", "good", 3000);
     st.env.say(st.seller.id, "Terima kasih! Enjoy!", 0, 2.6);
-    G.Player.lock(G.S.player, null, "eat");
-    G.S.after(1.8, () => G.Player.release(G.S.player));
+    const P = G.S.player;
+    if (!P.locked) {
+      const ticket = G.Player.lock(P, null, "eat"); // held for the lick, unless a prayer or rite took over
+      G.S.after(1.8, () => G.Player.release(P, ticket));
+    }
     G.S.hudDirty = true;
   }
 

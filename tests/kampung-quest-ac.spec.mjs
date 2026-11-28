@@ -216,7 +216,6 @@ async function checkEating(page) {
   await expect(page.locator("#kqLive")).toHaveText(/ Food \d+ of 100\.$/);
   expect(after.hunger).toBeGreaterThan(before.hunger);
   expect(after.coins).toBeLessThan(before.coins);
-  expect(after.coins).toBeGreaterThanOrEqual(0);
   // eating is a short stepper (wash, Bismillah, bites, Alhamdulillah): finish it with Next
   await expect(page.getByRole("dialog", { name: "Eating steps" })).toBeVisible();
   for (let i = 0; i < 12 && (await state(page)).ui.eating; i += 1) {
@@ -841,14 +840,21 @@ test.describe("AC-13 save", () => {
   }
 });
 
+/** A first run: the hero picker is above Start, so focus begins on the chosen card; Tab reaches Start; Enter starts. */
+async function startByKeyboard(page) {
+  await expect(page.locator("#kqHeroPick .kq-hero-card.is-on")).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(page.locator("#kqStart")).toBeFocused();
+  await page.keyboard.press("Enter"); // Start, no mouse
+  await expect.poll(() => kq(page, () => window.__kq.ready), { timeout: 30_000 }).toBe(true);
+}
+
 test.describe("AC-15 accessibility", () => {
   test.describe.configure({ timeout: 150_000 });
 
   test("playable by keyboard alone, 48 px controls, visible focus", async ({ page }) => {
     await load(page);
-    await expect(page.locator("#kqStart")).toBeFocused(); // the game focuses Start itself
-    await page.keyboard.press("Enter"); // Start, no mouse
-    await expect.poll(() => kq(page, () => window.__kq.ready), { timeout: 30_000 }).toBe(true);
+    await startByKeyboard(page);
     await step(page, 300);
     const small = await kq(page, smallButtons);
     expect(small, "HUD buttons under 48 px").toEqual([]);

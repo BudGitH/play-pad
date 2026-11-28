@@ -100,13 +100,25 @@
 
   /**
    * Does Space mean "jump" right now? Only while the world is in play (no sheet, prayer screen or
-   * flow holding the hero) and not while typing; otherwise it keeps its normal job (pressing the
-   * focused button).
+   * flow holding the hero) and not while typing or while a button has KEYBOARD focus; otherwise it
+   * keeps its normal job (pressing the focused button, WCAG 2.1.1). A button a mouse or finger
+   * clicked is not keyboard-focused (not :focus-visible), so Space still jumps after a tap.
    */
   function spaceFree(e) {
-    const typing = e.target && e.target.closest && e.target.closest("input, select, textarea");
-    spaceTaken = !typing && Boolean(G.Actions && G.Actions.canJump());
+    const t = e.target;
+    const typing = t && t.closest && t.closest("input, select, textarea");
+    spaceTaken = !typing && !keyboardOnButton(t) && Boolean(G.Actions && G.Actions.canJump());
     return spaceTaken;
+  }
+
+  /** Is the key's target a button (or a role=button) that the keyboard focused? */
+  function keyboardOnButton(t) {
+    if (!t || !t.closest || !t.closest("button, [role=button]")) return false;
+    try {
+      return t.matches(":focus-visible");
+    } catch (err) {
+      return false; // a browser without :focus-visible: keep Space as Jump
+    }
   }
 
   /** Forget a released key (and swallow the Space key-up that would click a focused button). */

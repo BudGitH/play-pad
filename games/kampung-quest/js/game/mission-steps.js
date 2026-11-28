@@ -19,7 +19,15 @@
   const FOLLOW_GAP = 1.3;
   const CHECK_EVERY = 0.25;
   const WAIT_CALL_EVERY = 9;
-  const M = { checkT: 0, escortId: null, callAt: -1e9, flashEl: null, now: 0, photos: 0 };
+  const M = {
+    checkT: 0,
+    escortId: null,
+    callAt: -1e9,
+    flashEl: null,
+    now: 0,
+    photos: 0,
+    bubbleSaid: 0,
+  };
 
   /** The mission progress view (or null) while the mission is running (not waiting for a prayer). */
   function live() {
@@ -171,12 +179,25 @@
   /** The beat-the-bubble chip: time left, no failure word; it just goes quiet at zero. */
   function bubbleChip() {
     const left = S().sim.missions.bubbleLeft();
-    if (left === null || left <= 0) return G.LifeChip.clear("bubble");
+    if (left === null || left <= 0) {
+      M.bubbleSaid = 0;
+      return G.LifeChip.clear("bubble");
+    }
     const s = Math.ceil(left);
-    G.LifeChip.set(
-      "bubble",
-      "Beat the bubble: " + Math.floor(s / 60) + ":" + U.pad2(s % 60) + " for a bonus",
-    );
+    const text = "Beat the bubble: " + Math.floor(s / 60) + ":" + U.pad2(s % 60) + " for a bonus";
+    G.LifeChip.set("bubble", text);
+    announceBubble(s, text);
+  }
+
+  /** Tell a screen reader about the countdown twice only: when it starts and when ten seconds are left. */
+  function announceBubble(s, text) {
+    if (!M.bubbleSaid) {
+      M.bubbleSaid = 1;
+      G.UI.announce(text);
+    } else if (M.bubbleSaid === 1 && s <= 10) {
+      M.bubbleSaid = 2;
+      G.UI.announce("Ten seconds left for the bonus");
+    }
   }
 
   /**

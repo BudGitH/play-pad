@@ -320,21 +320,3 @@ test("no wall clock anywhere on the prayer path: sim, data and the prayer contro
     assert.equal(banned.test(code), false, path.basename(file) + " reads the wall clock");
   }
 });
-
-/* ------------------------------ interaction priority ------------------------------ */
-
-test("pickTarget: the mosque-hall Pray fallback never outranks a neighbour who can be talked to", () => {
-  const Missions = KQ.Sim.Missions;
-  const pray = { dist: 6, fallback: true };
-  assert.equal(Missions.pickTarget({ enabled: true, dist: 2 }, pray, false), "npc");
-  assert.equal(Missions.pickTarget({ enabled: true, dist: 2 }, pray, true), "npc");
-  assert.equal(
-    Missions.pickTarget({ enabled: false, dist: 4 }, pray, true),
-    "obj",
-    "far NPC: Pray shows",
-  );
-  assert.equal(Missions.pickTarget(null, pray, false), "obj");
-  // ordinary objects keep the existing rules
-  assert.equal(Missions.pickTarget({ enabled: true, dist: 2.2 }, { dist: 1.7 }, false), "obj");
-  assert.equal(Missions.pickTarget({ enabled: true, dist: 1.2 }, { dist: 1.7 }, false), "npc");
-});

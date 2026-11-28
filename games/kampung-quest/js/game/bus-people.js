@@ -3,7 +3,7 @@
  * PURPOSE: The people of the town bus at its stop: 1-3 passengers get up, walk to the middle door and step out
  *          onto the pavement (handed to the crowd walkers), and 1-3 people waiting at the stop walk up to the
  *          front door, step in and sit down. Seated people are drawn in the windows by vehicle-occupants.js.
- * BUSINESS CONTEXT: owner request "you will see people in the bus, people entering the bus, leaving the bus".
+ * BUSINESS CONTEXT: AC-P26 (features/kampung-quest-playability/requirements.md). Owner request "you will see people in the bus, people entering the bus, leaving the bus".
  *   Counts are chosen by the pure rule KQ.Sim.Traffic.boarding and are visible in __kq.vehicles().bus.
  * HOW IT FITS: bus.js calls plan(B) when the bus stops and step(B) every frame while it dwells; the bus waits
  *   (a few seconds at most) for anyone still walking up. Everyone steps out and in politely, nobody is pushed.

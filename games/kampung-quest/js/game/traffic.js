@@ -3,7 +3,7 @@
  * PURPOSE: The town's ambient traffic: 2-4 cars (by tier; 1-3 in Makkah) driving the road like the bus, each with
  *          a driver and sometimes passengers seated inside, which now and then pull into a kerbside bay so their
  *          people can get out (and later new people get in and the car drives off).
- * BUSINESS CONTEXT: owner request "cars being driven around by other characters, with passengers inside".
+ * BUSINESS CONTEXT: AC-P26 (features/kampung-quest-playability/requirements.md). Owner request "cars being driven around by other characters, with passengers inside".
  *   Child-friendly: a traffic car brakes for people (any on foot, on a zebra crossing or not), the hero, the bus,
  *   parked and driven vehicles and each other, only ever slows down, uses its indicator before pulling in or out,
  *   never holds the hero up for good (the hero can step aside and walk round it; a car held up by another vehicle
@@ -149,7 +149,7 @@
     const out = [{ x: hero.x, z: hero.z }];
     s.npcs.agents.forEach((A) => !A.hidden && A.group.visible && out.push(A));
     if (s.crowd) s.crowd.members.forEach((m) => m.show > 0.3 && !m.gone && out.push(m));
-    return out;
+    return out.concat(G.Actors.positions());
   }
 
   /** A vehicle sim as an obstacle: {id, x, z, heading, speed, halfLen, halfWid}. */

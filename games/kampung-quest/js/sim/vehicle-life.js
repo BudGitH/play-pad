@@ -4,7 +4,7 @@
  *          open it, climb in, close it; and back), when the brake, reverse and head lights are on, how the
  *          indicators blink, and how much exhaust a petrol, diesel or electric vehicle puffs. No THREE,
  *          no DOM: the game layer (vehicle-enter.js, vehicle-lights.js, exhaust.js) applies the numbers.
- * BUSINESS CONTEXT: owner request "see the people getting in and out of cars, lights on the vehicles that
+ * BUSINESS CONTEXT: AC-P27 (features/kampung-quest-playability/requirements.md). Owner request "see the people getting in and out of cars, lights on the vehicles that
  *   light up when they stop and go, even exhaust". Audience children 6-10: only the feel of getting in and
  *   out is borrowed from games like GTA; nobody is ever pulled out of a vehicle and nothing crashes.
  * DEPENDENCIES: none. HOW TO TEST: npm run test:kq (tests/kampung-quest/vehicle-life.test.mjs).

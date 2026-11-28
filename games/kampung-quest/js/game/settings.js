@@ -26,7 +26,12 @@
   };
   /** A real prefs blob is ~100 characters; refuse anything absurd before parsing it. */
   const MAX_PREF_CHARS = 2000;
-  const prefs = Object.assign({}, DEFAULTS, { seen: {} });
+  /**
+   * The most heard-hint keys kept: each is at most 24 letters (about 32 characters stored), so 40
+   * of them (~1300) plus the other prefs (~150) always fit the 2000-character blob load() accepts.
+   */
+  const MAX_SEEN = 40;
+  const prefs = Object.assign({}, DEFAULTS, { seen: Object.create(null) });
 
   /** localStorage if it really works (private modes and blocked storage throw), else null. */
   function getStorage() {
@@ -40,12 +45,12 @@
     }
   }
 
-  /** The action hints already spoken (G.Say): at most 60 keys of lower-case letters and dashes, each `true`. */
+  /** The action hints already spoken (G.Say): at most MAX_SEEN keys of lower-case letters and dashes, each `true`. */
   function cleanSeen(raw) {
-    const out = {};
+    const out = Object.create(null); // no inherited keys: "constructor" is not a heard hint
     if (!raw || typeof raw !== "object" || Array.isArray(raw)) return out;
     Object.keys(raw)
-      .slice(0, 60)
+      .slice(0, MAX_SEEN)
       .forEach(function (key) {
         if (/^[a-z-]{1,24}$/.test(key) && raw[key] === true) out[key] = true;
       });
@@ -107,6 +112,7 @@
     save,
     getStorage,
     DEFAULTS,
+    MAX_SEEN,
     /** Less motion: the pause-menu switch, or the device setting when it is on "follow". */
     reduced() {
       if (prefs.lessMotion === "on") return true;

@@ -1,9 +1,16 @@
-/* Kampung Quest — Singapore estate signage drawn into the shared sign atlas (no files, so it
-   works on file://): hawker stall signboards with a stall number, drawn food pictures and a
-   generic HALAL label, menu boards with prices, photo light boxes, the hanging pictogram signs
-   (tray return, hand wash, gentle play), a hygiene grade card, the void-deck chess board, a drain
-   grating and the big painted HDB block number. Every food picture is a simple drawing (no
-   photos, no brand names). Reference sheet: features/kampung-quest-playability/sg-reference.md. */
+/* ============================================================================
+ * FILE: sg-signs.js
+ * PURPOSE: Singapore estate signage drawn into the shared sign atlas (no files, so it works on file://): hawker stall
+ *          signboards with a stall number, drawn food pictures and a generic HALAL label, menu boards with prices,
+ *          photo light boxes, the hanging pictogram signs (tray return, hand wash, gentle play), a hygiene grade
+ *          card, the void-deck chess board, a drain grating and the big painted HDB block number. Every food picture
+ *          is a simple drawing (no photos, no brand names); the grade card and the HALAL label are generic signs, not
+ *          official marks (assets/CREDITS.md).
+ * BUSINESS CONTEXT: the playability round's Singapore realism pass (features/kampung-quest-playability/requirements.md, AC-P20 and the cross-cutting Singapore dressing in test-plan.md; reference sheet
+ *   features/kampung-quest-playability/sg-reference.md).
+ * DEPENDENCIES: KQ.WorldParts.Canvas (the sign atlas and fitText).
+ * HOW TO TEST: npx playwright test tests/kampung-quest-ac.spec.mjs (draw calls and no console errors); the look is checked by eye in shots/.
+ * ========================================================================== */
 (function (KQ) {
   "use strict";
   const P = (KQ.WorldParts = KQ.WorldParts || {});

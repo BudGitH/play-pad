@@ -61,9 +61,11 @@ jobs:
           fi
           pattern='^(games/|features/.*/probe\.mjs$|tests/probes/|tests/kampung-quest-.*\.spec\.mjs$|tests/.*-drivers\.mjs$|playwright\.config\.mjs$|tools/serve\.mjs$|styles/|scripts/|package\.json$|package-lock\.json$|\.github/workflows/probes\.yml$)'
           changed="$(git diff --name-only "$base" HEAD)"
-          if printf '%s\n' "$changed" | grep -Eq "$pattern"; then
+          # Match from a here-string, not `printf | grep -q`: under pipefail, grep -q exiting early
+          # SIGPIPEs printf on a long file list and would read as "no match" (a false green gate).
+          if grep -Eq "$pattern" <<< "$changed"; then
             echo "run=true" >> "$GITHUB_OUTPUT"; echo "relevant files changed:"
-            printf '%s\n' "$changed" | grep -E "$pattern" | head -20
+            grep -E "$pattern" <<< "$changed" | head -20 || true
           else
             echo "run=false" >> "$GITHUB_OUTPUT"; echo "nothing the probes exercise changed: legs skipped"
           fi

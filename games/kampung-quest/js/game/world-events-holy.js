@@ -159,8 +159,7 @@
       0.8,
       2.8,
     );
-    G.Player.lock(G.S.player, null, "eat");
-    G.S.after(1.6, () => G.Player.release(G.S.player));
+    G.Player.lockFor(G.S.player, 1.6, "eat");
     if (st.dates && st.water) {
       st.done = true;
       st.doneAt = env.now();

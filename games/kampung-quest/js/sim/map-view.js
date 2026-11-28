@@ -143,54 +143,84 @@
   const clashWith = (it, kept, g) =>
     kept.find((k) => Math.hypot(k.x - it.x, k.y - it.y) < k.r + it.r + g) || null;
 
+  /** Is the whole icon (its circle) inside a `box` {w, h} window? */
+  const fullyIn = (it, box) =>
+    it.x - it.r >= 0 && it.y - it.r >= 0 && it.x + it.r <= box.w && it.y + it.r <= box.h;
+
   /**
-   * Where an icon can sit: where it is when nothing is in the way; else, for a headline kind (prio up to
-   * NUDGE_PRIO), a copy slid sideways or up / down until it is clear (a horse stable beside the camel yard
-   * stays on the map); else null (it waits until the map is zoomed in).
+   * Bring an icon fully inside the window: as it is when it already is; a headline kind (prio up to
+   * NUDGE_PRIO) is pulled in from the edge; a lesser one that would be cut off is null (it waits
+   * until a pan or zoom shows it whole, and is counted in the "+N more" hint). No box = no limit.
    */
-  function clearSpot(it, kept, g) {
-    const hit = clashWith(it, kept, g);
-    if (!hit) return it;
-    if (it.prio > NUDGE_PRIO) return null;
-    const d = hit.r + it.r + g;
-    const dirs = [
-      [1, 0],
-      [-1, 0],
-      [0, 1],
-      [0, -1],
-      [0.7, 0.7],
-      [-0.7, 0.7],
-      [0.7, -0.7],
-      [-0.7, -0.7],
-    ];
-    for (const [dx, dy] of dirs) {
-      const moved = Object.assign({}, it, { x: it.x + dx * d, y: it.y + dy * d });
-      if (!clashWith(moved, kept, g)) return moved;
+  function pullIn(it, box) {
+    if (!box || fullyIn(it, box)) return it;
+    if (it.prio > NUDGE_PRIO || box.w < it.r * 2 || box.h < it.r * 2) return null;
+    return Object.assign({}, it, {
+      x: clamp(it.x, it.r, box.w - it.r),
+      y: clamp(it.y, it.r, box.h - it.r),
+    });
+  }
+
+  /** The eight compass steps tried when a headline icon has to slide aside (first the straight ones). */
+  const DIRS = [
+    [1, 0],
+    [-1, 0],
+    [0, 1],
+    [0, -1],
+    [0.7, 0.7],
+    [-0.7, 0.7],
+    [0.7, -0.7],
+    [-0.7, -0.7],
+  ];
+
+  /** The first spot, on a ring `d` pixels out (then 1.6 x out), that is inside the window and clear of every kept icon. */
+  function slideTo(it, kept, g, d, box) {
+    for (const ring of [d, d * 1.6]) {
+      for (const [dx, dy] of DIRS) {
+        const moved = Object.assign({}, it, { x: it.x + dx * ring, y: it.y + dy * ring });
+        if ((!box || fullyIn(moved, box)) && !clashWith(moved, kept, g)) return moved;
+      }
     }
     return null;
   }
 
   /**
+   * Where an icon can sit: where it is when nothing is in the way; else, for a headline kind (prio up to
+   * NUDGE_PRIO), a copy slid sideways or up / down until it is clear (a horse stable beside the camel yard
+   * stays on the map); else null (it waits until the map is zoomed in). With a `box` {w, h} the icon
+   * always ends fully inside the window, or is dropped.
+   */
+  function clearSpot(it, kept, g, box) {
+    const home = pullIn(it, box);
+    if (!home) return null;
+    const hit = clashWith(home, kept, g);
+    if (!hit) return home;
+    if (home.prio > NUDGE_PRIO) return null;
+    return slideTo(home, kept, g, hit.r + home.r + g, box);
+  }
+
+  /**
    * Declutter a map: items are {id, x, y (pixels), r (icon radius), prio (low wins), force, lw, lh
    * (label size, 0 = no label)}. Icons are kept in priority order unless they would overlap an icon
-   * already kept (`force` items are always kept; a headline icon slides aside instead, see clearSpot); then labels are placed where they hide nothing.
-   * Returns [{ item, label: box | null }] in priority order.
+   * already kept (`force` items are always kept; a headline icon slides aside instead, see clearSpot);
+   * then labels are placed where they hide nothing. `box` ({w, h}, the window) keeps every non-forced
+   * icon fully on screen. Returns [{ item, label: box | null }] in priority order.
    */
-  function layout(items, gap) {
+  function layout(items, gap, box) {
     const g = gap == null ? 2 : gap;
     const sorted = items
       .map((it, i) => ({ it, i }))
       .sort((a, b) => a.it.prio - b.it.prio || a.i - b.i);
     const kept = [];
     sorted.forEach(function (e) {
-      const at = e.it.force ? e.it : clearSpot(e.it, kept, g);
+      const at = e.it.force ? e.it : clearSpot(e.it, kept, g, box);
       if (at) kept.push(at);
     });
     const boxes = [];
     return kept.map(function (it) {
-      const box = placeLabel(it, kept, boxes);
-      if (box) boxes.push(box);
-      return { item: it, label: box };
+      const label = placeLabel(it, kept, boxes);
+      if (label) boxes.push(label);
+      return { item: it, label };
     });
   }
 

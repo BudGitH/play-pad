@@ -516,6 +516,109 @@ test("a11y: the accessible name starts with the visible word, and a rebuild keep
   expect(after, "when the control goes away, focus moves to the stage").toBe("kqStage");
 });
 
+/** Count clicks on chooser tile 2, then press Tab until it has focus; true when it does. */
+async function tabToTile(pg) {
+  await kq(pg, () => {
+    const tile = document.querySelector('.kq-talk-more[data-n="2"]');
+    window.__tileClicks = 0;
+    tile.addEventListener("click", () => (window.__tileClicks += 1));
+    document.getElementById("kqStage").focus();
+  });
+  for (let i = 0; i < 40; i += 1) {
+    await pg.keyboard.press("Tab");
+    const on = await kq(pg, () => document.activeElement.matches('.kq-talk-more[data-n="2"]'));
+    if (on) return true;
+  }
+  return false;
+}
+
+/** Make room to jump: no sheet, in play, hero on open ground. */
+async function readyToJump(pg) {
+  await kq(pg, () => window.KQ.Game.UI.closeSheet("test"));
+  await kq(pg, () => window.__kq.place(10, 10, 0));
+  await step(pg, 2500);
+  await kq(pg, () => document.getElementById("kqStage").focus());
+}
+
+test("a11y: after a mouse click on a HUD button, Space still jumps and does not press it again", async () => {
+  await readyToJump(page);
+  const before = (await state(page)).muted;
+  await page.locator("#kqMute").click(); // a real mouse click: pointerdown, focus, click
+  expect((await state(page)).muted, "the click toggled mute").toBe(!before);
+  expect(await kq(page, () => document.activeElement.id)).toBe("kqMute");
+  await page.keyboard.press("Space");
+  await step(page, 150);
+  const after = await state(page);
+  expect(after.airborne || after.jumpHeight > 0, "Space jumped").toBe(true);
+  expect(after.muted, "and did not press Mute again").toBe(!before);
+  await step(page, 1200);
+  await page.locator("#kqMute").click(); // restore
+  expect((await state(page)).muted).toBe(before);
+});
+
+test("a11y: after a mouse click on the Action control (and a dock button), Space jumps", async () => {
+  await readyToJump(page);
+  await kq(page, renderFake, [
+    ["hi", "walker:1", "Say hi", "Say hi"],
+    ["obj", "counter_a", "Eat", "Order food"],
+  ]);
+  await kq(page, () => {
+    window.__actionClicks = 0;
+    document.getElementById("kqTalk").addEventListener("click", () => (window.__actionClicks += 1));
+  });
+  await page.locator("#kqTalk").click({ force: true });
+  const clicks = await kq(page, () => window.__actionClicks);
+  expect(clicks).toBe(1);
+  // whatever the click started (a wave, a sheet) ends before Space is pressed
+  await kq(page, () => window.KQ.Game.UI.closeSheet("test"));
+  await kq(page, () => window.KQ.Game.Player.release(window.KQ.Game.S.player));
+  await step(page, 2500);
+  expect(await kq(page, () => window.KQ.Game.Actions.canJump()), "free to jump again").toBe(true);
+  await page.keyboard.press("Space");
+  await step(page, 150);
+  expect((await state(page)).airborne, "Space jumps after the Action click").toBe(true);
+  expect(await kq(page, () => window.__actionClicks), "and does not press Action").toBe(1);
+  await step(page, 1200);
+  await kq(page, () => window.KQ.Game.ActionBar.render([]));
+  // a dock button: open its sheet with a click, close it, then Space
+  await page.locator("#kqDock-bag").click();
+  await kq(page, () => window.KQ.Game.UI.closeSheet("test"));
+  await step(page, 400);
+  await page.keyboard.press("Space");
+  await step(page, 150);
+  expect((await state(page)).airborne, "Space jumps after a dock click").toBe(true);
+  await step(page, 1200);
+});
+
+test("a11y: Tab to a button, then Space activates it and does not jump", async () => {
+  await readyToJump(page);
+  await kq(page, renderFake, [
+    ["hi", "walker:1", "Say hi", "Say hi"],
+    ["obj", "counter_a", "Eat", "Order food"],
+  ]);
+  expect(await tabToTile(page), "Tab reaches the chooser tile").toBe(true);
+  await page.keyboard.press("Space");
+  await step(page, 150);
+  expect(await kq(page, () => window.__tileClicks), "Space pressed the tile").toBe(1);
+  expect((await state(page)).airborne, "and did not jump").toBe(false);
+  // a pointer press ends keyboard navigation: Space is Jump again even with the tile focused
+  await kq(page, () => window.KQ.Game.UI.closeSheet("test")); // whatever the tile opened
+  await kq(page, () => window.KQ.Game.Player.release(window.KQ.Game.S.player));
+  await step(page, 2500);
+  await kq(page, renderFake, [
+    ["hi", "walker:1", "Say hi", "Say hi"],
+    ["obj", "counter_a", "Eat", "Order food"],
+  ]);
+  await page.locator("#kqMute").click();
+  await kq(page, () => document.querySelector('.kq-talk-more[data-n="2"]').focus());
+  await page.keyboard.press("Space");
+  await step(page, 150);
+  expect((await state(page)).airborne, "Space jumps after a pointer press").toBe(true);
+  await step(page, 1200);
+  await page.locator("#kqMute").click(); // restore mute
+  await kq(page, () => window.KQ.Game.ActionBar.render([]));
+});
+
 test("a11y: Space presses a keyboard-focused HUD button instead of jumping; after a tap it still jumps", async () => {
   await kq(page, () => window.KQ.Game.UI.closeSheet("test"));
   await kq(page, () => window.__kq.place(10, 10, 0));
@@ -527,15 +630,8 @@ test("a11y: Space presses a keyboard-focused HUD button instead of jumping; afte
     ["hi", "walker:1", "Say hi", "Say hi"],
     ["obj", "counter_a", "Eat", "Order food"],
   ]);
-  await page.keyboard.press("Shift"); // the keyboard is the input now
-  const clicked = await kq(page, () => {
-    const tile = document.querySelector('.kq-talk-more[data-n="2"]');
-    window.__tileClicks = 0;
-    tile.addEventListener("click", () => (window.__tileClicks += 1));
-    tile.focus();
-    return tile.matches(":focus-visible");
-  });
-  expect(clicked, "the tile is keyboard-focused").toBe(true);
+  const reached = await tabToTile(page);
+  expect(reached, "Tab reaches the chooser tile").toBe(true);
   await page.keyboard.press("Space");
   await step(page, 150);
   expect(await kq(page, () => window.__tileClicks), "Space pressed the tile").toBe(1);

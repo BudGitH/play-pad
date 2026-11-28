@@ -318,6 +318,44 @@ test("saved heard-hints are clean: no inherited keys, at most MAX_SEEN keys, and
   expect(r.chars, "a full set of the longest keys still loads back").toBeLessThan(2000);
 });
 
+test("a full heard-hint list forgets the OLDEST key for a new hint, and the word table stays under MAX_SEEN", async () => {
+  const r = await kq(page, () => {
+    const G = window.KQ.Game;
+    const hinted = Object.keys(G.ActionWords.TABLE).filter((k) => G.ActionWords.TABLE[k].say);
+    const real = G.Voice.hint;
+    G.Voice.hint = () => true; // patch one method, restore it below
+    try {
+      G.Say.reset();
+      const max = G.Settings.MAX_SEEN;
+      for (let i = 0; i < max; i += 1)
+        G.Settings.prefs.seen[
+          "old-" + "abcdefghij"[i % 10] + "-" + String.fromCharCode(97 + ((i / 10) | 0))
+        ] = true;
+      const first = Object.keys(G.Settings.prefs.seen)[0];
+      const said = G.Say("fresh-hint", "A new hint.");
+      return {
+        hinted: hinted.length,
+        max,
+        said,
+        heard: G.Say.heard("fresh-hint"),
+        count: Object.keys(G.Settings.prefs.seen).length,
+        firstGone: !G.Settings.prefs.seen[first],
+        again: G.Say("fresh-hint", "A new hint."),
+      };
+    } finally {
+      G.Voice.hint = real;
+      G.Say.reset();
+      G.Settings.save(G.S.storage);
+    }
+  });
+  expect(r.hinted, "the word table has fewer hint keys than MAX_SEEN").toBeLessThan(r.max);
+  expect(r.said, "the new hint is spoken").toBe(true);
+  expect(r.heard).toBe(true);
+  expect(r.count).toBeLessThanOrEqual(r.max);
+  expect(r.firstGone, "the oldest key made room").toBe(true);
+  expect(r.again, "and it is not repeated").toBe(false);
+});
+
 test("a device with no speechSynthesis: the game still talks on screen, silently, with no error", async ({
   browser,
 }) => {

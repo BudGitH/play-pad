@@ -510,6 +510,7 @@
         visible: shown.has(p.id),
       })),
       listOpen: B.listOpen,
+      hits: B.hits.map((h) => ({ id: h.id, x: h.x, y: h.y, r: h.r })), // the drawn icons, as tapped
     };
   }
 

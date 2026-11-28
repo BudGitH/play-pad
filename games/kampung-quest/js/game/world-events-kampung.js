@@ -301,11 +301,7 @@
     G.Audio.play("coin");
     G.UI.toast("Sedap! Ice cream. -" + PRICE + " coins", "good", 3000);
     st.env.say(st.seller.id, "Terima kasih! Enjoy!", 0, 2.6);
-    const P = G.S.player;
-    if (!P.locked) {
-      const ticket = G.Player.lock(P, null, "eat"); // held for the lick, unless a prayer or rite took over
-      G.S.after(1.8, () => G.Player.release(P, ticket));
-    }
+    G.Player.lockFor(G.S.player, 1.8, "eat"); // held for the lick, unless a prayer or rite holds the hero
     G.S.hudDirty = true;
   }
 

@@ -313,7 +313,11 @@
       start: () => icecreamStart(st),
       update: (dt) => icecreamUpdate(st, dt),
       anchor: () => st.pos || null,
-      info: () => ({ phase: st.phase, sold: st.sold }),
+      info: () => ({
+        phase: st.phase,
+        sold: st.sold,
+        cart: st.pos && { x: st.pos.x, z: st.pos.z },
+      }),
       target(hero) {
         if (st.phase !== "serve") return null;
         const d = U.dist(hero.x, hero.z, st.pos.x, st.pos.z);

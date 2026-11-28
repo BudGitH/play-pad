@@ -41,7 +41,8 @@ export function sayHiTo(id) {
   k.place(spot.x, spot.z, Math.atan2(m.x - spot.x, m.z - spot.z));
   window.run(0.3);
   const target = k.state().target;
-  const ok = k.interact();
+  // only press when the prompt really is "Say hi": a shop counter in reach would open its menu instead
+  const ok = Boolean(target && target.kind === "hi") && k.interact();
   return { target, ok, hi: k.hi() };
 }
 
@@ -89,8 +90,12 @@ export function salaamRuleScenario() {
     if (groups.has(key) || !G.S.crowd.byId.get(m.id)) continue;
     groups.add(key);
     run(2); // the gap between hellos
+    const before = k.hi().count;
     sayHiTo(m.id);
-    seen.push({ group: m.outfit.group, muslim: m.outfit.group === "malay", said: k.hi().last });
+    const said = k.hi().last;
+    // judge the rule by the person actually greeted (a nearer neighbour may answer instead), and only new hellos
+    const who = said && k.hi().count > before && G.S.crowd.byId.get(said.id);
+    if (who) seen.push({ group: who.outfit.group, muslim: who.outfit.group === "malay", said });
   }
   return seen;
 }
@@ -157,7 +162,6 @@ export function footballTidyScenario() {
 /** Wait for the ice-cream cart to arrive, stand by it, and press the prompt. */
 export function iceCreamScenario() {
   const k = window.__kq;
-  const G = window.KQ.Game;
   const out = {};
   k.setMinute(660);
   k.teleport("playground");
@@ -166,10 +170,19 @@ export function iceCreamScenario() {
   k.forceEvent("icecream");
   for (let s = 0; s < 40 && !(k.events().info && k.events().info.phase === "serve"); s += 1) run(1);
   out.phase = k.events().info.phase;
-  const cart = G.S.scene.children.find((o) => o.isGroup && o.children.length === 6);
-  k.place(cart.position.x, cart.position.z - 2, 0);
-  run(0.4);
-  out.target = k.state().target;
+  const cart = k.events().info.cart; // the event reports where its cart stands
+  // stand on a side of the cart where its own prompt shows (a neighbour beside it can win the Talk button)
+  for (const [dx, dz] of [
+    [0, -2],
+    [0, 2],
+    [-2, 0],
+    [2, 0],
+  ]) {
+    k.place(cart.x + dx, cart.z + dz, Math.atan2(-dx, -dz));
+    run(0.4);
+    out.target = k.state().target;
+    if (out.target && out.target.kind === "event") break;
+  }
   const coins = k.state().coins;
   k.interact();
   run(0.5);

@@ -46,14 +46,14 @@
   function bareLeg(rig, side, d, skin) {
     const knee = rig["knee" + side];
     const shin = G.paint(G.roundedBox(0.121, d.shin - 0.004, 0.126, 0.012, 1), skin, true);
-    const foot = G.paint(G.roundedBox(0.124, 0.05, 0.168, 0.018, 1), skin, true);
-    const sole = G.paint(G.roundedBox(0.128, 0.012, 0.176, 0.006, 1), SOLE);
+    const foot = G.paint(G.roundedBox(0.124, 0.05, 0.164, 0.02, 1), skin, true);
+    const sole = G.paint(G.roundedBox(0.128, 0.012, 0.17, 0.006, 1), SOLE);
     const strap = G.paint(G.roundedBox(0.13, 0.012, 0.06, 0.004, 1), STRAP);
     const y = -d.shin;
     return [
       mesh(rig, "ihramShin" + side, knee, shin, 0, -d.shin / 2 + 0.002, 0),
-      mesh(rig, "ihramFoot" + side, knee, foot, 0, y + 0.03, 0.016),
-      mesh(rig, "ihramSole" + side, knee, sole, 0, y + 0.004, 0.016),
+      mesh(rig, "ihramFoot" + side, knee, foot, 0, y + 0.034, 0.014),
+      mesh(rig, "ihramSole" + side, knee, sole, 0, y + 0.008, 0.014),
       mesh(rig, "ihramStrap" + side, knee, strap, 0, y + 0.058, 0.03),
     ];
   }

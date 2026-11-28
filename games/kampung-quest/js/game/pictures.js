@@ -183,8 +183,23 @@
     return svg("0 0 48 48", WUDU_ART[stepId] || WUDU_ART.niat, size || 56, "kq-pic");
   }
 
-  /** Posture pictures: data-URL renders of the toy-figure poses, filled in by renderPostures. */
+  /**
+   * Posture pictures: data-URL renders of the toy-figure poses, filled in by renderPostures. One set
+   * per hero: the boy, and the girl in her hijab (picked by the hero's gender when shown).
+   */
   const postureImages = {};
+  const girlImages = {};
+  /** The girl hero as she prays: her own face and modest clothes, in a white hijab. */
+  const GIRL_PRAYER_LOOK = {
+    id: "hero_girl_prayer",
+    head: { type: "hijab", colour: "#fbfaf5", accent: "#e46f9c" },
+  };
+
+  /** The picture set for the hero now (the girl's when the hero is a girl). */
+  function imagesNow() {
+    const girl = G.Hero && G.Hero.isGirl && G.Hero.isGirl();
+    return girl && Object.keys(girlImages).length ? girlImages : postureImages;
+  }
   const POSTURE_POSE = {
     takbir: "takbir",
     qiyam: "qiyam",
@@ -210,7 +225,8 @@
     img.className = "kq-posture";
     img.alt = "";
     img.width = img.height = size || 72;
-    if (postureImages[type]) img.src = postureImages[type];
+    const set = imagesNow();
+    if (set[type]) img.src = set[type];
     else img.className += " kq-posture-missing";
     return img;
   }
@@ -242,42 +258,53 @@
     cam.lookAt(0, 0, 0);
   }
 
-  /** Build the tiny posture-render stage: lit scene, the hero figure and an orthographic camera. */
-  function postureStage(renderer) {
+  /** Build the tiny posture-render stage: lit scene, a hero figure and an orthographic camera. */
+  function postureStage(renderer, spec) {
     const scene = new THREE.Scene();
     scene.environment = KQ.Figures.makeEnv(renderer);
     scene.add(new THREE.HemisphereLight(0xffffff, 0x8899aa, 0.9));
     const sun = new THREE.DirectionalLight(0xffffff, 1.6);
     sun.position.set(-2, 3, 2);
     scene.add(sun);
-    const fig = KQ.Figures.build("hero");
+    const fig = KQ.Figures.build(spec);
     scene.add(fig);
     const cam = new THREE.OrthographicCamera(-0.66, 0.66, 1.16, -0.16, 0.1, 10);
     return { scene, fig, cam };
   }
 
-  /** Render each posture once into a small PNG data URL (called once at boot, needs WebGL). */
-  function renderPostures(renderer, az) {
-    const size = 256;
-    const rt = new THREE.WebGLRenderTarget(size, size);
-    rt.texture.encoding = THREE.sRGBEncoding;
-    const stage = postureStage(renderer);
-    const prevClear = renderer.getClearColor(new THREE.Color());
-    const prevAlpha = renderer.getClearAlpha();
-    renderer.setClearColor(0xe6eef8, 1);
-    renderer.setRenderTarget(rt);
+  /** Render every posture of one hero figure into `out` (PNG data URLs). */
+  function renderSet(renderer, rt, spec, out, az) {
+    const stage = postureStage(renderer, spec);
     Object.keys(POSTURE_POSE).forEach(function (type) {
       aim(stage.cam, az === undefined ? POSTURE_AZ[type] || POSTURE_AZ.standing : az);
       KQ.Figures.pose(stage.fig.userData.rig, POSTURE_POSE[type], 0, 1);
       stage.fig.updateMatrixWorld(true);
       renderer.clear();
       renderer.render(stage.scene, stage.cam);
-      postureImages[type] = readPixels(renderer, rt, size);
+      out[type] = readPixels(renderer, rt, 256);
     });
+    stage.scene.remove(stage.fig);
+  }
+
+  /**
+   * Render each posture once into a small PNG data URL (called once at boot, needs WebGL): the boy,
+   * then the girl in her hijab.
+   */
+  function renderPostures(renderer, az) {
+    const rt = new THREE.WebGLRenderTarget(256, 256);
+    rt.texture.encoding = THREE.sRGBEncoding;
+    const prevClear = renderer.getClearColor(new THREE.Color());
+    const prevAlpha = renderer.getClearAlpha();
+    renderer.setClearColor(0xe6eef8, 1);
+    renderer.setRenderTarget(rt);
+    renderSet(renderer, rt, "hero", postureImages, az);
+    if (KQ.Figures.HERO_GIRL) {
+      const girl = Object.assign({}, KQ.Figures.HERO_GIRL, GIRL_PRAYER_LOOK);
+      renderSet(renderer, rt, girl, girlImages, az);
+    }
     renderer.setRenderTarget(null);
     renderer.setClearColor(prevClear, prevAlpha);
     rt.dispose();
-    stage.scene.remove(stage.fig);
   }
 
   const MISSION_ICON = {
@@ -329,6 +356,7 @@
     stepIcon: (type) => icon(STEP_ICON[type] || "star"),
     postureCount: () => Object.keys(postureImages).length,
     postureImages: () => postureImages,
+    girlPostureImages: () => girlImages,
     POSTURE_POSE,
     ICONS,
   };

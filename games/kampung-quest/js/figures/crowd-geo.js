@@ -83,8 +83,8 @@
     return G.merge([G.place(G.paint(g, WHITE), [0, D.torsoH / 2, 0])]);
   }
 
-  /** Head with a neck, two ears and a printed-on look (dark eyes and mouth). Origin = top of the neck. */
-  function head() {
+  /** The crowd head's lathe profile [r, y, ...] and segment count (shared with the head-fit checks). */
+  F.crowdHeadProfile = function () {
     const R = D.headR;
     const H = D.headH;
     const prof = [
@@ -105,7 +105,14 @@
       0,
       H,
     ];
-    const list = [G.paint(G.lathe(prof, 14), WHITE)];
+    return { pairs: prof, segs: 14 };
+  };
+
+  /** Head with a neck, two ears and a printed-on look (dark eyes and mouth). Origin = top of the neck. */
+  function head() {
+    const R = D.headR;
+    const hp = F.crowdHeadProfile();
+    const list = [G.paint(G.lathe(hp.pairs, hp.segs), WHITE)];
     list.push(
       G.place(G.paint(new THREE.CylinderGeometry(0.044, 0.046, D.neckH + 0.012, 8, 1), WHITE), [
         0,
@@ -121,25 +128,74 @@
     return G.merge(list);
   }
 
-  /** Short hair: a low cap over the crown, a fringe and the back of the head. */
+  // Head fit (checked by features/kampung-quest-playability/figures/audit.mjs and
+  // tests/kampung-quest-figures.spec.mjs): the crowd head is a 14-sided lathe of radius 0.105 (top 0.19).
+  // Full-turn hats use the same 14 segments and seam, so their facets run parallel to the head's; every
+  // open rim is tucked just inside the head (r 0.1035) so no edge stands off it and nothing pokes through.
+
+  /** A white lathe over part of a turn (phi from the face, +z), with smooth normals. */
+  function partial(prof, segs, phiStart, phiLength) {
+    const g = G.lathe(prof, segs, phiStart, phiLength);
+    g.computeVertexNormals();
+    return g;
+  }
+
+  /**
+   * Roll the open side edges of a partial lathe into the head (radius rIn) over `width` radians, for
+   * heights y0..y1, so the face opening of a hood hugs the cheeks instead of standing off them.
+   */
+  function tuck(g, phiStart, phiLength, width, y0, y1) {
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i += 1) {
+      const y = pos.getY(i);
+      if (y < y0 || y > y1) continue;
+      const phi = Math.atan2(pos.getX(i), pos.getZ(i));
+      const off = (((phi - phiStart) % TAU) + TAU) % TAU;
+      const edge = Math.min(off, TAU - off, Math.abs(phiLength - off));
+      if (edge >= width) continue;
+      const r = Math.hypot(pos.getX(i), pos.getZ(i));
+      const k = (0.1035 + (r - 0.1035) * (edge / width)) / r;
+      pos.setX(i, pos.getX(i) * k);
+      pos.setZ(i, pos.getZ(i) * k);
+    }
+    g.computeVertexNormals();
+    return g;
+  }
+  F.CrowdHood = { partial, tuck };
+
+  /**
+   * Short hair: a crown cap whose front rim tucks into the brow, the back and sides of the head
+   * (edges tucked in front of the ears), and a fringe.
+   */
   function hairPieces() {
-    const dome = new THREE.SphereGeometry(0.113, 12, 6, 0, TAU, 0, Math.PI / 2);
+    const crown = [0.1035, 0.152, 0.113, 0.164, 0.113, 0.176, 0.104, 0.198, 0.08, 0.214];
+    crown.push(0.04, 0.224, 0, 0.226);
+    const back = [0.1035, 0.06, 0.1125, 0.075, 0.1135, 0.12, 0.113, 0.168];
+    const start = Math.PI / 2 + 0.3;
     return [
-      G.place(G.paint(dome, WHITE), [0, 0.128, 0], null, [1, 0.62, 1.02]),
+      G.paint(partial(crown, 14), WHITE),
+      G.paint(
+        tuck(partial(back, 12, start, Math.PI - 0.6), start, Math.PI - 0.6, 0.3, 0, 0.17),
+        WHITE,
+      ),
       blob([0.085, 0.03, 0.045], [0, 0.178, 0.07], WHITE),
-      blob([0.1, 0.075, 0.045], [0, 0.1, -0.068], WHITE),
     ];
   }
 
-  /** A tudung: a hood round the head and shoulders, open at the face, with a covered brow. */
+  /**
+   * A tudung: a fitted hood round the head and shoulders (it covers the ears), open at a rounded face
+   * whose edges hug the cheeks, with a covered brow and a cloth under the chin.
+   */
   function tudung() {
-    const hood = [
-      0.13, -0.06, 0.124, 0.0, 0.119, 0.06, 0.118, 0.14, 0.104, 0.2, 0.06, 0.228, 0, 0.236,
-    ];
-    const brow = [0.12, 0.15, 0.112, 0.2, 0.06, 0.229, 0, 0.237];
+    const hood = [0.13, -0.06, 0.126, 0.0, 0.127, 0.06, 0.127, 0.12, 0.119, 0.162, 0.1, 0.2];
+    hood.push(0.06, 0.226, 0, 0.234);
+    const brow = [0.1035, 0.148, 0.118, 0.158, 0.112, 0.2, 0.06, 0.229, 0, 0.237];
+    const chin = [0.13, -0.06, 0.122, -0.02, 0.112, 0.012, 0.102, 0.024];
+    const side = partial(hood, 18, 0.95, TAU - 1.9);
     return [
-      G.paint(G.lathe(hood, 14, 0.95, TAU - 1.9), WHITE),
-      G.paint(G.lathe(brow, 8, -0.95, 1.9), WHITE),
+      G.paint(tuck(side, 0.95, TAU - 1.9, 0.32, 0.016, 0.1625), WHITE),
+      G.paint(tuck(partial(brow, 8, -0.95, 1.9), -0.95, 1.9, 0.24, 0.14, 0.18), WHITE),
+      G.paint(partial(chin, 8, -1.0, 2.0), WHITE),
     ];
   }
 
@@ -148,25 +204,27 @@
     return G.merge([G.place(box(0.15, 0.03, 0.2, 0.006, WHITE), [0, 0, 0])]);
   }
 
-  /** A baseball cap with a short peak. */
+  /** A baseball cap with a short peak: a snug crown whose rim tucks into the head. */
   function cap() {
-    const dome = new THREE.SphereGeometry(0.119, 12, 5, 0, TAU, 0, Math.PI / 2);
+    const prof = [0.1035, 0.142, 0.112, 0.156, 0.111, 0.172, 0.1, 0.2, 0.075, 0.222, 0.04, 0.231];
+    prof.push(0, 0.233);
     return [
-      G.place(G.paint(dome, WHITE), [0, 0.14, 0], null, [1, 0.7, 1]),
+      G.paint(partial(prof, 14), WHITE),
       G.place(box(0.15, 0.012, 0.085, 0.004), [0, 0.15, 0.125]),
     ];
   }
 
-  /** A songkok: a flat-topped felt cap. */
+  /** A songkok: a flat-topped felt cap just wider than the head (no head showing at its rim). */
   function songkok() {
-    const g = new THREE.CylinderGeometry(0.098, 0.104, 0.085, 14, 1);
-    return [G.place(G.paint(g, WHITE), [0, 0.195, 0])];
+    const prof = [0, 0.152, 0.1095, 0.152, 0.1105, 0.228, 0.104, 0.237, 0, 0.237];
+    return [G.paint(partial(prof, 14), WHITE)];
   }
 
   /** A white kopiah: a close round cap. */
   function kopiah() {
-    const dome = new THREE.SphereGeometry(0.11, 12, 5, 0, TAU, 0, Math.PI / 2);
-    return [G.place(G.paint(dome, WHITE), [0, 0.15, 0], null, [1, 0.72, 1])];
+    const prof = [0.1035, 0.148, 0.1095, 0.156, 0.1095, 0.174, 0.102, 0.198, 0.084, 0.214];
+    prof.push(0.045, 0.226, 0, 0.229);
+    return [G.paint(partial(prof, 14), WHITE)];
   }
 
   const HATS = {

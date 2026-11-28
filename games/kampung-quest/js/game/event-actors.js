@@ -17,8 +17,8 @@
   const RADIUS = 0.31;
   const POOL = {};
   /** Metres from the ground to the top of a head, for the bubble a figure speaks through. */
-  const HEAD = 1.7;
-  const KID_HEAD = 1.3;
+  const HEAD = 1.07; // measured on the built figures (a cast adult), like greetings.js
+  const KID_HEAD = 0.9;
 
   /**
    * Take the actor for a cast key (built on first use). Returns the actor, hidden at the origin.

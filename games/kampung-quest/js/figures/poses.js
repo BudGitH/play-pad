@@ -77,12 +77,25 @@
     for (let i = 0; i < 24; i++) {
       const t = (lo + hi) / 2;
       const neck = rot(d.torsoH + d.neckH, 0, t);
-      const brow = rot(0.17 * d.headScale, (d.headR + 0.012) * d.headScale, t + headX);
-      const y = hy + d.hipBlockH + neck[0] + brow[0];
+      const y = hy + d.hipBlockH + neck[0] + lowestHead(d, t + headX);
       if (y > 0.012) lo = t;
       else hi = t;
     }
     return (lo + hi) / 2;
+  }
+
+  /**
+   * Height of the lowest point of the head (the brow) or of its head piece (d.headContour, set by
+   * the figure builder: a hood, a songkok, a turned cap) above the neck, for a head pitched by a.
+   * The piece rests on the floor rather than sinking into it.
+   */
+  function lowestHead(d, a) {
+    const hs = d.headScale;
+    let y = rot(0.17 * hs, (d.headR + 0.012) * hs, a)[0];
+    const pts = d.headContour || [];
+    for (let i = 0; i < pts.length; i += 1)
+      y = Math.min(y, rot(pts[i][0] * hs, pts[i][1] * hs, a)[0] + 0.01);
+    return y;
   }
 
   // ---------- locomotion & daily life ----------
@@ -101,15 +114,18 @@
    * The shared stride cycle for walk and run: leg swing, knee bend, opposite arm swing, lean and a
    * bounce at phase p (0..1).
    */
-  function stride(p, amp, knee, arm, fore, lean, bob) {
+  function stride(p, amp, knee, arm, fore, lean, bob, d) {
     const s = Math.sin(p * TAU);
     const c = Math.cos(p * TAU);
+    const kL = knee * Math.max(0, -c);
+    const kR = knee * Math.max(0, c);
+    const lift = d ? Math.max(toeDip(d, amp * s, kL), toeDip(d, -amp * s, kR)) : 0;
     return {
-      rootY: bob * Math.abs(c),
+      rootY: bob * Math.abs(c) + lift,
       legL: [amp * s, 0, 0],
       legR: [-amp * s, 0, 0],
-      kneeL: [knee * Math.max(0, -c), 0, 0],
-      kneeR: [knee * Math.max(0, c), 0, 0],
+      kneeL: [kL, 0, 0],
+      kneeR: [kR, 0, 0],
       armL: [-arm * s, 0, 0.08],
       armR: [arm * s, 0, -0.08],
       foreL: [fore, 0, 0],
@@ -118,13 +134,25 @@
       head: [-lean * 0.6, -0.05 * s, 0],
     };
   }
+  /**
+   * How far (figure units) the toe or heel of the foot block dips below the floor for a leg swung by
+   * `leg` with the knee bent by `knee` (0 when it clears). Kids' short legs dipped at full stride.
+   */
+  function toeDip(d, leg, knee) {
+    const kn = rot(-d.thigh, 0, leg);
+    let low = 0;
+    [-d.legD / 2, d.legD / 2 + 0.03].forEach((z) => {
+      low = Math.min(low, kn[0] + rot(-d.shin, z, leg + knee)[0]);
+    });
+    return Math.max(0, -(d.hipH + low));
+  }
   /** Walk cycle at phase p: a gentle stride. */
-  function walk(p) {
-    return stride(p, 0.5, 0.35, 0.45, -0.38, 0.02, 0.008);
+  function walk(p, d) {
+    return stride(p, 0.5, 0.35, 0.45, -0.38, 0.02, 0.008, d);
   }
   /** Run cycle at phase p: a longer stride, high arm swing, forward lean and more bounce. */
-  function run(p) {
-    return stride(p, 0.85, 0.75, 0.9, -1.35, 0.18, 0.022);
+  function run(p, d) {
+    return stride(p, 0.85, 0.75, 0.9, -1.35, 0.18, 0.022, d);
   }
 
   /**

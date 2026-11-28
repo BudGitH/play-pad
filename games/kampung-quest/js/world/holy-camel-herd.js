@@ -32,11 +32,28 @@
     return out.compose(V.set(p[0], p[1], p[2]), Q, s ? SC.set(s[0], s[1], s[2]) : ONE);
   }
 
-  /** The four leg poses of a pacing gait at phase `ph` (same-side legs move together). */
+  /**
+   * The four leg poses of a pacing gait at phase `ph` (same-side legs move together): a leg in the
+   * air is shortened a little (a rigid leg cannot fold) so it clears the sand.
+   */
   function walkLegs(ph) {
     const a = 0.46;
-    const leg = (p) => ({ ang: -a * Math.sin(p), lift: Math.max(0, Math.cos(p)) * 0.14, sy: 1 });
+    const leg = (p) => ({ ang: -a * Math.sin(p), lift: 0, sy: 1 - 0.1 * Math.max(0, Math.cos(p)) });
     return [leg(ph), leg(ph + Math.PI), leg(ph), leg(ph + Math.PI)];
+  }
+
+  /** How far the body must drop so the lowest foot pad (a rigid leg swung by `ang`) stays on the sand. */
+  function groundDrop(legs) {
+    const hip = P.CamelMesh.HIP_Y;
+    const pad = KQ.Figures.CamelToy.PAD;
+    let low = Infinity;
+    legs.forEach(function (l) {
+      const c = Math.cos(l.ang);
+      const rise =
+        hip - (hip * l.sy - pad[0]) * c - Math.hypot(pad[0] * c, pad[1] * Math.sin(l.ang));
+      low = Math.min(low, rise);
+    });
+    return -low;
   }
 
   /** Pose of one camel at time t: body offset / tilt, neck pitch / yaw, tail swing, four legs. */
@@ -54,7 +71,7 @@
     if (c.def.mode === "rest") return Object.assign(base, rest(ph));
     if (c.def.mode === "graze")
       return Object.assign(base, {
-        neckP: 1.55 + 0.08 * Math.sin(ph * 1.6),
+        neckP: 1.8 + 0.08 * Math.sin(ph * 1.6),
         neckY: 0.15 * Math.sin(ph * 0.4),
       });
     if (c.def.mode === "walk") return Object.assign(base, walk(c));
@@ -65,7 +82,7 @@
   /** Kneeling: body low, legs folded back under, head up, chewing. */
   function rest(ph) {
     return {
-      y: -0.7 + 0.008 * Math.sin(ph * 1.5),
+      y: -0.86 + 0.008 * Math.sin(ph * 1.5),
       legs: LEGS_REST,
       neckP: -0.05 + 0.04 * Math.sin(ph * 0.9),
       neckY: 0.5 * Math.sin(ph * 0.22),
@@ -75,13 +92,14 @@
   /** Walking: pacing legs, a rolling body, the head nodding with each stride. */
   function walk(c) {
     const ph = c.gait;
+    const legs = walkLegs(ph);
     return {
-      y: 0.03 * Math.abs(Math.sin(ph)),
+      y: groundDrop(legs),
       roll: 0.035 * Math.sin(ph),
       pitch: 0.02 * Math.sin(ph * 2),
       neckP: 0.18 + 0.1 * Math.sin(ph * 2 + 0.6),
       neckY: 0,
-      legs: walkLegs(ph),
+      legs,
     };
   }
 

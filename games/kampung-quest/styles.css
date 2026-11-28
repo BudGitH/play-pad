@@ -752,6 +752,13 @@ kbd {
     display: none !important;
   }
 }
+/* the same on an iPad that reports a fine pointer (Magic Keyboard / trackpad): boot.js sets the class (AC-P21) */
+.kq-root.kq-touch-ui .kq-touch {
+  display: block;
+}
+.kq-root.kq-touch-ui .kq-keys {
+  display: none !important;
+}
 .kq-keys {
   position: absolute;
   right: var(--kq-padr);
@@ -767,42 +774,155 @@ kbd {
   white-space: nowrap;
 }
 
-/* the floating Talk / action button */
-.kq-root .kq-talk {
+/* the Action control (action-bar.js): ONE big picture + word in a fixed place; with 2+ actions in reach
+   the extra ones are picture tiles beside it. Bottom right: above Jump on touch, above the key hints on a
+   desktop. It never floats over heads; a bobbing arrow (.kq-pointer) marks the target in the world. */
+.kq-root {
+  --kq-act-w: 96px;
+  --kq-act-h: 92px;
+  --kq-act-gap: 10px;
+  --kq-act-bottom: 118px;
+}
+.kq-hud > .kq-action,
+.kq-hud > .kq-pointer {
+  pointer-events: none;
+}
+.kq-action {
   position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -100%);
+  right: max(18px, env(safe-area-inset-right, 0px));
+  bottom: var(--kq-act-bottom);
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: flex-end;
+  gap: 8px;
+  z-index: 9; /* above the azan card (7): the primary action is never covered by it (A11Y2-01) */
+}
+.kq-action > * {
+  pointer-events: auto;
+}
+.kq-tray {
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: flex-end;
+  gap: 8px;
+}
+.kq-tray[hidden],
+.kq-root .kq-talk[hidden] {
+  display: none;
+}
+.kq-root .kq-talk,
+.kq-root .kq-talk-more {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 2px;
-  min-width: 96px;
-  min-height: 84px;
-  padding: 8px 14px;
   border: 0;
-  border-radius: 24px;
-  background: var(--md-sys-color-primary);
-  color: var(--md-sys-color-on-primary);
   font-weight: 800;
   font-size: 15px;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
-  z-index: 9; /* above the azan card (7): the primary action is never covered by it (A11Y2-01) */
+}
+.kq-root .kq-talk {
+  position: relative;
+  width: var(--kq-act-w);
+  height: var(--kq-act-h);
+  padding: 8px 6px;
+  border-radius: 24px;
+  background: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
+}
+.kq-root .kq-talk-more {
+  position: relative;
+  width: 76px;
+  height: 76px;
+  padding: 6px 4px;
+  border-radius: 20px;
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+  font-size: 13px;
+}
+.kq-talk-more .kq-ic-xl {
+  width: 30px;
+  height: 30px;
 }
 .kq-talk-row {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+  display: block;
+  text-align: center;
+  line-height: 1.05;
 }
-.kq-root .kq-talk.is-far {
-  background: var(--kq-hud);
-  color: var(--md-sys-color-on-surface-variant);
-  border: 2px dashed var(--md-sys-color-outline);
-  opacity: 1;
-}
-.kq-talk.is-far .kq-talk-row {
+/* the key chip (E, 2, 3) sits in the corner, so the word never moves with it */
+.kq-talk kbd,
+.kq-talk-more kbd {
+  position: absolute;
+  top: 5px;
+  right: 6px;
   font-size: 12px;
+  line-height: 1;
+  padding: 2px 5px;
+  opacity: 0.85;
+}
+/* the pointer in the world: an arrow, no words, never clickable */
+.kq-hud > .kq-pointer {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 34px;
+  height: 34px;
+  margin: -34px 0 0 -17px;
+  z-index: 8;
+  color: var(--md-sys-color-primary);
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.55));
+}
+.kq-pointer svg {
+  width: 100%;
+  height: 100%;
+  fill: currentColor;
+  stroke: #fff;
+  stroke-width: 1.4px;
+  transform: rotate(180deg);
+  opacity: 0.7;
+}
+.kq-pointer.is-near svg {
+  opacity: 1;
+  animation: kq-bob 0.8s ease-in-out infinite alternate;
+}
+@keyframes kq-bob {
+  from {
+    transform: rotate(180deg) translateY(-4px);
+  }
+  to {
+    transform: rotate(180deg) translateY(4px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .kq-pointer.is-near svg {
+    animation: none;
+  }
+}
+.kq-less-motion .kq-pointer.is-near svg {
+  animation: none;
+}
+/* the soft "Zzz" on the fade while the hero rests */
+.kq-zzz {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 6px;
+  color: #fff;
+  font-size: 30px;
+  font-weight: 800;
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+.kq-zzz svg {
+  width: 64px;
+  height: 64px;
+  fill: var(--kq-gold);
+}
+.kq-resting.kq-fading .kq-zzz {
+  opacity: 1;
 }
 
 /* the azan card */
@@ -824,6 +944,12 @@ kbd {
   .kq-azan {
     width: min(560px, calc(100% - 2 * var(--kq-joy-x)));
   }
+}
+/* :where() keeps this at the specificity of the pointer rule above: a plain `.kq-root.kq-touch-ui .kq-azan` (0,3,0)
+   beat the pill's `width: auto` and the portrait phone's full width, squeezing the card into a 76 px sliver
+   (or, on a portrait iPad, stretching the pill over the top-right buttons) */
+:where(.kq-root.kq-touch-ui) .kq-azan {
+  width: min(560px, calc(100% - 2 * var(--kq-joy-x)));
 }
 .kq-azan-title {
   margin: 0 0 2px;
@@ -1554,7 +1680,8 @@ kbd {
 .kq-modal .kq-dock,
 .kq-modal .kq-touch,
 .kq-modal .kq-keys,
-.kq-modal .kq-talk,
+.kq-modal .kq-action,
+.kq-modal .kq-pointer,
 .kq-modal .kq-azan {
   visibility: hidden;
 }
@@ -1786,7 +1913,11 @@ kbd {
     --kq-joy: 112px;
     --kq-bot: max(10px, env(safe-area-inset-bottom, 0px));
     --kq-lane-h: 72px;
-    --kq-azan-side: max(var(--kq-joy-x), calc(var(--kq-padr) + var(--kq-right-w) + 12px));
+    --kq-azan-side: max(
+      var(--kq-joy-x),
+      calc(var(--kq-padr) + var(--kq-right-w) + 12px),
+      calc(var(--kq-padr) + var(--kq-jump) + var(--kq-act-w) + 16px)
+    );
   }
   .kq-dock {
     gap: 4px;
@@ -1857,7 +1988,8 @@ kbd {
     padding: 2px 8px;
   }
   .kq-azan,
-  .kq-azan.is-bar {
+  .kq-azan.is-bar,
+  .kq-root.kq-touch-ui .kq-azan {
     top: auto;
     bottom: calc(var(--kq-bot) + var(--kq-dock-h) + 6px);
     left: 50%;
@@ -1917,9 +2049,6 @@ kbd {
   .kq-wudu-act {
     min-height: 48px;
   }
-  .kq-root .kq-talk {
-    min-height: 72px;
-  }
   .kq-grid {
     grid-template-columns: repeat(auto-fill, minmax(124px, 1fr));
   }
@@ -1930,6 +2059,12 @@ kbd {
 /* 641-700 px wide phone landscape (iPhone SE 667x375): the 375 px azan card would be 197 px tall and
    cover the folded mission chip, so the captions take the full card width under the title row (A11Y3-01) */
 @media (max-height: 520px) and (min-width: 641px) and (max-width: 700px) {
+  /* the card is a little narrower here (it leaves room for the Action control): trim its padding to keep its height */
+  .kq-root .kq-azan:not(.is-bar),
+  .kq-root.kq-touch-ui .kq-azan:not(.is-bar) {
+    padding: 3px 10px 5px;
+    bottom: calc(var(--kq-bot) + var(--kq-dock-h) + 2px);
+  }
   .kq-azan:not(.is-bar) .kq-big {
     grid-row: 1;
   }
@@ -1958,7 +2093,7 @@ kbd {
   }
 }
 /* very short phones: the azan card is the pill (Arabic + meaning, no title / button), so the Talk button,
-   the toast lane and the pill all fit in the middle column; "Show me the way" lives in the Pray dock menu */
+   the toast lane and the pill all fit in the middle column; Pray lives on the status card */
 @media (max-height: 360px) {
   .kq-root {
     --kq-joy: 104px;
@@ -1991,13 +2126,11 @@ kbd {
     font-size: 14px;
     line-height: 1.25;
   }
-  .kq-root .kq-talk {
-    min-height: 60px;
-    padding: 4px 12px;
+  .kq-root {
+    --kq-act-h: 60px;
   }
-  .kq-talk .kq-ic-xl {
-    width: 28px;
-    height: 28px;
+  .kq-root .kq-talk-more {
+    height: 60px;
   }
 }
 /* under 300 px high even the pill gives up its Arabic line (the screen readers still get all of it),
@@ -2035,6 +2168,9 @@ kbd {
     --kq-lane-h: 64px;
     --kq-turn-h: 56px;
     --kq-ctl-bot: calc(var(--kq-bot) + var(--kq-dock-h) + 10px);
+    /* the azan slot: right above the Action control (which sits above Jump), so the card / pill never covers
+       Talk, the chooser, Jump or the joystick; a short phone has the control beside Jump (below) */
+    --kq-azan-bot: calc(var(--kq-act-bottom) + var(--kq-act-h) + 8px);
   }
   .kq-root.kq-no-turn {
     --kq-turn-h: 0px;
@@ -2095,11 +2231,11 @@ kbd {
   .kq-azan,
   .kq-azan.is-bar {
     top: auto;
-    bottom: calc(var(--kq-ctl-bot) + var(--kq-joy) + 8px);
+    bottom: var(--kq-azan-bot);
     left: 50%;
     right: auto;
     width: calc(100% - 24px);
-    max-height: calc(100% - var(--kq-top-end) - var(--kq-ctl-bot) - var(--kq-joy) - 20px);
+    max-height: calc(100% - var(--kq-top-end) - var(--kq-azan-bot) - 12px);
     transform: translateX(-50%);
     padding: 8px 12px 10px;
   }
@@ -2112,9 +2248,32 @@ kbd {
     grid-template-columns: 1fr;
   }
 }
-/* a short portrait phone (e.g. 320 x 568) has no room for the full card above the joystick: it is the pill,
-   with the meaning only (the toast lane above it stays clear) */
+/* a portrait phone under 700 px high (e.g. 360 x 640, 320 x 568) has no room for the full card above the Action
+   control: it is the pill, with the meaning only (the toast lane above it stays clear) */
+@media (orientation: portrait) and (max-width: 700px) and (max-height: 700px) {
+  .kq-azan .kq-azan-title,
+  .kq-azan .kq-tr,
+  .kq-azan .kq-ar,
+  .kq-azan .kq-big {
+    display: none;
+  }
+  .kq-azan,
+  .kq-azan.is-bar {
+    display: block;
+    padding: 5px 10px 6px;
+  }
+  .kq-azan .kq-en,
+  .kq-azan.is-large .kq-en {
+    font-size: 14px;
+    line-height: 1.25;
+  }
+}
+/* a short portrait phone (e.g. 320 x 568): the Action control moves down beside Jump (see the Action rules),
+   so the azan slot drops to just above the joystick */
 @media (orientation: portrait) and (max-width: 700px) and (max-height: 600px) {
+  .kq-root {
+    --kq-azan-bot: calc(var(--kq-ctl-bot) + var(--kq-joy) + 8px);
+  }
   /* one slim row: each need is an icon and its bar; under the low line the bar gives way to the word */
   .kq-needs {
     display: flex;
@@ -2137,29 +2296,11 @@ kbd {
   .kq-need.is-low .kq-need-bar {
     display: none;
   }
-  .kq-root .kq-talk {
-    min-height: 64px;
-    padding: 4px 12px;
+  .kq-root {
+    --kq-act-h: 64px;
   }
-  .kq-talk .kq-ic-xl {
-    width: 28px;
-    height: 28px;
-  }
-  .kq-azan .kq-azan-title,
-  .kq-azan .kq-tr,
-  .kq-azan .kq-ar,
-  .kq-azan .kq-big {
-    display: none;
-  }
-  .kq-azan,
-  .kq-azan.is-bar {
-    display: block;
-    padding: 5px 10px 6px;
-  }
-  .kq-azan .kq-en,
-  .kq-azan.is-large .kq-en {
-    font-size: 14px;
-    line-height: 1.25;
+  .kq-root .kq-talk-more {
+    height: 64px;
   }
 }
 /* very narrow phones: the coins chip drops its word so the clock row never wraps */
@@ -2657,17 +2798,6 @@ kbd {
     min-height: 54px;
   }
 }
-/* the minimised ritual chip: tap to bring the stepper back while you walk the rite yourself */
-.kq-ritual-chip {
-  position: absolute;
-  left: 50%;
-  bottom: calc(var(--kq-dock-h) + var(--kq-bot) + 12px);
-  z-index: 12;
-  transform: translateX(-50%);
-  max-width: min(92vw, 520px);
-  white-space: normal;
-}
-
 /* region picker: big picture cards on the title screen and in the pause menu */
 .kq-regions {
   display: grid;
@@ -2825,7 +2955,8 @@ kbd {
   justify-content: space-between;
   gap: 8px;
 }
-.kq-wd-swatch {
+.kq-wd-swatch,
+.kq-wd-scarf {
   display: grid;
   place-items: center;
   width: 48px;
@@ -2836,7 +2967,8 @@ kbd {
   background: var(--sw);
   color: #111;
 }
-.kq-wd-swatch.is-on {
+.kq-wd-swatch.is-on,
+.kq-wd-scarf.is-on {
   border-color: var(--md-sys-color-primary);
   box-shadow:
     0 0 0 2px var(--kq-hud-strong),
@@ -2863,4 +2995,555 @@ kbd {
   .kq-wd .kq-h3 {
     display: none;
   }
+}
+
+/* ============================================================================
+   Playability round, area A: the full map (js/game/bigmap.js).
+   A near-full-screen sheet: header, the map (canvas) with zoom / centre buttons and a name card, and a
+   Places panel (also the legend). All controls >= 48 px; on a phone the Places panel floats over the map.
+   ========================================================================== */
+.kq-sheet-full {
+  padding: max(6px, env(safe-area-inset-top, 0px)) max(6px, env(safe-area-inset-right, 0px))
+    max(6px, env(safe-area-inset-bottom, 0px)) max(6px, env(safe-area-inset-left, 0px));
+}
+.kq-sheet-full .kq-sheet-box {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  overflow: hidden;
+  padding: 10px 12px 12px;
+}
+.kq-bm {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.kq-sheet-full .kq-bm > .kq-sheet-head {
+  position: static;
+  margin: 0;
+  padding: 0;
+}
+.kq-bm-body {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  gap: 10px;
+}
+.kq-bm-stage {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #16211a;
+}
+.kq-bm-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  cursor: grab;
+}
+.kq-bm-canvas:active {
+  cursor: grabbing;
+}
+.kq-bm-canvas:focus-visible {
+  outline: 3px solid var(--kq-gold);
+  outline-offset: -3px;
+}
+.kq-bm-ctl {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.kq-bm-btn {
+  width: 52px;
+  min-height: 52px;
+  background: var(--kq-hud-strong);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+.kq-bm-btn .kq-ic {
+  width: 26px;
+  height: 26px;
+}
+.kq-bm-card {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: min(340px, calc(100% - 92px));
+  padding: 10px 12px 12px;
+  border-radius: 18px;
+  background: var(--kq-hud-strong);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.55);
+}
+.kq-bm-more {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  max-width: calc(100% - 20px);
+  margin: 0;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--kq-hud-strong);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  pointer-events: none;
+}
+.kq-bm-more[hidden] {
+  display: none;
+}
+.kq-bm-card[hidden] {
+  display: none;
+}
+.kq-bm-cardhead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.kq-bm-cardhead .kq-h3 {
+  flex: 1 1 auto;
+  margin: 0;
+  font-size: 18px;
+}
+.kq-bm-dist {
+  margin: 0;
+}
+.kq-bm-chip {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid #101014;
+  color: #fff;
+}
+.kq-bm-chip .kq-ic {
+  width: 22px;
+  height: 22px;
+  fill: currentColor;
+}
+.kq-bm-list {
+  display: none;
+  flex: none;
+  flex-direction: column;
+  gap: 6px;
+  width: 260px;
+  overflow: auto;
+  padding: 4px 2px 4px 0;
+}
+.kq-bm-list.is-open {
+  display: flex;
+}
+.kq-bm-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 4px 12px 4px 6px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface);
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+}
+.kq-bm-item:hover {
+  background: var(--md-sys-color-surface-container-highest);
+}
+@media (max-width: 760px), (max-height: 520px) {
+  .kq-bm-list.is-open {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    bottom: 8px;
+    z-index: 3;
+    width: min(300px, calc(100% - 80px));
+    padding: 10px;
+    border-radius: 18px;
+    background: var(--kq-hud-strong);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.55);
+  }
+}
+
+/* ---------- minimised steps card (ritual-min.js, AC-P15 / AC-P16) ----------
+   A stepper card is a modal sheet (hero frozen, controls hidden). Hide turns it into one chip: the step's
+   picture, a short name + counter ("Tawaf 3/7") and a cue of six words at most. The chip sits where it
+   never covers the hero, joystick, Jump or Talk: in landscape (phone and tablet) it is centred in the top
+   band between the status card and the radar and pushes the toast lane below it (hud-layout.js laneTop);
+   on a portrait phone it is a small two-line chip in the row between the joystick and Jump (below the hero's
+   feet, clear of the azan card). The closed-rite chip ("Not now" on Umrah) is the same chip. */
+.kq-min-chip {
+  position: absolute;
+  left: calc(var(--kq-pad) + var(--kq-tl-w) + 12px);
+  right: calc(var(--kq-padr) + var(--kq-right-w) + 12px);
+  top: var(--kq-top);
+  z-index: 12;
+  width: fit-content;
+  max-width: min(460px, 100%);
+  min-height: 52px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 14px 6px 10px;
+  border-radius: 26px;
+  text-align: left;
+  white-space: normal;
+}
+.kq-min-ic {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  font-size: 28px;
+  line-height: 1;
+}
+.kq-min-ic svg {
+  width: 38px;
+  height: 38px;
+}
+.kq-min-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.2;
+}
+.kq-min-line {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.kq-min-name {
+  font-size: 16px;
+}
+.kq-min-count {
+  font-size: 16px;
+  font-weight: 800;
+}
+.kq-min-cue {
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.kq-min-open {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  transform: rotate(-90deg);
+}
+/* a chip the child hid by hand pulses gently when the step needs a tap (still for reduced motion) */
+.kq-min-chip.is-pulse {
+  animation: kq-min-pulse 1.2s ease-in-out 2;
+}
+@keyframes kq-min-pulse {
+  50% {
+    box-shadow: 0 0 0 6px rgba(255, 183, 77, 0.55);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .kq-min-chip.is-pulse {
+    animation: none;
+    box-shadow: 0 0 0 4px rgba(255, 183, 77, 0.75);
+  }
+}
+.kq-modal .kq-min-chip {
+  visibility: hidden;
+}
+/* a hero held in place (wudu, prayer, eating) cannot use the joystick or Jump while the card is tucked away */
+.kq-min-locked .kq-touch,
+.kq-min-locked .kq-keys {
+  visibility: hidden;
+}
+@media (orientation: portrait) and (max-width: 700px) {
+  /* the minimised card: a small two-line chip in the row between the joystick and Jump, below the hero's feet
+     and clear of the azan card; the cue wraps to two lines instead of the open arrow */
+  .kq-min-chip {
+    top: auto;
+    left: calc(var(--kq-joy-x) + 2px);
+    right: calc(max(18px, env(safe-area-inset-right, 0px)) + var(--kq-jump) + 8px);
+    bottom: calc(var(--kq-ctl-bot) + (var(--kq-joy) - 56px) / 2);
+    min-height: 56px;
+    padding: 4px 8px;
+    gap: 6px;
+    border-radius: 20px;
+  }
+  .kq-min-open {
+    display: none;
+  }
+  .kq-min-ic,
+  .kq-min-ic svg {
+    width: 28px;
+    height: 28px;
+    font-size: 22px;
+  }
+  .kq-min-line {
+    flex-wrap: wrap;
+    gap: 0 5px;
+  }
+  .kq-min-name,
+  .kq-min-count {
+    font-size: 15px;
+  }
+  .kq-min-cue {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    white-space: normal;
+    font-size: 12px;
+  }
+}
+/* the Hide button in the card header: a 48 px square, beside Not now */
+.kq-minimise {
+  flex: none;
+  min-width: 48px;
+  min-height: 48px;
+}
+@media (max-height: 520px), (max-width: 700px) {
+  /* a phone: the picture over the word "Hide", still a 48 px target (the word is for children who read little) */
+  .kq-minimise {
+    flex-direction: column;
+    gap: 0;
+    width: 52px;
+    padding: 2px 4px;
+  }
+  .kq-minimise span {
+    font-size: 11px;
+    line-height: 1.1;
+  }
+  .kq-minimise svg {
+    width: 20px;
+    height: 20px;
+  }
+}
+/* a phone held sideways: the secondary buttons share one scrolling row, so the card's words stay on screen */
+@media (max-height: 520px) {
+  .kq-stepper .kq-step-sub {
+    flex-wrap: nowrap;
+    justify-content: safe center;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .kq-stepper .kq-step-sub .kq-btn {
+    flex: none;
+  }
+}
+/* beside a side panel the toast lane ends at the panel, so a toast never lands on the card's title */
+.kq-modal-side .kq-toasts {
+  right: calc(min(440px, 42vw) + 12px + 8px);
+}
+
+/* "Who are you?" on the title card (AC-P8): two big picture cards, Boy and Girl (>= 48 px) */
+.kq-hero-pick {
+  margin: 6px 0 2px;
+}
+.kq-hero-pick[hidden] {
+  display: none;
+}
+.kq-hero-h {
+  margin: 0 0 6px;
+  font-size: 18px;
+}
+.kq-hero-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.kq-hero-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 112px;
+  padding: 8px;
+  border: 3px solid var(--md-sys-color-outline-variant);
+  border-radius: 18px;
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface);
+  font: inherit;
+  cursor: pointer;
+}
+.kq-hero-card b {
+  font-size: 18px;
+}
+.kq-hero-card.is-on {
+  border-color: var(--md-sys-color-primary);
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+  box-shadow: 0 0 0 2px var(--md-sys-color-primary);
+}
+.kq-hero-card:focus-visible {
+  outline: 3px solid var(--md-sys-color-tertiary);
+  outline-offset: 3px;
+}
+.kq-hero-pic {
+  width: 72px;
+  height: 72px;
+}
+@media (max-height: 520px) {
+  .kq-hero-card {
+    min-height: 64px;
+    flex-direction: row;
+  }
+  .kq-hero-pic {
+    width: 44px;
+    height: 44px;
+  }
+}
+/* the tailor's Boy / Girl switch and the girl's hair / hijab styles */
+.kq-wd-who {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.kq-wd-who .kq-hero-card {
+  min-height: 56px;
+  flex-direction: row;
+}
+.kq-wd-who .kq-hero-pic {
+  width: 36px;
+  height: 36px;
+}
+.kq-wd-styles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+.kq-wd-style {
+  min-height: 48px;
+  padding: 4px;
+  font-size: 13px;
+  line-height: 1.15;
+}
+/* the girl's wardrobe is taller than the side panel: start at the top so Boy / Girl is never pushed above it */
+.kq-sheet-side .kq-sheet-box:has(.kq-wd) {
+  justify-content: flex-start;
+}
+
+/* ---------- where the Action control sits (action-bar.js) ----------
+   Tablet: right above Jump. Desktop: above the key hints. A phone's right column (radar, needs bars) leaves no
+   room above Jump, so there the control sits in the bottom row, just left of Jump; its extra tiles rise above the
+   dock (landscape) or stack upward (a short portrait phone, where the joystick is on the left). */
+@media (pointer: coarse) {
+  .kq-root {
+    --kq-act-bottom: calc(
+      max(18px, env(safe-area-inset-bottom, 0px)) + var(--kq-jump) + var(--kq-act-gap)
+    );
+  }
+}
+.kq-root.kq-touch-ui {
+  --kq-act-bottom: calc(
+    max(18px, env(safe-area-inset-bottom, 0px)) + var(--kq-jump) + var(--kq-act-gap)
+  );
+}
+/* phone landscape */
+@media (max-height: 520px) and (pointer: coarse) {
+  .kq-root {
+    --kq-act-w: 72px;
+    --kq-act-h: 64px;
+  }
+  .kq-root .kq-action {
+    right: calc(max(18px, env(safe-area-inset-right, 0px)) + var(--kq-jump) + 8px);
+    bottom: max(18px, env(safe-area-inset-bottom, 0px));
+  }
+  .kq-root .kq-tray {
+    margin-bottom: calc(
+      var(--kq-dock-h) + var(--kq-bot) + 8px - max(18px, env(safe-area-inset-bottom, 0px))
+    );
+  }
+  .kq-root .kq-talk {
+    font-size: 14px;
+  }
+  .kq-root .kq-talk-more {
+    width: 64px;
+    height: 64px;
+    font-size: 12px;
+  }
+  .kq-root .kq-talk-more .kq-ic-xl {
+    width: 24px;
+    height: 24px;
+  }
+}
+@media (max-height: 520px) {
+  .kq-root.kq-touch-ui {
+    --kq-act-w: 72px;
+    --kq-act-h: 64px;
+  }
+  .kq-root.kq-touch-ui .kq-action {
+    right: calc(max(18px, env(safe-area-inset-right, 0px)) + var(--kq-jump) + 8px);
+    bottom: max(18px, env(safe-area-inset-bottom, 0px));
+  }
+  .kq-root.kq-touch-ui .kq-tray {
+    margin-bottom: calc(
+      var(--kq-dock-h) + var(--kq-bot) + 8px - max(18px, env(safe-area-inset-bottom, 0px))
+    );
+  }
+  .kq-root.kq-touch-ui .kq-talk {
+    font-size: 14px;
+  }
+  .kq-root.kq-touch-ui .kq-talk-more {
+    width: 64px;
+    height: 64px;
+    font-size: 12px;
+  }
+  .kq-root.kq-touch-ui .kq-talk-more .kq-ic-xl {
+    width: 24px;
+    height: 24px;
+  }
+}
+/* portrait phone: above Jump (Jump sits above the dock) */
+@media (orientation: portrait) and (max-width: 700px) {
+  .kq-root,
+  .kq-root.kq-touch-ui {
+    --kq-act-w: 84px;
+    --kq-act-h: 76px;
+    --kq-act-gap: 8px;
+    --kq-act-bottom: calc(var(--kq-ctl-bot) + var(--kq-jump) + var(--kq-act-gap));
+  }
+  .kq-root .kq-talk-more {
+    width: 64px;
+    height: 64px;
+    font-size: 12px;
+  }
+}
+/* a short portrait phone (320 x 568): no room above Jump for a toast and the control, so it moves down beside Jump */
+@media (orientation: portrait) and (max-width: 700px) and (max-height: 600px) {
+  .kq-root,
+  .kq-root.kq-touch-ui {
+    --kq-act-w: 80px;
+    --kq-act-h: 68px;
+  }
+  .kq-root .kq-action,
+  .kq-root.kq-touch-ui .kq-action {
+    right: calc(max(18px, env(safe-area-inset-right, 0px)) + var(--kq-jump) + 8px);
+    bottom: var(--kq-ctl-bot);
+    flex-direction: column-reverse;
+    align-items: flex-end;
+  }
+  .kq-root .kq-tray,
+  .kq-root.kq-touch-ui .kq-tray {
+    flex-direction: column-reverse;
+    align-items: flex-end;
+    margin-bottom: 0;
+  }
+}
+/* the Tired bar is a one-tap Rest button (hud-view.js marks it is-rest): a real 48 px target, pointer cursor */
+.kq-needs.is-rest {
+  cursor: pointer;
+  min-height: 48px;
 }

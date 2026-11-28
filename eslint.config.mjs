@@ -3,6 +3,7 @@
 import js from "@eslint/js";
 import globals from "globals";
 import html from "eslint-plugin-html";
+import jsdoc from "eslint-plugin-jsdoc";
 
 // Files whose long functions / deep nesting pre-date the lint rules (see the ratchet note below).
 const LEGACY = [
@@ -17,6 +18,7 @@ export default [
       "dist/**",
       "Old prototype/**",
       "node_modules/**",
+      ".claude/**", // local Claude Code state, incl. agent worktrees (full copies of the repo)
       "docs/.brain-backup/**",
       "**/three.min.js",
       "**/GLTFLoader.js",
@@ -60,6 +62,31 @@ export default [
     // widen the `files` list as they are. Do not remove without a DECISIONS.md entry.
     files: ["games/kampung-quest/**/*.js", "tests/kampung-quest*.mjs", "tests/kampung-quest/**"],
     rules: { "no-var": "error", "prefer-const": "error" },
+  },
+  {
+    // CODE_QUALITY.md section 18 #2 (Tier-2 doc block on every function) — do not remove without a DECISIONS.md entry.
+    // `jsdoc/require-jsdoc` on FunctionDeclaration (the form every named function in the shipped code takes).
+    // Shipped code only: games, the hub page, scripts/. Dev tooling (tests/, tools/, features/) is not "public".
+    // Warn here, ERROR for Kampung Quest in the next block; tools/lint-ratchet.mjs holds the warning count per
+    // file at tools/lint-baseline.json so no new undocumented function can land in any game (ledger row unenforced-checkable-rules).
+    files: ["games/**/*.{js,html}", "scripts/**/*.js", "index.html"],
+    plugins: { jsdoc },
+    rules: {
+      "jsdoc/require-jsdoc": [
+        "warn",
+        { publicOnly: false, enableFixer: false, require: { FunctionDeclaration: true } },
+      ],
+    },
+  },
+  {
+    // Kampung Quest is fully documented: a missing Tier-2 block is a hard error, not a ratcheted warning.
+    files: ["games/kampung-quest/js/**/*.js"],
+    rules: {
+      "jsdoc/require-jsdoc": [
+        "error",
+        { publicOnly: false, enableFixer: false, require: { FunctionDeclaration: true } },
+      ],
+    },
   },
   {
     files: ["**/*.mjs", "tools/**"],

@@ -128,10 +128,11 @@
   /** Set the haze colour (linear fog colour) and strength. */
   function setHaze(col, night) {
     HAZE.kqHazeCol.value.copy(col);
-    HAZE.kqHaze.value = 0.7 - 0.35 * night;
+    HAZE.kqHaze.value = 0.56 - 0.21 * night;
   }
 
-  const PASTEL = [0xffffff, 0xf2ece2, 0xe6eef2, 0xeef2e6, 0xf6e6dc, 0xe2e6ee];
+  /** The cheerful HDB pastels (cream, mint, peach, lemon, sky blue, blush) for the far blocks. */
+  const PASTEL = [0xfff6e6, 0xcdeedd, 0xffd9c2, 0xfff0a8, 0xcfe4fa, 0xf8d6e4];
 
   /** Two rings of distant HDB slabs and point blocks, hazed towards the fog colour. */
   function skyline(group, mats) {

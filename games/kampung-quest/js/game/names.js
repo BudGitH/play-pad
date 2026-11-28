@@ -30,7 +30,24 @@
     bus_stop: "Bus stop",
     park: "Park",
     recycling: "Recycling",
+    pony_ride: "Pony ride",
+    forecourt: "Hotel forecourt",
+    gate: "Haram gate",
+    zamzam: "Zamzam taps",
+    clock: "Clock tower",
+    mataf: "Mataf",
+    safa: "Safa",
+    marwa: "Marwa",
+    miqat: "Miqat bus stop",
+    busStop: "Madinah bus stop",
+    nabGate: "Prophet's Mosque gate",
+    rawdah: "Rawdah",
+    quba: "Quba",
+    uhud: "Uhud",
+    camel_yard: "Camel yard",
+    horse_stable: "Horse stable",
   };
+  const EXTRA_ITEMS = { rambutan: "rambutans", parcel: "parcel", bicycle: "bicycle" };
   const STALL = {
     stall_prata: ["Ali's Prata & Mamak", "hawker_ali"],
     stall_nasi_lemak: ["Aminah's Nasi Lemak", "hawker_aminah"],
@@ -48,7 +65,7 @@
 
   /** A neighbour's display name from their id (the id itself if unknown). */
   function npc(id) {
-    const p = KQ.Sim.NPC_PROFILE[id];
+    const p = KQ.Sim.NPC_PROFILE[id] || (KQ.Sim.GUIDES && KQ.Sim.GUIDES[id]);
     return p ? p.name : id;
   }
 
@@ -59,7 +76,12 @@
 
   /** Short picture label for one mission step ("Buy prata", "Nenek", "Back to Nenek"). */
   function stepLabel(step, index, mission) {
-    if (step.type === "talk") return npc(step.target);
+    if (step.type === "talk")
+      return step.verb ? step.verb + " " + npc(step.target) : npc(step.target);
+    if (step.type === "greet") return "Say hi to " + (step.count || 1);
+    if (step.type === "photo") return "Photo: " + poi(step.target);
+    if (step.type === "ride") return "Ride to " + poi(step.target);
+    if (step.type === "escort") return "Walk " + npc(step.who) + " to " + poi(step.target);
     if (step.type === "buy") return "Buy " + (ITEM_SHORT[step.item] || "it");
     if (step.type === "goto") return poi(step.target);
     if (step.type === "collect") return "Pick up " + (step.count || 1);
@@ -71,7 +93,7 @@
   /** A menu / shop item's display name from its id (the id itself if unknown). */
   function itemName(id) {
     const item = KQ.Sim.Economy.findItem(id);
-    return item ? item.name : id;
+    return item ? item.name : EXTRA_ITEMS[id] || id;
   }
 
   /** Words for a prayer strip entry's state (full phrase, e.g. for the Pray card and screen readers). */

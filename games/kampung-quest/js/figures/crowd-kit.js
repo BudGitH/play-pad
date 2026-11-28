@@ -74,10 +74,40 @@
     return new THREE.Matrix4().multiplyMatrices(m, tmp.s.makeScale(1, k, 1));
   }
 
-  /** The 14 part matrices (figure space) of a pose at a phase, flattened into a Float32Array. */
-  function evalPose(name, phase, kid) {
-    const d = kid ? F.CROWD_KID_DIMS : F.CROWD_DIMS;
+  const hatDims = new Map();
+  /**
+   * The crowd proportions for a prayer pose with a given fit ("hat" or "hat|skirt"): the sujud
+   * solver needs the hat's outline (F.headContour) so a tudung, a songkok or a turned cap rests on
+   * the floor, and a long skirt's deeper hem so it does not sink into the floor when kneeling.
+   */
+  function dimsFor(kid, fit) {
+    const base = kid ? F.CROWD_KID_DIMS : F.CROWD_DIMS;
+    if (!fit) return base;
+    const key = fit + (kid ? ":kid" : "");
+    if (hatDims.has(key)) return hatDims.get(key);
+    const hat = hatOf(fit);
+    const geo = F.crowdGeometries()["hat_" + hat];
+    const d = Object.assign({}, base, {
+      headContour: geo ? F.headContour(geo, hat === "cap") : null,
+      kneelHalf: /\|skirt$/.test(fit) ? F.SKIRT_KNEEL_HALF : 0,
+    });
+    hatDims.set(key, d);
+    return d;
+  }
+
+  /** The hat of a fit key ("cap|skirt" -> "cap"). */
+  function hatOf(fit) {
+    return fit ? fit.split("|")[0] : "none";
+  }
+
+  /**
+   * The 14 part matrices (figure space) of a pose at a phase, flattened into a Float32Array. For the
+   * prayer postures (F.POSES[name].capBack) the hat matters: a cap is worn peak-back and the sujud
+   * bend makes room for the hat.
+   */
+  function evalPose(name, phase, kid, hat) {
     const fn = F.POSES[name] || F.POSES.idle;
+    const d = fn.capBack ? dimsFor(kid, hat) : kid ? F.CROWD_KID_DIMS : F.CROWD_DIMS;
     const P = fn(phase, d);
     const root = new THREE.Matrix4().makeScale(d.scale, d.scale, d.scale);
     root.setPosition(0, (P.rootY || 0) * d.scale, (P.rootZ || 0) * d.scale);
@@ -91,25 +121,32 @@
     const [upR, foR, haR] = armChain(torso, d, P, "R");
     const k1 = kid ? KID_THIGH : 1;
     const k2 = kid ? KID_SHIN : 1;
-    const list = [
-      hips,
-      squash(lgL, k1),
-      squash(lgR, k1),
-      squash(knL, k2),
-      squash(knR, k2),
-      torso,
-      head,
-      head,
-      upL,
-      upR,
-      foL,
-      foR,
-      haL,
-      haR,
-    ];
+    const legs = [squash(lgL, k1), squash(lgR, k1), squash(knL, k2), squash(knR, k2)];
+    const hatM = fn.capBack && hatOf(hat) === "cap" ? turned(head) : head;
+    const list = [hips].concat(legs, [torso, head, hatM, upL, upR, foL, foR, haL, haR]);
     const out = new Float32Array(PARTS * 16);
     list.forEach((m, i) => out.set(m.elements, i * 16));
     return out;
+  }
+
+  /** A head matrix turned half round (a cap worn peak-back). */
+  function turned(head) {
+    return head.clone().multiply(new THREE.Matrix4().makeRotationY(Math.PI));
+  }
+
+  /** The fit key of an outfit for the prayer postures: its hat, and "|skirt" for a long skirt (cached). */
+  function fitOf(o) {
+    if (o._fit === undefined) o._fit = (o.head || "none") + (o.skirt ? "|skirt" : "");
+    return o._fit;
+  }
+
+  const hatIds = new Map();
+  /** A small integer per hat for the bank key (only the prayer postures depend on the hat). */
+  function hatId(name, hat) {
+    const fn = F.POSES[name];
+    if (!fn || !fn.capBack || !hat) return 0;
+    if (!hatIds.has(hat)) hatIds.set(hat, hatIds.size + 1);
+    return hatIds.get(hat);
   }
 
   /** How many phase buckets a pose gets (more for fast strides). */
@@ -129,14 +166,15 @@
     return id;
   }
 
-  /** The cached part matrices for (pose, phase 0..1, kid). */
-  function bankFor(name, phase, kid) {
+  /** The cached part matrices for (pose, phase 0..1, kid, and the hat for the prayer postures). */
+  function bankFor(name, phase, kid, hat) {
     const n = bucketsFor(name);
     const b = Math.floor((phase - Math.floor(phase)) * n) % n;
-    const key = (poseId(name) * 32 + b) * 2 + (kid ? 1 : 0);
+    const h = hatId(name, hat);
+    const key = ((poseId(name) * 32 + b) * 2 + (kid ? 1 : 0)) * 64 + h;
     let m = bank.get(key);
     if (!m) {
-      m = evalPose(name, (b + 0.5) / n, kid);
+      m = evalPose(name, (b + 0.5) / n, kid, h ? hat : null);
       bank.set(key, m);
     }
     return m;
@@ -402,7 +440,7 @@
       if (kit.drawn >= kit.people) return false;
       const g = kit.g;
       placement(g, p.x, p.y, p.z, p.heading, p.scale, p.girth);
-      const m = bankFor(p.pose, p.phase, p.kid);
+      const m = bankFor(p.pose, p.phase, p.kid, fitOf(p.outfit));
       const table = partTable(kit, p.outfit);
       for (let i = 0; i < PARTS; i += 1) {
         if (table[i][0]) push(table[i][0], g, m, i * 16, table[i][1]);

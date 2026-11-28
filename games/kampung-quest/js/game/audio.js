@@ -24,6 +24,7 @@
     played: 0,
     refused: 0,
     ambient: 0,
+    vehicle: 0,
     surface: "paving",
     foot: false,
     lastStep: -1,
@@ -80,6 +81,21 @@
     try {
       make(A.ctx, A.ctx.currentTime);
       A.ambient += 1;
+      return true;
+    } catch (err) {
+      return false;
+    }
+  }
+
+  /**
+   * The vehicles' gate (vehicle-sound.js): like ambient(), counted apart (`vehicle`) so engine, door and horn
+   * sounds never disguise a lifecycle bug in the UI sounds. Returns whether it was scheduled.
+   */
+  function vehicle(make) {
+    if (!canSound()) return false;
+    try {
+      make(A.ctx, A.ctx.currentTime);
+      A.vehicle += 1;
       return true;
     } catch (err) {
       return false;
@@ -190,6 +206,12 @@
       tone(c, t, { f: 520, to: 300, d: 0.18, g: 0.05 });
     },
     hint: (c, t) => tone(c, t, { f: 330, d: 0.18, g: 0.07 }),
+    // world events: a soft kompang beat and the patter of a rain shower
+    drum: (c, t) => {
+      tone(c, t, { f: 170, to: 95, d: 0.16, g: 0.12 });
+      noise(c, t, { type: "bandpass", f: 700, d: 0.05, g: 0.05 });
+    },
+    patter: (c, t) => noise(c, t, { type: "bandpass", f: 3200, d: 0.9, g: 0.05 }),
     bell: (c, t) => {
       [784, 988, 1175].forEach(function (f, i) {
         tone(c, t + i * 0.55, { f, d: 1.6, g: 0.1 });
@@ -349,6 +371,8 @@
     play,
     footstep,
     ambient,
+    vehicle,
+    synth: { tone, noise },
     bus,
     setSurface(kind) {
       A.surface = SURFACE[kind] ? kind : "paving";
@@ -375,6 +399,8 @@
       played: A.played,
       refused: A.refused,
       ambient: A.ambient,
+      vehicle: A.vehicle,
+      vehicleSound: G.VehicleSound ? G.VehicleSound.debug() : null,
       surface: A.surface,
       ambience: G.Ambience ? G.Ambience.debug() : null,
       ctx: A.ctx ? A.ctx.state : "none",

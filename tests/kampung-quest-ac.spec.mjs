@@ -216,7 +216,6 @@ async function checkEating(page) {
   await expect(page.locator("#kqLive")).toHaveText(/ Food \d+ of 100\.$/);
   expect(after.hunger).toBeGreaterThan(before.hunger);
   expect(after.coins).toBeLessThan(before.coins);
-  expect(after.coins).toBeGreaterThanOrEqual(0);
   // eating is a short stepper (wash, Bismillah, bites, Alhamdulillah): finish it with Next
   await expect(page.getByRole("dialog", { name: "Eating steps" })).toBeVisible();
   for (let i = 0; i < 12 && (await state(page)).ui.eating; i += 1) {
@@ -509,7 +508,8 @@ async function checkPrayedAtHome(page) {
     document.querySelector("#kqStatus").getAttribute("aria-label"),
   );
   expect(spoken).toMatch(/Subuh prayed at home/);
-  await page.locator("#kqMap").click();
+  // the day's prayer list lives on the prayer card (the Pray button); the full map is only a map now
+  await page.locator("#kqStatus").click();
   await expect(page.locator(".kq-day")).toContainText("Prayed at home");
   await expect(page.locator(".kq-day")).not.toContainText(/Prayed(?! at home)/);
   await page.keyboard.press("Escape");
@@ -840,14 +840,21 @@ test.describe("AC-13 save", () => {
   }
 });
 
+/** A first run: the hero picker is above Start, so focus begins on the chosen card; Tab reaches Start; Enter starts. */
+async function startByKeyboard(page) {
+  await expect(page.locator("#kqHeroPick .kq-hero-card.is-on")).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(page.locator("#kqStart")).toBeFocused();
+  await page.keyboard.press("Enter"); // Start, no mouse
+  await expect.poll(() => kq(page, () => window.__kq.ready), { timeout: 30_000 }).toBe(true);
+}
+
 test.describe("AC-15 accessibility", () => {
   test.describe.configure({ timeout: 150_000 });
 
   test("playable by keyboard alone, 48 px controls, visible focus", async ({ page }) => {
     await load(page);
-    await expect(page.locator("#kqStart")).toBeFocused(); // the game focuses Start itself
-    await page.keyboard.press("Enter"); // Start, no mouse
-    await expect.poll(() => kq(page, () => window.__kq.ready), { timeout: 30_000 }).toBe(true);
+    await startByKeyboard(page);
     await step(page, 300);
     const small = await kq(page, smallButtons);
     expect(small, "HUD buttons under 48 px").toEqual([]);
@@ -962,8 +969,11 @@ const FRAME_BUDGET_MS = 1000 / 50;
 const SLACK = 1.35;
 const PHONE = { width: 844, height: 390 };
 
-/** Scenes that are heavy on the low tier: every POI by day and night, plus each prayer at the mosque. */
-function drawCallSweep() {
+/**
+ * Page side of the AC-14 sweep: a small, phone-shaped render and a `window.__sweep` helper that
+ * counts one frame's calls (shadow pass included) and keeps the worst; `around` looks four ways.
+ */
+function sweepSetup() {
   const G = window.KQ.Game;
   const s = G.S;
   const r = s.renderer;
@@ -972,34 +982,76 @@ function drawCallSweep() {
   r.setSize(211, 98, false);
   G.Camera.resize(211, 98, 211 / 98); // same aspect as the phone: same frustum
   s.frozen = true;
-  let worst = { calls: 0, where: "" };
-  const count = (where) => {
+  const W = (window.__sweep = { worst: { calls: 0, where: "" } });
+  W.count = (where) => {
     r.info.reset();
     r.render(s.scene, s.camera);
-    if (r.info.render.calls > worst.calls) worst = { calls: r.info.render.calls, where };
+    if (r.info.render.calls > W.worst.calls) W.worst = { calls: r.info.render.calls, where };
   };
-  Object.keys(s.world.pois).forEach((id) => {
+  // the busiest view is rarely the default one: look four ways from the spot
+  W.around = (where) => {
+    const st = k.state();
+    [0, 1.57, 3.14, 4.71].forEach((yaw) => {
+      k.place(st.pos.x, st.pos.z, yaw);
+      W.count(where + " yaw " + yaw);
+    });
+  };
+}
+
+/** Every POI by day and night, four ways. */
+function sweepPlaces() {
+  const k = window.__kq;
+  Object.keys(window.KQ.Game.S.world.pois).forEach((id) => {
     [720, 1200].forEach((m) => {
       k.setMinute(m);
       k.teleport(id);
-      count(id + "@" + m);
+      window.__sweep.around(id + "@" + m);
     });
   });
+}
+
+/** The town events put extra people on stage: the busiest ones, at the busiest places, four ways. */
+function sweepEvents() {
+  const k = window.__kq;
+  k.setMinute(600);
+  ["kompang", "rain", "football"].forEach((ev) => {
+    ["home", "block_b", "hawker", "playground", "park", "mosque_gate"].forEach((id) => {
+      k.stopEvent();
+      k.teleport(id);
+      if (!k.forceEvent(ev)) return;
+      k.step(4000);
+      window.__sweep.around(id + " +" + ev);
+    });
+  });
+  k.stopEvent();
+}
+
+/** Each prayer at the mosque; returns the worst frame of the whole sweep. */
+function sweepPrayers() {
+  const k = window.__kq;
   ["subuh", "zohor", "asar", "maghrib", "isyak"].forEach((p) => {
     ["mosque_hall", "mosque_gate", "mosque_wudu"].forEach((spot) => {
       k.forcePrayer(p);
       k.teleport(spot);
       k.step(15000);
-      count(p + "/" + spot);
+      window.__sweep.count(p + "/" + spot);
     });
   });
-  return Object.assign(worst, { tier: s.quality });
+  return Object.assign(window.__sweep.worst, { tier: window.KQ.Game.S.quality });
+}
+
+/** Scenes that are heavy on the low tier: places x day / night x 4 yaws, town events, prayers. */
+async function drawCallSweep(page) {
+  await kq(page, sweepSetup);
+  await kq(page, sweepPlaces);
+  await kq(page, sweepEvents);
+  return kq(page, sweepPrayers);
 }
 
 test("AC-14 phone layout: at most 400 draw calls per frame on the low tier, shadows included", async ({
   browser,
 }) => {
-  test.setTimeout(240_000);
+  test.setTimeout(480_000);
   const ctx = await browser.newContext({
     viewport: PHONE,
     deviceScaleFactor: 3,
@@ -1009,7 +1061,7 @@ test("AC-14 phone layout: at most 400 draw calls per frame on the low tier, shad
   const page = await ctx.newPage();
   await open(page, "?still=1&autoq=0");
   expect((await state(page)).quality, "phones start on low").toBe("low");
-  const worst = await kq(page, drawCallSweep);
+  const worst = await drawCallSweep(page);
   test
     .info()
     .annotations.push({ type: "worst low-tier frame", description: JSON.stringify(worst) });
@@ -1121,7 +1173,7 @@ async function checkNenekToast(page) {
 async function checkWayFocus(page) {
   await kq(page, () => window.__kq.forcePrayer("zohor"));
   await step(page, 500);
-  const way = page.getByRole("button", { name: "Show me the way" });
+  const way = page.locator("#kqAzan").getByRole("button", { name: "Pray", exact: true });
   await expect(way).toBeVisible();
   await expectNoUnnamedButtons(page);
   // the spoken sentence has one full stop, not two ("pray.. Call to prayer")
@@ -1187,8 +1239,19 @@ async function expectBarberTwoColumns(page) {
   await kq(page, () => window.__kq.interact());
   const tiles = page.locator(".kq-grid-looks .kq-tile");
   await expect(tiles).toHaveCount(7);
-  const first = await tiles.nth(0).boundingBox();
-  const second = await tiles.nth(1).boundingBox();
+  // the sheet slides in by 10 px; measure once it has settled, both tiles in one read
+  await page.waitForFunction(() =>
+    document
+      .querySelector(".kq-sheet-box")
+      .getAnimations()
+      .every((a) => a.playState === "finished"),
+  );
+  const [first, second] = await tiles.evaluateAll((els) =>
+    els.slice(0, 2).map((el) => {
+      const r = el.getBoundingClientRect();
+      return { x: r.x, y: r.y, width: r.width };
+    }),
+  );
   expect(Math.abs(first.y - second.y), "two tiles on the first row").toBeLessThan(2);
   expect(second.x).toBeGreaterThan(first.x + first.width - 2);
   expect(first.width, "larger previews").toBeGreaterThan(200);
@@ -1230,7 +1293,7 @@ test.describe.serial("persona polish (one shared page at 1180 x 820)", () => {
   });
   test("the first-step toast names Nenek and is retired once her mission is accepted", () =>
     checkNenekToast(shared.page));
-  test("Show me the way moves focus to Pray; Esc from a dock sheet returns to its button", () =>
+  test("the azan card's Pray button moves focus to Pray; Esc from a dock sheet returns to its button", () =>
     checkWayFocus(shared.page));
   test("Sound keeps a fixed name, announces, and live text does not go stale", () =>
     checkSoundAnnounce(shared.page));

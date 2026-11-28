@@ -7,6 +7,8 @@
   const F = (KQ.Figures = KQ.Figures || {});
   const PI = Math.PI;
   const TAU = PI * 2;
+  /** The adult hip height (figure units) a bicycle saddle is set for. */
+  const ADULT_HIP = 0.305;
 
   /** Smooth 0..1..0 bump centred on c (phase units) with half-width w, so a gesture eases in and out. */
   function bump(p, c, w) {
@@ -226,10 +228,11 @@
   }
 
   /** Pedalling a small bicycle: leaning forward, both hands on the bars, legs turning the cranks. */
-  function pedal(p) {
+  function pedal(p, d) {
     const s = Math.sin(p * TAU);
     const c = Math.cos(p * TAU);
     return {
+      rootY: d ? Math.max(0, ADULT_HIP - d.hipH) : 0, // a kid sits up on the same saddle, feet clear of the floor
       torso: [0.36, 0, 0],
       head: [-0.22, 0, 0],
       legL: [-0.95 + 0.42 * s, 0, 0],

@@ -10,7 +10,9 @@
 (function (KQ) {
   "use strict";
   const P = (KQ.WorldParts = KQ.WorldParts || {});
-  const RES = 1024;
+  /** Field resolution in texels per side: `AOField.res` (boot sets 512 on the low tier: a quarter of the work, AC-P22). */
+  const FULL_RES = 1024;
+  let RES = FULL_RES;
   const ORIGIN = -80;
   const SIZE = 160;
   const H_MAX = 20;
@@ -97,11 +99,12 @@
     });
     const deep = new Float32Array(n);
     roofList.forEach((r) => fillRect(deep, r.x0, r.x1, r.z0, r.z1, 1, "set"));
-    blur(sky, 6, 2);
-    blur(deep, 20, 2);
+    const px1024 = (r) => Math.max(1, Math.round((r * RES) / FULL_RES)); // radii were tuned at 1024
+    blur(sky, px1024(6), 2);
+    blur(deep, px1024(20), 2);
     for (let i = 0; i < n; i++) sky[i] = Math.min(1, sky[i] * (1.25 - 0.5 * deep[i]));
-    blur(touch, 2, 2);
-    blur(warm, 8, 2);
+    blur(touch, px1024(2), 2);
+    blur(warm, px1024(8), 2);
     return { sky, touch, warm, hgt };
   }
 
@@ -125,11 +128,12 @@
 
   /** Build the field. Returns { texture, origin: Vector3(ox, oz, size), roofs }. */
   function build(L, colliders) {
+    RES = P.AOField.res || FULL_RES;
     const list = roofs(L);
     const tex = pack(channels(list, colliders));
     tex.name = "kqAOField";
     return { texture: tex, origin: new THREE.Vector3(ORIGIN, ORIGIN, SIZE), roofs: list };
   }
 
-  P.AOField = { build, roofs, RES, ORIGIN, SIZE, H_MAX };
+  P.AOField = { build, roofs, RES: FULL_RES, res: FULL_RES, ORIGIN, SIZE, H_MAX };
 })((window.KQ = window.KQ || {}));

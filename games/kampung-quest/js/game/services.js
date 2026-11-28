@@ -1,7 +1,8 @@
 /* ============================================================================
  * FILE: services.js
- * PURPOSE: What happens at each place: hawker stall, mini-mart, barber, clinic, library, home
- *          (rest), recycling, playground and the bus stop bench.
+ * PURPOSE: What happens at each place: hawker stall, mini-mart, barber, clinic, library,
+ *          recycling, playground and the bus stop bench, plus the one-tap Rest (home door, bench,
+ *          or anywhere when Tired).
  * BUSINESS CONTEXT: AC-10 (eat to refill hunger; rest at home refills energy; barber changes the
  *   hair piece; the clinic check-up refills energy; the library gives a story card; coins never go
  *   negative), AC-11 (a bought item for the active "buy" step is carried, not eaten), edge case
@@ -64,11 +65,10 @@
 
   /**
    * Play a short happy pose (wave, etc.) on the hero after a purchase or play, then give control
-   * back.
+   * back (unless something else holds the hero, then there is no pose).
    */
   function happy(pose, seconds) {
-    G.Player.lock(S().player, null, pose);
-    S().after(seconds, () => G.Player.release(S().player));
+    G.Player.lockFor(S().player, seconds, pose);
   }
 
   /**
@@ -159,6 +159,7 @@
    * applies the outfit.
    */
   function barber() {
+    if (G.Hero.isGirl()) return girlAtBarber();
     G.Menus.barber({
       price: KQ.Sim.SERVICES.barber.price,
       current: () => sim().outfit,
@@ -178,6 +179,18 @@
         S().hudDirty = true;
         return { ok: true, hint: "Handsome! Looking sharp." };
       },
+    });
+  }
+
+  /** The barber's cuts are boys' cuts: the girl hero is sent (kindly) to the tailor for her hair or hijab, free. */
+  function girlAtBarber() {
+    G.Menus.card({
+      title: "Barber",
+      paragraphs: [
+        "Assalamualaikum! My chair is for short boys' haircuts.",
+        "For a ponytail, braids, a bun, a bob or a pretty hijab, visit the tailor's Butik by the park. It's free!",
+      ],
+      buttons: [{ label: "OK", primary: true, icon: "check" }],
     });
   }
 
@@ -216,27 +229,99 @@
     });
   }
 
-  /** Ask whether to rest at home (fills energy, moves time on about half an hour). */
-  function home() {
-    G.Menus.card({
-      title: "Rest at home?",
-      paragraphs: ["A little rest fills your energy. Time will move ahead about half an hour."],
-      buttons: [
-        { label: "Rest", primary: true, icon: "heart", onClick: rest },
-        { label: "Not now" },
-      ],
-    });
+  /** Why a rest is not offered right now, or "" when it is (full energy, or a fard prayer is due or under way). */
+  function restRefusal() {
+    if (!sim().needs.canRest()) return "full";
+    return G.PrayerFlow.restBlocked() ? "prayer" : "";
   }
 
-  /** Fade out, skip 30 game minutes, toast how long the hero rested, then fade back in. */
-  function rest() {
-    const root = S().root;
-    root.classList.add("kq-fading");
+  /** Where the hero sits to rest: on the nearest seat (a bench) within 3 m, else on the ground where they stand. */
+  function restSpot() {
+    const P = S().player;
+    const seat = G.Seats.claim(S().npcs.seats, P.pos.x, P.pos.z, 3, "hero");
+    const drop = KQ.Figures.seatDrop(P.rig);
+    if (seat) return { x: seat.x, y: seat.y - drop, z: seat.z, heading: seat.heading };
+    const y = S().world.heightAt(P.pos.x, P.pos.z) + 0.12 - drop;
+    return { x: P.pos.x, y, z: P.pos.z, heading: P.heading };
+  }
+
+  /** The soft "Zzz" on the fade-out screen, built on first use (text only). */
+  function zzzEl() {
+    const fade = document.getElementById("kqFade");
+    if (!fade.firstChild) {
+      const word = G.U.el("span", { cls: "kq-zzz-word", text: "Zzz..." });
+      fade.appendChild(G.U.el("div", { cls: "kq-zzz" }, G.Pictures.icon("moon", "kq-ic-xl"), word));
+    }
+    return fade;
+  }
+
+  /** Skip 30 game minutes while resting, then the energy is full ("Energy is back!"); a prayer that falls due still shows. */
+  function sleepAndWake(spot) {
+    const slept = G.Loop.advanceMinutes(30, true);
+    sim().needs.checkup();
+    S().hudDirty = true;
+    G.UI.toast("You rested for " + slept + " minutes. Energy is back!", "good", 4200);
+    G.Say("rest-done", "Energy is back!");
+    const P = S().player;
+    G.Seats.release(S().npcs.seats, "hero");
+    G.Player.release(P);
+    G.Player.place(P, spot.x, spot.z, spot.heading, S().world.heightAt);
+    setTimeout(() => S().root.classList.remove("kq-fading"), 350);
+    setTimeout(() => S().root.classList.remove("kq-resting"), 800); // the "Zzz" fades out with the black
+    resting = false;
+  }
+
+  /** A kind line when the hero cannot rest because they are in a vehicle, on an animal or held by something else; else "". */
+  function busyWord() {
+    if (G.Vehicles.mounted() || G.Mounts.riding()) return "Get off first, then rest.";
+    return S().player.locked ? "Finish this first, then rest." : "";
+  }
+
+  /** Run `fn` now, or once the game is no longer paused (a pause opened during the rest fade holds the clock). */
+  function whenPlaying(fn) {
+    if (!S().paused) return fn();
+    setTimeout(() => whenPlaying(fn), 250);
+  }
+
+  /** True while the one-tap rest is playing (it cannot start twice). */
+  let resting = false;
+
+  /**
+   * Rest, in one tap and with no question: the hero sits where they are (a bench seat if there is
+   * one), the screen fades with a soft "Zzz", half an hour passes and the energy is full again.
+   * Not offered at full energy or while a fard prayer is due or under way (Pray comes first).
+   */
+  function restHere() {
+    if (resting || restRefusal()) return false;
+    if (busyWord()) {
+      G.UI.toast(busyWord(), "hint", 3200);
+      return false;
+    }
+    resting = true;
+    const P = S().player;
+    const here = { x: P.pos.x, z: P.pos.z, heading: P.heading };
+    G.Player.lock(P, restSpot(), "sit");
+    zzzEl();
+    S().root.classList.add("kq-resting");
+    G.Audio.play("tap");
     setTimeout(function () {
-      const slept = G.Loop.advanceMinutes(30, true);
-      G.UI.toast("You rested for " + slept + " minutes. Energy is back!", "good", 4200);
-      setTimeout(() => root.classList.remove("kq-fading"), 350);
-    }, 450);
+      S().root.classList.add("kq-fading");
+      setTimeout(() => whenPlaying(() => sleepAndWake(here)), 600);
+    }, 800);
+    return true;
+  }
+
+  /**
+   * The Tired bar was tapped: rest in one tap, or (a prayer is due) a kind word that prayer comes
+   * first. A bar that is not low does nothing.
+   */
+  function tiredRest() {
+    if (!sim().needs.isTired()) return false;
+    if (restRefusal() === "prayer") {
+      G.UI.toast("Prayer time first. Then we can rest.", "hint", 3600);
+      return false;
+    }
+    return restHere();
   }
 
   /** Thank the child at the recycling point and notify missions that this place was visited. */
@@ -253,8 +338,9 @@
     happy("wave", 2);
   }
 
-  /** Sit the hero on the nearest bench seat for a few seconds (a toast only if no seat is free). */
+  /** A bench: a tired hero rests there (one tap); otherwise a short, cosmetic sit for a few seconds. */
   function bench() {
+    if (!restRefusal()) return void restHere();
     const seats = S().npcs.seats;
     const hero = S().player.pos;
     const seat = G.Seats.claim(seats, hero.x, hero.z, 3, "hero");
@@ -274,5 +360,16 @@
     });
   }
 
-  G.Services = { stall, minimart, barber, clinic, library, home, recycle, play, bench, rest };
+  G.Services = {
+    stall,
+    minimart,
+    barber,
+    clinic,
+    library,
+    recycle,
+    play,
+    bench,
+    restHere,
+    tiredRest,
+  };
 })((window.KQ = window.KQ || {}));

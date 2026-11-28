@@ -6,8 +6,8 @@
  *   progress pauses (accepting AND progressing); the active mission is kept and
  *   resumes after the prayer. There is no fail state - missions can be abandoned
  *   and re-accepted at any time.
- *   Event contract for notify(): { type: goto|talk|buy|deliver|collect, target: poi/npc id,
- *   item?: string, count?: number }.
+ *   Event contract for notify(): { type: goto|talk|buy|deliver|collect|greet, target: poi/npc id,
+ *   item?: string, count?: number, who?: string (a person's id: a counted step takes each once) }.
  * DEPENDENCIES: missions-data.js (KQ.Sim.MISSIONS, KQ.Sim.STICKERS, KQ.Sim.CHAT).
  * HOW TO TEST: npm run test:kq (tests/kampung-quest/missions.test.mjs)
  * ========================================================================== */
@@ -18,11 +18,23 @@
   const MISSIONS = KQ.Sim.MISSIONS;
   const STICKERS = KQ.Sim.STICKERS;
   const PAUSED_HINT = "It's prayer time - let's pray first, then carry on, InsyaAllah!";
+  /** Steps whose target is a neighbour or guide (everything else points at a place). */
   const NPC_STEP_TYPES = ["talk", "deliver"];
 
   /** Find a mission definition by id, or null for an unknown id. */
   function missionById(id) {
     return MISSIONS.find((m) => m.id === id) || null;
+  }
+
+  /**
+   * The missions this tracker can offer: those of its region (default the kampung) whose places
+   * exist in this world (a mission may list `needs`, e.g. a camel yard another build adds).
+   */
+  function offered(M) {
+    const has = typeof M.hasPoi === "function" ? M.hasPoi : () => true;
+    return MISSIONS.filter(
+      (m) => (m.region || "kampung") === M.region && (m.needs || []).every((id) => has(id)),
+    );
   }
 
   /** Is this a real sticker id? Unknown ids are never stored (untrusted save input). */
@@ -45,11 +57,12 @@
   function accept(M, id) {
     if (isPaused(M)) return { ok: false, hint: PAUSED_HINT };
     const mission = missionById(id);
-    if (!mission) return { ok: false, hint: "I don't know that mission." };
+    if (!mission || offered(M).indexOf(mission) === -1)
+      return { ok: false, hint: "I don't know that mission." };
     if (M.completed.indexOf(id) !== -1)
       return { ok: false, hint: "You already did this one - well done!" };
     if (M.active) return { ok: false, hint: "Let's finish your current mission first." };
-    M.active = { id, step: 0, count: 0 };
+    M.active = { id, step: 0, count: 0, clock: 0 };
     return { ok: true, mission, lines: mission.intro.slice() };
   }
 
@@ -86,17 +99,49 @@
 
   /** Finish the active mission: record it, grant the reward stickers and describe the result for the UI. */
   function complete(M, mission) {
+    const fast = Boolean(mission.beat) && M.active.clock <= mission.beat.secs;
     M.active = null;
     M.completed.push(mission.id);
     const newStickers = grantStickers(M, mission.reward.stickers);
+    const bonus = fast ? mission.beat.coins : 0;
     return {
       changed: true,
       stepDone: true,
       completed: true,
       mission,
-      reward: { coins: mission.reward.coins, stickers: newStickers },
+      reward: { coins: mission.reward.coins + bonus, stickers: newStickers, bonus },
       lines: mission.thanks.slice(),
     };
+  }
+
+  /**
+   * Count free-play seconds on the active mission (only a mission with a "beat the bubble" time
+   * uses it). Paused time never counts, and being slow costs nothing: it only misses the bonus.
+   */
+  function tick(M, dt) {
+    const mission = M.active ? missionById(M.active.id) : null;
+    if (!mission || !mission.beat || isPaused(M) || !(dt > 0)) return;
+    M.active.clock += dt;
+  }
+
+  /** Seconds left of the bubble bonus for the active mission, or null when it has none. */
+  function bubbleLeft(M) {
+    const mission = M.active ? missionById(M.active.id) : null;
+    if (!mission || !mission.beat) return null;
+    return Math.max(0, mission.beat.secs - M.active.clock);
+  }
+
+  /**
+   * Is this a repeat hello to a person already counted for this step? A counted step ("Say hi to 5
+   * people") takes each person (`event.who`, an id) once, so greeting the same neighbour five times
+   * does not finish it. An event with no `who` always counts. Remembers the person otherwise.
+   */
+  function repeatPerson(M, step, event) {
+    if (event.who === undefined || event.who === null || !(step.count > 1)) return false;
+    const seen = M.active.seen || (M.active.seen = []);
+    if (seen.indexOf(event.who) !== -1) return true;
+    seen.push(event.who);
+    return false;
   }
 
   /** Feed a world event to the active mission; advances a step (counting collects) and completes it on the last one. */
@@ -104,6 +149,7 @@
     const none = { changed: false, stepDone: false, completed: false };
     const step = currentStep(M);
     if (isPaused(M) || !stepMatches(step, event)) return none;
+    if (repeatPerson(M, step, event)) return none;
     const mission = missionById(M.active.id);
     const gained = Number.isFinite(event.count) && event.count > 0 ? Math.floor(event.count) : 1;
     M.active.count = Math.min(step.count || 1, M.active.count + gained);
@@ -111,6 +157,7 @@
       return { changed: true, stepDone: false, completed: false, mission };
     M.active.step += 1;
     M.active.count = 0;
+    M.active.seen = null;
     if (M.active.step >= mission.steps.length) return complete(M, mission);
     return { changed: true, stepDone: true, completed: false, mission, line: step.line || null };
   }
@@ -130,6 +177,10 @@
       type: step.type,
       target: step.target,
       label: step.label,
+      item: step.item || null,
+      verb: step.verb || null,
+      quick: Boolean(step.quick),
+      who: step.who || null,
       markerKind: NPC_STEP_TYPES.indexOf(step.type) === -1 ? "poi" : "npc",
       paused: isPaused(M),
     };
@@ -141,31 +192,17 @@
    */
   function wantsTalk(M, npcId) {
     if (!M.active) {
-      return MISSIONS.some((m) => m.giver === npcId && M.completed.indexOf(m.id) === -1);
+      return offered(M).some((m) => m.giver === npcId && M.completed.indexOf(m.id) === -1);
     }
     const step = currentStep(M);
     return Boolean(step && NPC_STEP_TYPES.indexOf(step.type) !== -1 && step.target === npcId);
   }
 
   /**
-   * Which of two interaction targets wins when the hero is in range of both. A neighbour with
-   * mission business beats a nearby object (a stall counter is ~0.15 m from its hawker, so
-   * distance alone never picks the hawker); otherwise the nearer one wins, with a small bias
-   * towards the neighbour. A zone-wide `fallback` object (the Pray prompt inside the mosque hall)
-   * never outranks a neighbour who can be talked to now.
-   * @param {{enabled:boolean, dist:number}|null} npc
-   * @param {{dist:number, fallback?:boolean}|null} obj
-   * @param {boolean} wants whether the neighbour has mission business
-   * @returns {"npc"|"obj"|null} null when neither is a usable choice
+   * Clean a mission-tracker snapshot read from storage: unknown ids and bad counts are dropped.
+   * @param {*} raw untrusted value parsed from localStorage
+   * @returns {object} a snapshot that is safe to hand to the tracker
    */
-  function pickTarget(npc, obj, wants) {
-    const npcOk = Boolean(npc && npc.enabled);
-    if (obj && obj.fallback) return npcOk ? "npc" : "obj";
-    if (npcOk && (!obj || wants || npc.dist - 0.4 <= obj.dist)) return "npc";
-    if (obj) return "obj";
-    return npc ? "npc" : null;
-  }
-
   // TRUST_BOUNDARY: localStorage -> mission tracker (untrusted; unknown ids and counts are dropped)
   function sanitizeSnapshot(raw) {
     const src = raw && typeof raw === "object" ? raw : {};
@@ -196,30 +233,51 @@
   /** Load a saved mission snapshot into the tracker after cleaning it. */
   function restore(M, raw) {
     const clean = sanitizeSnapshot(raw);
-    M.active = clean.active;
+    M.active = clean.active ? Object.assign({ clock: 0 }, clean.active) : null;
     M.completed = clean.completed;
     M.stickers = clean.stickers;
   }
 
-  /**
-   * Create the mission tracker.
-   * @param {{paused?:boolean, isPaused?:Function}} [options] isPaused is polled on every call
-   *   (typically () => prayer.isBlockingMissions()).
-   */
-  function create(options) {
-    const opts = options || {};
-    const M = {
+  /** The raw tracker state for the options given. */
+  function newTracker(opts) {
+    return {
       active: null,
       completed: [],
       stickers: [],
       paused: Boolean(opts.paused),
       isPaused: opts.isPaused,
+      region: opts.region || (typeof KQ.region === "string" ? KQ.region : "kampung"),
+      hasPoi: opts.hasPoi,
     };
+  }
+
+  /** The saved shape of the tracker (the bubble clock is not saved). */
+  function snapshot(M) {
+    const a = M.active;
+    return {
+      active: a ? { id: a.id, step: a.step, count: a.count } : null,
+      completed: M.completed.slice(),
+      stickers: M.stickers.slice(),
+    };
+  }
+
+  /**
+   * Create the mission tracker.
+   * @param {{paused?:boolean, isPaused?:Function, region?:string, hasPoi?:Function}} [options]
+   *   isPaused is polled on every call (typically () => prayer.isBlockingMissions()); region picks
+   *   the missions offered (default KQ.region); hasPoi(id) says whether the world has a place.
+   */
+  function create(options) {
+    const M = newTracker(options || {});
     return {
       available: () =>
-        MISSIONS.filter(
+        offered(M).filter(
           (m) => m.id !== (M.active && M.active.id) && M.completed.indexOf(m.id) === -1,
         ),
+      /** Every mission this region offers (done or not), for the board. */
+      offered: () => offered(M),
+      tick: (dt) => tick(M, dt),
+      bubbleLeft: () => bubbleLeft(M),
       accept: (id) => accept(M, id),
       active: () => (M.active ? missionById(M.active.id) : null),
       notify: (event) => notify(M, event),
@@ -238,11 +296,7 @@
       stickers: () => M.stickers.slice(),
       grantSticker: (id) => grantStickers(M, [id]).length === 1,
       awardPrayer: (name) => awardPrayer(M, name),
-      snapshot: () => ({
-        active: M.active ? Object.assign({}, M.active) : null,
-        completed: M.completed.slice(),
-        stickers: M.stickers.slice(),
-      }),
+      snapshot: () => snapshot(M),
       restore: (raw) => restore(M, raw),
     };
   }
@@ -305,7 +359,6 @@
   KQ.Sim.Missions = {
     create,
     chatLine,
-    pickTarget,
     sanitizeSnapshot,
     stepReply,
     completionLines,

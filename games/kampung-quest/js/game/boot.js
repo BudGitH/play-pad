@@ -15,6 +15,9 @@
   const nextFrame = () => new Promise((res) => requestAnimationFrame(() => setTimeout(res, 0)));
   const params = new URLSearchParams(location.search);
   const TIERS = ["low", "med", "high"];
+  /** The title backdrop draws on one rAF in this many: a software-GL frame there is a long task,
+   *  and the player is waiting to press Start (notes-ipad.md). The orbit speed compensates. */
+  const ORBIT_EVERY = 6;
   /** A new game starts in the void deck of Block 118, a few steps from Nenek (and clear of the lift). */
   const KAMPUNG_START = { x: -42.6, z: 22.4 };
   /** Where a new game starts: the void deck (kampung) or the hotel forecourt (Haramain). */
@@ -73,7 +76,7 @@
     });
     renderer.outputEncoding = THREE.sRGBEncoding;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 0.95;
+    renderer.toneMappingExposure = 1.0; // AC-P20: a touch brighter (no clipped white, measured)
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     s.renderer = renderer;
@@ -83,7 +86,11 @@
     return renderer;
   }
 
-  /** Choose the quality tier: the ?q= flag, else the save, else low on touch / software GL and high elsewhere. */
+  /**
+   * Choose the quality tier: the ?q= flag, else the save, else low on touch (phones and tablets,
+   * iPads included even with a keyboard: an iPad gen 7 has a weaker GPU than the phones that
+   * already start low; AC-P21) and on software GL, and high elsewhere.
+   */
   function pickTier(saved) {
     const q = params.get("q");
     if (q === "low" || q === "med" || q === "high") return q;
@@ -94,7 +101,9 @@
   /** Build the neighbourhood behind the loading screen (step 1). */
   async function buildWorld(s, tier) {
     BU().setStep(0, "now");
+    BU().setProgress(0.04);
     await nextFrame();
+    G.BootPerf.worldBudget(tier);
     s.world = KQ.World.build(s.scene, {
       quality: tier,
       renderer: s.renderer,
@@ -104,6 +113,7 @@
     G.Loop.resize();
     BU().setStep(0, "done");
     BU().setProgress(0.4);
+    G.BootPerf.mark("world");
   }
 
   /** Create the hero, NPCs, markers and collectibles (step 2). */
@@ -116,9 +126,12 @@
     s.crowd = G.Crowd.create(s.scene, s.world, s.npcs, s.renderer, s.camera);
     s.markers = G.Markers.create(s.scene);
     s.collect = G.Collectibles.create(s.scene, s.world);
+    G.Vehicles.prepare(G.Defer); // queued, drained behind the loading bar (before the crowd's first prune)
+    G.Defer.add(() => G.Crowd.prune(s.crowd), "crowd prune"); // after every vehicle job above
     G.Loop.studioShine(s);
     BU().setStep(1, "done");
-    BU().setProgress(0.55);
+    BU().setProgress(0.5, "Waking up the neighbours...");
+    G.BootPerf.mark("actors");
   }
 
   /**
@@ -133,7 +146,9 @@
     s.world.setShadowTarget(startSpot());
     G.Crowd.showAll(s.crowd, true);
     s.renderer.compile(s.scene, s.camera);
-    s.renderer.render(s.scene, s.camera);
+    G.BootPerf.mark("compile-" + tier);
+    G.BootPerf.drawEverything(s.scene, () => s.renderer.render(s.scene, s.camera));
+    G.BootPerf.mark("render-" + tier);
     G.Crowd.showAll(s.crowd, false);
   }
 
@@ -148,7 +163,7 @@
    * screen keeps painting; the start tier goes last so it is the state the game begins in.
    */
   async function precompile(s) {
-    BU().setProgress(0.82, "Getting the shaders ready...");
+    BU().setProgress(0.86, "Making everything shiny...");
     await nextFrame();
     const start = s.quality;
     const heroShown = s.player.group.visible;
@@ -161,6 +176,7 @@
     }
     s.player.group.visible = heroShown;
     G.Loop.resize();
+    G.BootPerf.mark("shaders");
   }
 
   /**
@@ -203,8 +219,19 @@
     });
   }
 
-  /** Wait for the photo textures (over http) or note that they are drawn in code (file://). */
-  async function loadTextures() {
+  /**
+   * Wait for the photo textures (over http) or note that they are drawn in code (file://), then
+   * upload every texture a few per frame so the shader step does not do it in one long task.
+   */
+  async function loadTextures(s) {
+    await fetchTextures();
+    await G.BootPerf.uploadTextures(s.renderer, s.scene, (f) =>
+      BU().setProgress(0.66 + 0.2 * f, "Painting the town..."),
+    );
+  }
+
+  /** The photo downloads (bar 50 -> 66 %), or the file:// note. */
+  async function fetchTextures() {
     if (!G.Env.canFetch) {
       BU().setStep(2, "skip", "drawn in code");
       BU().note(
@@ -215,8 +242,9 @@
     BU().setStep(2, "now");
     const mgr = THREE.DefaultLoadingManager;
     mgr.onProgress = (url, loaded, total) =>
-      BU().setProgress(0.55 + 0.25 * (loaded / Math.max(1, total)), "Loading photo textures...");
+      BU().setProgress(0.5 + 0.16 * (loaded / Math.max(1, total)), "Painting the town...");
     await waitUntil(() => !mgr.isLoading, 20000);
+    G.BootPerf.mark("textures-loaded");
     BU().setStep(2, "done");
   }
 
@@ -229,12 +257,16 @@
     BU().setProgress(0.9);
   }
 
-  /** Draw the posture pictures for the prayer screens; labels only if that fails. */
+  /**
+   * Queue the posture pictures for the prayer screens on the time-sliced queue, one per frame,
+   * after Start is enabled (the title screen is idle; a prayer screen opened first renders the rest
+   * at once). Labels only if that fails.
+   */
   function renderPictures(s) {
     BU().setStep(4, "now");
     try {
-      G.Pictures.renderPostures(s.renderer);
-      BU().setStep(4, "done");
+      G.Pictures.queuePostures(s.renderer, G.Defer);
+      G.Defer.add(() => BU().setStep(4, "done"), "pictures done");
     } catch (err) {
       console.warn("[KQ] posture pictures skipped:", err && err.message);
       BU().setStep(4, "skip", "labels only");
@@ -249,13 +281,17 @@
    */
   function titleOrbit(s) {
     let a = 0;
+    // The backdrop is a wide view of the town behind a modal card, and the player is about to press
+    // Start: it renders at half resolution (Loop.resize, while the game has not started) and its
+    // shadow map, whose target never moves here, is drawn once (notes-ipad.md, the Start-tap round).
+    G.Loop.resize();
     (function loop() {
       if (s.started) return;
       requestAnimationFrame(loop);
       if (s.frozen) return;
       s.orbitSkip = (s.orbitSkip || 0) + 1;
-      if (s.orbitSkip % 3) return;
-      a += 0.01;
+      if (s.orbitSkip % ORBIT_EVERY) return;
+      a += 0.01 * ORBIT_EVERY * 0.33;
       const cam = G.Region.titleCamera(a);
       if (cam) {
         s.camera.position.set(cam.pos[0], cam.pos[1], cam.pos[2]);
@@ -267,6 +303,7 @@
       s.world.update(0, { minute: 640 });
       s.world.setShadowTarget(cam ? cam.target : { x: 20, z: -20 });
       s.renderer.render(s.scene, s.camera);
+      s.renderer.shadowMap.autoUpdate = false; // the target is fixed here; launch() turns it back on
     })();
   }
 
@@ -277,6 +314,10 @@
    * start the loop.
    */
   function launch(s, state) {
+    // Anything queued without a `when` gate (vehicles, the bus, traffic, the crowd's slot prune)
+    // belongs to the world and must exist before the first frame: a test that drives game time
+    // with __kq.step never waits for the queue's own animation frames (notes-ipad.md).
+    G.Defer.flushUngated();
     s.sim = G.Sim.create(state);
     G.Audio.setMuted(state.settings.muted);
     G.Player.applyOutfit(s.player, s.sim.outfit);
@@ -289,6 +330,8 @@
     G.Npcs.snapAll(s.npcs);
     G.Loop.setQuality(s.quality);
     s.started = true;
+    s.renderer.shadowMap.autoUpdate = true; // the title backdrop drew its shadow map once
+    G.Loop.resize(); // back to full resolution: the backdrop rendered at half (titleOrbit)
     document.body.classList.add("kq-playing");
     s.hudHost.hidden = false;
     BU().hideTitle();
@@ -304,7 +347,6 @@
         7000,
         "nenek",
       );
-    document.getElementById("kqTalk").focus({ preventScroll: true });
     if (!s.loopStarted) {
       s.loopStarted = true;
       G.Loop.start();
@@ -314,13 +356,18 @@
   /** The way a new hero faces: west in the void deck (the qibla there), south toward the Haram's gate. */
   const startHeading = () => (KQ.region === "haramain" ? 0 : -Math.PI / 2);
 
-  /** Start or continue the game from a title button; New game also clears the save. */
+  /**
+   * Start or continue the game from a title button; New game also clears the save. A new game
+   * wears the hero picked on the title card (boy or girl, in that hero's own default clothes).
+   */
   function begin(s, saved, fresh) {
     G.Audio.unlock();
     G.Audio.loadAzan();
     if (fresh && s.storage) KQ.Sim.Save.clear(s.storage);
-    const state = fresh || saved.status !== "loaded" ? KQ.Sim.Save.defaultState() : saved.state;
+    const isNew = fresh || saved.status !== "loaded";
+    const state = isNew ? KQ.Sim.Save.defaultState() : saved.state;
     if (fresh) state.settings.quality = s.quality;
+    if (isNew) Object.assign(state, KQ.Sim.Hero.start(G.Hero.choice(), saved.state.hero));
     launch(s, state);
     G.HudLayout.armTurnHint();
   }
@@ -332,20 +379,28 @@
     return "Continue \u00b7 " + KQ.Sim.Clock.dayTimeLabel(c.day, c.minute);
   }
 
+  /** The saved game (untrusted, cleaned by KQ.Sim.Save), or a fresh one when storage is blocked. */
+  function loadSave(storage) {
+    if (!storage) return { state: KQ.Sim.Save.defaultState(), status: "unavailable" };
+    return KQ.Sim.Save.load(storage);
+  }
+
   /** The boot sequence: bind the title, read prefs and save, build everything, then wait for Start. */
   async function run(root) {
     BU().bind();
     const storage = G.Settings.getStorage();
     G.Settings.load(storage);
-    const saved = storage
-      ? KQ.Sim.Save.load(storage)
-      : { state: KQ.Sim.Save.defaultState(), status: "unavailable" };
+    const saved = loadSave(storage);
     const s = (G.S = makeState(root));
     s.storage = storage;
+    G.Hero.initPicker(saved.status !== "loaded", saved.state.hero && saved.state.hero.gender);
+    G.BootPerf.applyDeviceClass(root);
     G.UI.init(root);
     G.Speech.init();
     createRenderer(s, pickTier(saved));
+    G.BootPerf.watchContext(s);
     G.Hud.build(s.hudHost, G.Actions.handle);
+    G.LifeChip.init(); // an empty status region from the start, so the first event hint is announced
     G.Input.attach({ stage: s.stage, joystick: G.Hud.refs.joy, knob: G.Hud.refs.knob });
     G.Input.setHandler((name) => G.Actions.handle(name));
     window.addEventListener("keydown", G.UI.trap);
@@ -356,7 +411,7 @@
     );
     await buildWorld(s, pickTier(saved));
     await buildActors(s);
-    await loadTextures();
+    await loadTextures(s);
     await precompile(s);
     await loadAzan();
     renderPictures(s);
@@ -366,8 +421,10 @@
     titleOrbit(s);
     const refs = BU().refs;
     refs.start.addEventListener("click", () => begin(s, saved, false));
-    refs.newGame.addEventListener("click", () => begin(s, saved, true));
+    // New game with a save: the first press puts up "Who are you?", the next one starts
+    refs.newGame.addEventListener("click", () => G.Hero.reveal() || begin(s, saved, true));
     compileAbove(s, s.quality);
+    G.BootPerf.mark("ready");
     G.Boot.ready = true;
   }
 

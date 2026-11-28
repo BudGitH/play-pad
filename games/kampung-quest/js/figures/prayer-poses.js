@@ -78,25 +78,53 @@
     };
   }
 
-  /** Legs kneeling: thighs tilted forward by a, shins flat on the floor behind the knees. */
-  function kneelingLegs(P, a) {
+  /**
+   * Legs kneeling: thighs tilted forward by a, the knee bent by `knee` (PI/2 + a = shins flat behind;
+   * default: tipped up just enough that the knee and the toe of the foot block both rest on the floor).
+   */
+  function kneelingLegs(P, a, knee) {
     P.legL = [-a, 0, 0];
     P.legR = [-a, 0, 0];
-    P.kneeL = [PI / 2 + a, 0, 0];
-    P.kneeR = [PI / 2 + a, 0, 0];
+    P.kneeL = [knee, 0, 0];
+    P.kneeR = [knee, 0, 0];
     return P;
+  }
+
+  /** The knee bend that rests both the knee and the toe of the foot block on the floor. */
+  function flatKnee(d, a) {
+    return PI / 2 + a + Math.atan2(0.03, d.shin - d.footH / 2);
+  }
+
+  /**
+   * Hip height for a kneel (thighs at a, knee bend `knee`) so that no corner of the thigh, shin or foot
+   * block goes below the floor (the toy's feet used to sink into the floor in sujud and julus).
+   */
+  function kneelHip(d, a, knee) {
+    const kn = S.rot(-d.thigh, 0, -a);
+    const half = d.kneelHalf || d.legD / 2; // a long skirt's hem is deeper than a trouser leg
+    const shin = [
+      [0, -half],
+      [0, half],
+      [-d.shin, -half],
+      [-d.shin, half + 0.04],
+      [-d.shin + d.footH, half + 0.04], // + 1 cm: the ihram sandal sole is longer than the shoe
+    ];
+    let low = Math.min(kn[0] + S.rot(0, -half, -a)[0], kn[0] + S.rot(0, half, -a)[0]);
+    shin.forEach((c) => (low = Math.min(low, kn[0] + S.rot(c[0], c[1], knee - a)[0])));
+    return Math.max(S.kneelHipY(d, a), 0.002 - low);
   }
 
   /** Sujud: kneeling, torso folded down until the forehead touches the floor, palms flat by the head. */
   function sujud(p, d) {
     const a = 0.5;
-    const hy = S.kneelHipY(d, a);
+    const knee = flatKnee(d, a);
+    const hy = kneelHip(d, a, knee);
     const hz = -d.thigh * Math.sin(a) - 0.02;
     const headX = -0.3;
     const t = S.sujudBend(d, hy, headX);
     const sh = S.shoulderAt(d, hy, hz, t);
     const neck = S.rot(d.torsoH + d.neckH, 0, t);
-    const palm = [0.05, hz + neck[1] - 0.02];
+    const palm = [0.068, hz + neck[1] - 0.02];
     const r = S.reach(d, sh, palm, t);
     return kneelingLegs(
       {
@@ -112,6 +140,7 @@
         handR: [0.9, 0, 0],
       },
       a,
+      knee,
     );
   }
 
@@ -122,12 +151,13 @@
    */
   function julus(p, d) {
     const a = PI / 2 - 0.15;
-    const hy = S.kneelHipY(d, a) + 0.004;
+    const knee = PI / 2 + a - 0.4;
+    const hy = kneelHip(d, a, knee); // the shins slope down to the floor: the toy sits on its heels
     const sh = S.shoulderAt(d, hy, 0, 0);
-    const r = S.reach(d, sh, [d.legD + 0.045, d.thigh * 0.78], 0);
-    const P = kneelingLegs(
+    const r = S.reach(d, sh, [hy + d.legD / 2 + 0.022, d.thigh * 0.78], 0);
+    return kneelingLegs(
       {
-        rootY: hy - d.hipH - 0.01,
+        rootY: hy - d.hipH,
         torso: [breathe(p) - 0.05, 0, 0],
         head: [0.17, 0, 0],
         armL: [r[0], 0, 0.04],
@@ -138,10 +168,8 @@
         handR: [0.4, 0, 0],
       },
       a,
+      knee,
     );
-    P.kneeL = [PI / 2 + a - 0.4, 0, 0];
-    P.kneeR = [PI / 2 + a - 0.4, 0, 0];
-    return P;
   }
 
   /**
@@ -286,6 +314,11 @@
   P.salam_r = salam(-1);
   P.salam_l = salam(1);
   P.doa = doa;
+  // The prayer postures: a peaked cap is worn peak-back for these (see Animator turnCap), so the
+  // forehead, not the peak, meets the floor in sujud.
+  ["qiyam", "takbir", "ruku", "itidal", "sujud", "julus", "salam_r", "salam_l", "doa"].forEach(
+    (n) => (P[n].capBack = true),
+  );
   P.wudu_hands = wuduHands;
   P.wudu_face = wuduFace;
   P.wudu_feet = wuduFeet;

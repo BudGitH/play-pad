@@ -165,7 +165,7 @@ async function checkTalkAndDock(page) {
   await page.getByRole("button", { name: "Close" }).tap();
 }
 
-/** Azan -> wudu tiles -> one prayer step, all by touch. */
+/** Azan -> one Pray tap -> wudu tiles -> the prayer steps -> one prayer step, all by touch. */
 async function checkPrayer(page) {
   await kq(page, () => {
     window.__kq.forcePrayer("zohor");
@@ -181,11 +181,7 @@ async function checkPrayer(page) {
     await page.locator(".kq-wudu-act").tap();
   }
   expect(await kq(page, () => window.__kq.state().prayer.flow?.phase)).toBe("pray");
-  await kq(page, () => {
-    window.__kq.place(-43.5, -33, -Math.PI / 2);
-    window.__kq.step(500);
-  });
-  await page.locator("#kqTalk").tap();
+  // one Pray path: the prayer steps open right after wudu, in the same place (no second prompt)
   await expect(page.getByRole("dialog", { name: "Prayer steps" })).toBeVisible();
   await expectTouchTargets(page);
   const next = await kq(page, () => window.KQ.Game.S.sim.prayer.nextPrayStep().type);
@@ -359,15 +355,21 @@ async function expectHudClear(page, label) {
 async function startAt(page, size) {
   await page.goto("/games/kampung-quest/index.html?still=1&autoq=0");
   await expect.poll(() => kq(page, () => window.__kq?.loaded), { timeout: 60_000 }).toBe(true);
-  // A11Y-12: Start has keyboard focus as soon as it enables
-  expect(await kq(page, () => document.activeElement?.id)).toBe("kqStart");
+  // A11Y-12: keyboard focus starts on the first thing to do as soon as the title screen is ready: a first run
+  // has the hero picker above Start (reading order, WCAG 2.4.3), so the chosen card; otherwise Start itself
+  expect(
+    await kq(page, () => {
+      const a = document.activeElement;
+      return a && a.classList.contains("is-on") ? "heroCard" : a?.id;
+    }),
+  ).toBe("heroCard");
   await page.locator("#kqStart").click();
   await expect.poll(() => kq(page, () => window.__kq.ready), { timeout: 15_000 }).toBe(true);
   await kq(page, () => window.__kq.step(300));
   void size;
 }
 
-/** Stand next to Nenek (the Talk button shows), or 5 m away (the "Walk closer" bubble). */
+/** Stand next to Nenek (the Action control shows Talk), or 5 m away (only the world arrow). */
 function standByNenek(page, metres) {
   return kq(
     page,
@@ -657,9 +659,9 @@ for (const [name, width, height, touch] of SIZES) {
       await toast(page, LONG_TOAST);
       await expect(page.locator("#kqTalk")).toBeVisible();
       await expectHudClear(page, "toast + Talk");
-      // the disabled "Walk closer" bubble
+      // a neighbour a few steps away: only the world arrow, no button
       await standByNenek(page, 5);
-      await expectHudClear(page, "toast + Walk closer");
+      await expectHudClear(page, "toast + far neighbour");
       await kq(page, () => document.querySelectorAll(".kq-toast").forEach((t) => t.remove()));
       // sheets: Close on screen, backdrop tap, toasts held back, the pause dialog
       await checkSheetsClose(page);

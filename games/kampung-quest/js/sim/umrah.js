@@ -362,6 +362,17 @@
     return out;
   }
 
+  /**
+   * The cut that fits the hero: a girl's tahallul is a snipped lock only (never a trim or a shave),
+   * so those become "lock"; a boy's cut and "none" are left as they are. Used wherever a cut is
+   * chosen or loaded; the rite's steps are not touched.
+   * @param {string} cut one of CUTS
+   * @param {boolean} girl whether the hero is a girl
+   */
+  function cutFor(cut, girl) {
+    return girl && (cut === "trim" || cut === "shave") ? "lock" : cut;
+  }
+
   /** The step the rite is on, with its position and counter, for the UI (fresh copies, never the state). */
   function view(R, rite) {
     const list = STEPS[rite];
@@ -496,7 +507,7 @@
     };
   }
 
-  KQ.Sim.Umrah = { create, sanitize, STEPS, RITES, CUTS, TITLES };
+  KQ.Sim.Umrah = { create, sanitize, cutFor, STEPS, RITES, CUTS, TITLES };
 })(
   ((typeof window !== "undefined" ? window : globalThis).KQ =
     (typeof window !== "undefined" ? window : globalThis).KQ || {}),

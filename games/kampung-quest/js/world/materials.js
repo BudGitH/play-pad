@@ -80,6 +80,31 @@
     };
   }
 
+  /**
+   * Colour multipliers (linear RGB) for the photo / stand-in surfaces (AC-P20): the CC0 photos
+   * are shot neutral and read dull in a toy world, so grass and hedges go a lusher green,
+   * paving and roofs warmer, marble from a cool grey to a warm cream. `material.color` multiplies
+   * the map in the shader, so this costs nothing and fits the photo and file:// paths alike.
+   */
+  const TINT = {
+    grass: [0.86, 1.16, 0.58],
+    hedge: [0.86, 1.14, 0.62],
+    leafCard: [1.08, 1.22, 0.8],
+    paving: [1.06, 1.0, 0.88],
+    tiles: [1.12, 1.08, 1.02],
+    terrazzo: [1.12, 1.1, 1.06],
+    asphalt: [0.86, 0.89, 0.96],
+    roof: [1.12, 0.94, 0.82],
+    plaster: [1.04, 1.04, 1.03],
+    marble: [1.03, 0.96, 0.84],
+    wood: [1.06, 0.96, 0.84],
+    soil: [1.08, 0.96, 0.86],
+  };
+  /** Apply TINT to the catalogue (before clones such as whitePlaster are made). */
+  function tint(m) {
+    Object.keys(TINT).forEach((k) => m[k] && m[k].color.setRGB(...TINT[k]));
+  }
+
   /** Painted walls: flat colour from the vertex tint, with the plaster's fine bumps as a stucco feel. */
   function stucco() {
     const n = P.Tex.set("plaster").normalMap;
@@ -264,17 +289,18 @@
   /** Surface-patch strengths per key: [macro variation, rain streaks, wet patches, dirt]. */
   const GRIME = {
     asphalt: [0.55, 0, 1.0, 0.5],
-    paving: [0.6, 0, 0.45, 0.45],
-    plaster: [0.6, 0.6, 0, 0.75],
-    concrete: [0.4, 0.5, 0.2, 0.6],
-    grass: [0.8, 0, 0, 0],
-    tiles: [0.45, 0.15, 0.35, 0.45],
+    // Grime is kept light (AC-P20): a cared-for toy town, not a run-down one.
+    paving: [0.5, 0, 0.45, 0.35],
+    plaster: [0.45, 0.4, 0, 0.5],
+    concrete: [0.35, 0.35, 0.2, 0.45],
+    grass: [0.7, 0, 0, 0],
+    tiles: [0.4, 0.1, 0.35, 0.3],
     terrazzo: [0.45, 0, 0.12, 0.55],
     marble: [0.25, 0.2, 0.25, 0.25],
     roof: [0.7, 0.4, 0, 0.3],
     rubber: [0.5, 0, 0.2, 0.2],
     bark: [0.4, 0, 0, 0.2],
-    paint: [0.35, 0.35, 0, 0.45],
+    paint: [0.3, 0.25, 0, 0.3],
     wood: [0.35, 0, 0, 0.3],
     metal: [0.35, 0.15, 0, 0.2],
     wallTile: [0.3, 0.3, 0, 0.55],
@@ -294,6 +320,7 @@
   function create(pat, atlas) {
     const m = Object.assign(surfaces(), painted(pat), glowing(pat, atlas));
     Object.assign(m, details());
+    tint(m);
     const carpetN = P.Tex.set("carpet").normalMap;
     m.carpet = new THREE.MeshStandardMaterial({
       map: pat.carpet,
@@ -306,6 +333,7 @@
     m.tuft = tuftMat();
     m.whitePlaster = m.plaster.clone(); // mosque walls: kept clean and bright
     m.whitePlaster.userData = { kq: [0.22, 0.25, 0, 0.3] };
+    m.whitePlaster.color.setRGB(1.0, 0.95, 0.86); // warm ivory, so blue sky-fill does not read grey
     m.streak.opacity = 0.55; // softer rain streaks under ledges
     m.wetTiles = m.tiles.clone(); // wudu floor: always wet, even under the shelter roof
     m.wetTiles.userData = { kq: [0.45, 0.1, 1.5, 0.4] };

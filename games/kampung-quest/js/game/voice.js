@@ -37,7 +37,10 @@
    * How each cast member sounds: pitch (0..2), rate (about 0.5..1.5), "f" / "m" (picks a matching
    * device voice when one exists). Children are high, elders slow, and everyone differs.
    */
+  /** The girl hero's voice (AC-P9): a girl's pitch, a female device voice when there is one. */
+  const GIRL_HERO = { pitch: 1.45, rate: 1.0, sex: "f" };
   const PROFILES = {
+    guide: { pitch: 1.2, rate: 0.92, sex: "f" }, // the gentle voice of a spoken hint (G.Say)
     hero: { pitch: 1.32, rate: 1.0, sex: "m" },
     nenek: { pitch: 1.05, rate: 0.8, sex: "f" },
     atuk: { pitch: 0.7, rate: 0.78, sex: "m" },
@@ -139,7 +142,8 @@
     if (PROFILES[key]) return key;
     const ids = KQ.Sim.NPC_IDS || [];
     return (
-      ids.find((id) => KQ.Sim.NPC_PROFILE[id].name === key) || (key === "Adam" ? "hero" : null)
+      ids.find((id) => KQ.Sim.NPC_PROFILE[id].name === key) ||
+      (key === "Adam" || key === "Hana" ? "hero" : null)
     );
   }
 
@@ -155,6 +159,7 @@
   /** How `who` (a cast id, a name, or a crowd id) sounds. */
   function profileOf(who) {
     const id = castId(who);
+    if (id === "hero" && G.Hero && G.Hero.isGirl()) return GIRL_HERO;
     return id ? PROFILES[id] : crowdProfile(String(who));
   }
 
@@ -241,6 +246,21 @@
     return speakNow({ who: o.id || o.name || "hero", text, kind: "dialogue", dist: 0 });
   }
 
+  /**
+   * A short spoken hint for a child who cannot read yet (G.Say): the same gates as every other line
+   * (mute, pause, hidden, azan, a prayer screen, the "Character voices" switch), but it never cuts
+   * off a line that is being said. Returns whether it was handed to the synthesiser.
+   */
+  function hint(text) {
+    if (blocked(text)) return false;
+    if (busy()) {
+      refuse("busy");
+      return false;
+    }
+    stopSynth();
+    return speakNow({ who: "guide", text, kind: "hint", dist: 0 });
+  }
+
   /** The bubble currently being said, as a more distant one than `d` allows to be cut off. */
   function cutsOff(d) {
     return V.cur && V.cur.kind === "bubble" && V.cur.dist - d > NEARER;
@@ -264,7 +284,7 @@
       refuse("dialogue");
       return false;
     }
-    if (busy() && !cutsOff(o.dist)) return wait(req);
+    if (busy() && V.cur.kind !== "hint" && !cutsOff(o.dist)) return wait(req); // a spoken hint gives way
     stopSynth();
     return speakNow(req);
   }
@@ -309,6 +329,7 @@
     init,
     line,
     bubble,
+    hint,
     cancel,
     update,
     available,

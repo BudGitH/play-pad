@@ -49,8 +49,8 @@
       art: ART_HARAMAIN,
       steps: [
         "Streets and mosques",
-        "Pilgrims (instanced crowd)",
-        "Photo textures",
+        "Waking up the pilgrims",
+        "Painting the town",
         "Azan recording",
         "Pictures",
       ],

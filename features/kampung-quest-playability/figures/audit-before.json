@@ -1,0 +1,5277 @@
+{
+  "faceBand": {
+    "samples": 66,
+    "inside": 0,
+    "zfight": 0,
+    "proud": 17
+  },
+  "pieces": [
+    {
+      "cat": "hero",
+      "who": "hero-boy-cap",
+      "type": "cap",
+      "zone": 544,
+      "poke": 0,
+      "bare": 0,
+      "zfight": 0,
+      "rimGap": 14.7,
+      "floating": 60
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-songkok",
+      "type": "songkok",
+      "zone": 480,
+      "poke": 0,
+      "bare": 0,
+      "zfight": 0,
+      "rimGap": 0,
+      "floating": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-cap_yellow",
+      "type": "cap",
+      "zone": 544,
+      "poke": 0,
+      "bare": 0,
+      "zfight": 0,
+      "rimGap": 14.7,
+      "floating": 60
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-crew",
+      "type": "hair_short",
+      "zone": 808,
+      "poke": 0,
+      "bare": 0,
+      "zfight": 35,
+      "rimGap": 0,
+      "floating": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-curly",
+      "type": "hair_quiff",
+      "zone": 808,
+      "poke": 0,
+      "bare": 0,
+      "zfight": 35,
+      "rimGap": 0,
+      "floating": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-side_part",
+      "type": "hair_short",
+      "zone": 808,
+      "poke": 0,
+      "bare": 0,
+      "zfight": 35,
+      "rimGap": 0,
+      "floating": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-kopiah",
+      "type": "kopiah",
+      "zone": 480,
+      "poke": 0,
+      "bare": 0,
+      "zfight": 0,
+      "rimGap": 0,
+      "floating": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-ihram",
+      "type": "hair_short",
+      "zone": 808,
+      "poke": 0,
+      "bare": 0,
+      "zfight": 35,
+      "rimGap": 0,
+      "floating": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-trim",
+      "type": "hair_buzz",
+      "zone": 808,
+      "poke": 0,
+      "bare": 0,
+      "zfight": 59,
+      "rimGap": 0,
+      "floating": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-shave",
+      "type": "hair_bald",
+      "zone": 0,
+      "poke": 0,
+      "bare": 0,
+      "zfight": 0,
+      "rimGap": 0,
+      "floating": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-hijab",
+      "type": "hijab",
+      "zone": 1636,
+      "poke": 0,
+      "bare": 0,
+      "zfight": 0,
+      "rimGap": 0,
+      "floating": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-hijab_sport",
+      "type": "hijab_sport",
+      "zone": 1636,
+      "poke": 0,
+      "bare": 0,
+      "zfight": 0,
+      "rimGap": 0,
+      "floating": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-hijab_flower",
+      "type": "hijab_flower",
+      "zone": 1636,
+      "poke": 0,
+      "bare": 0,
+      "zfight": 0,
+      "rimGap": 0,
+      "floating": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-ponytail",
+      "type": "girl_ponytail",
+      "zone": 808,
+      "poke": 0,
+      "bare": 0,
+      "zfight": 1,
+      "rimGap": 3,
+      "floating": 32
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-braids",
+      "type": "girl_braids",
+      "zone": 808,
+      "poke": 0,
+      "bare": 0,
+      "zfight": 1,
+      "rimGap": 3,
+      "floating": 26
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-bun",
+      "type": "girl_bun",
+      "zone": 808,
+      "poke": 0,
+      "bare": 0,
+      "zfight": 1,
+      "rimGap": 3,
+      "floating": 34
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-bob",
+      "type": "girl_bob",
+      "zone": 808,
+      "poke": 0,
+      "bare": 0,
+      "zfight": 0,
+      "rimGap": 0,
+      "floating": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-ihram",
+      "type": "hijab",
+      "zone": 1636,
+      "poke": 0,
+      "bare": 0,
+      "zfight": 0,
+      "rimGap": 0,
+      "floating": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-nenek",
+      "type": "tudung",
+      "zone": 1636,
+      "poke": 0,
+      "bare": 0,
+      "zfight": 0,
+      "rimGap": 0,
+      "floating": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-atuk",
+      "type": "songkok",
+      "zone": 480,
+      "poke": 0,
+      "bare": 0,
+      "zfight": 0,
+      "rimGap": 0,
+      "floating": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-imam_hakim",
+      "type": "kopiah",
+      "zone": 480,
+      "poke": 0,
+      "bare": 0,
+      "zfight": 0,
+      "rimGap": 0,
+      "floating": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-makcik_siti",
+      "type": "tudung",
+      "zone": 1636,
+      "poke": 0,
+      "bare": 0,
+      "zfight": 0,
+      "rimGap": 0,
+      "floating": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-pakcik_rahman",
+      "type": "hair_short",
+      "zone": 808,
+      "poke": 0,
+      "bare": 0,
+      "zfight": 35,
+      "rimGap": 0,
+      "floating": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-uncle_lim",
+      "type": "hair_short",
+      "zone": 808,
+      "poke": 0,
+      "bare": 0,
+      "zfight": 35,
+      "rimGap": 0,
+      "floating": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-aunty_mei",
+      "type": "hair_bun",
+      "zone": 808,
+      "poke": 0,
+      "bare": 0,
+      "zfight": 35,
+      "rimGap": 0,
+      "floating": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-hawker_ali",
+      "type": "cap",
+      "zone": 544,
+      "poke": 0,
+      "bare": 0,
+      "zfight": 0,
+      "rimGap": 14.7,
+      "floating": 60
+    },
+    {
+      "cat": "cast",
+      "who": "cast-hawker_aminah",
+      "type": "tudung",
+      "zone": 1636,
+      "poke": 0,
+      "bare": 0,
+      "zfight": 0,
+      "rimGap": 0,
+      "floating": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-barber_raju",
+      "type": "hair_short",
+      "zone": 808,
+      "poke": 0,
+      "bare": 0,
+      "zfight": 35,
+      "rimGap": 0,
+      "floating": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-dr_nurul",
+      "type": "tudung",
+      "zone": 1636,
+      "poke": 0,
+      "bare": 0,
+      "zfight": 0,
+      "rimGap": 0,
+      "floating": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-librarian_farah",
+      "type": "tudung",
+      "zone": 1636,
+      "poke": 0,
+      "bare": 0,
+      "zfight": 0,
+      "rimGap": 0,
+      "floating": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-kid_irfan",
+      "type": "hair_quiff",
+      "zone": 808,
+      "poke": 0,
+      "bare": 0,
+      "zfight": 35,
+      "rimGap": 0,
+      "floating": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-kid_aisyah",
+      "type": "tudung_kid",
+      "zone": 1636,
+      "poke": 0,
+      "bare": 0,
+      "zfight": 0,
+      "rimGap": 0,
+      "floating": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-kid_wei",
+      "type": "hair_quiff",
+      "zone": 808,
+      "poke": 0,
+      "bare": 0,
+      "zfight": 35,
+      "rimGap": 0,
+      "floating": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-postman_dan",
+      "type": "cap",
+      "zone": 544,
+      "poke": 0,
+      "bare": 0,
+      "zfight": 0,
+      "rimGap": 14.7,
+      "floating": 60
+    },
+    {
+      "cat": "guides",
+      "who": "guides-guide_makkah",
+      "type": "kopiah",
+      "zone": 480,
+      "poke": 0,
+      "bare": 0,
+      "zfight": 0,
+      "rimGap": 0,
+      "floating": 0
+    },
+    {
+      "cat": "guides",
+      "who": "guides-guide_madinah",
+      "type": "tudung",
+      "zone": 1636,
+      "poke": 0,
+      "bare": 0,
+      "zfight": 0,
+      "rimGap": 0,
+      "floating": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_kid_red",
+      "type": "hair_quiff",
+      "zone": 808,
+      "poke": 0,
+      "bare": 0,
+      "zfight": 35,
+      "rimGap": 0,
+      "floating": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_kid_blue",
+      "type": "hair_quiff",
+      "zone": 808,
+      "poke": 0,
+      "bare": 0,
+      "zfight": 35,
+      "rimGap": 0,
+      "floating": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_kid_green",
+      "type": "hair_quiff",
+      "zone": 808,
+      "poke": 0,
+      "bare": 0,
+      "zfight": 35,
+      "rimGap": 0,
+      "floating": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_kid_girl",
+      "type": "tudung_kid",
+      "zone": 1636,
+      "poke": 0,
+      "bare": 0,
+      "zfight": 0,
+      "rimGap": 0,
+      "floating": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_seller",
+      "type": "cap",
+      "zone": 544,
+      "poke": 0,
+      "bare": 0,
+      "zfight": 0,
+      "rimGap": 14.7,
+      "floating": 60
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_groom",
+      "type": "songkok",
+      "zone": 480,
+      "poke": 0,
+      "bare": 0,
+      "zfight": 0,
+      "rimGap": 0,
+      "floating": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_bride",
+      "type": "tudung",
+      "zone": 1636,
+      "poke": 0,
+      "bare": 0,
+      "zfight": 0,
+      "rimGap": 0,
+      "floating": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_drummer1",
+      "type": "hair_short",
+      "zone": 808,
+      "poke": 0,
+      "bare": 0,
+      "zfight": 35,
+      "rimGap": 0,
+      "floating": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_drummer2",
+      "type": "hair_quiff",
+      "zone": 808,
+      "poke": 0,
+      "bare": 0,
+      "zfight": 35,
+      "rimGap": 0,
+      "floating": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_umbrella1",
+      "type": "hair_bun",
+      "zone": 808,
+      "poke": 0,
+      "bare": 0,
+      "zfight": 35,
+      "rimGap": 0,
+      "floating": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_umbrella2",
+      "type": "songkok",
+      "zone": 480,
+      "poke": 0,
+      "bare": 0,
+      "zfight": 0,
+      "rimGap": 0,
+      "floating": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_volunteer",
+      "type": "kopiah",
+      "zone": 480,
+      "poke": 0,
+      "bare": 0,
+      "zfight": 0,
+      "rimGap": 0,
+      "floating": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_dad",
+      "type": "hair_short",
+      "zone": 808,
+      "poke": 0,
+      "bare": 0,
+      "zfight": 35,
+      "rimGap": 0,
+      "floating": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_mum",
+      "type": "tudung",
+      "zone": 1636,
+      "poke": 0,
+      "bare": 0,
+      "zfight": 0,
+      "rimGap": 0,
+      "floating": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_child",
+      "type": "hair_quiff",
+      "zone": 808,
+      "poke": 0,
+      "bare": 0,
+      "zfight": 35,
+      "rimGap": 0,
+      "floating": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-hair",
+      "type": "hair",
+      "zone": 792,
+      "poke": 138,
+      "bare": 176,
+      "zfight": 2,
+      "rimGap": 11,
+      "floating": 24
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-bun",
+      "type": "bun",
+      "zone": 792,
+      "poke": 122,
+      "bare": 156,
+      "zfight": 2,
+      "rimGap": 11,
+      "floating": 24
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-tudung",
+      "type": "tudung",
+      "zone": 1710,
+      "poke": 42,
+      "bare": 0,
+      "zfight": 0,
+      "rimGap": 17.6,
+      "floating": 26
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-cap",
+      "type": "cap",
+      "zone": 592,
+      "poke": 16,
+      "bare": 0,
+      "zfight": 0,
+      "rimGap": 16.6,
+      "floating": 24
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-songkok",
+      "type": "songkok",
+      "zone": 464,
+      "poke": 128,
+      "bare": 0,
+      "zfight": 0,
+      "rimGap": 0,
+      "floating": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-kopiah",
+      "type": "kopiah",
+      "zone": 464,
+      "poke": 76,
+      "bare": 0,
+      "zfight": 4,
+      "rimGap": 7.6,
+      "floating": 24
+    },
+    {
+      "cat": "pilgrims",
+      "who": "pilgrims-ghutra",
+      "type": "ghutra",
+      "zone": 1092,
+      "poke": 0,
+      "bare": 0,
+      "zfight": 0,
+      "rimGap": 0,
+      "floating": 0
+    },
+    {
+      "cat": "pilgrims",
+      "who": "pilgrims-wrap",
+      "type": "wrap",
+      "zone": 272,
+      "poke": 0,
+      "bare": 0,
+      "zfight": 0,
+      "rimGap": 0,
+      "floating": 0
+    },
+    {
+      "cat": "pilgrims",
+      "who": "pilgrims-turban",
+      "type": "turban",
+      "zone": 528,
+      "poke": 0,
+      "bare": 0,
+      "zfight": 0,
+      "rimGap": 0,
+      "floating": 0
+    },
+    {
+      "cat": "pilgrims",
+      "who": "pilgrims-doppi",
+      "type": "doppi",
+      "zone": 336,
+      "poke": 24,
+      "bare": 232,
+      "zfight": 0,
+      "rimGap": 0,
+      "floating": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-kid-tudung_kid",
+      "type": "tudung_kid",
+      "zone": 1710,
+      "poke": 42,
+      "bare": 0,
+      "zfight": 0,
+      "rimGap": 17.6,
+      "floating": 26
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-kid-hair",
+      "type": "hair",
+      "zone": 792,
+      "poke": 138,
+      "bare": 176,
+      "zfight": 2,
+      "rimGap": 11,
+      "floating": 24
+    },
+    {
+      "cat": "pilgrims",
+      "who": "pilgrims-ihram-hair",
+      "type": "hair",
+      "zone": 792,
+      "poke": 138,
+      "bare": 176,
+      "zfight": 2,
+      "rimGap": 11,
+      "floating": 24
+    },
+    {
+      "cat": "pilgrims",
+      "who": "pilgrims-ihram-cap",
+      "type": "cap",
+      "zone": 592,
+      "poke": 16,
+      "bare": 0,
+      "zfight": 0,
+      "rimGap": 16.6,
+      "floating": 24
+    }
+  ],
+  "poses": [
+    {
+      "cat": "hero",
+      "who": "hero-boy-cap",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-cap",
+      "pose": "walk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-cap",
+      "pose": "sit",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-cap",
+      "pose": "wave",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-cap",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-cap",
+      "pose": "sujud",
+      "floor": 338,
+      "floorParts": [
+        "kneeL:90@-28mm",
+        "kneeR:90@-28mm",
+        "headPiece:100@-91mm",
+        "handL:28@-9mm",
+        "handR:30@-9mm"
+      ],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-cap",
+      "pose": "julus",
+      "floor": 698,
+      "floorParts": ["legL:2@-3mm", "kneeL:347@-90mm", "legR:2@-3mm", "kneeR:347@-90mm"],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-cap",
+      "pose": "drive",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-songkok",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-songkok",
+      "pose": "walk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-songkok",
+      "pose": "sit",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-songkok",
+      "pose": "wave",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-songkok",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-songkok",
+      "pose": "sujud",
+      "floor": 238,
+      "floorParts": ["kneeL:90@-28mm", "kneeR:90@-28mm", "handL:28@-9mm", "handR:30@-9mm"],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-songkok",
+      "pose": "julus",
+      "floor": 698,
+      "floorParts": ["legL:2@-3mm", "kneeL:347@-90mm", "legR:2@-3mm", "kneeR:347@-90mm"],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-songkok",
+      "pose": "drive",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-cap_yellow",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-cap_yellow",
+      "pose": "walk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-cap_yellow",
+      "pose": "sit",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-cap_yellow",
+      "pose": "wave",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-cap_yellow",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-cap_yellow",
+      "pose": "sujud",
+      "floor": 338,
+      "floorParts": [
+        "kneeL:90@-28mm",
+        "kneeR:90@-28mm",
+        "headPiece:100@-91mm",
+        "handL:28@-9mm",
+        "handR:30@-9mm"
+      ],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-cap_yellow",
+      "pose": "julus",
+      "floor": 698,
+      "floorParts": ["legL:2@-3mm", "kneeL:347@-90mm", "legR:2@-3mm", "kneeR:347@-90mm"],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-cap_yellow",
+      "pose": "drive",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-crew",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-crew",
+      "pose": "walk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-crew",
+      "pose": "sit",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-crew",
+      "pose": "wave",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-crew",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-crew",
+      "pose": "sujud",
+      "floor": 238,
+      "floorParts": ["kneeL:90@-28mm", "kneeR:90@-28mm", "handL:28@-9mm", "handR:30@-9mm"],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-crew",
+      "pose": "julus",
+      "floor": 698,
+      "floorParts": ["legL:2@-3mm", "kneeL:347@-90mm", "legR:2@-3mm", "kneeR:347@-90mm"],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-crew",
+      "pose": "drive",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-curly",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-curly",
+      "pose": "walk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-curly",
+      "pose": "sit",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-curly",
+      "pose": "wave",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-curly",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-curly",
+      "pose": "sujud",
+      "floor": 238,
+      "floorParts": ["kneeL:90@-28mm", "kneeR:90@-28mm", "handL:28@-9mm", "handR:30@-9mm"],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-curly",
+      "pose": "julus",
+      "floor": 698,
+      "floorParts": ["legL:2@-3mm", "kneeL:347@-90mm", "legR:2@-3mm", "kneeR:347@-90mm"],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-curly",
+      "pose": "drive",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-side_part",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-side_part",
+      "pose": "walk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-side_part",
+      "pose": "sit",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-side_part",
+      "pose": "wave",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-side_part",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-side_part",
+      "pose": "sujud",
+      "floor": 238,
+      "floorParts": ["kneeL:90@-28mm", "kneeR:90@-28mm", "handL:28@-9mm", "handR:30@-9mm"],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-side_part",
+      "pose": "julus",
+      "floor": 698,
+      "floorParts": ["legL:2@-3mm", "kneeL:347@-90mm", "legR:2@-3mm", "kneeR:347@-90mm"],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-side_part",
+      "pose": "drive",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-kopiah",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-kopiah",
+      "pose": "walk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-kopiah",
+      "pose": "sit",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-kopiah",
+      "pose": "wave",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-kopiah",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-kopiah",
+      "pose": "sujud",
+      "floor": 238,
+      "floorParts": ["kneeL:90@-28mm", "kneeR:90@-28mm", "handL:28@-9mm", "handR:30@-9mm"],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-kopiah",
+      "pose": "julus",
+      "floor": 698,
+      "floorParts": ["legL:2@-3mm", "kneeL:347@-90mm", "legR:2@-3mm", "kneeR:347@-90mm"],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-kopiah",
+      "pose": "drive",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-ihram",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-ihram",
+      "pose": "walk",
+      "floor": 81,
+      "floorParts": ["ihramSoleL:81@-12mm"],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-ihram",
+      "pose": "sit",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-ihram",
+      "pose": "wave",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-ihram",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-ihram",
+      "pose": "sujud",
+      "floor": 598,
+      "floorParts": [
+        "kneeL:90@-28mm",
+        "ihramFootL:90@-38mm",
+        "ihramSoleL:90@-42mm",
+        "kneeR:90@-28mm",
+        "ihramFootR:90@-38mm",
+        "ihramSoleR:90@-42mm",
+        "handL:28@-9mm",
+        "handR:30@-9mm"
+      ],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-ihram",
+      "pose": "julus",
+      "floor": 1596,
+      "floorParts": [
+        "legL:2@-3mm",
+        "kneeL:347@-90mm",
+        "ihramShinL:67@-66mm",
+        "ihramFootL:105@-97mm",
+        "ihramSoleL:106@-108mm",
+        "ihramStrapL:114@-48mm",
+        "legR:2@-3mm",
+        "kneeR:347@-90mm",
+        "ihramShinR:67@-66mm",
+        "ihramFootR:105@-97mm",
+        "ihramSoleR:106@-108mm",
+        "ihramStrapR:114@-48mm",
+        "ihramWrap:114@-79mm"
+      ],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-ihram",
+      "pose": "drive",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-trim",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-trim",
+      "pose": "walk",
+      "floor": 81,
+      "floorParts": ["ihramSoleL:81@-12mm"],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-trim",
+      "pose": "sit",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-trim",
+      "pose": "wave",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-trim",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-trim",
+      "pose": "sujud",
+      "floor": 598,
+      "floorParts": [
+        "kneeL:90@-28mm",
+        "ihramFootL:90@-38mm",
+        "ihramSoleL:90@-42mm",
+        "kneeR:90@-28mm",
+        "ihramFootR:90@-38mm",
+        "ihramSoleR:90@-42mm",
+        "handL:28@-9mm",
+        "handR:30@-9mm"
+      ],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-trim",
+      "pose": "julus",
+      "floor": 1596,
+      "floorParts": [
+        "legL:2@-3mm",
+        "kneeL:347@-90mm",
+        "ihramShinL:67@-66mm",
+        "ihramFootL:105@-97mm",
+        "ihramSoleL:106@-108mm",
+        "ihramStrapL:114@-48mm",
+        "legR:2@-3mm",
+        "kneeR:347@-90mm",
+        "ihramShinR:67@-66mm",
+        "ihramFootR:105@-97mm",
+        "ihramSoleR:106@-108mm",
+        "ihramStrapR:114@-48mm",
+        "ihramWrap:114@-79mm"
+      ],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-trim",
+      "pose": "drive",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-shave",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-shave",
+      "pose": "walk",
+      "floor": 81,
+      "floorParts": ["ihramSoleL:81@-12mm"],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-shave",
+      "pose": "sit",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-shave",
+      "pose": "wave",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-shave",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-shave",
+      "pose": "sujud",
+      "floor": 598,
+      "floorParts": [
+        "kneeL:90@-28mm",
+        "ihramFootL:90@-38mm",
+        "ihramSoleL:90@-42mm",
+        "kneeR:90@-28mm",
+        "ihramFootR:90@-38mm",
+        "ihramSoleR:90@-42mm",
+        "handL:28@-9mm",
+        "handR:30@-9mm"
+      ],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-shave",
+      "pose": "julus",
+      "floor": 1596,
+      "floorParts": [
+        "legL:2@-3mm",
+        "kneeL:347@-90mm",
+        "ihramShinL:67@-66mm",
+        "ihramFootL:105@-97mm",
+        "ihramSoleL:106@-108mm",
+        "ihramStrapL:114@-48mm",
+        "legR:2@-3mm",
+        "kneeR:347@-90mm",
+        "ihramShinR:67@-66mm",
+        "ihramFootR:105@-97mm",
+        "ihramSoleR:106@-108mm",
+        "ihramStrapR:114@-48mm",
+        "ihramWrap:114@-79mm"
+      ],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-boy-shave",
+      "pose": "drive",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-hijab",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 2
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-hijab",
+      "pose": "walk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 1
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-hijab",
+      "pose": "sit",
+      "floor": 0,
+      "floorParts": [],
+      "body": 3
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-hijab",
+      "pose": "wave",
+      "floor": 0,
+      "floorParts": [],
+      "body": 14
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-hijab",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-hijab",
+      "pose": "sujud",
+      "floor": 447,
+      "floorParts": [
+        "kneeL:180@-28mm",
+        "kneeR:180@-28mm",
+        "headPiece:29@-17mm",
+        "handL:28@-9mm",
+        "handR:30@-9mm"
+      ],
+      "body": 7
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-hijab",
+      "pose": "julus",
+      "floor": 468,
+      "floorParts": ["legL:32@-13mm", "kneeL:202@-90mm", "legR:32@-13mm", "kneeR:202@-90mm"],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-hijab",
+      "pose": "drive",
+      "floor": 0,
+      "floorParts": [],
+      "body": 9
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-hijab_sport",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-hijab_sport",
+      "pose": "walk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-hijab_sport",
+      "pose": "sit",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-hijab_sport",
+      "pose": "wave",
+      "floor": 0,
+      "floorParts": [],
+      "body": 17
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-hijab_sport",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-hijab_sport",
+      "pose": "sujud",
+      "floor": 431,
+      "floorParts": [
+        "kneeL:180@-28mm",
+        "kneeR:180@-28mm",
+        "headPiece:13@-14mm",
+        "handL:28@-9mm",
+        "handR:30@-9mm"
+      ],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-hijab_sport",
+      "pose": "julus",
+      "floor": 468,
+      "floorParts": ["legL:32@-13mm", "kneeL:202@-90mm", "legR:32@-13mm", "kneeR:202@-90mm"],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-hijab_sport",
+      "pose": "drive",
+      "floor": 0,
+      "floorParts": [],
+      "body": 6
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-hijab_flower",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 2
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-hijab_flower",
+      "pose": "walk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 1
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-hijab_flower",
+      "pose": "sit",
+      "floor": 0,
+      "floorParts": [],
+      "body": 3
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-hijab_flower",
+      "pose": "wave",
+      "floor": 0,
+      "floorParts": [],
+      "body": 14
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-hijab_flower",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-hijab_flower",
+      "pose": "sujud",
+      "floor": 447,
+      "floorParts": [
+        "kneeL:180@-28mm",
+        "kneeR:180@-28mm",
+        "headPiece:29@-17mm",
+        "handL:28@-9mm",
+        "handR:30@-9mm"
+      ],
+      "body": 7
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-hijab_flower",
+      "pose": "julus",
+      "floor": 468,
+      "floorParts": ["legL:32@-13mm", "kneeL:202@-90mm", "legR:32@-13mm", "kneeR:202@-90mm"],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-hijab_flower",
+      "pose": "drive",
+      "floor": 0,
+      "floorParts": [],
+      "body": 9
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-ponytail",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-ponytail",
+      "pose": "walk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-ponytail",
+      "pose": "sit",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-ponytail",
+      "pose": "wave",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-ponytail",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-ponytail",
+      "pose": "sujud",
+      "floor": 418,
+      "floorParts": ["kneeL:180@-28mm", "kneeR:180@-28mm", "handL:28@-9mm", "handR:30@-9mm"],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-ponytail",
+      "pose": "julus",
+      "floor": 468,
+      "floorParts": ["legL:32@-13mm", "kneeL:202@-90mm", "legR:32@-13mm", "kneeR:202@-90mm"],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-ponytail",
+      "pose": "drive",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-braids",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-braids",
+      "pose": "walk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-braids",
+      "pose": "sit",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-braids",
+      "pose": "wave",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-braids",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-braids",
+      "pose": "sujud",
+      "floor": 418,
+      "floorParts": ["kneeL:180@-28mm", "kneeR:180@-28mm", "handL:28@-9mm", "handR:30@-9mm"],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-braids",
+      "pose": "julus",
+      "floor": 468,
+      "floorParts": ["legL:32@-13mm", "kneeL:202@-90mm", "legR:32@-13mm", "kneeR:202@-90mm"],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-braids",
+      "pose": "drive",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-bun",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-bun",
+      "pose": "walk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-bun",
+      "pose": "sit",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-bun",
+      "pose": "wave",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-bun",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-bun",
+      "pose": "sujud",
+      "floor": 418,
+      "floorParts": ["kneeL:180@-28mm", "kneeR:180@-28mm", "handL:28@-9mm", "handR:30@-9mm"],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-bun",
+      "pose": "julus",
+      "floor": 468,
+      "floorParts": ["legL:32@-13mm", "kneeL:202@-90mm", "legR:32@-13mm", "kneeR:202@-90mm"],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-bun",
+      "pose": "drive",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-bob",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-bob",
+      "pose": "walk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-bob",
+      "pose": "sit",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-bob",
+      "pose": "wave",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-bob",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-bob",
+      "pose": "sujud",
+      "floor": 418,
+      "floorParts": ["kneeL:180@-28mm", "kneeR:180@-28mm", "handL:28@-9mm", "handR:30@-9mm"],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-bob",
+      "pose": "julus",
+      "floor": 468,
+      "floorParts": ["legL:32@-13mm", "kneeL:202@-90mm", "legR:32@-13mm", "kneeR:202@-90mm"],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-bob",
+      "pose": "drive",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-ihram",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 2
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-ihram",
+      "pose": "walk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 1
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-ihram",
+      "pose": "sit",
+      "floor": 0,
+      "floorParts": [],
+      "body": 3
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-ihram",
+      "pose": "wave",
+      "floor": 0,
+      "floorParts": [],
+      "body": 14
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-ihram",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-ihram",
+      "pose": "sujud",
+      "floor": 447,
+      "floorParts": [
+        "kneeL:180@-28mm",
+        "kneeR:180@-28mm",
+        "headPiece:29@-17mm",
+        "handL:28@-9mm",
+        "handR:30@-9mm"
+      ],
+      "body": 7
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-ihram",
+      "pose": "julus",
+      "floor": 468,
+      "floorParts": ["legL:32@-13mm", "kneeL:202@-90mm", "legR:32@-13mm", "kneeR:202@-90mm"],
+      "body": 0
+    },
+    {
+      "cat": "hero",
+      "who": "hero-girl-ihram",
+      "pose": "drive",
+      "floor": 0,
+      "floorParts": [],
+      "body": 9
+    },
+    {
+      "cat": "cast",
+      "who": "cast-nenek",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 2
+    },
+    {
+      "cat": "cast",
+      "who": "cast-nenek",
+      "pose": "walk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 2
+    },
+    {
+      "cat": "cast",
+      "who": "cast-nenek",
+      "pose": "sit",
+      "floor": 0,
+      "floorParts": [],
+      "body": 3
+    },
+    {
+      "cat": "cast",
+      "who": "cast-nenek",
+      "pose": "wave",
+      "floor": 0,
+      "floorParts": [],
+      "body": 12
+    },
+    {
+      "cat": "cast",
+      "who": "cast-nenek",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-nenek",
+      "pose": "sujud",
+      "floor": 451,
+      "floorParts": [
+        "kneeL:180@-31mm",
+        "kneeR:180@-31mm",
+        "headPiece:32@-21mm",
+        "handL:28@-10mm",
+        "handR:31@-10mm"
+      ],
+      "body": 7
+    },
+    {
+      "cat": "cast",
+      "who": "cast-nenek",
+      "pose": "julus",
+      "floor": 470,
+      "floorParts": ["legL:33@-14mm", "kneeL:202@-99mm", "legR:33@-14mm", "kneeR:202@-99mm"],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-nenek",
+      "pose": "drive",
+      "floor": 0,
+      "floorParts": [],
+      "body": 5
+    },
+    {
+      "cat": "cast",
+      "who": "cast-atuk",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-atuk",
+      "pose": "walk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-atuk",
+      "pose": "sit",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-atuk",
+      "pose": "wave",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-atuk",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-atuk",
+      "pose": "sujud",
+      "floor": 239,
+      "floorParts": ["kneeL:90@-30mm", "kneeR:90@-30mm", "handL:28@-10mm", "handR:31@-10mm"],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-atuk",
+      "pose": "julus",
+      "floor": 396,
+      "floorParts": ["legL:33@-14mm", "kneeL:165@-99mm", "legR:33@-14mm", "kneeR:165@-99mm"],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-atuk",
+      "pose": "drive",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-imam_hakim",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-imam_hakim",
+      "pose": "walk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-imam_hakim",
+      "pose": "sit",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-imam_hakim",
+      "pose": "wave",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-imam_hakim",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-imam_hakim",
+      "pose": "sujud",
+      "floor": 419,
+      "floorParts": ["kneeL:180@-31mm", "kneeR:180@-31mm", "handL:28@-10mm", "handR:31@-10mm"],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-imam_hakim",
+      "pose": "julus",
+      "floor": 470,
+      "floorParts": ["legL:33@-14mm", "kneeL:202@-99mm", "legR:33@-14mm", "kneeR:202@-99mm"],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-imam_hakim",
+      "pose": "drive",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-makcik_siti",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 2
+    },
+    {
+      "cat": "cast",
+      "who": "cast-makcik_siti",
+      "pose": "walk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 2
+    },
+    {
+      "cat": "cast",
+      "who": "cast-makcik_siti",
+      "pose": "sit",
+      "floor": 0,
+      "floorParts": [],
+      "body": 3
+    },
+    {
+      "cat": "cast",
+      "who": "cast-makcik_siti",
+      "pose": "wave",
+      "floor": 0,
+      "floorParts": [],
+      "body": 12
+    },
+    {
+      "cat": "cast",
+      "who": "cast-makcik_siti",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-makcik_siti",
+      "pose": "sujud",
+      "floor": 451,
+      "floorParts": [
+        "kneeL:180@-31mm",
+        "kneeR:180@-31mm",
+        "headPiece:32@-21mm",
+        "handL:28@-10mm",
+        "handR:31@-10mm"
+      ],
+      "body": 7
+    },
+    {
+      "cat": "cast",
+      "who": "cast-makcik_siti",
+      "pose": "julus",
+      "floor": 470,
+      "floorParts": ["legL:33@-14mm", "kneeL:202@-99mm", "legR:33@-14mm", "kneeR:202@-99mm"],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-makcik_siti",
+      "pose": "drive",
+      "floor": 0,
+      "floorParts": [],
+      "body": 5
+    },
+    {
+      "cat": "cast",
+      "who": "cast-pakcik_rahman",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-pakcik_rahman",
+      "pose": "walk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-pakcik_rahman",
+      "pose": "sit",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-pakcik_rahman",
+      "pose": "wave",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-pakcik_rahman",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-pakcik_rahman",
+      "pose": "sujud",
+      "floor": 239,
+      "floorParts": ["kneeL:90@-30mm", "kneeR:90@-30mm", "handL:28@-10mm", "handR:31@-10mm"],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-pakcik_rahman",
+      "pose": "julus",
+      "floor": 334,
+      "floorParts": ["legL:2@-4mm", "kneeL:165@-99mm", "legR:2@-4mm", "kneeR:165@-99mm"],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-pakcik_rahman",
+      "pose": "drive",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-uncle_lim",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-uncle_lim",
+      "pose": "walk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-uncle_lim",
+      "pose": "sit",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-uncle_lim",
+      "pose": "wave",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-uncle_lim",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-uncle_lim",
+      "pose": "sujud",
+      "floor": 239,
+      "floorParts": ["kneeL:90@-30mm", "kneeR:90@-30mm", "handL:28@-10mm", "handR:31@-10mm"],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-uncle_lim",
+      "pose": "julus",
+      "floor": 334,
+      "floorParts": ["legL:2@-4mm", "kneeL:165@-99mm", "legR:2@-4mm", "kneeR:165@-99mm"],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-uncle_lim",
+      "pose": "drive",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-aunty_mei",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-aunty_mei",
+      "pose": "walk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-aunty_mei",
+      "pose": "sit",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-aunty_mei",
+      "pose": "wave",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-aunty_mei",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-aunty_mei",
+      "pose": "sujud",
+      "floor": 239,
+      "floorParts": ["kneeL:90@-30mm", "kneeR:90@-30mm", "handL:28@-10mm", "handR:31@-10mm"],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-aunty_mei",
+      "pose": "julus",
+      "floor": 334,
+      "floorParts": ["legL:2@-4mm", "kneeL:165@-99mm", "legR:2@-4mm", "kneeR:165@-99mm"],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-aunty_mei",
+      "pose": "drive",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-hawker_ali",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-hawker_ali",
+      "pose": "walk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-hawker_ali",
+      "pose": "sit",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-hawker_ali",
+      "pose": "wave",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-hawker_ali",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-hawker_ali",
+      "pose": "sujud",
+      "floor": 339,
+      "floorParts": [
+        "kneeL:90@-30mm",
+        "kneeR:90@-30mm",
+        "headPiece:100@-100mm",
+        "handL:28@-10mm",
+        "handR:31@-10mm"
+      ],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-hawker_ali",
+      "pose": "julus",
+      "floor": 334,
+      "floorParts": ["legL:2@-4mm", "kneeL:165@-99mm", "legR:2@-4mm", "kneeR:165@-99mm"],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-hawker_ali",
+      "pose": "drive",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-hawker_aminah",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 2
+    },
+    {
+      "cat": "cast",
+      "who": "cast-hawker_aminah",
+      "pose": "walk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 2
+    },
+    {
+      "cat": "cast",
+      "who": "cast-hawker_aminah",
+      "pose": "sit",
+      "floor": 0,
+      "floorParts": [],
+      "body": 3
+    },
+    {
+      "cat": "cast",
+      "who": "cast-hawker_aminah",
+      "pose": "wave",
+      "floor": 0,
+      "floorParts": [],
+      "body": 12
+    },
+    {
+      "cat": "cast",
+      "who": "cast-hawker_aminah",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-hawker_aminah",
+      "pose": "sujud",
+      "floor": 451,
+      "floorParts": [
+        "kneeL:180@-31mm",
+        "kneeR:180@-31mm",
+        "headPiece:32@-21mm",
+        "handL:28@-10mm",
+        "handR:31@-10mm"
+      ],
+      "body": 7
+    },
+    {
+      "cat": "cast",
+      "who": "cast-hawker_aminah",
+      "pose": "julus",
+      "floor": 470,
+      "floorParts": ["legL:33@-14mm", "kneeL:202@-99mm", "legR:33@-14mm", "kneeR:202@-99mm"],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-hawker_aminah",
+      "pose": "drive",
+      "floor": 0,
+      "floorParts": [],
+      "body": 5
+    },
+    {
+      "cat": "cast",
+      "who": "cast-barber_raju",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-barber_raju",
+      "pose": "walk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-barber_raju",
+      "pose": "sit",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-barber_raju",
+      "pose": "wave",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-barber_raju",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-barber_raju",
+      "pose": "sujud",
+      "floor": 239,
+      "floorParts": ["kneeL:90@-30mm", "kneeR:90@-30mm", "handL:28@-10mm", "handR:31@-10mm"],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-barber_raju",
+      "pose": "julus",
+      "floor": 334,
+      "floorParts": ["legL:2@-4mm", "kneeL:165@-99mm", "legR:2@-4mm", "kneeR:165@-99mm"],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-barber_raju",
+      "pose": "drive",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-dr_nurul",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 2
+    },
+    {
+      "cat": "cast",
+      "who": "cast-dr_nurul",
+      "pose": "walk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 2
+    },
+    {
+      "cat": "cast",
+      "who": "cast-dr_nurul",
+      "pose": "sit",
+      "floor": 0,
+      "floorParts": [],
+      "body": 3
+    },
+    {
+      "cat": "cast",
+      "who": "cast-dr_nurul",
+      "pose": "wave",
+      "floor": 0,
+      "floorParts": [],
+      "body": 12
+    },
+    {
+      "cat": "cast",
+      "who": "cast-dr_nurul",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-dr_nurul",
+      "pose": "sujud",
+      "floor": 271,
+      "floorParts": [
+        "kneeL:90@-30mm",
+        "kneeR:90@-30mm",
+        "headPiece:32@-21mm",
+        "handL:28@-10mm",
+        "handR:31@-10mm"
+      ],
+      "body": 7
+    },
+    {
+      "cat": "cast",
+      "who": "cast-dr_nurul",
+      "pose": "julus",
+      "floor": 396,
+      "floorParts": ["legL:33@-14mm", "kneeL:165@-99mm", "legR:33@-14mm", "kneeR:165@-99mm"],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-dr_nurul",
+      "pose": "drive",
+      "floor": 0,
+      "floorParts": [],
+      "body": 5
+    },
+    {
+      "cat": "cast",
+      "who": "cast-librarian_farah",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 2
+    },
+    {
+      "cat": "cast",
+      "who": "cast-librarian_farah",
+      "pose": "walk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 2
+    },
+    {
+      "cat": "cast",
+      "who": "cast-librarian_farah",
+      "pose": "sit",
+      "floor": 0,
+      "floorParts": [],
+      "body": 3
+    },
+    {
+      "cat": "cast",
+      "who": "cast-librarian_farah",
+      "pose": "wave",
+      "floor": 0,
+      "floorParts": [],
+      "body": 12
+    },
+    {
+      "cat": "cast",
+      "who": "cast-librarian_farah",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-librarian_farah",
+      "pose": "sujud",
+      "floor": 451,
+      "floorParts": [
+        "kneeL:180@-31mm",
+        "kneeR:180@-31mm",
+        "headPiece:32@-21mm",
+        "handL:28@-10mm",
+        "handR:31@-10mm"
+      ],
+      "body": 7
+    },
+    {
+      "cat": "cast",
+      "who": "cast-librarian_farah",
+      "pose": "julus",
+      "floor": 470,
+      "floorParts": ["legL:33@-14mm", "kneeL:202@-99mm", "legR:33@-14mm", "kneeR:202@-99mm"],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-librarian_farah",
+      "pose": "drive",
+      "floor": 0,
+      "floorParts": [],
+      "body": 5
+    },
+    {
+      "cat": "cast",
+      "who": "cast-kid_irfan",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-kid_irfan",
+      "pose": "walk",
+      "floor": 28,
+      "floorParts": ["kneeL:28@-11mm"],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-kid_irfan",
+      "pose": "sit",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-kid_irfan",
+      "pose": "wave",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-kid_irfan",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-kid_irfan",
+      "pose": "sujud",
+      "floor": 292,
+      "floorParts": ["kneeL:90@-28mm", "kneeR:90@-28mm", "handL:55@-16mm", "handR:57@-16mm"],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-kid_irfan",
+      "pose": "julus",
+      "floor": 314,
+      "floorParts": ["legL:2@-3mm", "kneeL:155@-70mm", "legR:2@-3mm", "kneeR:155@-70mm"],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-kid_irfan",
+      "pose": "drive",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-kid_aisyah",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 1
+    },
+    {
+      "cat": "cast",
+      "who": "cast-kid_aisyah",
+      "pose": "walk",
+      "floor": 28,
+      "floorParts": ["kneeL:28@-11mm"],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-kid_aisyah",
+      "pose": "sit",
+      "floor": 0,
+      "floorParts": [],
+      "body": 1
+    },
+    {
+      "cat": "cast",
+      "who": "cast-kid_aisyah",
+      "pose": "wave",
+      "floor": 0,
+      "floorParts": [],
+      "body": 15
+    },
+    {
+      "cat": "cast",
+      "who": "cast-kid_aisyah",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-kid_aisyah",
+      "pose": "sujud",
+      "floor": 591,
+      "floorParts": [
+        "kneeL:180@-28mm",
+        "kneeR:180@-28mm",
+        "headPiece:119@-44mm",
+        "handL:55@-16mm",
+        "handR:57@-16mm"
+      ],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-kid_aisyah",
+      "pose": "julus",
+      "floor": 456,
+      "floorParts": ["legL:33@-12mm", "kneeL:195@-70mm", "legR:33@-12mm", "kneeR:195@-70mm"],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-kid_aisyah",
+      "pose": "drive",
+      "floor": 0,
+      "floorParts": [],
+      "body": 10
+    },
+    {
+      "cat": "cast",
+      "who": "cast-kid_wei",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-kid_wei",
+      "pose": "walk",
+      "floor": 28,
+      "floorParts": ["kneeL:28@-11mm"],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-kid_wei",
+      "pose": "sit",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-kid_wei",
+      "pose": "wave",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-kid_wei",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-kid_wei",
+      "pose": "sujud",
+      "floor": 292,
+      "floorParts": ["kneeL:90@-28mm", "kneeR:90@-28mm", "handL:55@-16mm", "handR:57@-16mm"],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-kid_wei",
+      "pose": "julus",
+      "floor": 636,
+      "floorParts": ["legL:2@-3mm", "kneeL:316@-70mm", "legR:2@-3mm", "kneeR:316@-70mm"],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-kid_wei",
+      "pose": "drive",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-postman_dan",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-postman_dan",
+      "pose": "walk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-postman_dan",
+      "pose": "sit",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-postman_dan",
+      "pose": "wave",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-postman_dan",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-postman_dan",
+      "pose": "sujud",
+      "floor": 339,
+      "floorParts": [
+        "kneeL:90@-30mm",
+        "kneeR:90@-30mm",
+        "headPiece:100@-100mm",
+        "handL:28@-10mm",
+        "handR:31@-10mm"
+      ],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-postman_dan",
+      "pose": "julus",
+      "floor": 334,
+      "floorParts": ["legL:2@-4mm", "kneeL:165@-99mm", "legR:2@-4mm", "kneeR:165@-99mm"],
+      "body": 0
+    },
+    {
+      "cat": "cast",
+      "who": "cast-postman_dan",
+      "pose": "drive",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "guides",
+      "who": "guides-guide_makkah",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "guides",
+      "who": "guides-guide_makkah",
+      "pose": "walk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "guides",
+      "who": "guides-guide_makkah",
+      "pose": "sit",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "guides",
+      "who": "guides-guide_makkah",
+      "pose": "wave",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "guides",
+      "who": "guides-guide_makkah",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "guides",
+      "who": "guides-guide_makkah",
+      "pose": "sujud",
+      "floor": 419,
+      "floorParts": ["kneeL:180@-31mm", "kneeR:180@-31mm", "handL:28@-10mm", "handR:31@-10mm"],
+      "body": 0
+    },
+    {
+      "cat": "guides",
+      "who": "guides-guide_makkah",
+      "pose": "julus",
+      "floor": 470,
+      "floorParts": ["legL:33@-14mm", "kneeL:202@-99mm", "legR:33@-14mm", "kneeR:202@-99mm"],
+      "body": 0
+    },
+    {
+      "cat": "guides",
+      "who": "guides-guide_makkah",
+      "pose": "drive",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "guides",
+      "who": "guides-guide_madinah",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 2
+    },
+    {
+      "cat": "guides",
+      "who": "guides-guide_madinah",
+      "pose": "walk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 2
+    },
+    {
+      "cat": "guides",
+      "who": "guides-guide_madinah",
+      "pose": "sit",
+      "floor": 0,
+      "floorParts": [],
+      "body": 3
+    },
+    {
+      "cat": "guides",
+      "who": "guides-guide_madinah",
+      "pose": "wave",
+      "floor": 0,
+      "floorParts": [],
+      "body": 12
+    },
+    {
+      "cat": "guides",
+      "who": "guides-guide_madinah",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "guides",
+      "who": "guides-guide_madinah",
+      "pose": "sujud",
+      "floor": 451,
+      "floorParts": [
+        "kneeL:180@-31mm",
+        "kneeR:180@-31mm",
+        "headPiece:32@-21mm",
+        "handL:28@-10mm",
+        "handR:31@-10mm"
+      ],
+      "body": 7
+    },
+    {
+      "cat": "guides",
+      "who": "guides-guide_madinah",
+      "pose": "julus",
+      "floor": 470,
+      "floorParts": ["legL:33@-14mm", "kneeL:202@-99mm", "legR:33@-14mm", "kneeR:202@-99mm"],
+      "body": 0
+    },
+    {
+      "cat": "guides",
+      "who": "guides-guide_madinah",
+      "pose": "drive",
+      "floor": 0,
+      "floorParts": [],
+      "body": 5
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_kid_red",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_kid_red",
+      "pose": "walk",
+      "floor": 28,
+      "floorParts": ["kneeL:28@-11mm"],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_kid_red",
+      "pose": "sit",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_kid_red",
+      "pose": "wave",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_kid_red",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_kid_red",
+      "pose": "sujud",
+      "floor": 292,
+      "floorParts": ["kneeL:90@-28mm", "kneeR:90@-28mm", "handL:55@-16mm", "handR:57@-16mm"],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_kid_red",
+      "pose": "julus",
+      "floor": 314,
+      "floorParts": ["legL:2@-3mm", "kneeL:155@-70mm", "legR:2@-3mm", "kneeR:155@-70mm"],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_kid_red",
+      "pose": "drive",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_kid_blue",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_kid_blue",
+      "pose": "walk",
+      "floor": 28,
+      "floorParts": ["kneeL:28@-11mm"],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_kid_blue",
+      "pose": "sit",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_kid_blue",
+      "pose": "wave",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_kid_blue",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_kid_blue",
+      "pose": "sujud",
+      "floor": 292,
+      "floorParts": ["kneeL:90@-28mm", "kneeR:90@-28mm", "handL:55@-16mm", "handR:57@-16mm"],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_kid_blue",
+      "pose": "julus",
+      "floor": 636,
+      "floorParts": ["legL:2@-3mm", "kneeL:316@-70mm", "legR:2@-3mm", "kneeR:316@-70mm"],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_kid_blue",
+      "pose": "drive",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_kid_green",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_kid_green",
+      "pose": "walk",
+      "floor": 28,
+      "floorParts": ["kneeL:28@-11mm"],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_kid_green",
+      "pose": "sit",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_kid_green",
+      "pose": "wave",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_kid_green",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_kid_green",
+      "pose": "sujud",
+      "floor": 292,
+      "floorParts": ["kneeL:90@-28mm", "kneeR:90@-28mm", "handL:55@-16mm", "handR:57@-16mm"],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_kid_green",
+      "pose": "julus",
+      "floor": 314,
+      "floorParts": ["legL:2@-3mm", "kneeL:155@-70mm", "legR:2@-3mm", "kneeR:155@-70mm"],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_kid_green",
+      "pose": "drive",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_kid_girl",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 1
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_kid_girl",
+      "pose": "walk",
+      "floor": 28,
+      "floorParts": ["kneeL:28@-11mm"],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_kid_girl",
+      "pose": "sit",
+      "floor": 0,
+      "floorParts": [],
+      "body": 1
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_kid_girl",
+      "pose": "wave",
+      "floor": 0,
+      "floorParts": [],
+      "body": 15
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_kid_girl",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_kid_girl",
+      "pose": "sujud",
+      "floor": 591,
+      "floorParts": [
+        "kneeL:180@-28mm",
+        "kneeR:180@-28mm",
+        "headPiece:119@-44mm",
+        "handL:55@-16mm",
+        "handR:57@-16mm"
+      ],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_kid_girl",
+      "pose": "julus",
+      "floor": 456,
+      "floorParts": ["legL:33@-12mm", "kneeL:195@-70mm", "legR:33@-12mm", "kneeR:195@-70mm"],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_kid_girl",
+      "pose": "drive",
+      "floor": 0,
+      "floorParts": [],
+      "body": 10
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_seller",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_seller",
+      "pose": "walk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_seller",
+      "pose": "sit",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_seller",
+      "pose": "wave",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_seller",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_seller",
+      "pose": "sujud",
+      "floor": 339,
+      "floorParts": [
+        "kneeL:90@-30mm",
+        "kneeR:90@-30mm",
+        "headPiece:100@-100mm",
+        "handL:28@-10mm",
+        "handR:31@-10mm"
+      ],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_seller",
+      "pose": "julus",
+      "floor": 334,
+      "floorParts": ["legL:2@-4mm", "kneeL:165@-99mm", "legR:2@-4mm", "kneeR:165@-99mm"],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_seller",
+      "pose": "drive",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_groom",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_groom",
+      "pose": "walk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_groom",
+      "pose": "sit",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_groom",
+      "pose": "wave",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_groom",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_groom",
+      "pose": "sujud",
+      "floor": 239,
+      "floorParts": ["kneeL:90@-30mm", "kneeR:90@-30mm", "handL:28@-10mm", "handR:31@-10mm"],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_groom",
+      "pose": "julus",
+      "floor": 396,
+      "floorParts": ["legL:33@-14mm", "kneeL:165@-99mm", "legR:33@-14mm", "kneeR:165@-99mm"],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_groom",
+      "pose": "drive",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_bride",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 2
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_bride",
+      "pose": "walk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 2
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_bride",
+      "pose": "sit",
+      "floor": 0,
+      "floorParts": [],
+      "body": 3
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_bride",
+      "pose": "wave",
+      "floor": 0,
+      "floorParts": [],
+      "body": 12
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_bride",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_bride",
+      "pose": "sujud",
+      "floor": 451,
+      "floorParts": [
+        "kneeL:180@-31mm",
+        "kneeR:180@-31mm",
+        "headPiece:32@-21mm",
+        "handL:28@-10mm",
+        "handR:31@-10mm"
+      ],
+      "body": 7
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_bride",
+      "pose": "julus",
+      "floor": 470,
+      "floorParts": ["legL:33@-14mm", "kneeL:202@-99mm", "legR:33@-14mm", "kneeR:202@-99mm"],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_bride",
+      "pose": "drive",
+      "floor": 0,
+      "floorParts": [],
+      "body": 5
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_drummer1",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_drummer1",
+      "pose": "walk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_drummer1",
+      "pose": "sit",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_drummer1",
+      "pose": "wave",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_drummer1",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_drummer1",
+      "pose": "sujud",
+      "floor": 239,
+      "floorParts": ["kneeL:90@-30mm", "kneeR:90@-30mm", "handL:28@-10mm", "handR:31@-10mm"],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_drummer1",
+      "pose": "julus",
+      "floor": 334,
+      "floorParts": ["legL:2@-4mm", "kneeL:165@-99mm", "legR:2@-4mm", "kneeR:165@-99mm"],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_drummer1",
+      "pose": "drive",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_drummer2",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_drummer2",
+      "pose": "walk",
+      "floor": 28,
+      "floorParts": ["kneeL:28@-11mm"],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_drummer2",
+      "pose": "sit",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_drummer2",
+      "pose": "wave",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_drummer2",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_drummer2",
+      "pose": "sujud",
+      "floor": 292,
+      "floorParts": ["kneeL:90@-28mm", "kneeR:90@-28mm", "handL:55@-16mm", "handR:57@-16mm"],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_drummer2",
+      "pose": "julus",
+      "floor": 314,
+      "floorParts": ["legL:2@-3mm", "kneeL:155@-70mm", "legR:2@-3mm", "kneeR:155@-70mm"],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_drummer2",
+      "pose": "drive",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_umbrella1",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_umbrella1",
+      "pose": "walk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_umbrella1",
+      "pose": "sit",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_umbrella1",
+      "pose": "wave",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_umbrella1",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_umbrella1",
+      "pose": "sujud",
+      "floor": 239,
+      "floorParts": ["kneeL:90@-30mm", "kneeR:90@-30mm", "handL:28@-10mm", "handR:31@-10mm"],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_umbrella1",
+      "pose": "julus",
+      "floor": 334,
+      "floorParts": ["legL:2@-4mm", "kneeL:165@-99mm", "legR:2@-4mm", "kneeR:165@-99mm"],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_umbrella1",
+      "pose": "drive",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_umbrella2",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_umbrella2",
+      "pose": "walk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_umbrella2",
+      "pose": "sit",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_umbrella2",
+      "pose": "wave",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_umbrella2",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_umbrella2",
+      "pose": "sujud",
+      "floor": 239,
+      "floorParts": ["kneeL:90@-30mm", "kneeR:90@-30mm", "handL:28@-10mm", "handR:31@-10mm"],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_umbrella2",
+      "pose": "julus",
+      "floor": 396,
+      "floorParts": ["legL:33@-14mm", "kneeL:165@-99mm", "legR:33@-14mm", "kneeR:165@-99mm"],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_umbrella2",
+      "pose": "drive",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_volunteer",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_volunteer",
+      "pose": "walk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_volunteer",
+      "pose": "sit",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_volunteer",
+      "pose": "wave",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_volunteer",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_volunteer",
+      "pose": "sujud",
+      "floor": 419,
+      "floorParts": ["kneeL:180@-31mm", "kneeR:180@-31mm", "handL:28@-10mm", "handR:31@-10mm"],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_volunteer",
+      "pose": "julus",
+      "floor": 470,
+      "floorParts": ["legL:33@-14mm", "kneeL:202@-99mm", "legR:33@-14mm", "kneeR:202@-99mm"],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_volunteer",
+      "pose": "drive",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_dad",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_dad",
+      "pose": "walk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_dad",
+      "pose": "sit",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_dad",
+      "pose": "wave",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_dad",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_dad",
+      "pose": "sujud",
+      "floor": 239,
+      "floorParts": ["kneeL:90@-30mm", "kneeR:90@-30mm", "handL:28@-10mm", "handR:31@-10mm"],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_dad",
+      "pose": "julus",
+      "floor": 334,
+      "floorParts": ["legL:2@-4mm", "kneeL:165@-99mm", "legR:2@-4mm", "kneeR:165@-99mm"],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_dad",
+      "pose": "drive",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_mum",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 2
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_mum",
+      "pose": "walk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 2
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_mum",
+      "pose": "sit",
+      "floor": 0,
+      "floorParts": [],
+      "body": 3
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_mum",
+      "pose": "wave",
+      "floor": 0,
+      "floorParts": [],
+      "body": 12
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_mum",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_mum",
+      "pose": "sujud",
+      "floor": 451,
+      "floorParts": [
+        "kneeL:180@-31mm",
+        "kneeR:180@-31mm",
+        "headPiece:32@-21mm",
+        "handL:28@-10mm",
+        "handR:31@-10mm"
+      ],
+      "body": 7
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_mum",
+      "pose": "julus",
+      "floor": 470,
+      "floorParts": ["legL:33@-14mm", "kneeL:202@-99mm", "legR:33@-14mm", "kneeR:202@-99mm"],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_mum",
+      "pose": "drive",
+      "floor": 0,
+      "floorParts": [],
+      "body": 5
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_child",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_child",
+      "pose": "walk",
+      "floor": 28,
+      "floorParts": ["kneeL:28@-11mm"],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_child",
+      "pose": "sit",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_child",
+      "pose": "wave",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_child",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_child",
+      "pose": "sujud",
+      "floor": 292,
+      "floorParts": ["kneeL:90@-28mm", "kneeR:90@-28mm", "handL:55@-16mm", "handR:57@-16mm"],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_child",
+      "pose": "julus",
+      "floor": 314,
+      "floorParts": ["legL:2@-3mm", "kneeL:155@-70mm", "legR:2@-3mm", "kneeR:155@-70mm"],
+      "body": 0
+    },
+    {
+      "cat": "event",
+      "who": "event-ev_child",
+      "pose": "drive",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-hair",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-hair",
+      "pose": "walk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-hair",
+      "pose": "sittalk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-hair",
+      "pose": "pedal",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-hair",
+      "pose": "qiyam",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-hair",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-hair",
+      "pose": "sujud",
+      "floor": 540,
+      "floorParts": [
+        "shin3:90@-30mm",
+        "shin4:90@-30mm",
+        "skShinL3:180@-31mm",
+        "skShinR4:180@-31mm"
+      ],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-hair",
+      "pose": "julus",
+      "floor": 734,
+      "floorParts": [
+        "shin3:165@-99mm",
+        "shin4:165@-99mm",
+        "skShinL3:202@-99mm",
+        "skShinR4:202@-99mm"
+      ],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-bun",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-bun",
+      "pose": "walk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-bun",
+      "pose": "sittalk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-bun",
+      "pose": "pedal",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-bun",
+      "pose": "qiyam",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-bun",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-bun",
+      "pose": "sujud",
+      "floor": 540,
+      "floorParts": [
+        "shin3:90@-30mm",
+        "shin4:90@-30mm",
+        "skShinL3:180@-31mm",
+        "skShinR4:180@-31mm"
+      ],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-bun",
+      "pose": "julus",
+      "floor": 734,
+      "floorParts": [
+        "shin3:165@-99mm",
+        "shin4:165@-99mm",
+        "skShinL3:202@-99mm",
+        "skShinR4:202@-99mm"
+      ],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-tudung",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-tudung",
+      "pose": "walk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-tudung",
+      "pose": "sittalk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-tudung",
+      "pose": "pedal",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-tudung",
+      "pose": "qiyam",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-tudung",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-tudung",
+      "pose": "sujud",
+      "floor": 540,
+      "floorParts": [
+        "shin3:90@-30mm",
+        "shin4:90@-30mm",
+        "skShinL3:180@-31mm",
+        "skShinR4:180@-31mm"
+      ],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-tudung",
+      "pose": "julus",
+      "floor": 734,
+      "floorParts": [
+        "shin3:165@-99mm",
+        "shin4:165@-99mm",
+        "skShinL3:202@-99mm",
+        "skShinR4:202@-99mm"
+      ],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-cap",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-cap",
+      "pose": "walk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-cap",
+      "pose": "sittalk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-cap",
+      "pose": "pedal",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-cap",
+      "pose": "qiyam",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-cap",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-cap",
+      "pose": "sujud",
+      "floor": 642,
+      "floorParts": [
+        "shin3:90@-30mm",
+        "shin4:90@-30mm",
+        "skShinL3:180@-31mm",
+        "skShinR4:180@-31mm",
+        "hat7:102@-63mm"
+      ],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-cap",
+      "pose": "julus",
+      "floor": 734,
+      "floorParts": [
+        "shin3:165@-99mm",
+        "shin4:165@-99mm",
+        "skShinL3:202@-99mm",
+        "skShinR4:202@-99mm"
+      ],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-songkok",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-songkok",
+      "pose": "walk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-songkok",
+      "pose": "sittalk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-songkok",
+      "pose": "pedal",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-songkok",
+      "pose": "qiyam",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-songkok",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-songkok",
+      "pose": "sujud",
+      "floor": 540,
+      "floorParts": [
+        "shin3:90@-30mm",
+        "shin4:90@-30mm",
+        "skShinL3:180@-31mm",
+        "skShinR4:180@-31mm"
+      ],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-songkok",
+      "pose": "julus",
+      "floor": 734,
+      "floorParts": [
+        "shin3:165@-99mm",
+        "shin4:165@-99mm",
+        "skShinL3:202@-99mm",
+        "skShinR4:202@-99mm"
+      ],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-kopiah",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-kopiah",
+      "pose": "walk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-kopiah",
+      "pose": "sittalk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-kopiah",
+      "pose": "pedal",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-kopiah",
+      "pose": "qiyam",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-kopiah",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-kopiah",
+      "pose": "sujud",
+      "floor": 540,
+      "floorParts": [
+        "shin3:90@-30mm",
+        "shin4:90@-30mm",
+        "skShinL3:180@-31mm",
+        "skShinR4:180@-31mm"
+      ],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-kopiah",
+      "pose": "julus",
+      "floor": 734,
+      "floorParts": [
+        "shin3:165@-99mm",
+        "shin4:165@-99mm",
+        "skShinL3:202@-99mm",
+        "skShinR4:202@-99mm"
+      ],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-none",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-none",
+      "pose": "walk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-none",
+      "pose": "sittalk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-none",
+      "pose": "pedal",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-none",
+      "pose": "qiyam",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-none",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-none",
+      "pose": "sujud",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-none",
+      "pose": "julus",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "pilgrims",
+      "who": "pilgrims-ghutra",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "pilgrims",
+      "who": "pilgrims-ghutra",
+      "pose": "walk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "pilgrims",
+      "who": "pilgrims-ghutra",
+      "pose": "sittalk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "pilgrims",
+      "who": "pilgrims-ghutra",
+      "pose": "pedal",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "pilgrims",
+      "who": "pilgrims-ghutra",
+      "pose": "qiyam",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "pilgrims",
+      "who": "pilgrims-ghutra",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "pilgrims",
+      "who": "pilgrims-ghutra",
+      "pose": "sujud",
+      "floor": 540,
+      "floorParts": [
+        "shin3:90@-30mm",
+        "shin4:90@-30mm",
+        "skShinL3:180@-31mm",
+        "skShinR4:180@-31mm"
+      ],
+      "body": 0
+    },
+    {
+      "cat": "pilgrims",
+      "who": "pilgrims-ghutra",
+      "pose": "julus",
+      "floor": 734,
+      "floorParts": [
+        "shin3:165@-99mm",
+        "shin4:165@-99mm",
+        "skShinL3:202@-99mm",
+        "skShinR4:202@-99mm"
+      ],
+      "body": 0
+    },
+    {
+      "cat": "pilgrims",
+      "who": "pilgrims-wrap",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "pilgrims",
+      "who": "pilgrims-wrap",
+      "pose": "walk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "pilgrims",
+      "who": "pilgrims-wrap",
+      "pose": "sittalk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "pilgrims",
+      "who": "pilgrims-wrap",
+      "pose": "pedal",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "pilgrims",
+      "who": "pilgrims-wrap",
+      "pose": "qiyam",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "pilgrims",
+      "who": "pilgrims-wrap",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "pilgrims",
+      "who": "pilgrims-wrap",
+      "pose": "sujud",
+      "floor": 546,
+      "floorParts": [
+        "shin3:90@-30mm",
+        "shin4:90@-30mm",
+        "skShinL3:180@-31mm",
+        "skShinR4:180@-31mm",
+        "hat7:6@-10mm"
+      ],
+      "body": 0
+    },
+    {
+      "cat": "pilgrims",
+      "who": "pilgrims-wrap",
+      "pose": "julus",
+      "floor": 734,
+      "floorParts": [
+        "shin3:165@-99mm",
+        "shin4:165@-99mm",
+        "skShinL3:202@-99mm",
+        "skShinR4:202@-99mm"
+      ],
+      "body": 0
+    },
+    {
+      "cat": "pilgrims",
+      "who": "pilgrims-turban",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "pilgrims",
+      "who": "pilgrims-turban",
+      "pose": "walk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "pilgrims",
+      "who": "pilgrims-turban",
+      "pose": "sittalk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "pilgrims",
+      "who": "pilgrims-turban",
+      "pose": "pedal",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "pilgrims",
+      "who": "pilgrims-turban",
+      "pose": "qiyam",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "pilgrims",
+      "who": "pilgrims-turban",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "pilgrims",
+      "who": "pilgrims-turban",
+      "pose": "sujud",
+      "floor": 540,
+      "floorParts": [
+        "shin3:90@-30mm",
+        "shin4:90@-30mm",
+        "skShinL3:180@-31mm",
+        "skShinR4:180@-31mm"
+      ],
+      "body": 0
+    },
+    {
+      "cat": "pilgrims",
+      "who": "pilgrims-turban",
+      "pose": "julus",
+      "floor": 734,
+      "floorParts": [
+        "shin3:165@-99mm",
+        "shin4:165@-99mm",
+        "skShinL3:202@-99mm",
+        "skShinR4:202@-99mm"
+      ],
+      "body": 0
+    },
+    {
+      "cat": "pilgrims",
+      "who": "pilgrims-doppi",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "pilgrims",
+      "who": "pilgrims-doppi",
+      "pose": "walk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "pilgrims",
+      "who": "pilgrims-doppi",
+      "pose": "sittalk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "pilgrims",
+      "who": "pilgrims-doppi",
+      "pose": "pedal",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "pilgrims",
+      "who": "pilgrims-doppi",
+      "pose": "qiyam",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "pilgrims",
+      "who": "pilgrims-doppi",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "pilgrims",
+      "who": "pilgrims-doppi",
+      "pose": "sujud",
+      "floor": 540,
+      "floorParts": [
+        "shin3:90@-30mm",
+        "shin4:90@-30mm",
+        "skShinL3:180@-31mm",
+        "skShinR4:180@-31mm"
+      ],
+      "body": 0
+    },
+    {
+      "cat": "pilgrims",
+      "who": "pilgrims-doppi",
+      "pose": "julus",
+      "floor": 734,
+      "floorParts": [
+        "shin3:165@-99mm",
+        "shin4:165@-99mm",
+        "skShinL3:202@-99mm",
+        "skShinR4:202@-99mm"
+      ],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-kid-tudung_kid",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-kid-tudung_kid",
+      "pose": "walk",
+      "floor": 78,
+      "floorParts": ["shin3:39@-12mm", "skShinL3:39@-12mm"],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-kid-tudung_kid",
+      "pose": "sittalk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-kid-tudung_kid",
+      "pose": "pedal",
+      "floor": 76,
+      "floorParts": ["shin3:38@-11mm", "skShinL3:38@-11mm"],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-kid-tudung_kid",
+      "pose": "qiyam",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-kid-tudung_kid",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-kid-tudung_kid",
+      "pose": "sujud",
+      "floor": 540,
+      "floorParts": [
+        "shin3:90@-28mm",
+        "shin4:90@-28mm",
+        "skShinL3:180@-28mm",
+        "skShinR4:180@-28mm"
+      ],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-kid-tudung_kid",
+      "pose": "julus",
+      "floor": 702,
+      "floorParts": [
+        "shin3:154@-72mm",
+        "shin4:154@-72mm",
+        "skShinL3:197@-72mm",
+        "skShinR4:197@-72mm"
+      ],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-kid-hair",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-kid-hair",
+      "pose": "walk",
+      "floor": 78,
+      "floorParts": ["shin3:39@-12mm", "skShinL3:39@-12mm"],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-kid-hair",
+      "pose": "sittalk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-kid-hair",
+      "pose": "pedal",
+      "floor": 76,
+      "floorParts": ["shin3:38@-11mm", "skShinL3:38@-11mm"],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-kid-hair",
+      "pose": "qiyam",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-kid-hair",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-kid-hair",
+      "pose": "sujud",
+      "floor": 540,
+      "floorParts": [
+        "shin3:90@-28mm",
+        "shin4:90@-28mm",
+        "skShinL3:180@-28mm",
+        "skShinR4:180@-28mm"
+      ],
+      "body": 0
+    },
+    {
+      "cat": "crowd",
+      "who": "crowd-kid-hair",
+      "pose": "julus",
+      "floor": 702,
+      "floorParts": [
+        "shin3:154@-72mm",
+        "shin4:154@-72mm",
+        "skShinL3:197@-72mm",
+        "skShinR4:197@-72mm"
+      ],
+      "body": 0
+    },
+    {
+      "cat": "pilgrims",
+      "who": "pilgrims-ihram-hair",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "pilgrims",
+      "who": "pilgrims-ihram-hair",
+      "pose": "walk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "pilgrims",
+      "who": "pilgrims-ihram-hair",
+      "pose": "sittalk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "pilgrims",
+      "who": "pilgrims-ihram-hair",
+      "pose": "pedal",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "pilgrims",
+      "who": "pilgrims-ihram-hair",
+      "pose": "qiyam",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "pilgrims",
+      "who": "pilgrims-ihram-hair",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "pilgrims",
+      "who": "pilgrims-ihram-hair",
+      "pose": "sujud",
+      "floor": 540,
+      "floorParts": [
+        "shin3:90@-30mm",
+        "shin4:90@-30mm",
+        "skShinL3:180@-31mm",
+        "skShinR4:180@-31mm"
+      ],
+      "body": 0
+    },
+    {
+      "cat": "pilgrims",
+      "who": "pilgrims-ihram-hair",
+      "pose": "julus",
+      "floor": 734,
+      "floorParts": [
+        "shin3:165@-99mm",
+        "shin4:165@-99mm",
+        "skShinL3:202@-99mm",
+        "skShinR4:202@-99mm"
+      ],
+      "body": 0
+    },
+    {
+      "cat": "pilgrims",
+      "who": "pilgrims-ihram-cap",
+      "pose": "idle",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "pilgrims",
+      "who": "pilgrims-ihram-cap",
+      "pose": "walk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "pilgrims",
+      "who": "pilgrims-ihram-cap",
+      "pose": "sittalk",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "pilgrims",
+      "who": "pilgrims-ihram-cap",
+      "pose": "pedal",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "pilgrims",
+      "who": "pilgrims-ihram-cap",
+      "pose": "qiyam",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "pilgrims",
+      "who": "pilgrims-ihram-cap",
+      "pose": "ruku",
+      "floor": 0,
+      "floorParts": [],
+      "body": 0
+    },
+    {
+      "cat": "pilgrims",
+      "who": "pilgrims-ihram-cap",
+      "pose": "sujud",
+      "floor": 642,
+      "floorParts": [
+        "shin3:90@-30mm",
+        "shin4:90@-30mm",
+        "skShinL3:180@-31mm",
+        "skShinR4:180@-31mm",
+        "hat7:102@-63mm"
+      ],
+      "body": 0
+    },
+    {
+      "cat": "pilgrims",
+      "who": "pilgrims-ihram-cap",
+      "pose": "julus",
+      "floor": 734,
+      "floorParts": [
+        "shin3:165@-99mm",
+        "shin4:165@-99mm",
+        "skShinL3:202@-99mm",
+        "skShinR4:202@-99mm"
+      ],
+      "body": 0
+    }
+  ]
+}

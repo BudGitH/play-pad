@@ -17,14 +17,15 @@
     return Object.assign({ sim: S().sim, onClose: () => (S().hudDirty = true) }, extra || {});
   }
 
-  /** Open the map screen (north-up, with word labels) with a live map view from the loop. */
+  /** Open the full map (bigmap.js): the whole region, zoom and pan, places, go-here. */
   function openMap() {
-    const h = G.Screens.map(
-      ctxFor({
-        mapView: () => G.Loop.mapView(G.Minimap.fullSpan(), G.Minimap.fullOpts()),
-      }),
-    );
-    return h;
+    return G.Screens.map(ctxFor());
+  }
+
+  /** Is the full map the open sheet? (M closes it again.) */
+  function mapOpen() {
+    const h = G.UI.current();
+    return Boolean(h && h.opts.label === "Map");
   }
 
   /** Open the bag screen showing what the hero is carrying and the current outfit name. */
@@ -32,8 +33,10 @@
     const look = G.Menus.LOOKS.find(
       (l) => l.hair === S().sim.outfit.hair && l.hat === S().sim.outfit.hat,
     );
-    const clothes = KQ.Sim.Wardrobe.nameOf(S().sim.wardrobe);
-    const hair = look && look.id !== "classic" ? look.name + ", " : "";
+    const clothes = G.Hero.rules().nameOf(S().sim.wardrobe);
+    const girl = G.Hero.isGirl();
+    const head = girl ? KQ.Sim.Hero.styleName(S().sim.hero) + ", " : "";
+    const hair = !girl && look && look.id !== "classic" ? look.name + ", " : head;
     G.Screens.bag(ctxFor({ carrying: G.MissionFlow.carrying(), outfitName: hair + clothes }));
   }
 
@@ -137,13 +140,15 @@
    * screen.
    */
   function dock(id) {
+    const tucked = G.RitualUI.active && G.RitualUI.active.minimised;
+    if (tucked && (id === "pray" || id === "rites")) return G.RitualUI.active.restore(); // show the steps in hand
     if (G.UI.modalOpen() && id !== "pause") {
       G.UI.closeSheet("replaced-by-dock");
     }
     focusDockButton(id);
     if (id === "missions") G.Screens.missions(ctxFor());
     else if (id === "map") openMap();
-    else if (id === "pray") G.PrayerFlow.openDayCard();
+    else if (id === "pray") G.PrayerFlow.pressPray();
     else if (id === "rites") G.RitualFlow.openMenu();
     else if (id === "bag") openBag();
     else if (id === "pause") openPause();
@@ -163,7 +168,18 @@
   function tileKey(n) {
     if (G.PrayerFlow.pickTile(n)) return;
     const tiles = G.UI.state.sheet && G.UI.state.sheet.querySelectorAll(".kq-tile");
-    if (tiles && tiles[n]) tiles[n].click();
+    if (tiles && tiles[n]) return void tiles[n].click();
+    if (!G.UI.modalOpen()) G.ActionBar.pick(n + 1); // walking about: 1 = the big Action button, 2 and 3 = its tiles
+  }
+
+  /**
+   * May the Hide key act now: with no sheet open (a minimised chip comes back), or when the open sheet is
+   * the steps card itself (it tucks away). Never over Pause or any other sheet: that would replace it.
+   */
+  function canHide() {
+    const card = G.RitualUI.active;
+    const cardOpen = Boolean(card && !card.closed && !card.minimised);
+    return !G.UI.modalOpen() || cardOpen;
   }
 
   /** Handle a named action from a button, shortcut or test hook. */
@@ -173,13 +189,18 @@
     if (name === "pause") return dock("pause");
     if (name.indexOf("tile") === 0) return tileKey(Number(name.slice(4)) - 1);
     if (name === "camLeft" || name === "camRight") return nudgeCamera(name === "camLeft" ? -1 : 1);
+    if (name === "map" && mapOpen()) return G.UI.closeSheet("map-key");
+    if (name === "hide") return void (canHide() && G.RitualUI.toggleMin()); // H or -: tuck the steps card away / bring it back
     if (G.UI.modalOpen() && name !== "mute") return;
     if (name === "interact") return G.Interact.activate(S().target);
     if (name === "mute") return setMuted(!G.Audio.isMuted());
+    if (name === "rest") return G.Services.tiredRest();
     if (name === "jump")
       return G.Vehicles.mounted()
         ? G.Vehicles.horn()
-        : canJump() && G.Player.jump(S().player, G.Audio);
+        : G.Mounts.riding()
+          ? G.MountRide.pat()
+          : canJump() && G.Player.jump(S().player, G.Audio);
     if (["missions", "map", "pray", "bag", "rites"].indexOf(name) !== -1) dock(name);
   }
 

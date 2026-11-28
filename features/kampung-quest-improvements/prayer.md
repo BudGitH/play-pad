@@ -13,7 +13,7 @@
 
 **Raka'at and order.** Plan = takbir, 2 x (qiyam, ruku, itidal, sujud, julus, sujud), final tasyahud, salam right, salam left (16 steps; no tasyahud awal, no qunut). Built by `KQ.Sim.Prayer.rakaatPlan("sunat")`; the UI never re-implements it.
 
-**Interaction priority** (`KQ.Sim.Missions.pickTarget`): the hall-wide prompt is a `fallback` object. A neighbour who can be talked to now always beats it; every real object (taps, counters, pick-ups) is found first and the fallback only appears when none is in reach.
+**Interaction priority** (`KQ.Sim.Actions`, formerly `Missions.pickTarget`): the hall-wide prompt is a `fallback` object. A neighbour who can be talked to now always beats it; every real object (taps, counters, pick-ups) is found first and the fallback only appears when none is in reach.
 
 **Note for the owner (religious accuracy).** Voluntary prayers without a specific cause are discouraged (makruh) in the Shafi'i school after Subuh until sunrise, after Asar until Maghrib and at the zenith. Per the request the game offers it at any time and does not model those windows; say if you want the prompt to hide in them.
 

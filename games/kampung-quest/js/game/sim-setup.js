@@ -28,9 +28,14 @@
       needs: S.Needs.create(),
       hints: S.Hints.create(),
       economy: S.Economy.create(),
-      missions: S.Missions.create({ isPaused: () => prayer.isBlockingMissions() }),
+      missions: S.Missions.create({
+        isPaused: () => prayer.isBlockingMissions(),
+        // a mission that needs a place this world does not have (a pony ride, a camel yard) is not offered
+        hasPoi: (id) => !G.S || !G.S.world || Boolean(G.S.world.pois && G.S.world.pois[id]),
+      }),
       outfit: Object.assign({}, state.outfit),
       wardrobe: Object.assign({}, state.wardrobe),
+      hero: KQ.Sim.Hero.sanitize(state.hero),
       pos: safePos(state.pos),
       settings: Object.assign({}, state.settings),
     };

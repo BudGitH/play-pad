@@ -87,6 +87,7 @@
     const d = F.dims(spec);
     const mat = F.plasticMaterial(spec.id, F.makeAtlas(spec));
     const p = partsFor(spec, d);
+    F.fitLegs(d, spec);
     const group = new THREE.Group();
     group.name = "figure-" + spec.id;
     const rig = { spec: spec, dims: d, material: mat };
@@ -99,6 +100,7 @@
     rig.head = node("head", rig.torso, 0, d.torsoH + d.neckH, 0, p.head, mat);
     rig.head.scale.setScalar(d.headScale);
     rig.accessory = node("headPiece", rig.head, 0, 0, 0, F.headPieceGeometry(spec.head), mat);
+    fitHead(rig, spec.head);
     buildArm(rig, "L", p, mat, d);
     buildArm(rig, "R", p, mat, d);
     group.userData.rig = rig;
@@ -106,10 +108,87 @@
     return group;
   };
 
+  /** Half the depth of the lower leg for the kneeling poses: a long skirt's hem is deeper than a leg. */
+  F.SKIRT_KNEEL_HALF = 0.092;
+  /** Record what the kneeling poses need to know about the legs of a spec (dims are per rig). */
+  F.fitLegs = function (d, spec) {
+    d.kneelHalf = spec.skirt && spec.skirt.lower ? F.SKIRT_KNEEL_HALF : 0;
+  };
+
   /** Swap the sculpted head piece (e.g. a new haircut from the barber). */
   F.setHeadPiece = function (rig, headSpec) {
     rig.accessory.geometry = F.headPieceGeometry(headSpec);
+    fitHead(rig, headSpec);
   };
+
+  const contourCache = new WeakMap();
+  /**
+   * The head piece's outline in the head's side plane: for directions from straight ahead (+z) over
+   * the crown to straight behind, the furthest point [y, z] of the piece (z mirrored when the piece is
+   * worn back to front). The sujud solver (F.PoseSolve.sujudBend) uses it so a hood, a songkok or
+   * a turned cap rests on the floor instead of sinking into it.
+   */
+  F.headContour = function (geo, mirror) {
+    const key = contourCache.get(geo);
+    if (key && key[mirror ? 1 : 0]) return key[mirror ? 1 : 0];
+    const pos = geo.attributes.position;
+    const out = [];
+    for (let k = 0; k <= 16; k += 1) {
+      const a = -0.35 + (k / 16) * (Math.PI + 0.35);
+      const dy = Math.sin(a);
+      const dz = Math.cos(a) * (mirror ? -1 : 1);
+      let best = -Infinity;
+      let pt = null;
+      for (let i = 0; i < pos.count; i += 1) {
+        const v = pos.getY(i) * dy + pos.getZ(i) * dz;
+        if (v > best) (best = v), (pt = [pos.getY(i), pos.getZ(i) * (mirror ? -1 : 1)]);
+      }
+      out.push(pt);
+    }
+    const entry = key || [null, null];
+    entry[mirror ? 1 : 0] = out;
+    contourCache.set(geo, entry);
+    return out;
+  };
+
+  /**
+   * A hood's shoulder drape rides on the torso, not the head (one extra mesh, only while a tudung or
+   * hijab is worn; removed from the rig otherwise so it costs nothing).
+   */
+  function fitDrape(rig, headSpec) {
+    const geo = F.headDrapeGeometry(headSpec);
+    if (!geo) {
+      if (rig.drape && rig.drape.parent) rig.drape.parent.remove(rig.drape);
+      return;
+    }
+    const d = rig.dims;
+    if (!rig.drape) {
+      rig.drape = node(
+        "headDrape",
+        rig.torso,
+        0,
+        d.torsoH + d.neckH,
+        0,
+        geo,
+        rig.accessory.material,
+      );
+      rig.drape.scale.setScalar(d.headScale);
+    }
+    rig.drape.geometry = geo;
+    rig.drape.material = rig.accessory.material;
+    if (!rig.drape.parent) rig.torso.add(rig.drape);
+  }
+
+  /** Record what the poses need to know about the head piece (a peaked cap, its outline for sujud). */
+  function fitHead(rig, headSpec) {
+    fitDrape(rig, headSpec);
+    rig.headSpec = headSpec;
+    rig.capPeak = Boolean(headSpec && headSpec.type === "cap");
+    rig.capTurned = false;
+    const prayerHead = rig.capPeak ? Object.assign({}, headSpec, { reversed: true }) : null;
+    const geo = prayerHead ? F.headPieceGeometry(prayerHead) : rig.accessory.geometry;
+    rig.dims.headContour = F.headContour(geo, false);
+  }
 
   /** Draw calls and triangles of one built figure (for budgets / dev overlays). */
   F.stats = function (group) {

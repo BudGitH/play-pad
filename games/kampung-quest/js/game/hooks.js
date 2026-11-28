@@ -97,9 +97,11 @@
       hints: Object.assign(sim.hints.snapshot(), { foodMarker: Boolean(G.Nudge.markerPos()) }),
       outfit: sim.outfit,
       wardrobe: sim.wardrobe,
+      hero: sim.hero,
       muted: G.Audio.isMuted(),
       quality: s.quality,
       target: targetInfo(s.target),
+      targets: (s.targets || []).map(targetInfo), // the chooser: first = the big button, then tiles 2 and 3
       ui: uiInfo(),
       audio: G.Audio.debug(),
       reduced: G.Settings.reduced(),
@@ -195,9 +197,21 @@
     crowd: () => (S() && S().crowd ? G.Crowd.debug(S().crowd) : null),
     holy: () => (KQ.Holy && KQ.Holy.debug ? KQ.Holy.debug() : null),
     greetings: () => G.Greetings.debug(),
+    map: () => G.BigMap.debug(),
     vehicles: () => G.Vehicles.debug(),
+    mounts: () => G.Mounts.debug(),
+    mountAct: (id) => G.Mounts.press(id),
     voice: () => G.Voice.debug(),
     greetChance: (p) => G.Greetings.setChance(p),
+    hi: () => G.Hi.debug(),
+    kidChance: (p) => G.Hi.setKidChance(p),
+    events: () => G.WorldEvents.debug(),
+    say: () => (started() ? G.Say.log() : []), // the action hints spoken so far (G.Say)
+    forceEvent: (id) => (started() ? G.WorldEvents.force(id) : false),
+    stopEvent: () => G.WorldEvents.stop(),
+    lifeChip: () => G.LifeChip.debug(),
+    steps: () => G.MissionSteps.debug(),
+    actors: () => ({ onStage: G.Actors.count(), built: G.Actors.built() }),
     crowdPeople: () => (S() && S().crowd ? G.Crowd.positions(S().crowd) : []),
     step: (ms) => (started() ? G.Loop.step(ms) : 0),
     setMinute: (m) => (started() ? setMinute(m) : undefined),
@@ -212,6 +226,7 @@
     input: (action, on) => G.Input.virtual(action, on),
     forcePrayer,
     ritual: () => G.RitualFlow.debug(),
+    card: () => G.RitualUI.debug(),
     openRite: (rite) => G.RitualFlow.open(rite),
     wardrobe: () => G.Wardrobe.debug(),
     openWardrobe: () => G.Wardrobe.open(),
@@ -221,6 +236,8 @@
     start(fresh) {
       const b = G.BootUI.refs;
       (fresh ? b.newGame : b.start).click();
+      if (fresh && !started()) b.newGame.click(); // the first press only put up "Who are you?"
     },
+    hero: () => G.Hero.debug(),
   };
 })((window.KQ = window.KQ || {}));

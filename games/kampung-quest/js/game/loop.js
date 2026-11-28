@@ -64,7 +64,9 @@
     G.RitualFlow.update(dt); // auto-walk and the walked-round counter move the hero before the usual step
     const free = !G.UI.modalOpen() && !s.paused;
     const move = free ? G.Input.move() : { x: 0, y: 0, mag: 0, run: false };
-    if (!G.Vehicles.update(dt, move, free)) {
+    const driving = G.Vehicles.update(dt, move, free);
+    const riding = G.Mounts.update(dt, move, free && !driving); // camels, horses, ponies (AC-P5..P7)
+    if (!driving && !riding) {
       G.Player.update(P, dt, move, {
         yaw: G.Camera.state.yaw,
         speedFactor: s.sim.needs.speedFactor(),
@@ -86,6 +88,9 @@
     });
     G.Crowd.update(s.crowd, dt, { x: P.pos.x, z: P.pos.z }, crowdContext(s));
     G.Greetings.update(s, dt, P);
+    G.Hi.update(dt, P.pos);
+    G.WorldEvents.update(dt);
+    G.MissionSteps.update(dt);
     G.Voice.update(dt);
     return move;
   }
@@ -94,20 +99,24 @@
   function stepUi(dt) {
     const s = S();
     s.uiT += dt;
-    const target = G.Interact.find();
-    s.target = target;
-    G.Interact.place(target, s.camera, s.size.w, s.size.h);
+    const targets = G.Interact.find();
+    s.targets = targets;
+    s.target = targets[0] || null;
+    G.ActionBar.render(targets);
+    G.ActionBar.point(s.target || G.Interact.far(), s.camera, s.size.w, s.size.h);
     G.PrayerFlow.update(dt);
     G.Nudge.update(dt);
     if (s.uiT >= 0.12 || s.hudDirty) {
       s.uiT = 0;
       s.hudDirty = false;
       G.HudView.update(s.sim, G.Audio.isMuted());
+      G.MapTarget.check(s);
       refreshMarkers();
       G.Collectibles.sync(s.collect, s.sim.missions.progress(), s.sim.missions.isPausedNow());
       G.MissionFlow.syncStars();
       G.MissionFlow.checkGoto();
       drawMinimap();
+      G.BigMap.refresh();
     }
   }
 
@@ -120,8 +129,11 @@
       mission: G.MissionFlow.targetPos(),
       mosque: mosque && { x: mosque.x, z: mosque.z },
       food: G.Nudge.markerPos(),
+      goto: G.MapTarget.pos(s),
       reduced: G.Settings.reduced(),
     };
+    if (s.markerView.goto)
+      s.markerView.gotoY = s.world.heightAt(s.markerView.goto.x, s.markerView.goto.z);
   }
 
   /** What the radar / map draws for a span in metres: centred on the hero, with heading and blips (map-markers.js). `opts`: { rotate, labels }. */
@@ -299,6 +311,23 @@
   /* ------------------------------ resize / quality ------------------------------ */
 
   /**
+   * The title screen's orbiting backdrop renders at this share of the play resolution: it sits
+   * behind a modal card, and a full-size software-GL frame there delays the player's press of
+   * Start (notes-ipad.md). `launch` resizes back to 1 as soon as the game starts.
+   */
+  const TITLE_SCALE = 0.5;
+
+  /**
+   * The pixel-ratio cap for the device: 1.5 on phones; on tablets (iPads) 1 / 1.25 / 1.5 by tier,
+   * since an iPad screen has two to three times a phone's CSS pixels at the same ratio (AC-P21).
+   * No cap beyond the tier's own on desktop.
+   */
+  function touchCap(tier) {
+    if (G.Env.tablet) return { low: 1, med: 1.25, high: 1.5 }[tier] || 1;
+    return G.Env.coarse ? 1.5 : Infinity;
+  }
+
+  /**
    * Fit the renderer, camera and pixel ratio to the stage size (the ratio is capped by the quality
    * tier and on touch).
    */
@@ -309,7 +338,7 @@
     const w = Math.max(2, box.clientWidth);
     const h = Math.max(2, box.clientHeight);
     const hints = s.world ? s.world.qualityHints(s.quality) : { pixelRatio: 1 };
-    const cap = G.Env.coarse ? Math.min(1.5, hints.pixelRatio) : hints.pixelRatio;
+    const cap = Math.min(hints.pixelRatio, touchCap(s.quality)) * (s.started ? 1 : TITLE_SCALE);
     s.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, cap));
     s.renderer.setSize(w, h, false);
     s.size = { w, h };

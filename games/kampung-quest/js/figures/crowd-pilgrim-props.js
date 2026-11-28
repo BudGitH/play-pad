@@ -42,6 +42,7 @@
     ]);
   }
 
+  /** A baby carried in arms: just the small round head, tinted by the caller. */
   function babyHead() {
     return G.merge([blob([0.052, 0.052, 0.052], [0, 0.135, 0.012], WHITE)]);
   }
@@ -73,6 +74,7 @@
     ]);
   }
 
+  /** The top box of a luggage cart (the load a porter pushes). */
   function cartTop() {
     return G.merge([box(0.42, 0.22, 0.52, WHITE, [0, 0.33, 0.05])]);
   }
@@ -101,6 +103,7 @@
     ]);
   }
 
+  /** The head of the person sitting in the wheelchair. */
   function wcHead() {
     return G.merge([blob([0.085, 0.095, 0.085], [0, 0.7, -0.04], WHITE)]);
   }
@@ -112,11 +115,17 @@
 
   /** Gulf head cloth: a dome with a drape down the back and sides (tinted white or red-checked red). */
   function hatGhutra() {
+    const H = F.CrowdHood;
+    const TAU = Math.PI * 2;
+    const cloth = [0.136, -0.03, 0.13, 0.04, 0.128, 0.12, 0.12, 0.165, 0.1, 0.2, 0.06, 0.226];
+    cloth.push(0, 0.234);
+    const brow = [0.1035, 0.15, 0.119, 0.16, 0.112, 0.2, 0.06, 0.229, 0, 0.237];
+    const side = H.partial(cloth, 18, 1.05, TAU - 2.1);
+    const agal = new THREE.TorusGeometry(0.111, 0.008, 6, 20);
     return [
-      blob([0.125, 0.09, 0.13], [0, 0.155, 0], WHITE),
-      box(0.26, 0.2, 0.04, WHITE, [0, 0.07, -0.105]),
-      box(0.03, 0.15, 0.13, WHITE, [-0.118, 0.1, -0.03]),
-      box(0.03, 0.15, 0.13, WHITE, [0.118, 0.1, -0.03]),
+      G.paint(H.tuck(side, 1.05, TAU - 2.1, 0.3, 0.02, 0.1655), WHITE),
+      G.paint(H.tuck(H.partial(brow, 8, -1.05, 2.1), -1.05, 2.1, 0.26, 0.14, 0.18), WHITE),
+      G.place(G.paint(agal, "#1f1b1b"), [0, 0.19, 0], [Math.PI / 2, 0, 0]), // the dark cord ring stays dark
     ];
   }
 
@@ -136,9 +145,12 @@
     ];
   }
 
-  /** A Central Asian skullcap (doppi): a low square-sided cap. */
+  /**
+   * A Central Asian skullcap (doppi): a low, eight-sided cap. Its flat sides stay outside the head
+   * (apothem 0.108 > head radius 0.105), so the head never shows through them.
+   */
   function hatDoppi() {
-    return [cyl(0.085, 0.108, 0.07, WHITE, [0, 0.175, 0], [0, Math.PI / 4, 0], 4)];
+    return [cyl(0.1, 0.117, 0.07, WHITE, [0, 0.192, 0], [0, Math.PI / 8, 0], 8)];
   }
 
   /** The extra mesh geometries by name (merged into the crowd kit's list on first use). */

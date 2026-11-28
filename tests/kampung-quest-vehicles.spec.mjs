@@ -6,7 +6,7 @@
 // Run: npx playwright test tests/kampung-quest-vehicles.spec.mjs
 import { test, expect, devices } from "@playwright/test";
 
-const GAME = "/games/kampung-quest/index.html?still=1&autoq=0&q=low";
+const GAME = "/games/kampung-quest/index.html?still=1&autoq=0&q=low&enter=0";
 const SHOTS = process.env.KQ_SHOTS ? "features/kampung-quest-haramain/shots/" : null;
 /** A device descriptor without `defaultBrowserType` (only Chromium is installed; the engine is the same). */
 function device(name) {
@@ -118,12 +118,12 @@ test("the kampung's cars, bicycles and scooters are all vehicles, each in a free
     });
   });
   expect(stuck, "no parked vehicle inside a wall, prop or another vehicle").toEqual([]);
-  // each parked vehicle is solid: a collider the hero cannot walk through
+  // each parked vehicle is solid: ONE oriented-box collider the size of its body (AC-P12)
   const solid = await kq(
     page,
     () => window.KQ.Game.S.world.colliders.filter((c) => c.vehicle).length,
   );
-  expect(solid).toBe(52);
+  expect(solid).toBe(28); // 26 cars, bikes and scooters + the lorry + the moving bus (bus.js)
 });
 
 test("beside a car the prompt says Drive, beside a bicycle Ride, and far away there is none", async () => {
@@ -222,7 +222,7 @@ test("a no-drive zone stops the car (and the bicycle) with a friendly line", asy
   await standAt(page, -22, 4.1, Math.PI);
   await kq(page, () => window.__kq.interact());
   await input(page, "up", true);
-  await step(page, 6000);
+  await step(page, 4500); // the car is faster now (AC-P13): its "let's walk" toast (2.8 s) must still be up
   const d = await veh(page);
   const car = d.list.find((v) => v.id === "car1");
   expect(d.blocked).toBeGreaterThan(0);
@@ -331,7 +331,7 @@ test("a vehicle left far away goes back to its parking spot", async () => {
   await step(page, 2500);
   const home = (await veh(page)).list.find((v) => v.id === "car1");
   expect(home.x).toBeCloseTo(-22, 0);
-  expect(home.z).toBeCloseTo(2.1, 0);
+  expect(home.z).toBeCloseTo(2.6, 1);
 });
 
 test("one vehicle adds only a few draw calls, and the whole street stays inside the budget", async () => {
@@ -378,9 +378,9 @@ test("phone landscape (touch): Drive, Exit and Honk fit, and the joystick drives
   await expect(talk).toBeInViewport({ ratio: 1 });
   expect((await talk.boundingBox()).height).toBeGreaterThanOrEqual(48);
   await talk.tap();
+  await step(ph, 2000); // the get-in scene (vehicle-enter.js) plays first
   expect((await veh(ph)).mounted).toBe("car1");
-  await step(ph, 300);
-  await expect(talk).toContainText("Exit");
+  await expect(talk).toContainText("Get off");
   await expect(talk).toBeInViewport({ ratio: 1 });
   const jump = ph.locator("#kqJump");
   await expect(jump).toContainText("Honk");

@@ -1,6 +1,12 @@
 // Kampung Quest — sculpted head pieces (separate, swappable meshes like toy hair / hat pieces):
-// cap (with a crescent badge), songkok, kopiah, tudung (crown + face frame + back shell + shoulder drape),
-// and short / bun / quiff hair. All original sculpts — no spikes, no quills.
+// cap (with a crescent badge), songkok, kopiah, and the fitted hoods (tudung, the girl hero's hijabs).
+// Hair pieces live in headpieces-hair.js and register into the same table. All original sculpts — no
+// spikes, no quills.
+// Fit rules (checked by features/kampung-quest-playability/figures/audit.mjs and
+// tests/kampung-quest-figures.spec.mjs): every piece is measured against the real head lathe
+// (F.headProfile: radius 0.105, top 0.19 in head units). Hats sit 2-6 mm off the head with their
+// lower rim no more than 3 mm away (no floating brims, no head showing through); hoods frame a
+// rounded face opening whose lip tucks into the head; lathes use 48 segments and smoothed seams.
 (function (KQ) {
   "use strict";
   const F = (KQ.Figures = KQ.Figures || {});
@@ -8,14 +14,6 @@
   const TAU = Math.PI * 2;
   const pieceCache = {};
 
-  /**
-   * A half-sphere dome of radius r raised to height y and squashed by sy (the base of caps and
-   * hair).
-   */
-  function dome(r, y, sy, hex, segs) {
-    const g = new THREE.SphereGeometry(r, segs || 26, 9, 0, TAU, 0, Math.PI / 2);
-    return G.place(G.paint(g, hex), [0, y, 0], null, [1, sy, 1]);
-  }
   /**
    * A small ellipsoid of size s at position p (turned by r), used for hair tufts, buns and buttons.
    */
@@ -44,49 +42,68 @@
     return G.paint(G.smoothNormals(new THREE.ExtrudeGeometry(s, opts)), hex);
   }
 
-  /** Baseball-style cap: crown, band, peak, button and a small crescent badge on the front. */
+  /** A lathe with smooth normals across its back seam (no crease line down the back of a hood or cap). */
+  function smoothLathe(pairs, segs, phiStart, phiLength) {
+    const g = G.lathe(pairs, segs, phiStart, phiLength);
+    g.computeVertexNormals();
+    return G.smoothNormals(g);
+  }
+
+  /** A closed ring (a band round a hat) between radii r0..r1 and heights y0..y1. */
+  function ring(r0, r1, y0, y1, hex) {
+    const g = G.lathe([r0, y0, r1, y0, r1, y1, r0, y1, r0, y0], 48);
+    g.computeVertexNormals();
+    return G.paint(g, hex);
+  }
+
+  /**
+   * A dome profile [r, y ...] from (r, y0) curving up to the crown at y0 + h (a quarter ellipse),
+   * appended to `out`.
+   */
+  function domeProfile(out, r, y0, h, steps) {
+    for (let i = 1; i <= steps; i += 1) {
+      const a = (i / steps) * (Math.PI / 2);
+      out.push(i === steps ? 0 : r * Math.cos(a), y0 + h * Math.sin(a));
+    }
+    return out;
+  }
+
+  /**
+   * Baseball-style cap: one shell (snug lower rim, round crown), a band, the peak, a button and a
+   * small crescent badge on the front, plus short hair at the nape.
+   */
   function cap(hd) {
-    const list = [dome(0.119, 0.165, 0.62, hd.colour)];
-    list.push(
-      G.place(
-        G.paint(new THREE.CylinderGeometry(0.119, 0.118, 0.024, 26, 1), hd.band || hd.colour),
-        [0, 0.155, 0],
-      ),
+    const shell = domeProfile([0.1075, 0.142, 0.1105, 0.166], 0.1105, 0.166, 0.068, 10);
+    const list = [G.paint(smoothLathe(shell, 48), hd.colour)];
+    list.push(ring(0.1092, 0.1125, 0.143, 0.165, hd.band || hd.colour));
+    const front = [];
+    const peak = new THREE.CylinderGeometry(0.09, 0.09, 0.011, 24, 1, false, -Math.PI / 2, Math.PI);
+    front.push(
+      G.place(G.paint(peak, hd.peak || hd.colour), [0, 0.15, 0.058], [0.13, 0, 0], [1, 1, 1.36]),
     );
-    const peak = new THREE.CylinderGeometry(
-      0.092,
-      0.092,
-      0.011,
-      20,
-      1,
-      false,
-      -Math.PI / 2,
-      Math.PI,
-    );
-    list.push(
-      G.place(G.paint(peak, hd.peak || hd.colour), [0, 0.148, 0.074], [0.13, 0, 0], [1, 1, 1.28]),
-    );
-    list.push(blob([0.014, 0.008, 0.014], [0, 0.238, 0], null, hd.colour));
     if (hd.badge)
-      list.push(G.place(crescentBadge(0.022, hd.badge), [0.0, 0.196, 0.1], [-0.55, 0, 0]));
-    if (hd.hair) list.push(blob([0.104, 0.062, 0.07], [0, 0.128, -0.052], null, hd.hair));
+      front.push(G.place(crescentBadge(0.021, hd.badge), [0.0, 0.19, 0.0995], [-0.6, 0, 0]));
+    // worn peak-back (hd.reversed, for the prayer postures): the peak and badge turn, the hair stays
+    if (hd.reversed) front.forEach((g) => G.place(g, null, [0, Math.PI, 0]));
+    list.push(...front, blob([0.014, 0.008, 0.014], [0, 0.233, 0], null, hd.colour));
+    if (hd.hair) list.push(F.napeHair(hd.hair, 0.146));
     return list;
   }
 
-  /** The songkok: a lathed flat-topped cap, with an optional hair tuft behind it. */
+  /** The songkok: a lathed flat-topped cap (slightly oval), with short hair at the nape. */
   function songkok(hd) {
-    const prof = [0, 0.146, 0.114, 0.146, 0.114, 0.2, 0.111, 0.214, 0.1, 0.221, 0, 0.221];
-    const list = [G.place(G.paint(G.lathe(prof, 28), hd.colour), null, null, [1, 1, 0.93])];
-    if (hd.hair) list.push(blob([0.106, 0.05, 0.07], [0, 0.138, -0.048], null, hd.hair));
+    const prof = [0, 0.146, 0.111, 0.146, 0.1125, 0.2, 0.11, 0.214, 0.099, 0.221, 0, 0.221];
+    const list = [G.place(G.paint(smoothLathe(prof, 48), hd.colour), null, null, [1, 1, 0.965])];
+    if (hd.hair) list.push(F.napeHair(hd.hair, 0.15));
     return list;
   }
 
   /** The kopiah: a lathed cap with three thin trim rings in the accent colour. */
   function kopiah(hd) {
-    const prof = [0, 0.146, 0.113, 0.146, 0.113, 0.198, 0.106, 0.214, 0.092, 0.222, 0, 0.222];
-    const list = [G.paint(G.lathe(prof, 28), hd.colour)];
-    [0.163, 0.183, 0.203].forEach(function (y) {
-      const ring = new THREE.TorusGeometry(0.1135, 0.0022, 4, 40);
+    const prof = [0, 0.146, 0.1095, 0.146, 0.1105, 0.198, 0.104, 0.214, 0.09, 0.222, 0, 0.222];
+    const list = [G.paint(smoothLathe(prof, 48), hd.colour)];
+    [0.163, 0.183, 0.201].forEach(function (y) {
+      const ring = new THREE.TorusGeometry(y > 0.2 ? 0.1085 : 0.1105, 0.0022, 4, 48);
       list.push(G.place(G.paint(ring, hd.accent || hd.colour), [0, y, 0], [Math.PI / 2, 0, 0]));
     });
     return list;
@@ -129,100 +146,140 @@
     return g;
   }
 
-  /** Tudung: one sculpted hood (crown, face frame, under-chin) flowing into a shoulder drape. */
+  /**
+   * The hoods: [hem, fall] of each one's shoulder drape (how low it reaches, how far it slopes
+   * forward-down over the chest). The drape is its own mesh on the torso (F.headDrapeGeometry,
+   * placed by build.js), so it stays on the shoulders when the head turns or nods, and only the
+   * hood itself moves with the head: no gap at the neck, no drape swinging through the shoulders.
+   */
+  const DRAPES = {
+    tudung: [-0.095, 0.5],
+    tudung_kid: [-0.072, 0.3],
+    hijab: [-0.085, 0.42],
+    hijab_sport: [-0.06, 0.25],
+    hijab_flower: [-0.085, 0.42],
+  };
+
+  /** Tudung: one sculpted hood (crown, face frame, under-chin) over a shoulder drape. */
   function tudung(hd) {
-    const kid = hd.type === "tudung_kid";
-    const hem = kid ? -0.072 : -0.095;
-    const prof = [
-      0.13,
-      hem,
-      0.15,
-      hem + 0.012,
-      0.146,
-      hem * 0.5,
-      0.128,
-      -0.012,
-      0.119,
-      0.015,
-      0.121,
-      0.06,
-    ];
-    prof.push(0.124, 0.12, 0.122, 0.165, 0.112, 0.205, 0.088, 0.228, 0.045, 0.24, 0, 0.243);
-    const g = carve(G.lathe(densify(prof, 0.024), 32), 0.98, 0.002, 0.174, 0.088);
+    return hood(hd);
+  }
+
+  /**
+   * The fitted hood's profile: snug over the head (8-11 mm off it, the cloth's thickness), closed
+   * under the chin, its lower edge tucked inside the drape.
+   */
+  const HOOD_PROFILE = [0.118, -0.03, 0.121, -0.016, 0.116, 0.012, 0.1135, 0.06, 0.115, 0.118];
+  HOOD_PROFILE.push(0.1135, 0.162, 0.105, 0.196, 0.085, 0.219, 0.045, 0.231, 0, 0.234);
+
+  /** Squash the part of a hood or drape below the jaw front to back (the toy's shoulders are flat). */
+  function squashLow(g, fall, hem) {
     const pos = g.attributes.position;
     for (let i = 0; i < pos.count; i++) {
       const y = pos.getY(i);
       if (y >= 0) continue;
       const z = pos.getZ(i) * 0.82;
-      pos.setXYZ(i, pos.getX(i), y - Math.max(0, z) * (kid ? 0.3 : 0.5) * (y / hem), z);
+      pos.setXYZ(i, pos.getX(i), y - Math.max(0, z) * fall * (y / hem), z);
     }
     g.computeVertexNormals();
-    const list = [G.paint(g, hd.colour)];
-    if (hd.accent) list.push(blob([0.012, 0.012, 0.007], [0, 0.004, 0.1], null, hd.accent));
-    if (hd.under)
-      list.push(
-        G.place(
-          G.paint(new THREE.TorusGeometry(0.103, 0.007, 5, 36, 2.2), hd.under),
-          [0, 0.166, 0],
-          [Math.PI / 2, 0, 0.47],
-        ),
-      );
+    return G.smoothNormals(g);
+  }
+
+  /** The hood itself (moves with the head); its drape is F.headDrapeGeometry. */
+  function hood(hd) {
+    const g = G.lathe(densify(HOOD_PROFILE, 0.012), 56);
+    carve(g, 0.9, 0.026, 0.17, 0.088); // a rounded face opening that frames the printed face
+    const list = [G.paint(squashLow(g, 0, -1), hd.colour)];
+    if (hd.accent) list.push(blob([0.011, 0.011, 0.006], [0, -0.002, 0.113], null, hd.accent));
+    if (hd.under) list.push(underScarf(hd.under));
     return list;
   }
 
-  /** Short sculpted hair: a carved cap with a hairline; options add a side-part fringe, a bun or a quiff. */
-  function hair(hd) {
-    const prof = [
-      0.104, 0.05, 0.113, 0.07, 0.116, 0.12, 0.115, 0.16, 0.106, 0.2, 0.082, 0.226, 0.04, 0.238, 0,
-      0.24,
-    ];
-    const g = carve(G.lathe(densify(prof, 0.018), 30), 1.3, -0.12, 0.146, 0.092);
-    g.computeVertexNormals();
-    const list = [G.paint(g, hd.colour)];
-    list.push(blob([0.085, 0.024, 0.045], [0.018, 0.152, 0.078], [0.2, 0, -0.16], hd.colour)); // side-part fringe
-    if (hd.type === "hair_bun")
-      list.push(blob([0.052, 0.048, 0.05], [0, 0.2, -0.088], null, hd.colour));
-    if (hd.type === "hair_quiff")
-      list.push(blob([0.075, 0.03, 0.062], [0.012, 0.214, 0.058], [-0.32, 0, -0.18], hd.colour));
-    if (hd.accent) list.push(blob([0.01, 0.01, 0.03], [0, 0.205, -0.104], null, hd.accent)); // hair pin
+  /** The thin under-scarf line across the brow, inside the face opening. */
+  function underScarf(hex) {
+    const t = new THREE.TorusGeometry(0.1052, 0.0045, 6, 40, 1.7);
+    return G.place(G.paint(t, hex), [0, 0.166, 0], [Math.PI / 2, 0, Math.PI / 2 - 0.85]);
+  }
+
+  /** The girl hero's plain hijab: a snug hood to the shoulders with a little pin at the chin. */
+  function hijab(hd) {
+    return hood(hd);
+  }
+
+  /** A sporty hijab: shorter and snug, with a band hugging the crown in the second colour. */
+  function hijabSport(hd) {
+    const list = hood({ type: "hijab", colour: hd.colour });
+    const band = new THREE.TorusGeometry(0.1158, 0.0055, 6, 56);
+    list.push(G.place(G.paint(band, hd.accent || hd.colour), [0, 0.152, -0.006], [1.48, 0, 0]));
     return list;
   }
 
-  /** A trim: the same carved hair, but only a skin-thick coat close to the head (no fringe). */
-  function buzz(hd) {
-    const prof = [
-      0.104, 0.05, 0.108, 0.07, 0.109, 0.12, 0.108, 0.16, 0.101, 0.2, 0.079, 0.224, 0.04, 0.234, 0,
-      0.236,
-    ];
-    const g = carve(G.lathe(densify(prof, 0.018), 30), 1.3, -0.12, 0.146, 0.092);
-    g.computeVertexNormals();
-    return [G.paint(g, hd.colour)];
+  /** A five-petal flower of little blobs on the hood surface at angle `a` from the face, height y. */
+  function flower(a, y, r, petal, centre) {
+    const R = 0.116;
+    const p = [Math.sin(a) * R, y, Math.cos(a) * R];
+    const list = [];
+    for (let i = 0; i < 5; i += 1) {
+      const b = (i / 5) * TAU;
+      const q = [
+        p[0] + Math.cos(b) * r * Math.cos(a),
+        y + Math.sin(b) * r,
+        p[2] - Math.cos(b) * r * Math.sin(a),
+      ];
+      list.push(blob([r * 0.8, r * 0.8, r * 0.45], q, [0, a, 0], petal));
+    }
+    list.push(blob([r * 0.55, r * 0.55, r * 0.5], p, [0, a, 0], centre));
+    return list;
   }
 
-  /** A shave: nothing visible, only a tiny speck hidden inside the head so the piece is never empty. */
-  function bald(hd) {
-    return [blob([0.004, 0.004, 0.004], [0, 0.05, 0], null, hd.colour)];
+  /** A flower hijab: the plain one with a cluster of little flowers on the side of the hood. */
+  function hijabFlower(hd) {
+    const list = hood({ type: "hijab", colour: hd.colour });
+    const petal = hd.accent || "#ffffff";
+    const centre = "#f2c230";
+    return list.concat(
+      flower(1.12, 0.15, 0.014, petal, centre),
+      flower(1.32, 0.112, 0.01, petal, centre),
+      flower(0.98, 0.186, 0.009, petal, centre),
+    );
   }
 
   const PIECES = {
-    hair_buzz: buzz,
-    hair_bald: bald,
     cap: cap,
     songkok: songkok,
     kopiah: kopiah,
     tudung: tudung,
     tudung_kid: tudung,
-    hair_short: hair,
-    hair_bun: hair,
-    hair_quiff: hair,
+    hijab: hijab,
+    hijab_sport: hijabSport,
+    hijab_flower: hijabFlower,
   };
-  F.HEAD_PIECES = Object.keys(PIECES);
+  F.HEAD_PIECE_FN = PIECES; // headpieces-hair.js adds the hair pieces
+  F.HeadKit = { blob, densify, carve, smoothLathe };
+
+  const drapeCache = {};
+  /**
+   * The shoulder drape of a hood (tudung, hijab), or null for every other piece. Head units with the
+   * head's origin (the top of the neck): build.js puts it on the torso at the neck, scaled like the
+   * head. Its top edge tucks inside the hood.
+   */
+  F.headDrapeGeometry = function (hd) {
+    const d = hd && DRAPES[hd.type];
+    if (!d) return null;
+    const key = hd.type + "|" + hd.colour;
+    if (drapeCache[key]) return drapeCache[key];
+    const hem = d[0];
+    const prof = [0.15, hem, 0.163, hem + 0.012, 0.153, hem * 0.5, 0.13, -0.02, 0.117, 0.004];
+    const g = squashLow(G.lathe(densify(prof, 0.012), 56), d[1], hem);
+    drapeCache[key] = G.merge([G.paint(g, hd.colour)]);
+    return drapeCache[key];
+  };
 
   /** Geometry for a head-piece spec { type, colour, ... } (cached by its content). Origin = head origin. */
   F.headPieceGeometry = function (hd) {
     const key = JSON.stringify(hd);
     if (pieceCache[key]) return pieceCache[key];
-    const make = PIECES[hd.type] || hair;
+    const make = PIECES[hd.type] || PIECES.hair_short;
     pieceCache[key] = G.merge(make(hd));
     return pieceCache[key];
   };

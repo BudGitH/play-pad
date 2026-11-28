@@ -116,11 +116,11 @@ test("a real conversation: talking to Nenek speaks her line in her own voice", a
     k.interact();
     return document.querySelector(".kq-bubble-text").textContent;
   });
-  const said = await spoken(page);
-  expect(said.length).toBeGreaterThanOrEqual(1);
-  expect(said[0].text).toBe(text);
-  expect(said[0].pitch).toBeCloseTo(1.05, 2);
-  expect(said[0].rate).toBeCloseTo(0.8, 2);
+  // the one-time spoken hint for the Talk button ("Tap the big button to talk.") may come first
+  const line = (await spoken(page)).find((s) => s.text === text);
+  expect(line, "Nenek's line was spoken").toBeDefined();
+  expect(line.pitch).toBeCloseTo(1.05, 2);
+  expect(line.rate).toBeCloseTo(0.8, 2);
 });
 
 test("each character sounds different: kids high, elders low and slow, women and men get matching voices", async () => {
@@ -284,6 +284,76 @@ test("a saved 'voices off' is honoured on load and a junk value falls back to on
     return out;
   });
   expect(clean).toEqual([false, true, true]);
+});
+
+test("saved heard-hints are clean: no inherited keys, at most MAX_SEEN keys, and the blob always fits its cap", async () => {
+  const r = await kq(page, () => {
+    const G = window.KQ.Game;
+    const seen = { constructor: true, toString: true, __proto__: true };
+    for (let i = 0; i < 200; i += 1)
+      seen[
+        "k" +
+          "abcdefghijklmnopqrstuvwxyz"[i % 26].repeat(2) +
+          "-" +
+          "x".repeat(18) +
+          String.fromCharCode(97 + (i % 26)) +
+          String.fromCharCode(97 + ((i / 26) | 0))
+      ] = true;
+    localStorage.setItem("kampung-quest:prefs", JSON.stringify({ seen }));
+    G.Settings.load(G.S.storage);
+    const keys = Object.keys(G.Settings.prefs.seen);
+    G.Settings.save(G.S.storage);
+    const stored = localStorage.getItem("kampung-quest:prefs");
+    G.Say.reset();
+    G.Settings.save(G.S.storage);
+    return {
+      heard: G.Say.heard("constructor"),
+      count: keys.length,
+      max: G.Settings.MAX_SEEN,
+      chars: stored.length,
+    };
+  });
+  expect(r.heard, "'constructor' is not a heard hint").toBe(false);
+  expect(r.count).toBeLessThanOrEqual(r.max);
+  expect(r.chars, "a full set of the longest keys still loads back").toBeLessThan(2000);
+});
+
+test("a full heard-hint list forgets the OLDEST key for a new hint, and the word table stays under MAX_SEEN", async () => {
+  const r = await kq(page, () => {
+    const G = window.KQ.Game;
+    const hinted = Object.keys(G.ActionWords.TABLE).filter((k) => G.ActionWords.TABLE[k].say);
+    const real = G.Voice.hint;
+    G.Voice.hint = () => true; // patch one method, restore it below
+    try {
+      G.Say.reset();
+      const max = G.Settings.MAX_SEEN;
+      for (let i = 0; i < max; i += 1)
+        G.Settings.prefs.seen[
+          "old-" + "abcdefghij"[i % 10] + "-" + String.fromCharCode(97 + ((i / 10) | 0))
+        ] = true;
+      const first = Object.keys(G.Settings.prefs.seen)[0];
+      const said = G.Say("fresh-hint", "A new hint.");
+      return {
+        hinted: hinted.length,
+        max,
+        said,
+        heard: G.Say.heard("fresh-hint"),
+        count: Object.keys(G.Settings.prefs.seen).length,
+        firstGone: !G.Settings.prefs.seen[first],
+        again: G.Say("fresh-hint", "A new hint."),
+      };
+    } finally {
+      G.Voice.hint = real;
+      G.Say.reset();
+      G.Settings.save(G.S.storage);
+    }
+  });
+  expect(r.hinted, "the word table has fewer hint keys than MAX_SEEN").toBeLessThan(r.max);
+  expect(r.said, "the new hint is spoken").toBe(true);
+  expect(r.heard).toBe(true);
+  expect(r.count).toBeLessThanOrEqual(r.max);
+  expect(r.firstGone, "the oldest key made room").toBe(true);
+  expect(r.again, "and it is not repeated").toBe(false);
 });
 
 test("a device with no speechSynthesis: the game still talks on screen, silently, with no error", async ({

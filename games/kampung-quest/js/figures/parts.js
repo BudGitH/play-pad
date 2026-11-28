@@ -176,41 +176,55 @@
     return G.merge(list);
   };
 
-  /** Rounded cylinder head with the printed face wrapped on the front half. Origin = top of neck stud. */
-  F.partHead = function (spec, d) {
+  /**
+   * The head's lathe profile [r, y, ...] (bottom to top) and segment count. Shared with the head-fit
+   * checks (features/kampung-quest-playability/figures/audit-page.js) so accessories are measured
+   * against the real head, not a guess.
+   */
+  F.headProfile = function (d) {
     const R = d.headR;
     const H = d.headH;
-    const prof = [
-      0,
-      0,
-      0.078,
-      0,
-      0.094,
-      0.004,
-      0.102,
-      0.012,
-      R,
-      0.026,
-      R,
-      H - 0.026,
-      0.102,
-      H - 0.012,
-    ];
-    prof.push(0.094, H - 0.004, 0.078, H, 0, H);
-    const head = G.paint(G.lathe(prof, 32), spec.skin, true);
-    const face = new THREE.CylinderGeometry(
-      R + 0.0011,
-      R + 0.0011,
-      0.14,
-      16,
-      1,
-      true,
-      -Math.PI / 2,
-      Math.PI,
-    );
-    G.place(G.paint(face, "#ffffff", true, "face"), [0, 0.098, 0]);
-    return G.merge([head, face]);
+    const prof = [0, 0, 0.078, 0, 0.094, 0.004, 0.102, 0.012, R, 0.026, R, H - 0.026];
+    prof.push(0.102, H - 0.012, 0.094, H - 0.004, 0.078, H, 0, H);
+    return { pairs: prof, segs: 32 };
   };
+
+  /** Rounded cylinder head with the printed face wrapped on the front half. Origin = top of neck stud. */
+  F.partHead = function (spec, d) {
+    const hp = F.headProfile(d);
+    const head = G.paint(G.lathe(hp.pairs, hp.segs), spec.skin, true);
+    return G.merge([head, faceWrap(hp)]);
+  };
+
+  /** The head profile's radius at height y (linear between the profile points). */
+  function profileRadius(pairs, y) {
+    for (let i = 2; i < pairs.length; i += 2) {
+      const y0 = pairs[i - 1];
+      const y1 = pairs[i + 1];
+      if (y1 <= y0 || y < y0 || y > y1) continue;
+      return pairs[i - 2] + ((pairs[i] - pairs[i - 2]) * (y - y0)) / (y1 - y0);
+    }
+    return pairs[0];
+  }
+
+  const FACE_Y0 = 0.028;
+  const FACE_Y1 = 0.168;
+  /**
+   * The printed face: a skin-thin wrap over the front half of the head that follows the head's own
+   * profile 1.2 mm above it (finely segmented, so it never dips into the head between facets and its
+   * edges never stand proud where the head curves in). UVs: u across the half-turn, v up the face.
+   */
+  function faceWrap(hp) {
+    const rows = 15;
+    const prof = [];
+    for (let j = 0; j < rows; j += 1) {
+      const y = FACE_Y0 + ((FACE_Y1 - FACE_Y0) * j) / (rows - 1);
+      prof.push(profileRadius(hp.pairs, y) + 0.0012, y);
+    }
+    const g = G.lathe(prof, 48, -Math.PI / 2, Math.PI);
+    g.computeVertexNormals();
+    return G.paint(g, "#ffffff", true, "face");
+  }
 
   /** Upper arm: rounded shoulder + tapered sleeve. Origin = shoulder pivot, hangs down -y. */
   F.partUpperArm = function (spec, d) {

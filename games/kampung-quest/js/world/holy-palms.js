@@ -54,7 +54,7 @@
       const t = i / 46;
       const x = 6 + t * 240;
       const len = 26 * (1 - t * 0.7);
-      g.strokeStyle = i % 2 ? "#4e8036" : "#6a9a3e";
+      g.strokeStyle = i % 2 ? "#3f9a34" : "#62b843"; // a fresh, friendly green (AC-P20)
       g.lineWidth = 3.2 - t * 1.6;
       [-1, 1].forEach((s) => {
         g.beginPath();

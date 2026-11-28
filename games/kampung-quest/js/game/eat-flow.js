@@ -75,6 +75,7 @@
       how: st.how,
       texts: texts(st.texts),
       next: { label: last ? "Alhamdulillah!" : full ? "Next" : "Take a bite", cls: "kq-eat-next" },
+      chip: { name: "Eating", cue: st.title },
     };
     if (E.item && st.id === "eat") c.picture = G.Pictures.dish(E.item.id, 72);
     if (st.bites) c.counter = { count: E.bites, target: st.bites, unit: "bite", plural: "bites" };

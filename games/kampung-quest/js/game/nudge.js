@@ -20,7 +20,7 @@
   const TEXT = {
     "first-meal": ["Tummy rumbling? Grab a bite at the hawker centre!", "gold", 7000],
     "food-low": ["Your food meter is low. A snack at the hawker centre will help!", "hint", 6000],
-    "energy-low": ["Feeling sleepy? A rest at home will fill your energy.", "hint", 6000],
+    "energy-low": ["Feeling sleepy? Tap Rest and your energy will come back.", "hint", 6000],
   };
 
   /** Shortcut to the pure sim on the shared game state. */

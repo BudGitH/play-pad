@@ -125,10 +125,14 @@
     return path.split(".").reduce((o, k) => (o ? o[k] : null), KQ.HOLY) || null;
   }
 
-  /** Paint the Haramain world: sand, the marble mataf, the sa'i lane, the sites and the Prophet's Mosque. */
-  function paintHoly(ctx) {
+  /** The sand under the Haramain world (the radar paints one big rectangle, the full map one per city). */
+  function paintHolySand(ctx) {
     ctx.fillStyle = PAL.sand;
     ctx.fillRect(-420, -420, 1400, 760);
+  }
+
+  /** The sa'i lane, the round and boxed sites (mataf, Zamzam, Safa and Marwa, Mina ..., the Prophet's Mosque). */
+  function paintHolySites(ctx) {
     const lane = holy("makkah.masaLane");
     ctx.fillStyle = "#e8e0c8";
     ctx.fillRect(lane.x - lane.w / 2, lane.z0, lane.w, lane.z1 - lane.z0);
@@ -142,6 +146,12 @@
       ctx.fillStyle = b[1];
       ctx.fillRect(o.x - o.w / 2, o.z - o.d / 2, o.w, o.d);
     });
+  }
+
+  /** Paint the Haramain world: sand, the marble mataf, the sa'i lane, the sites and the Prophet's Mosque. */
+  function paintHoly(ctx) {
+    paintHolySand(ctx);
+    paintHolySites(ctx);
   }
 
   /** The frame of one draw: scale, rotation (the radar turns with the hero), centre and view centre. */
@@ -237,15 +247,44 @@
     return round ? Math.hypot(p.x - cw / 2, p.y - cw / 2) <= lim : p.x > 0 && p.x < cw;
   }
 
-  /** Draw one marker: a blip in view; else a rim arrow (objective), a rim blip (big, or a landmark) or nothing. */
-  function drawMarker(ctx, f, m, cw, round) {
+  /** What to draw for a marker: a blip (in view, or pinned to the rim), a rim arrow, or nothing (null). */
+  function planMarker(f, m, cw, round) {
     const p = project(f, m.x, m.z);
-    const r = cw * (m.big ? 0.075 : 0.058);
-    if (onMap(p, cw, round)) {
-      blipAt(ctx, p, m, r);
-      if (f.view.labels && m.label) blipLabel(ctx, p, m, cw);
-    } else if (m.arrow && round) edgeArrow(ctx, f, m, cw);
-    else if (m.big || m.rim) blipAt(ctx, clampRim(p, cw), m, r * (m.big ? 1 : 0.85));
+    const r = cw * (m.big ? 0.075 : m.small ? 0.048 : 0.058);
+    if (onMap(p, cw, round)) return { m, p, r, mode: "blip" };
+    if (m.arrow && round) return { m, p, r, mode: "arrow" };
+    if (m.big || m.rim) return { m, p: clampRim(p, cw), r: r * (m.big ? 1 : 0.85), mode: "blip" };
+    return null;
+  }
+
+  /**
+   * Draw every marker: icons in priority order, an icon that would sit on a more important one is left out
+   * (the map stays readable), big / forced ones always show; rim arrows last. m.prio: low wins.
+   */
+  function drawMarkers(ctx, f, markers, cw, round) {
+    const plans = markers.map((m) => planMarker(f, m, cw, round)).filter(Boolean);
+    const blips = plans.filter((pl) => pl.mode === "blip");
+    const items = blips.map(function (pl, i) {
+      const force = Boolean(pl.m.big || pl.m.force);
+      return {
+        id: i,
+        x: pl.p.x,
+        y: pl.p.y,
+        r: pl.r,
+        prio: force ? 0 : pl.m.prio || 5,
+        force,
+        lw: 0,
+        lh: 0,
+      };
+    });
+    KQ.Sim.MapView.layout(items, 1)
+      .map((e) => blips[e.item.id])
+      .reverse()
+      .forEach(function (pl) {
+        blipAt(ctx, pl.p, pl.m, pl.r);
+        if (f.view.labels && pl.m.label) blipLabel(ctx, pl.p, pl.m, cw);
+      });
+    plans.filter((pl) => pl.mode === "arrow").forEach((pl) => edgeArrow(ctx, f, pl.m, cw));
   }
 
   /** Pin a projected point to the rim of the map. */
@@ -279,11 +318,10 @@
     ctx.textBaseline = "alphabetic";
   }
 
-  /** The hero: a soft view cone and a royal-blue arrow with a white rim, drawn in the middle (turned to the heading on a north-up map). */
-  function heroArrow(ctx, f, cw) {
-    const turn = f.view.rotate ? 0 : Math.PI - f.view.heading;
+  /** The hero: a soft view cone and a royal-blue arrow with a white rim at (x, y), `turn` radians (size `cw` as on the radar). */
+  function drawHero(ctx, x, y, cw, turn) {
     ctx.save();
-    ctx.translate(f.c, f.c);
+    ctx.translate(x, y);
     ctx.rotate(turn);
     const cone = ctx.createRadialGradient(0, 0, 0, 0, 0, cw * 0.3);
     cone.addColorStop(0, "rgba(255,255,255,0.4)");
@@ -310,6 +348,11 @@
     ctx.restore();
   }
 
+  /** The hero in the middle of the radar (turned to the heading on a north-up map). */
+  function heroArrow(ctx, f, cw) {
+    drawHero(ctx, f.c, f.c, cw, f.view.rotate ? 0 : Math.PI - f.view.heading);
+  }
+
   /**
    * Draw the map into a 2D canvas context (size cw x cw).
    * view: { cx, cz, span (world metres across), hero:{x,z}, heading, rotate (the radar turns with
@@ -328,7 +371,7 @@
     ctx.fillStyle = PAL.void;
     ctx.fillRect(0, 0, cw, cw);
     inWorld(ctx, f, region() === "haramain" ? paintHoly : paintTown);
-    view.markers.forEach((m) => drawMarker(ctx, f, m, cw, round));
+    drawMarkers(ctx, f, view.markers, cw, round);
     heroArrow(ctx, f, cw);
     northMark(ctx, f, cw);
     ctx.restore();
@@ -342,5 +385,18 @@
   const fullOpts = () =>
     region() === "kampung" ? { labels: true, cx: 0, cz: 0 } : { labels: true };
 
-  G.Minimap = { draw, radarSpan, fullSpan, fullOpts };
+  G.Minimap = {
+    draw,
+    radarSpan,
+    fullSpan,
+    fullOpts,
+    // pieces the full map (map-base.js, bigmap.js) draws with
+    PAL,
+    paintTown,
+    paintHolySand,
+    paintHolySites,
+    drawHero,
+    glyph,
+    holy,
+  };
 })((window.KQ = window.KQ || {}));

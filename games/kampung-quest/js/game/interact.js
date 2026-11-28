@@ -1,11 +1,15 @@
 /* ============================================================================
  * FILE: interact.js
- * PURPOSE: Works out what the hero can do right now (the nearest NPC or interactable within about
- *          2 m), shows the floating Talk / action button above it, and runs the action.
- * BUSINESS CONTEXT: AC-12 (a context prompt within 2 m of an interactable), design D (a big
- *   "Talk" button over the NPC's head; "Walk closer" when it is further away), AC-15 (the same
- *   action by key E, and the button is the first thing in the keyboard focus order).
- * DEPENDENCIES: npc-manager.js, mission-flow.js, services.js, prayer-flow.js, collectibles.js.
+ * PURPOSE: Works out what the hero can do right now (every neighbour, counter, animal, vehicle,
+ *          person to say hi to, event prompt or pick-up within reach), arranges those actions for
+ *          the chooser (KQ.Sim.Actions: nearest first, up to three) and runs the one the child
+ *          picks. The Action control and the world pointer are drawn by action-bar.js.
+ * BUSINESS CONTEXT: AC-12 (a context prompt within 2 m of an interactable), AC-15 (the same
+ *   action by key E; numbers 1-3 pick another), AC-P24 (one fixed Action button; with two or more
+ *   actions in reach the child sees them all instead of a silent winner), AC-P25 (Rest in one tap,
+ *   Pray is one path).
+ * DEPENDENCIES: npc-manager.js, mission-flow.js, services.js, prayer-flow.js, collectibles.js,
+ *   action-words.js, KQ.Sim.Actions.
  * ========================================================================== */
 (function (KQ) {
   "use strict";
@@ -15,13 +19,14 @@
   const OBJ_RANGE = 2.4;
   const NPC_RANGE = 2.3;
   const FAR_RANGE = 4.5;
+  const RANK = () => KQ.Sim.Actions.RANK;
   const LABELS = {
-    counter_: ["Order", "Order food"],
-    wudu_tap_: ["Wudu", "Take wudu"],
+    counter_: ["Eat", "Order food"],
+    wudu_tap_: ["Pray", "Pray"],
     prayer_spot: ["Pray", "Pray"],
-    minimart_till: ["Pay", "Pay at the till"],
+    minimart_till: ["Buy", "Pay at the till"],
     barber_chair: ["Haircut", "Sit for a haircut"],
-    wardrobe_stall: ["Outfits", "Change clothes"],
+    wardrobe_stall: ["Clothes", "Change clothes"],
     clinic_desk: ["Check-up", "Clinic check-up"],
     library_desk: ["Story", "Borrow a story"],
     home_door: ["Rest", "Go home and rest"],
@@ -47,8 +52,8 @@
 
   /**
    * A "Pray" prompt for a hero anywhere inside the mosque hall, so praying is always one press
-   * away there (a due or owed prayer, else the voluntary sunat prayer). It is a `fallback`: a
-   * neighbour within reach and any real object nearby outrank it (KQ.Sim.Missions.pickTarget).
+   * away there (a due or owed prayer, else the voluntary extra prayer). It is a `fallback`: it only
+   * shows when no real object is in reach.
    */
   function mosqueTarget(hero) {
     const zone = mosqueZone();
@@ -69,85 +74,120 @@
     };
   }
 
-  /** When no fard prayer is owed, the Pray prompt offers the voluntary prayer and says so plainly. */
-  function withPrayerLabel(target) {
-    if (target && target.id === "prayer_spot" && G.PrayerFlow.isVoluntary()) {
-      target.label = G.PrayerText.SUNAT_NAME;
-      target.aria = G.PrayerText.SUNAT_LABEL;
-    }
-    return target;
+  /** Can the hero rest now: energy is not full and no fard prayer is due, in progress or being called? */
+  function restOk() {
+    return S().sim.needs.canRest() && !G.PrayerFlow.restBlocked();
   }
 
-  /**
-   * The nearest interactable within reach as a Talk-button target, ignoring the women's prayer
-   * spot; inside the mosque hall the Pray prompt is the fallback.
-   */
-  function objectTarget(hero) {
-    return withPrayerLabel(
-      closer(nearestObject(hero) || mosqueTarget(hero), G.Vehicles.target(hero)),
-    );
+  /** The "Rest" prompt for a hero who is Tired, wherever they stand (it comes last in the chooser). */
+  function tiredTarget(hero) {
+    if (!S().sim.needs.isTired() || !restOk()) return null;
+    return {
+      kind: "rest",
+      id: "rest_here",
+      label: "Rest",
+      aria: "Rest and get your energy back",
+      x: hero.x,
+      z: hero.z,
+      dist: 0,
+      enabled: true,
+      h: 2,
+      rank: RANK().tired,
+    };
   }
 
-  /** Of two prompts the nearer one (either may be null); the mosque fallback never beats a real vehicle. */
-  function closer(a, b) {
-    if (!a || !b) return a || b;
-    return b.dist < a.dist || a.fallback ? b : a;
+  /** "Pray here": while the footprints lead to the mosque, a child far from it may pray where they stand. */
+  function prayHereTarget(hero) {
+    const pf = G.PrayerFlow;
+    if (!pf.state.guide || pf.inCompound() || pf.screenOpen()) return null;
+    return {
+      kind: "obj",
+      id: "pray_here",
+      label: "Pray here",
+      aria: "Pray right here",
+      x: hero.x,
+      z: hero.z,
+      dist: 1,
+      enabled: true,
+      h: 2,
+      rank: RANK().prayer,
+    };
   }
 
-  /** The nearest interactable or pick-up within reach, or null. */
+  /** One interactable as an action target; the home door and benches only offer Rest when it makes sense. */
+  function objectOf(it, d) {
+    const l = labelFor(it.id);
+    const rest = it.id === "bus_stop_bench" && restOk();
+    if (it.id === "home_door" && !restOk()) return null;
+    return {
+      kind: "obj",
+      id: it.id,
+      label: rest ? "Rest" : l[0],
+      aria: rest ? "Sit and rest" : l[1],
+      x: it.pos.x,
+      z: it.pos.z,
+      dist: d,
+      enabled: true,
+      h: 1.3,
+    };
+  }
+
+  /** The nearest interactable within reach (ignoring the other hero's prayer spot) as a target, or null. */
   function nearestObject(hero) {
     let best = null;
+    const other = G.Hero.isGirl() ? "prayer_spot" : "prayer_spot_women"; // each hero has one row
     S().world.interactables.forEach(function (it) {
-      if (it.id === "prayer_spot_women") return;
+      if (it.id === other) return;
       const d = U.dist(hero.x, hero.z, it.pos.x, it.pos.z);
-      if (d <= OBJ_RANGE && (!best || d < best.dist)) {
-        const l = labelFor(it.id);
-        best = {
-          kind: "obj",
-          id: it.id,
-          label: l[0],
-          aria: l[1],
-          x: it.pos.x,
-          z: it.pos.z,
-          dist: d,
-          enabled: true,
-          h: 1.3,
-        };
-      }
-    });
-    G.Collectibles.available(S().collect).forEach(function (c) {
-      const d = U.dist(hero.x, hero.z, c.x, c.z);
-      if (d <= OBJ_RANGE && (!best || d < best.dist)) {
-        best = {
-          kind: "item",
-          id: c.id,
-          label: "Pick up",
-          aria: "Pick up",
-          x: c.x,
-          z: c.z,
-          dist: d,
-          enabled: true,
-          h: 0.7,
-          item: c,
-        };
-      }
+      const t = d <= OBJ_RANGE && (!best || d < best.dist) ? objectOf(it, d) : null;
+      if (t) best = t;
     });
     return best;
   }
 
-  /**
-   * The nearest visible NPC as a target: 'Talk' when close, 'Walk closer' when further; none if
-   * busy or praying.
-   */
-  function npcTarget(hero) {
+  /** The nearest pick-up (can, litter) within reach as a target, or null. */
+  function nearestItem(hero) {
+    let best = null;
+    G.Collectibles.available(S().collect).forEach(function (c) {
+      const d = U.dist(hero.x, hero.z, c.x, c.z);
+      if (d > OBJ_RANGE || (best && d >= best.dist)) return;
+      best = {
+        kind: "item",
+        id: c.id,
+        label: "Pick up",
+        aria: "Pick up",
+        x: c.x,
+        z: c.z,
+        dist: d,
+        enabled: true,
+        h: 0.7,
+        item: c,
+      };
+    });
+    return best;
+  }
+
+  /** The button word for a quick mission step with this neighbour ("Push"), or null. */
+  function quickVerb(A) {
+    const p = S().sim.missions.progress();
+    return p && p.quick && !p.paused && p.target === A.id && p.verb ? p.verb : null;
+  }
+
+  /** The nearest visible neighbour (not busy, not praying) within FAR_RANGE with how far, or null. */
+  function nearestNpc(hero) {
     const hit = G.Npcs.nearest(S().npcs, hero.x, hero.z, FAR_RANGE);
     if (!hit || hit.A.talking || (hit.A.goal && hit.A.goal.kind === "pray")) return null;
+    return hit;
+  }
+
+  /** A neighbour as a target: "Talk" when close; one further off is only pointed at (no button). */
+  function npcOf(hit) {
     const near = hit.d <= NPC_RANGE;
     return {
       kind: "npc",
       id: hit.A.id,
-      label: near ? "Talk" : "Walk closer",
-      aria: (near ? "Talk to " : "Walk closer to ") + hit.A.name,
+      label: (near && quickVerb(hit.A)) || "Talk",
+      aria: "Talk to " + hit.A.name,
       x: hit.A.x,
       z: hit.A.z,
       dist: hit.d,
@@ -159,6 +199,8 @@
 
   /** Talks the hero has already had (npc id -> mission key), so the counter can win afterwards. */
   const talked = {};
+  /** The neighbour a few steps away that the world arrow points at (no button), or null. */
+  let farOne = null;
 
   /** A key for "what this NPC could talk about right now" (offer, or the current step). */
   function businessKey() {
@@ -183,27 +225,82 @@
     });
   }
 
-  /** The current best target or null. Disabled "Walk closer" targets are returned for NPCs only. */
-  function find() {
-    const P = S().player;
-    if (P.locked || G.UI.modalOpen() || S().paused) return null;
-    const hero = P.pos;
-    if (G.Vehicles.mounted()) return G.Vehicles.target(hero); // in a vehicle the only prompt is Exit
-    forgetFar(hero);
-    const obj = objectTarget(hero);
-    const npc = npcTarget(hero);
-    const pick = KQ.Sim.Missions.pickTarget(npc, obj, wantsNpc(npc));
-    return pick === "npc" ? npc : pick === "obj" ? obj : null;
+  /** The neighbour candidate (ranked as mission business when it is); a far one is only remembered for the arrow. */
+  function neighbour(hero) {
+    farOne = null;
+    const hit = nearestNpc(hero);
+    if (!hit) return null;
+    const t = npcOf(hit);
+    if (!t.enabled) return void (farOne = t);
+    t.rank = wantsNpc(t) ? RANK().business : RANK().near;
+    return t;
+  }
+
+  /** Make an owed prayer's prompt rank above ordinary things (nothing owed: the extra prayer is ordinary). */
+  function rankPrayer(t) {
+    const pray = t && (t.id.indexOf("prayer_spot") === 0 || t.id.indexOf("wudu_tap_") === 0);
+    if (pray && !G.PrayerFlow.isVoluntary()) t.rank = RANK().prayer;
+    return t;
+  }
+
+  /** Every place-bound candidate: object (else the mosque fallback), pick-up, vehicle, animal and its hello. */
+  function placeTargets(hero) {
+    const obj = nearestObject(hero) || mosqueTarget(hero);
+    return [
+      rankPrayer(obj),
+      nearestItem(hero),
+      G.Vehicles.target(hero),
+      G.Mounts.target(hero),
+      G.Mounts.hiTarget(hero),
+    ];
+  }
+
+  /** Every candidate in reach, before they are ordered. */
+  function candidates(hero) {
+    const near = neighbour(hero);
+    return placeTargets(hero).concat([
+      near,
+      G.Hi.castTarget(near), // "Say hi" beside that neighbour's Talk
+      G.MissionSteps.stepTarget(hero), // a mission's "Photo"
+      G.WorldEvents.target(hero), // an event's prompt (the ice-cream cart)
+      G.Hi.target(hero), // a person to say hi to
+      tiredTarget(hero),
+      prayHereTarget(hero),
+    ]);
   }
 
   /**
-   * Run the action for a target (talk, pick up, or a service) if it is enabled; returns whether
+   * The actions in reach, arranged for the chooser: the first is the big Action button (E), the next
+   * ones are tiles 2 and 3. Empty when a sheet is open, the game is paused or the hero is held.
+   */
+  function find() {
+    const P = S().player;
+    farOne = null;
+    if (P.locked || G.UI.modalOpen() || S().paused) return [];
+    const hero = P.pos;
+    if (G.Vehicles.mounted()) return [G.Vehicles.target(hero)].filter(Boolean); // in a vehicle the only prompt is Get off
+    if (G.Mounts.riding()) return [G.Mounts.target(hero)].filter(Boolean); // on an animal, likewise
+    forgetFar(hero);
+    const list = candidates(hero).filter(Boolean);
+    list.forEach((t) => (t.key = G.ActionWords.keyOf(t) || undefined));
+    return KQ.Sim.Actions.arrange(list);
+  }
+
+  /** The neighbour a few steps away that the world arrow points at (there is no button for it), or null. */
+  const far = () => farOne;
+
+  /**
+   * Run the action for a target (talk, pick up, a service ...) if it is enabled; returns whether
    * anything ran.
    */
   function activate(t) {
     if (!t || !t.enabled) return false;
     if (t.kind === "npc") talkTo(t);
+    else if (t.kind === "hi") G.Hi.press(t);
+    else if (t.kind === "event") G.WorldEvents.press(t);
+    else if (t.kind === "step") G.MissionFlow.pressStep(t);
     else if (t.kind === "item") G.MissionFlow.pickup(t.item);
+    else if (t.kind === "rest") G.Services.restHere();
     else dispatchObject(t.id);
     return true;
   }
@@ -219,21 +316,23 @@
 
   /**
    * Open what an interactable id stands for (stall, taps, prayer hall, mini-mart, barber, clinic,
-   * library, home, ...).
+   * library, home, ...). Every prayer door (taps, hall) runs the same next step.
    */
   function dispatchObject(id) {
     const V = G.Services;
     if (id.indexOf("vehicle:") === 0) return G.Vehicles.press(id);
+    if (id.indexOf("mount:") === 0) return G.Mounts.press(id);
     if (id.indexOf("counter_") === 0) return V.stall(id);
-    if (id.indexOf("wudu_tap_") === 0) return G.PrayerFlow.atTaps();
+    if (id.indexOf("wudu_tap_") === 0 || id.indexOf("prayer_spot") === 0)
+      return G.PrayerFlow.next();
     const table = {
-      prayer_spot: G.PrayerFlow.atHall,
+      pray_here: G.PrayerFlow.startHere,
       minimart_till: V.minimart,
       barber_chair: V.barber,
       wardrobe_stall: G.Wardrobe.open,
       clinic_desk: V.clinic,
       library_desk: V.library,
-      home_door: V.home,
+      home_door: V.restHere,
       recycling_bins: V.recycle,
       playground: V.play,
       bus_stop_bench: V.bench,
@@ -241,66 +340,5 @@
     if (table[id]) table[id]();
   }
 
-  const ICON_FOR = {
-    Talk: "talk",
-    Order: "bowl",
-    Wudu: "drop",
-    Pray: "mosque",
-    [G.PrayerText.SUNAT_NAME]: "mosque",
-    Pay: "bag",
-    Haircut: "scissors",
-    Outfits: "shirt",
-    "Check-up": "heart",
-    Story: "book",
-    Rest: "home",
-    Recycle: "recycle",
-    Play: "star",
-    Sit: "pin",
-    "Pick up": "hand",
-    "Walk closer": "pin",
-    Drive: "car",
-    Ride: "bike",
-    Exit: "exit",
-  };
-  const tmp = new THREE.Vector3();
-
-  /** Swap the Talk button's icon to match its label, only when the label changed. */
-  function setIcon(R, label) {
-    if (R.talkIconName === label) return;
-    R.talkIconName = label;
-    const node = G.Pictures.icon(ICON_FOR[label] || "talk", "kq-ic-xl");
-    R.talk.replaceChild(node, R.talk.firstChild);
-  }
-
-  /** Position the floating button over the target (CSS px inside the stage). */
-  function place(t, camera, w, h) {
-    const R = G.Hud.refs;
-    if (!t) {
-      R.talk.hidden = true;
-      return;
-    }
-    const base = S().world.heightAt(t.x, t.z);
-    tmp.set(t.x, base + t.h, t.z).project(camera);
-    const behind = tmp.z > 1;
-    const rawX = (tmp.x * 0.5 + 0.5) * w;
-    const rawY = (-tmp.y * 0.5 + 0.5) * h;
-    const offscreen = rawX < 70 || rawX > w - 70 || rawY < 135 || rawY > h - 150;
-    if (!t.enabled && (behind || offscreen)) {
-      R.talk.hidden = true;
-      return;
-    }
-    const x = U.clamp(rawX, 70, w - 70);
-    const y = U.clamp(rawY, 135, Math.max(136, h - 150));
-    R.talk.hidden = false;
-    R.talk.classList.toggle("is-far", !t.enabled);
-    R.talk.disabled = !t.enabled;
-    R.talk.setAttribute("aria-label", t.aria);
-    R.talkLabel.textContent = t.label;
-    setIcon(R, t.label);
-    R.talkKey.hidden = !t.enabled || G.Env.coarse;
-    R.talk.style.left = (behind ? w / 2 : x) + "px";
-    R.talk.style.top = (behind ? h - 170 : y) + "px";
-  }
-
-  G.Interact = { find, activate, place };
+  G.Interact = { find, far, activate };
 })((window.KQ = window.KQ || {}));

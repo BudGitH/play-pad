@@ -7,6 +7,26 @@
   const S = () => P.Sky;
   const tmpGrey = new THREE.Color();
 
+  /**
+   * The colour grade (AC-P20): ACES flattens colour, so every tone-mapped material gets a small
+   * saturation lift just before the tone curve. It is one line in the shared shader chunk (no
+   * extra pass, no per-frame cost); unlit HUD markers and the sky shader are untouched.
+   */
+  const GRADE = 1.22;
+  /** Patch three.js's shared tone-mapping chunk once so every lit material gets the grade. */
+  function patchGrade() {
+    const chunk = THREE.ShaderChunk.tonemapping_fragment;
+    if (chunk.indexOf("kqGrade") !== -1) return;
+    THREE.ShaderChunk.tonemapping_fragment = chunk.replace(
+      "toneMapping( gl_FragColor.rgb )",
+      "toneMapping( max( mix( vec3( dot( gl_FragColor.rgb, vec3( 0.2126, 0.7152, 0.0722 ) ) )," +
+        " gl_FragColor.rgb, " +
+        GRADE.toFixed(2) +
+        " ), 0.0 ) ) /* kqGrade */",
+    );
+  }
+  patchGrade();
+
   /** Shadow/env settings per quality tier. */
   const TIERS = {
     low: { map: 1024, span: 28, envEvery: 120, pixelRatio: 1 },
@@ -129,7 +149,8 @@
     rig.hemi.intensity = k.hemiI;
     const fog = rig.scene.fog.color.copy(k.horizon).lerp(k.zenith, 0.15);
     const grey = fog.r * 0.3 + fog.g * 0.55 + fog.b * 0.15;
-    fog.lerp(tmpGrey.setRGB(grey, grey, grey), 0.3); // keep dusk fog from tinting the town pink
+    // Keep dusk fog from tinting the town pink, but let the daytime haze stay sky-blue.
+    fog.lerp(tmpGrey.setRGB(grey, grey, grey), 0.12 + 0.18 * (1 - k.sunI / 3.75));
     rig.scene.fog.far = 340 - rig.night * 80;
     rig.glow.forEach((g) => (g.mat.emissiveIntensity = g.base * rig.night));
     placeSun(rig);

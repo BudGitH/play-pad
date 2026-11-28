@@ -1,6 +1,7 @@
 dist/
 Old prototype/
 node_modules/
+.claude/
 docs/.brain-backup/
 **/three.min.js
 **/GLTFLoader.js

@@ -51,6 +51,8 @@
     hand: "M8 11V4.5a1.5 1.5 0 0 1 3 0V10h1V3.5a1.5 1.5 0 0 1 3 0V10h1V5.5a1.5 1.5 0 0 1 3 0V15a7 7 0 0 1-7 7h-1a7 7 0 0 1-5.6-2.8L2.6 14a1.6 1.6 0 0 1 2.5-2z",
     car: "M5 10 6.6 5.6A2 2 0 0 1 8.5 4h7a2 2 0 0 1 1.9 1.6L19 10a2.5 2.5 0 0 1 2 2.4V17h-2.2a2.6 2.6 0 0 1-5.2 0h-3.2a2.6 2.6 0 0 1-5.2 0H3v-4.6A2.5 2.5 0 0 1 5 10zm2.2 0h9.6l-1-3.4H8.2zM7.5 12a1.1 1.1 0 1 0 0 2.2 1.1 1.1 0 0 0 0-2.2zm9 0a1.1 1.1 0 1 0 0 2.2 1.1 1.1 0 0 0 0-2.2z",
     bike: "M5.5 9a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm0 2a3 3 0 1 1 0 6 3 3 0 0 1 0-6zm13-2a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm0 2a3 3 0 1 1 0 6 3 3 0 0 1 0-6zM9 6h4l2.4 5H17l-1.2-2.6-2.5 0L12 14h-1.8l1.6-6H9z",
+    camera:
+      "M4 7h3l1.5-2h7L17 7h3a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1zm8 3a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z",
     exit: "M4 3h9v2H6v14h7v2H4zm11 4 5 5-5 5-1.4-1.4 2.6-2.6H9v-2h7.2l-2.6-2.6z",
     refresh:
       "M12 4a8 8 0 1 0 7.7 10h-2.1A6 6 0 1 1 12 6c1.7 0 3.2.7 4.2 1.8L13 11h7V4l-2.7 2.7A8 8 0 0 0 12 4z",
@@ -181,8 +183,23 @@
     return svg("0 0 48 48", WUDU_ART[stepId] || WUDU_ART.niat, size || 56, "kq-pic");
   }
 
-  /** Posture pictures: data-URL renders of the toy-figure poses, filled in by renderPostures. */
+  /**
+   * Posture pictures: data-URL renders of the toy-figure poses, filled in by renderPostures. One set
+   * per hero: the boy, and the girl in her hijab (picked by the hero's gender when shown).
+   */
   const postureImages = {};
+  const girlImages = {};
+  /** The girl hero as she prays: her own face and modest clothes, in a white hijab. */
+  const GIRL_PRAYER_LOOK = {
+    id: "hero_girl_prayer",
+    head: { type: "hijab", colour: "#fbfaf5", accent: "#e46f9c" },
+  };
+
+  /** The picture set for the hero now (the girl's when the hero is a girl). */
+  function imagesNow() {
+    const girl = G.Hero && G.Hero.isGirl && G.Hero.isGirl();
+    return girl && Object.keys(girlImages).length ? girlImages : postureImages;
+  }
   const POSTURE_POSE = {
     takbir: "takbir",
     qiyam: "qiyam",
@@ -208,27 +225,46 @@
     img.className = "kq-posture";
     img.alt = "";
     img.width = img.height = size || 72;
-    if (postureImages[type]) img.src = postureImages[type];
+    if (!imagesNow()[type]) finishPostures(); // a picture still queued: render the rest now
+    const set = imagesNow();
+    if (set[type]) img.src = set[type];
     else img.className += " kq-posture-missing";
     return img;
   }
 
+  /** The posture atlas: one 256 px cell per picture, 4 to a row (CELL * COLS wide). */
+  const CELL = 256;
+  const COLS = 4;
+  /** Where a posture's cell sits in the atlas, in WebGL coordinates (row 0 at the bottom). */
+  function cellAt(i) {
+    return { x: (i % COLS) * CELL, y: Math.floor(i / COLS) * CELL };
+  }
+
   /**
-   * Read a render target into a 160 px PNG data URL, flipped upright (WebGL reads rows bottom-up).
+   * Read the whole posture atlas back from the GPU once and cut it into 160 px PNG data URLs,
+   * flipped upright (WebGL reads rows bottom-up). One read-back for every picture of a set: a
+   * read-back stalls the GPU, and on a slow device (or software GL) each one costs hundreds of
+   * milliseconds (notes-ipad.md).
    */
-  function readPixels(renderer, rt, size) {
-    const buf = new Uint8Array(size * size * 4);
-    renderer.readRenderTargetPixels(rt, 0, 0, size, size, buf);
+  function readAtlas(renderer, rt, types, out) {
+    const w = rt.width;
+    const h = rt.height;
+    const buf = new Uint8Array(w * h * 4);
+    renderer.readRenderTargetPixels(rt, 0, 0, w, h, buf);
     const tmp = document.createElement("canvas");
-    tmp.width = tmp.height = size;
-    tmp.getContext("2d").putImageData(new ImageData(new Uint8ClampedArray(buf), size, size), 0, 0);
-    const out = document.createElement("canvas");
-    out.width = out.height = 160;
-    const ctx = out.getContext("2d");
-    ctx.translate(0, 160);
-    ctx.scale(1, -1);
-    ctx.drawImage(tmp, 0, 0, 160, 160);
-    return out.toDataURL("image/png");
+    tmp.width = w;
+    tmp.height = h;
+    tmp.getContext("2d").putImageData(new ImageData(new Uint8ClampedArray(buf), w, h), 0, 0);
+    types.forEach(function (type, i) {
+      const at = cellAt(i);
+      const pic = document.createElement("canvas");
+      pic.width = pic.height = 160;
+      const ctx = pic.getContext("2d");
+      ctx.translate(0, 160);
+      ctx.scale(1, -1);
+      ctx.drawImage(tmp, at.x, at.y, CELL, CELL, 0, 0, 160, 160);
+      out[type] = pic.toDataURL("image/png");
+    });
   }
 
   /**
@@ -240,42 +276,154 @@
     cam.lookAt(0, 0, 0);
   }
 
-  /** Build the tiny posture-render stage: lit scene, the hero figure and an orthographic camera. */
-  function postureStage(renderer) {
+  /** Build the tiny posture-render stage: lit scene, a hero figure and an orthographic camera. */
+  function postureStage(renderer, spec) {
     const scene = new THREE.Scene();
     scene.environment = KQ.Figures.makeEnv(renderer);
     scene.add(new THREE.HemisphereLight(0xffffff, 0x8899aa, 0.9));
     const sun = new THREE.DirectionalLight(0xffffff, 1.6);
     sun.position.set(-2, 3, 2);
     scene.add(sun);
-    const fig = KQ.Figures.build("hero");
+    const fig = KQ.Figures.build(spec);
     scene.add(fig);
     const cam = new THREE.OrthographicCamera(-0.66, 0.66, 1.16, -0.16, 0.1, 10);
     return { scene, fig, cam };
   }
 
-  /** Render each posture once into a small PNG data URL (called once at boot, needs WebGL). */
+  /** Render each posture once into a small PNG data URL (needs WebGL): the boy, then the girl. */
   function renderPostures(renderer, az) {
-    const size = 256;
-    const rt = new THREE.WebGLRenderTarget(size, size);
-    rt.texture.encoding = THREE.sRGBEncoding;
-    const stage = postureStage(renderer);
-    const prevClear = renderer.getClearColor(new THREE.Color());
-    const prevAlpha = renderer.getClearAlpha();
-    renderer.setClearColor(0xe6eef8, 1);
-    renderer.setRenderTarget(rt);
-    Object.keys(POSTURE_POSE).forEach(function (type) {
-      aim(stage.cam, az === undefined ? POSTURE_AZ[type] || POSTURE_AZ.standing : az);
-      KQ.Figures.pose(stage.fig.userData.rig, POSTURE_POSE[type], 0, 1);
-      stage.fig.updateMatrixWorld(true);
-      renderer.clear();
-      renderer.render(stage.scene, stage.cam);
-      postureImages[type] = readPixels(renderer, rt, size);
+    postureJobs(renderer, az).forEach((job) => job());
+  }
+
+  /** Posture jobs queued by queuePostures and not run yet. */
+  const pendingPostures = [];
+
+  /**
+   * Queue the posture renders on a time-sliced queue (`defer` = KQ.Game.Defer): one picture per
+   * job, run only while the game is idle (the Pause menu or a hidden tab), never during play and
+   * never on the title screen: a render with its GPU read-back can take a few hundred ms on a slow
+   * tablet, and on the title screen that delays the player's press of Start (notes-ipad.md).
+   * A prayer screen that needs a picture first renders the rest at once (finishPostures), so a
+   * picture is never missing.
+   */
+  function queuePostures(renderer, defer) {
+    postureJobs(renderer).forEach((job) => {
+      pendingPostures.push(job);
+      defer.add(
+        () => {
+          const next = pendingPostures.shift();
+          if (next) next();
+        },
+        "posture picture",
+        { when: defer.whileIdle },
+      );
     });
-    renderer.setRenderTarget(null);
-    renderer.setClearColor(prevClear, prevAlpha);
-    rt.dispose();
-    stage.scene.remove(stage.fig);
+  }
+
+  /** Render every still-queued posture now. */
+  function finishPostures() {
+    while (pendingPostures.length) pendingPostures.shift()();
+  }
+
+  /** True once every posture picture exists (none queued). */
+  const posturesReady = () => pendingPostures.length === 0;
+
+  /** The hero figures to draw: the boy into postureImages, the girl in her white hijab into girlImages. */
+  function postureSets() {
+    const sets = [{ spec: "hero", out: postureImages }];
+    if (KQ.Figures.HERO_GIRL) {
+      sets.push({
+        spec: Object.assign({}, KQ.Figures.HERO_GIRL, GIRL_PRAYER_LOOK),
+        out: girlImages,
+      });
+    }
+    return sets;
+  }
+
+  /** What the renderer looked like before a posture job, so the game's own frame is unaffected. */
+  function keepRenderer(renderer) {
+    const keep = {
+      clear: renderer.getClearColor(new THREE.Color()),
+      alpha: renderer.getClearAlpha(),
+      target: renderer.getRenderTarget(),
+    };
+    keep.restore = function () {
+      renderer.setRenderTarget(keep.target); // also restores the renderer's own viewport / scissor
+      renderer.setClearColor(keep.clear, keep.alpha);
+    };
+    return keep;
+  }
+
+  /**
+   * Aim the atlas at one cell. The viewport and scissor live on the render target, not on the
+   * renderer: `setRenderTarget` applies a target's own pair as they are, while
+   * `renderer.setViewport` would scale them by the device pixel ratio (wrong for a render target).
+   */
+  function aimCell(rt, i, whole) {
+    const at = whole ? { x: 0, y: 0 } : cellAt(i);
+    const w = whole ? rt.width : CELL;
+    const h = whole ? rt.height : CELL;
+    rt.viewport.set(at.x, at.y, w, h);
+    rt.scissor.set(at.x, at.y, w, h);
+    rt.scissorTest = !whole;
+  }
+
+  /** One job: draw one posture into its cell of the atlas (no read-back), then restore the renderer. */
+  function postureJob(renderer, ctx, type, i, az) {
+    return () => {
+      const keep = keepRenderer(renderer);
+      renderer.setClearColor(0xe6eef8, 1);
+      aimCell(ctx.rt, i, false);
+      renderer.setRenderTarget(ctx.rt);
+      aim(ctx.stage.cam, az === undefined ? POSTURE_AZ[type] || POSTURE_AZ.standing : az);
+      KQ.Figures.pose(ctx.stage.fig.userData.rig, POSTURE_POSE[type], 0, 1);
+      ctx.stage.fig.updateMatrixWorld(true);
+      renderer.clear();
+      renderer.render(ctx.stage.scene, ctx.stage.cam);
+      keep.restore();
+    };
+  }
+
+  /** One job per set: read the finished atlas back once and cut it into the set's pictures. */
+  function readJob(renderer, ctx, out, types) {
+    return () => {
+      const keep = keepRenderer(renderer);
+      aimCell(ctx.rt, 0, true); // the whole sheet again: no scissor while it is read
+      readAtlas(renderer, ctx.rt, types, out);
+      keep.restore();
+    };
+  }
+
+  /**
+   * The posture renders as separate jobs, one picture each (plus a stage per hero and clean-up), so
+   * boot can spread them over frames with KQ.Game.Defer instead of one long task with many GPU
+   * read-backs (AC-P23). Each job restores the renderer's target and clear colour, so the game can
+   * draw between them.
+   */
+  function postureJobs(renderer, az) {
+    const ctx = {};
+    const types = Object.keys(POSTURE_POSE);
+    const rows = Math.ceil(types.length / COLS);
+    const dropStage = () => ctx.stage && ctx.stage.scene.remove(ctx.stage.fig);
+    const jobs = [
+      () => {
+        ctx.rt = new THREE.WebGLRenderTarget(COLS * CELL, rows * CELL);
+        ctx.rt.texture.encoding = THREE.sRGBEncoding;
+      },
+    ];
+    postureSets().forEach((set) => {
+      jobs.push(() => {
+        dropStage();
+        ctx.stage = postureStage(renderer, set.spec);
+      });
+      types.forEach((type, i) => jobs.push(postureJob(renderer, ctx, type, i, az)));
+      jobs.push(readJob(renderer, ctx, set.out, types));
+    });
+    jobs.push(() => {
+      dropStage();
+      ctx.rt.dispose();
+    });
+    return jobs;
   }
 
   const MISSION_ICON = {
@@ -291,8 +439,31 @@
     parcel_run: "bag",
     teh_tarik_for_uncle: "bowl",
     fun_day_flyers: "sticker",
+    push_the_car: "car",
+    rambutan_basket: "bag",
+    walk_wei_home: "home",
+    prata_dash: "bowl",
+    friendly_five: "hand",
+    kampung_photos: "camera",
+    bike_to_library: "bike",
+    visit_the_ponies: "heart",
+    h_new_friends: "hand",
+    h_zamzam_walk: "drop",
+    h_visit_camels: "camera",
+    h_madinah_photos: "camera",
+    h_ride_to_quba: "bike",
   };
-  const STEP_ICON = { talk: "talk", buy: "bag", deliver: "home", goto: "pin", collect: "recycle" };
+  const STEP_ICON = {
+    talk: "talk",
+    buy: "bag",
+    deliver: "home",
+    goto: "pin",
+    collect: "recycle",
+    greet: "hand",
+    photo: "camera",
+    ride: "bike",
+    escort: "home",
+  };
 
   G.Pictures = {
     icon,
@@ -300,10 +471,15 @@
     wudu,
     posture,
     renderPostures,
+    postureJobs,
+    queuePostures,
+    finishPostures,
+    posturesReady,
     missionIcon: (id) => icon(MISSION_ICON[id] || "star"),
     stepIcon: (type) => icon(STEP_ICON[type] || "star"),
     postureCount: () => Object.keys(postureImages).length,
     postureImages: () => postureImages,
+    girlPostureImages: () => girlImages,
     POSTURE_POSE,
     ICONS,
   };

@@ -28,6 +28,8 @@
     KeyJ: "missions",
     KeyP: "pray",
     KeyB: "bag",
+    KeyH: "hide",
+    Minus: "hide",
     Escape: "escape",
     Digit1: "tile1",
     Digit2: "tile2",
@@ -50,6 +52,13 @@
   let lastKeyboard = false;
   /** True while a Space press was taken as a jump (so its key-up must not click a focused button). */
   let spaceTaken = false;
+  /**
+   * True from a key that moves focus (Tab, or an arrow inside a group of choices) until the next
+   * pointer press. Chromium turns :focus-visible on for a mouse-focused button as soon as a key is
+   * pressed, so the input mode is tracked here instead of asked of the browser.
+   */
+  let keyboardNav = false;
+  const GROUP = "[role=radiogroup], [role=group], [role=tablist], [role=menu], [role=toolbar]";
 
   /** Combine two opposing inputs into -1, 0 or 1. */
   function axis(neg, pos) {
@@ -83,6 +92,7 @@
    */
   function onKeyDown(e) {
     if (e.ctrlKey || e.metaKey || e.altKey) return;
+    noteFocusKey(e);
     if (e.code === "Space" && !spaceFree(e)) return;
     lastKeyboard = true;
     document.body.classList.add("kq-kbd");
@@ -96,15 +106,38 @@
     if (name && !e.repeat && handler) handler(name, e);
   }
 
+  /** Remember that the keyboard (not a pointer) is moving focus: Tab, or an arrow inside a group. */
+  function noteFocusKey(e) {
+    if (e.code === "Tab") {
+      keyboardNav = true;
+      return;
+    }
+    const arrow = e.code.indexOf("Arrow") === 0 || e.code === "Home" || e.code === "End";
+    if (arrow && e.target && e.target.closest && e.target.closest(GROUP)) keyboardNav = true;
+  }
+
+  /** A pointer press (mouse, pen or finger) anywhere ends keyboard navigation. */
+  function onPointerAny() {
+    keyboardNav = false;
+  }
+
   /**
    * Does Space mean "jump" right now? Only while the world is in play (no sheet, prayer screen or
-   * flow holding the hero) and not while typing; otherwise it keeps its normal job (pressing the
-   * focused button).
+   * flow holding the hero) and not while typing or while a button has KEYBOARD focus; otherwise it
+   * keeps its normal job (pressing the focused button, WCAG 2.1.1). A button a mouse or finger
+   * clicked is not keyboard-focused (`keyboardNav` is false after a pointer press), so Space still
+   * jumps after a tap.
    */
   function spaceFree(e) {
-    const typing = e.target && e.target.closest && e.target.closest("input, select, textarea");
-    spaceTaken = !typing && Boolean(G.Actions && G.Actions.canJump());
+    const t = e.target;
+    const typing = t && t.closest && t.closest("input, select, textarea");
+    spaceTaken = !typing && !keyboardOnButton(t) && Boolean(G.Actions && G.Actions.canJump());
     return spaceTaken;
+  }
+
+  /** Is the key's target a button (or a role=button) that the keyboard moved focus to? */
+  function keyboardOnButton(t) {
+    return keyboardNav && Boolean(t && t.closest && t.closest("button, [role=button]"));
   }
 
   /** Forget a released key (and swallow the Space key-up that would click a focused button). */
@@ -219,6 +252,7 @@
   function attach(opts) {
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("keyup", onKeyUp);
+    window.addEventListener("pointerdown", onPointerAny, true);
     window.addEventListener("blur", () => keys.clear());
     const st = opts.stage;
     st.addEventListener("pointerdown", onPointerDownLook);

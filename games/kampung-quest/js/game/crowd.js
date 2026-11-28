@@ -157,6 +157,7 @@
       if (d > SPAWN_R || !SC().slotActive(s.id, occ[s.kind], minute)) return;
       const seat = seatOf(C, s);
       if (seat && seat.taken && seat.taken !== CROWD_SEAT) return;
+      if (C.cool && C.cool[s.id] > C.clock) return; // someone just left this spot for a bus or a car
       list.push({ s, d });
     });
     list.sort((a, b) => a.d - b.d);
@@ -222,10 +223,7 @@
 
   /** The twice-a-second job: decide who is here. */
   function reconcile(C, hero, minute) {
-    if (!C.pruned) {
-      C.slots = G.CrowdZones.prune(C.world, C.slots);
-      C.pruned = true;
-    }
+    prune(C);
     const cap = SC().capFor(C.tier);
     const target = SC().walkerTarget(minute, C.tier);
     reconcileSpots(C, hero, minute, Math.max(0, cap - target));
@@ -258,7 +256,9 @@
     const vis = C.vis;
     vis.length = 0;
     C.members.forEach(function (m) {
-      if (m.walker) G.CrowdWalkers.update(C, m, dt);
+      if (m.waveT > 0)
+        G.Hi.hold(C, m, dt); // greeted: stands still and waves (say-hi.js)
+      else if (m.walker) G.CrowdWalkers.update(C, m, dt);
       else G.CrowdMembers.update(m, dt, C);
       if (m.show < 0.03 || !canSee(C, m.x, m.z)) return;
       m.d2 = U.dist2(m.x, m.z, C.view.x, C.view.z);
@@ -268,6 +268,7 @@
     if (vis.length > cap) vis.sort((a, b) => a.d2 - b.d2);
     KQ.Figures.CrowdKit.begin(C.kit);
     for (let i = 0; i < vis.length && i < cap; i += 1) drawMember(C.kit, vis[i]);
+    if (G.Occupants) G.Occupants.draw(C.kit, C, dt); // people in cars and the bus (vehicle-occupants.js)
     KQ.Figures.CrowdKit.end(C.kit);
     return hero;
   }
@@ -333,5 +334,16 @@
     KQ.Figures.CrowdKit.showAll(C.kit, on);
   }
 
-  G.Crowd = { create, update, debug, positions, showAll, SPAWN_R, DESPAWN_R };
+  /**
+   * Drop the spots that something placed after the crowd (vehicles, decor) now covers. Runs once.
+   * Boot queues it on KQ.Game.Defer right after the vehicle jobs, so it is done behind the loading
+   * bar; otherwise the first reconcile does it.
+   */
+  function prune(C) {
+    if (C.pruned) return;
+    C.slots = G.CrowdZones.prune(C.world, C.slots);
+    C.pruned = true;
+  }
+
+  G.Crowd = { create, update, prune, debug, positions, showAll, SPAWN_R, DESPAWN_R };
 })((window.KQ = window.KQ || {}));

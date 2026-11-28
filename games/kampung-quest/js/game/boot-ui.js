@@ -14,8 +14,8 @@
   const U = G.U;
   const DEFAULT_STEPS = [
     "Streets and blocks",
-    "Neighbours (16 figures)",
-    "Photo textures",
+    "Waking up the neighbours",
+    "Painting the town",
     "Azan recording",
     "Pictures",
   ];
@@ -55,7 +55,7 @@
     const pct = Math.round(U.clamp(p, 0, 1) * 100);
     B.bar.style.width = pct + "%";
     B.bar.parentElement.setAttribute("aria-valuenow", String(pct));
-    B.status.textContent = (text || "Building the neighbourhood...") + " " + pct + "%";
+    B.status.textContent = (text || "Building the town...") + " " + pct + "%";
   }
 
   /** state: "todo" | "now" | "done" | "skip" */
@@ -79,7 +79,8 @@
       B.start.lastElementChild.textContent = saved;
       B.newGame.hidden = false;
     }
-    B.start.focus({ preventScroll: true });
+    // a first run has the hero picker above Start: keyboard focus begins there (WCAG 2.4.3, reading order)
+    if (!(KQ.Game.Hero && KQ.Game.Hero.focusPicker())) B.start.focus({ preventScroll: true });
   }
 
   /** Show a small notice on the title screen (e.g. saving is unavailable). */

@@ -157,19 +157,14 @@
     return pick(group === "european" || group === "turkish" ? FAIR_HAIR : HAIR, next());
   }
 
-  /** Men in ihram: two white cloths, arms and one shoulder bare; a bare head, a sun cap or (in a tour) the tour's cap. */
-  function ihramMan(o, next, tour) {
+  /**
+   * Men in ihram: two white cloths, arms and one shoulder bare, and the head UNCOVERED (a man in ihram
+   * may not cover his head: no cap, turban or kopiah). A tour still shows its colour on the bag.
+   */
+  function ihramMan(o, next) {
     Object.assign(o, { top: WHITE, legs: WHITE, long: false, skirt: true, shorts: false });
-    const r = next();
-    if (tour) Object.assign(o, { head: "cap", headColour: tour });
-    else if (r < 0.58) Object.assign(o, { head: "hair", headColour: o.hair });
-    else if (r < 0.8) Object.assign(o, { head: "none" });
-    else if (r < 0.9) Object.assign(o, { head: "turban", headColour: WHITE });
-    else
-      Object.assign(o, {
-        head: "cap",
-        headColour: pick(["#f6f4ee", "#5a7fc4", "#2f8f5a"], next()),
-      });
+    if (next() < 0.75) Object.assign(o, { head: "hair", headColour: o.hair });
+    else Object.assign(o, { head: "none" });
   }
 
   /** The dress of a man by nationality (Madinah, streets). */
@@ -479,9 +474,9 @@
     if (o.kid) child(o, ihram, next);
     else if (o.female)
       (code === "ihram" ? womanAtTawaf : (a, g, n, t) => WOMEN[g](a, n, t))(o, group, next, tour);
-    else if (ihram) ihramMan(o, next, tour);
+    else if (ihram) ihramMan(o, next);
     else MEN[group](o, next, tour);
-    if (tour) matchTour(o, tour);
+    if (tour && !(ihram && !o.female)) matchTour(o, tour); // never a cap on a man in ihram
     if (o.age === "elder" && (o.head === "hair" || o.head === "bun"))
       o.headColour = pick(GREY, next());
     else if (o.head === "hair") o.headColour = o.hair;

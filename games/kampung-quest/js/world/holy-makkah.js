@@ -297,6 +297,7 @@
     hillRing(hills);
     P.HolyCamels.yard(c);
     P.HolyCamels.AREAS.forEach((a) => free.addBuilt(a[0], a[1], a[2], a[3]));
+    if (P.Stables) P.Stables.makkah.build(c, free); // camel & horse rides (AC-P5, AC-P6)
     cityFill(c, free);
     for (let x = -100; x <= 110; x += 30) K().lamp(c.B, c, x, -96, 8);
     const palms = palmSpots().concat(oasisPalms());

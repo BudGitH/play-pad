@@ -3,9 +3,10 @@
 // world code may give them. AC-H6 (features/kampung-quest-haramain/requirements.md).
 import test from "node:test";
 import assert from "node:assert/strict";
-import { loadSim, plain } from "./load-sim.mjs";
+import { loadSim, loadCollide, plain } from "./load-sim.mjs";
 
 const { Vehicle: Veh } = loadSim(["vehicle"]).Sim;
+const Col = loadCollide();
 const DT = 1 / 30;
 
 /** Drive for `secs` with a constant stick; people are given as a list or a function of the vehicle. */
@@ -36,9 +37,10 @@ test("the bicycle is faster than the hero can run, the scooter faster still, the
 });
 
 test("every kind of vehicle is known, labelled Drive / Ride and has a body that fits its two rings", () => {
-  assert.deepEqual(Object.keys(Veh.SPECS).sort(), ["bike", "car", "moto"]);
+  assert.deepEqual(Object.keys(Veh.SPECS).sort(), ["bike", "bus", "car", "lorry", "moto"]);
+  const LABEL = { car: "Drive", lorry: "Drive", bike: "Ride", moto: "Ride", bus: "" }; // the bus is never driven
   Object.entries(Veh.SPECS).forEach(([kind, spec]) => {
-    assert.equal(spec.label, kind === "car" ? "Drive" : "Ride");
+    assert.equal(spec.label, LABEL[kind]);
     assert.ok(spec.ring.off + spec.ring.r >= spec.halfLen - 0.1, kind + ": rings cover the length");
     assert.ok(spec.ring.r >= spec.halfWid - 0.05, kind + ": rings cover the width");
   });
@@ -205,4 +207,137 @@ test("the numbers stay finite under odd input", () => {
   drive(v, null, 1);
   assert.ok([v.x, v.z, v.heading, v.speed].every(Number.isFinite));
   assert.equal(Veh.create("tank", 0, 0, 0), null);
+});
+
+/* ------------- playability round: AC-P11 (ground), AC-P12 (solid bodies), AC-P13 (speeds) ------------- */
+
+test("AC-P13: each vehicle is clearly worth taking over running (car 2.5x, scooter 2x, bicycle 1.5x)", () => {
+  assert.equal(Veh.RUN, 4.4, "the yardstick is the hero's run (Player RUN)");
+  assert.ok(Veh.SPECS.car.maxFwd >= 2.5 * Veh.RUN, "car");
+  assert.ok(Veh.SPECS.moto.maxFwd >= 2 * Veh.RUN, "scooter");
+  assert.ok(Veh.SPECS.bike.maxFwd >= 1.5 * Veh.RUN, "bicycle");
+  const lorry = Veh.SPECS.lorry.maxFwd;
+  assert.ok(
+    lorry < Veh.SPECS.car.maxFwd && lorry > Veh.SPECS.bike.maxFwd,
+    "the lorry: slower than a car, faster than a bike",
+  );
+});
+
+test("AC-P13: top speed comes smoothly (no frame adds more than half a metre per second)", () => {
+  ["car", "moto", "bike"].forEach((kind) => {
+    const v = Veh.create(kind, 0, 0, 0);
+    let last = 0;
+    let jump = 0;
+    for (let i = 0; i < 300; i += 1) {
+      Veh.stepSpeed(v, 1, DT);
+      jump = Math.max(jump, v.speed - last);
+      last = v.speed;
+    }
+    assert.equal(v.speed, v.spec.maxFwd, kind + " reaches its top speed");
+    assert.ok(jump < 0.5, kind + ": " + jump);
+  });
+});
+
+test("AC-P13: a fast vehicle looks far enough ahead to ease down for anyone at the comfortable rate", () => {
+  ["car", "moto", "bike"].forEach((kind) => {
+    const s = Veh.SPECS[kind];
+    assert.ok(Veh.lookAhead(s) >= (s.maxFwd * s.maxFwd) / (2 * 6.5) + s.halfLen, kind);
+  });
+  const v = Veh.create("car", 0, 0, 0);
+  v.speed = v.spec.maxFwd;
+  assert.ok(
+    Veh.speedCap(v, [{ x: 0, z: 14 }]) < v.spec.maxFwd,
+    "someone 14 m ahead already slows it",
+  );
+});
+
+test("AC-P13: an animal's spec (it has `top`, not `maxFwd`) gives a finite look-ahead, so a ridden animal yields in time", () => {
+  const { Mount } = loadSim(["vehicle", "mount"]).Sim;
+  Object.keys(Mount.SPECS).forEach((kind) => {
+    const s = Mount.SPECS[kind];
+    const look = Veh.lookAhead(s);
+    assert.ok(Number.isFinite(look), kind + " is not NaN");
+    assert.ok(look >= (s.top * s.top) / (2 * 6.5) + s.halfLen, kind + " eases down in time");
+  });
+});
+
+test("AC-P12: a parked vehicle's box is its body, turned with it", () => {
+  const v = Veh.create("car", 10, 5, Math.PI / 2);
+  const b = Veh.box(v, 0.1);
+  assert.equal(b.hz, v.spec.halfLen + 0.1);
+  assert.equal(b.hx, v.spec.halfWid + 0.1);
+  assert.ok(Math.abs(b.s - 1) < 1e-9 && Math.abs(b.c) < 1e-9);
+});
+
+test("AC-P12: a person cannot stand anywhere inside a turned car's body, its middle included", () => {
+  const h = 0.6;
+  const col = Col.orientedBox(Veh.box(Veh.create("car", 0, 0, h), 0), "car");
+  const f = [Math.sin(h), Math.cos(h)];
+  const l = [Math.cos(h), -Math.sin(h)];
+  for (let fwd = -1.8; fwd <= 1.8; fwd += 0.3) {
+    for (let lat = -0.8; lat <= 0.8; lat += 0.2) {
+      const p = { x: f[0] * fwd + l[0] * lat, z: f[1] * fwd + l[1] * lat };
+      assert.ok(Col.blockedAt([col], p.x, p.z, 0.31), "blocked at " + fwd + ", " + lat);
+      Col.settle([col], p, 0.31);
+      const at = { fwd: p.x * f[0] + p.z * f[1], lat: p.x * l[0] + p.z * l[1] };
+      const out = Math.abs(at.lat) >= 0.82 + 0.3 || Math.abs(at.fwd) >= 1.9 + 0.3;
+      assert.ok(out, "pushed out of the body from " + fwd + ", " + lat + ": " + JSON.stringify(at));
+    }
+  }
+});
+
+test("AC-P12: the oriented box is exact (the old two square boxes let people into the middle)", () => {
+  const o = { x: 0, z: 0, hx: 0.8, hz: 1.9, c: Math.cos(0.7), s: Math.sin(0.7) };
+  const col = Col.orientedBox(o, "car");
+  assert.ok(col.maxX - col.minX > 1.6 && col.maxZ - col.minZ > 1.6, "bounds cover the turned box");
+  assert.equal(
+    Col.hits(col, col.maxX - 0.05, col.maxZ - 0.05, 0.2),
+    false,
+    "an empty corner is free",
+  );
+  assert.equal(Col.hits(col, 0, 0, 0.01), true);
+  const p = { x: 0.2, z: 0.1 };
+  assert.equal(Col.pushOut(p, 0.3, col), true);
+  assert.equal(Col.hits(col, p.x, p.z, 0.299), false, "pushOut leaves it touching, not inside");
+});
+
+/** Four car tyres (left is +lat), 1.1 m ahead / behind and 0.62 m to each side. */
+const CAR_CONTACTS = [-1, 1].flatMap((f) => [-1, 1].map((l) => ({ fwd: f * 1.1, lat: l * 0.62 })));
+
+test("AC-P11: on flat ground the body sits flat at the ground's height", () => {
+  const p = Veh.groundPose(Veh.create("car", 3, 4, 1.1), CAR_CONTACTS, () => 0.12);
+  assert.ok(Math.abs(p.y - 0.12) < 1e-9 && Math.abs(p.pitch) < 1e-9 && Math.abs(p.roll) < 1e-9);
+  p.off.forEach((o) => assert.ok(Math.abs(o) < 1e-9));
+});
+
+test("AC-P11: front wheels up a kerb pitch the nose up, left wheels roll it, one wheel up is taken by the suspension", () => {
+  const v = Veh.create("car", 0, 0, 0); // faces +z, left is +x
+  const nose = Veh.groundPose(v, CAR_CONTACTS, (x, z) => (z > 0 ? 0.12 : 0));
+  assert.ok(nose.pitch > 0.05 && Math.abs(nose.roll) < 1e-9 && Math.abs(nose.y - 0.06) < 1e-9);
+  const side = Veh.groundPose(v, CAR_CONTACTS, (x) => (x > 0 ? 0.12 : 0));
+  assert.ok(side.roll > 0.05 && Math.abs(side.pitch) < 1e-9);
+  const ground = (x, z) => (x > 0 && z > 0 ? 0.12 : 0);
+  const one = Veh.groundPose(v, CAR_CONTACTS, ground);
+  CAR_CONTACTS.forEach((c, i) => {
+    const plane = one.y + Math.tan(one.pitch) * c.fwd + Math.tan(one.roll) * c.lat;
+    const under = c.lat > 0 && c.fwd > 0 ? 0.12 : 0;
+    assert.ok(Math.abs(plane + one.off[i] - under) < 1e-9, "wheel " + i);
+  });
+});
+
+test("AC-P11: a two-wheeler never rolls from the ground fit, and a tyre on a kerb edge stands on the kerb", () => {
+  const v = Veh.create("bike", 0, 0, 0);
+  const two = [
+    { fwd: 0.5, lat: 0.03 },
+    { fwd: -0.5, lat: 0 },
+  ];
+  const p = Veh.groundPose(v, two, (x, z) => (z > 0 ? 0.12 : 0));
+  assert.equal(p.roll, 0);
+  assert.ok(p.pitch > 0.1);
+  assert.equal(
+    Veh.groundUnder((x) => (x > 0.05 ? 0.12 : 0), 0, 0),
+    0.12,
+    "the kerb holds it up",
+  );
+  assert.ok(Number.isFinite(Veh.groundPose(v, [{ fwd: 0.5, lat: 0 }], () => NaN).y));
 });

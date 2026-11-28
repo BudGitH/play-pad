@@ -1,0 +1,40 @@
+# PlayPad PR-title check (CODE_QUALITY.md section 15, ENFORCEMENT.md; ledger row unenforced-checkable-rules).
+# The repo squash-merges, so the PR title IS the commit message on main: it must read `type(scope): summary`
+# (docs/PR-STANDARD.md 1.2). The rule itself lives in tools/check-pr-title.mjs (try it locally with a title as argument).
+#
+# Why a separate workflow and not a job in ci.yml: a title edit fires the `edited` event, and ci.yml would then
+# re-run the lint, unit-test and 30-minute browser jobs on every title or description edit. Here only this
+# one-second job runs. Mark "PR title" as a required check in the branch protection settings to make it block.
+#
+# Safety: `pull_request` (not pull_request_target) so a fork PR runs with a read-only token and no secrets; the title is
+# passed through `env:` and read by Node from process.env, never interpolated into the shell script (a title
+# like `$(curl evil)` stays inert text).
+name: PR title
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-title-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  title:
+    name: PR title
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version: 22
+      - name: "Title is type(scope): summary"
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: node tools/check-pr-title.mjs

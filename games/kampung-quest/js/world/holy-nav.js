@@ -97,7 +97,7 @@
     [-250, -103, E],
     [-200, -109, W],
     [-100, -103, E],
-    [-75, -109, W],
+    [-73.5, -109, W], // 1.5 m east: the realism-pass body is longer and reached the N-S path at x -77.25
     [65, -109, W],
     [110, -103, E],
     [-100, -172, E],

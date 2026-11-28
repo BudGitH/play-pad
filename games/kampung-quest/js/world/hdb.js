@@ -1,8 +1,11 @@
 /* Kampung Quest — HDB slab blocks (KQ.WorldParts.HDB): open void deck with pillars, lift
    lobby, letterboxes and stone table sets; 9–12 residential floors with a common corridor
    (parapets, rails, flat doors with gates, kitchen windows) on one side and window bays with
-   AC ledges, drying poles and laundry on the other; painted gable bands with the block number,
-   and a roof with parapet, water tank and lift motor room. */
+   AC ledges, drying poles, laundry and window grilles on the other; the repaint scheme of a
+   real estate: white floor lines, pastel walls, an accent band every fourth floor and a
+   contrasting stair / lift core with the big painted block number near the roof; painted
+   gable bands with the number, and a roof with parapet, a water tank on legs and the lift
+   motor room. The void deck is dressed in hdb-deck.js. Reference: sg-reference.md. */
 (function (KQ) {
   "use strict";
   const P = (KQ.WorldParts = KQ.WorldParts || {});
@@ -10,6 +13,8 @@
   const FLOOR_H = 2.5;
   const CORR = 1.6;
   const BAY = 4;
+  const TRIM = 0xfbf7ee; // the white floor lines / parapets of a repainted block
+  const accent = (i) => i % 4 === 3; // every fourth floor carries the block's accent band
 
   /** Derived frame for a block spec. */
   function frame(b) {
@@ -33,17 +38,22 @@
   /** Ground floor: tiled void deck, pillars (colliders), slab overhead. */
   function voidDeck(B, f, col, ctx) {
     const b = f.b;
-    B.aabb("tiles", b.x0 - 1, 0, b.z0 - 1, b.x1 + 1, 0.14, b.z1 + 1);
+    // Light cream terrazzo (AC-P20): the brown speckled tiles read muddy in the deck's shade.
+    B.aabb("terrazzo", b.x0 - 1, 0, b.z0 - 1, b.x1 + 1, 0.14, b.z1 + 1, 0xffe2bd);
     const rows = [b.z0 + 0.5, (b.z0 + b.z1) / 2, b.z1 - 0.5];
     for (let x = b.x0 + 0.5; x <= b.x1 - 0.4; x += BAY) {
       rows.forEach((z, ri) => {
         if (ri === 1 && Math.abs(x - f.xc) < 4) return;
-        B.box("plaster", x, VOID_H / 2, z, 0.6, VOID_H, 0.6, b.wall);
-        B.box("plaster", x, 0.6, z, 0.64, 1.2, 0.64, b.band);
+        B.box("plaster", x, VOID_H / 2, z, 0.6, VOID_H, 0.6, TRIM);
+        B.box("plaster", x, 0.55, z, 0.63, 1.1, 0.63, b.dado || b.wall);
+        B.box("paint", x, 1.16, z, 0.64, 0.12, 0.64, b.band);
         P.collide(col, x - 0.35, x + 0.35, z - 0.35, z + 0.35, "pillar");
       });
     }
     B.aabb("concrete", b.x0, VOID_H - 0.35, b.z0, b.x1, VOID_H, b.z1, 0xe8e6e0);
+    const zm = (b.z0 + b.z1) / 2;
+    const down = [Math.PI / 2, 0, 0];
+    B.plane("paint", f.xc, VOID_H - 0.36, zm, b.x1 - b.x0, b.z1 - b.z0, down, null, 0xfffdf6);
     for (let x = b.x0 + 2.5; x < b.x1 - 1; x += 6) {
       [b.z0 + 2.2, b.z1 - 2.2].forEach((z) => {
         B.box("lamp", x, VOID_H - 0.38, z, 1.2, 0.05, 0.12, 0xffffff);
@@ -87,15 +97,17 @@
   }
 
   /** Per-floor corridor: slab, parapet with colour stripe, rail, doors + kitchen windows. */
-  function corridorFloor(B, f, y, rnd) {
+  function corridorFloor(B, f, y, rnd, i) {
     const b = f.b;
     const zo = f.zc;
     const s = f.s;
     const xm = (b.x0 + b.x1) / 2;
     const len = b.x1 - b.x0;
+    const ac = accent(i);
     B.aabb("concrete", b.x0, y - 0.22, Math.min(zo, f.zw), b.x1, y, Math.max(zo, f.zw), 0xdedbd4);
-    B.box("plaster", xm, y + 0.45, zo - s * 0.08, len, 0.9, 0.16, b.wall);
-    B.box("plaster", xm, y + 0.86, zo - s * 0.04, len + 0.02, 0.1, 0.1, b.band);
+    B.box("plaster", xm, y - 0.11, zo + s * 0.02, len + 0.04, 0.24, 0.06, TRIM);
+    B.box("plaster", xm, y + 0.45, zo - s * 0.08, len, 0.9, 0.16, ac ? b.band : TRIM);
+    B.box("plaster", xm, y + 0.86, zo - s * 0.04, len + 0.02, 0.1, 0.1, ac ? TRIM : b.band);
     B.plane("railing", xm, y + 1.08, zo - s * 0.08, len, 0.34, f.faceOut, null, 0x8d949a);
     for (let i = 0; i < f.bays; i++) corridorBay(B, f, y, bayX(f, i), rnd);
   }
@@ -128,16 +140,19 @@
   }
 
   /** Back facade: window bays, floor bands, AC ledges, drying poles + laundry. */
-  function backFloor(B, f, y, rnd) {
+  function backFloor(B, f, y, rnd, fl) {
     const b = f.b;
     const s = f.s;
     const zf = f.zb - s * 0.02;
-    B.box("concrete", (b.x0 + b.x1) / 2, y - 0.1, f.zb - s * 0.1, b.x1 - b.x0, 0.2, 0.2, 0xe5e2da);
+    const [bh, bc] = accent(fl) ? [0.5, b.band] : [0.22, TRIM];
+    B.box("plaster", (b.x0 + b.x1) / 2, y - 0.1, f.zb - s * 0.1, b.x1 - b.x0, bh, 0.2, bc);
     for (let i = 0; i < f.bays; i++) {
       const x = bayX(f, i);
+      if (Math.abs(x - f.xc) < 2.8) continue; // the stair / lift core strip (coreFaces)
       [-0.95, 0.95].forEach((dx) => {
         const key = rnd() < 0.4 ? "windowLit" : "window";
         B.plane(key, x + dx, y + 1.35, zf, 1.25, 1.25, f.faceBack, f.win.uv(Math.floor(rnd() * 8)));
+        if (fl < 5 && rnd() < 0.4) grille(B, x + dx, y + 1.35, f.zb - s * 0.06, f.faceBack);
         B.box("concrete", x + dx, y + 0.68, f.zb - s * 0.09, 1.45, 0.07, 0.18, 0xd5d1c8);
         B.box("concrete", x + dx, y + 2.03, f.zb - s * 0.12, 1.5, 0.08, 0.26, 0xd5d1c8);
         [-0.68, 0.68].forEach((o) =>
@@ -152,6 +167,10 @@
       if (i % 2 === 0)
         B.box("plaster", x - BAY / 2, y + FLOOR_H / 2, f.zb - s * 0.2, 0.3, FLOOR_H, 0.4, b.wall);
     }
+  }
+  /** Window grille (the painted steel grilles of lower-floor flats). */
+  function grille(B, x, y, z, rot) {
+    B.plane("railing", x, y, z, 1.25, 1.25, rot, null, 0xf4f1ea);
   }
   const CLOTHES = [0xd94f4f, 0x3f7fd0, 0xf2d24b, 0xffffff, 0x6fbf73, 0xf29ac0, 0x8a6bd1, 0x2b3a55];
   /** Bamboo drying poles pushed out of the window holders (dir = outward Z) with garments. */
@@ -251,7 +270,43 @@
     B.aabb("plaster", b.x0 - 0.1, f.top + 0.3, b.z0, b.x0 + 0.1, f.top + 1.1, b.z1, b.band);
     B.aabb("plaster", b.x1 - 0.1, f.top + 0.3, b.z0, b.x1 + 0.1, f.top + 1.1, b.z1, b.band);
     B.box("plaster", f.xc, f.top + 4.4, (b.z0 + b.z1) / 2, 4.2, 1.6, 3.6, b.wall);
-    B.box("metal", f.xc + 8, f.top + 0.9, (b.z0 + b.z1) / 2, 1.2, 1.2, 1.2, 0x9aa0a6);
+    waterTank(B, f.xc + 8, f.top + 0.3, (b.z0 + b.z1) / 2);
+  }
+  /** Rooftop water tank: a pale tank on four legs with a ladder. */
+  function waterTank(B, x, y, z) {
+    [-1.1, 1.1].forEach((dx) =>
+      [-0.9, 0.9].forEach((dz) =>
+        B.box("metal", x + dx, y + 0.6, z + dz, 0.14, 1.2, 0.14, 0x9aa0a6),
+      ),
+    );
+    B.box("plaster", x, y + 2.0, z, 2.6, 1.6, 2.2, 0xeef0ec);
+    B.box("plaster", x, y + 2.86, z, 2.7, 0.12, 2.3, 0xd5d8d4);
+    for (let k = 0; k < 6; k++)
+      B.box("metal", x - 1.38, y + 0.3 + k * 0.42, z, 0.04, 0.04, 0.5, 0x9aa0a6);
+  }
+
+  /**
+   * The stair / lift core seen from outside: a contrasting painted strip proud of the corridor
+   * face and of the back face, with breeze-block stair openings and the big block number near
+   * the roof (as painted on real blocks).
+   */
+  function coreFaces(B, f, ctx) {
+    const b = f.b;
+    const h = f.top + 2.8 - VOID_H;
+    const uv = ctx.atlas.coreNumber(b.num, b.core, "#ffffff");
+    [
+      [f.zc + f.s * 0.12, f.faceOut],
+      [f.zb - f.s * 0.12, f.faceBack],
+    ].forEach(([z, rot]) => {
+      B.box("plaster", f.xc, VOID_H + h / 2, z, 5.4, h, 0.24, b.core);
+      const zf = z + Math.cos(rot) * 0.125;
+      for (let i = 0; i < b.floors; i++) slits(B, f.xc, VOID_H + i * FLOOR_H, zf, rot);
+      B.plane("decal", f.xc, f.top + 0.9, zf + Math.cos(rot) * 0.01, 2.0, 3.0, rot, uv);
+    });
+  }
+  /** Two breeze-block stair openings on one floor of the core. */
+  function slits(B, x, y, z, rot) {
+    [-1.4, 1.4].forEach((dx) => B.plane("dark", x + dx, y + 1.5, z, 1.5, 0.5, rot, null, 0x5b6470));
   }
 
   /** Build one block; returns its lift-door spot (the "home door" for block A). */
@@ -273,18 +328,21 @@
     );
     for (let i = 0; i < spec.floors; i++) {
       const y = VOID_H + i * FLOOR_H;
-      corridorFloor(B, f, y, rnd);
-      backFloor(B, f, y, rnd);
+      corridorFloor(B, f, y, rnd, i);
+      backFloor(B, f, y, rnd, i);
     }
     gables(B, f, ctx);
     roof(B, f);
+    coreFaces(B, f, ctx);
     const zt = (spec.z0 + spec.z1) / 2;
-    ctx.tables.push(
+    const stones = [
       { x: bayX(f, 1), z: zt, stone: true },
       { x: bayX(f, f.bays - 2), z: zt, stone: true },
-    );
+    ];
+    ctx.tables.push(...stones);
+    if (P.HdbDeck) P.HdbDeck.dress(B, f, ctx, stones);
     return { lift, frame: f };
   }
 
-  P.HDB = { block, VOID_H, FLOOR_H };
+  P.HDB = { block, VOID_H, FLOOR_H, BAY };
 })((window.KQ = window.KQ || {}));

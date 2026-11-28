@@ -57,6 +57,12 @@
     return (sim && sim.wardrobe) || KQ.Sim.Wardrobe.DEFAULT;
   }
 
+  /** Who the hero is now: { gender, style, scarf } (the saved choice, else a boy). */
+  function currentHero() {
+    const sim = G.S && G.S.sim;
+    return (sim && sim.hero) || KQ.Sim.Hero.DEFAULT;
+  }
+
   /** The ritual look now: in ihram or not, and the haircut after tahallul ("none", "trim", "shave"). */
   function ritualLook() {
     const u = G.S && G.S.sim && G.S.sim.umrah;
@@ -99,9 +105,12 @@
    * shows (shorter hair). `look` is { ihram, cut } and `wardrobe` { wear, tone }; by default both
    * are read from the live game.
    */
-  function applyOutfit(P, outfit, look, wardrobe) {
+  function applyOutfit(P, outfit, look, wardrobe, hero) {
     const l = look || ritualLook();
     const w = wardrobe || currentWardrobe();
+    const h = hero || currentHero();
+    P.gender = h.gender === "girl" ? "girl" : "boy";
+    if (P.gender === "girl") return dressGirl(P, l, w, h);
     const W = KQ.Sim.Wardrobe;
     KQ.Figures.dressHero(P.rig, l.ihram || W.isDefault(w) ? null : W.specFor(w));
     KQ.Figures.setIhram(P.rig, l.ihram);
@@ -109,6 +118,20 @@
       ? KQ.Figures.IHRAM_HEAD[l.cut === "none" ? "none" : l.cut]
       : KQ.Figures.cutHead(headSpecFor(outfit, w), l.cut);
     KQ.Figures.setHeadPiece(P.rig, spec);
+  }
+
+  /**
+   * The girl hero (AC-P9 / P10): her face and clothes on the hero's rig, and her hair or hijab. In
+   * ihram she wears plain white modest clothes and a white hijab (never the men's two cloths), the
+   * face and hands uncovered; her chosen look comes back after. The tahallul snip does not change
+   * the picture (her hair is under the hijab or only a fingertip shorter).
+   */
+  function dressGirl(P, l, w, h) {
+    const H = KQ.Sim.Hero;
+    const F = KQ.Figures;
+    F.setIhram(P.rig, false);
+    F.dressHero(P.rig, l.ihram ? H.ihramSpec() : H.GIRL.specFor(w), F.HERO_GIRL);
+    F.setHeadPiece(P.rig, l.ihram ? H.ihramHead() : H.headFor(h));
   }
 
   /** Put the hero on the ground at x,z, stop all motion and optionally set the heading. */
@@ -244,8 +267,13 @@
     sync(P);
   }
 
-  /** Hold the hero at a spot with a forced pose (null pose = idle). */
+  /**
+   * Hold the hero at a spot with a forced pose (null pose = idle). Returns a ticket for `release`:
+   * a timed lock (a wave, an ice cream) releases with its ticket, so it never frees a hold that
+   * a prayer or a rite took in the meantime.
+   */
   function lock(P, spot, pose) {
+    P.lockId = (P.lockId || 0) + 1;
     P.locked = true;
     P.forcedPose = pose || null;
     if (spot) {
@@ -256,12 +284,30 @@
     KQ.Sim.Jump.reset(P.jump);
     P.vx = P.vz = 0;
     sync(P);
+    return P.lockId;
   }
 
-  /** Give control back to the player after a lock (clears the forced pose). */
-  function release(P) {
+  /**
+   * Give control back to the player after a lock (clears the forced pose). With a ticket from
+   * `lock`, only if that lock is still the latest one (a later lock keeps the hero held).
+   */
+  function release(P, ticket) {
+    if (ticket !== undefined && ticket !== P.lockId) return;
     P.locked = false;
     P.forcedPose = null;
+  }
+
+  /**
+   * A short timed hold (a wave, a happy pose, a bite of dates): lock the hero with `pose` and release
+   * after `seconds` game seconds, but only that same hold (the ticket), so it never frees a prayer,
+   * rite or ride that took the hero meanwhile. Does nothing when the hero is already held.
+   * Returns true when the hold started.
+   */
+  function lockFor(P, seconds, pose) {
+    if (P.locked) return false;
+    const ticket = lock(P, null, pose);
+    KQ.Game.S.after(seconds, () => release(P, ticket));
+    return true;
   }
 
   G.Player = {
@@ -270,9 +316,11 @@
     jump,
     place,
     lock,
+    lockFor,
     release,
     applyOutfit,
     headSpecFor,
+    currentHero,
     sync,
     RADIUS,
     WALK,

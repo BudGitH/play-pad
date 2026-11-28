@@ -92,7 +92,22 @@
     const s = rig.dims.scale;
     rig.root.position.y += ((P.rootY || 0) * s - rig.root.position.y) * w;
     rig.root.position.z += ((P.rootZ || 0) * s - rig.root.position.z) * w;
+    turnCap(rig, found, w);
   };
+
+  /**
+   * A peaked cap is worn peak-back for the prayer postures (F.capBack poses), so the forehead can
+   * reach the floor in sujud instead of the peak going through it; it turns round again for everything
+   * else. Swapped once the blend is half way (the hair under the cap stays where it is).
+   */
+  function turnCap(rig, poseFn, w) {
+    if (!rig.capPeak || !rig.headSpec) return;
+    const want = Boolean(poseFn && poseFn.capBack);
+    if (want === Boolean(rig.capTurned) || w < 0.5) return;
+    rig.capTurned = want;
+    const spec = want ? Object.assign({}, rig.headSpec, { reversed: true }) : rig.headSpec;
+    rig.accessory.geometry = F.headPieceGeometry(spec);
+  }
 
   /** Drop from the figure origin up to where the seat touches its thighs in the sit / eat poses. */
   F.seatDrop = function (rig) {

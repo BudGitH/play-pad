@@ -38,6 +38,7 @@ test.afterAll(async () => {
 async function reset() {
   await ev(() => {
     const G = window.KQ.Game;
+    if (G.RitualUI.active) G.RitualUI.active.close("test"); // a minimised card has no sheet to close
     G.UI.closeSheet("test");
     G.RitualTrek.stop();
     G.RitualLook.cancel();
@@ -85,8 +86,9 @@ async function pressToEnd() {
 test("Umrah: the dock button opens the rites; Next alone reaches done, in order, in ihram and out of it", async () => {
   await reset();
   await expect(page.locator("#kqDock-rites")).toBeVisible();
-  // no cast of neighbours here: no Missions button, and the mission card says how to begin a rite
-  await expect(page.locator("#kqDock-missions")).toHaveCount(0);
+  // the two Makkah guides give missions now (playability round), so the dock has Missions beside Umrah;
+  // with no mission under way the mission card still says how to begin a rite
+  await expect(page.locator("#kqDock-missions")).toBeVisible();
   await expect(page.getByText("Tap Umrah below to begin: Umrah, Hajj or Ziarah.")).toBeVisible();
   await openFromDock("umrah");
   expect((await ritual()).step).toBe("ihram");
@@ -349,14 +351,14 @@ test("Go there moves the hero (KQ.Holy.goTo) and the button hides when the regio
   await ev(() => (window.KQ.Holy.goTo = window.__goTo));
 });
 
-test("I'll walk myself: the card folds into a chip, the mission card shows the step, and it reopens when the count is full", async () => {
+test("I'll walk myself: the card folds into a chip (Minimise), the mission card shows the step, and it reopens when the count is full", async () => {
   await reset();
   await openFromDock("umrah");
   await advanceTo("sai");
   await page.getByRole("button", { name: "I'll walk myself" }).click();
   await expect(page.getByRole("dialog", { name: "Umrah steps" })).toHaveCount(0);
   await step(300);
-  await expect(page.locator(".kq-ritual-chip")).toContainText("Umrah: Sa'i: 7 legs (0 of 7)");
+  await expect(page.locator(".kq-min-chip")).toContainText("Sa'i 0/7");
   await expect(page.locator(".kq-ritual-line")).toContainText("Umrah: Sa'i: 7 legs");
   const to = (z) => ev((z) => window.__kq.place(42, z, 0), z);
   await to(-39);
@@ -365,7 +367,7 @@ test("I'll walk myself: the card folds into a chip, the mission card shows the s
   }
   await expect(page.getByRole("dialog", { name: "Umrah steps" })).toBeVisible();
   expect(await ritual()).toMatchObject({ count: 7, open: true });
-  await expect(page.locator(".kq-ritual-chip")).toHaveCount(0);
+  await expect(page.locator(".kq-min-chip")).toHaveCount(0);
 });
 
 test("Hajj highlights and Ziarah reach done by Next alone", async () => {
@@ -538,8 +540,7 @@ test("wudu and Subuh complete by Next alone, right where the hero stands, with t
   await ev(() => window.__kq.forcePrayer("subuh"));
   await step(300);
   const before = await state();
-  await page.evaluate(() => window.__kq.action("pray"));
-  await page.locator(".kq-pray-here").click();
+  await page.evaluate(() => window.__kq.action("pray")); // one tap: wudu starts right here
   await expect(page.getByRole("dialog", { name: "Wudu steps" })).toBeVisible();
   await expect(page.locator(".kq-stepper .kq-sheet-title")).toHaveText(
     "Wudu at the mosque taps · step 1 of 12",
@@ -630,8 +631,7 @@ test("Change view cycles the camera through three angles with smooth transitions
   await reset();
   await ev(() => window.__kq.forcePrayer("zohor"));
   await step(300);
-  await page.evaluate(() => window.__kq.action("pray"));
-  await page.locator(".kq-pray-here").click();
+  await page.evaluate(() => window.__kq.action("pray")); // one tap: wudu starts right here
   await expect(page.getByRole("dialog", { name: "Wudu steps" })).toBeVisible();
   await step(2600);
   const a = await cam();
@@ -660,8 +660,7 @@ test("the prayer card reads word by word, with the full Al-Fatihah and the short
     window.__kq.forcePrayer("asar");
     window.__kq.place(0, -95, 0);
   });
-  await page.evaluate(() => window.__kq.action("pray"));
-  await page.locator(".kq-pray-here").click();
+  await page.evaluate(() => window.__kq.action("pray")); // one tap: wudu starts right here
   while ((await state()).prayer.flow?.phase === "wudu") await page.locator(".kq-wudu-act").click();
   await next(); // takbir -> qiyam
   await expect(page.locator(".kq-stepper .kq-step-title")).toHaveText("Qiyam (stand)");

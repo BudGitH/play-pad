@@ -40,6 +40,7 @@
     const group = KQ.Figures.build(id);
     group.name = "npc-" + id;
     scene.add(group);
+    KQ.Figures.mergeRig(group); // one draw call per figure (AC-14 budget)
     const rig = group.userData.rig;
     return {
       id,
@@ -72,6 +73,7 @@
       pose: "idle",
       star: null,
       greetT: 0,
+      holdT: 0,
     };
   }
 
@@ -205,6 +207,7 @@
     if (A.hidden) return;
     A.speed = 0;
     if (A.greetT > 0) A.greetT -= dt;
+    if (A.holdT > 0 && !A.talking) return holdStill(A, dt, env);
     if (A.talking) {
       faceToward(A, env.hero, dt);
     } else if (A.path.length) {
@@ -218,6 +221,14 @@
     }
     if (A.path.length === 0 && A.goal && A.goal.kind === "pray") settlePray(A, dt);
     if (A.goal && A.goal.cookSpot && A.path.length === 0) cookSnap(A);
+    pose(A, dt, env);
+  }
+
+  /** A greeted neighbour stands still, faces the hero and waves until `holdT` runs out (Say hi). */
+  function holdStill(A, dt, env) {
+    A.holdT -= dt;
+    A.greetT = Math.max(A.greetT, 0.2); // the wave pose lasts as long as the hold
+    faceToward(A, env.hero, dt);
     pose(A, dt, env);
   }
 

@@ -82,7 +82,7 @@
   function needsLabel(food, energy, needs) {
     let text = "Food " + food + " of 100, energy " + energy + " of 100.";
     if (needs.isHungry()) text += " Food low \u2014 time to eat.";
-    if (needs.isTired()) text += " Energy low \u2014 time to rest.";
+    if (needs.isTired()) text += " Energy low \u2014 time to rest. Tap to rest.";
     return text;
   }
 
@@ -119,7 +119,15 @@
     paintNeed("food", food, needs.isHungry(), ["Food", "Hungry"]);
     paintNeed("energy", energy, needs.isTired(), ["Energy", "Tired"]);
     R.needs.setAttribute("aria-label", needsLabel(food, energy, needs));
-    R.needs.title = "Food " + food + ", energy " + energy;
+    R.needs.title = needs.isTired() ? "Tap to rest" : "Food " + food + ", energy " + energy;
+    markRest(needs.isTired());
+  }
+
+  /** The Tired bar is a Rest button (one tap, no question); a bar that is not low is just a picture. */
+  function markRest(tired) {
+    const R = H().refs;
+    R.needs.classList.toggle("is-rest", tired);
+    R.needs.setAttribute("role", tired ? "button" : "img");
   }
 
   /**
@@ -143,7 +151,14 @@
     U.clear(R.chipIc).appendChild(iconEl);
   }
 
-  const CHIP_VERB = { talk: "Talk to ", goto: "Go to " };
+  const CHIP_VERB = {
+    talk: "Talk to ",
+    goto: "Go to ",
+    ride: "",
+    photo: "",
+    greet: "",
+    escort: "",
+  };
 
   /** Set the phone's one-line mission chip to the current step (or 'Waiting while we pray'). */
   function chipFor(mission, prog) {
@@ -215,7 +230,7 @@
 
   /** Redraw the mission card only when its signature (mission, step, count, paused) changes; peek only when the mission or step changes. */
   function renderMission(sim) {
-    if (KQ.region === "haramain") return renderRites(sim);
+    if (KQ.region === "haramain" && !sim.missions.active()) return renderRites(sim);
     const R = H().refs;
     const prog = sim.missions.progress();
     const mission = sim.missions.active();

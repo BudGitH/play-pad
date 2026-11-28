@@ -48,11 +48,12 @@
     const activeId = sim.missions.active() && sim.missions.active().id;
     const paused = sim.missions.isPausedNow();
     const grid = U.el("div", { cls: "kq-grid kq-grid-missions" });
-    KQ.Sim.MISSIONS.forEach(function (m) {
+    const all = sim.missions.offered();
+    all.forEach(function (m) {
       const status = done.indexOf(m.id) !== -1 ? "done" : m.id === activeId ? "active" : "new";
       grid.appendChild(missionTile(m, status, paused));
     });
-    const left = KQ.Sim.MISSIONS.length - done.length;
+    const left = all.length - done.length;
     const msg =
       left === 0
         ? "All " + done.length + " missions done. Masya-Allah! New missions come tomorrow at 07:00."
@@ -64,7 +65,7 @@
     const box = U.el(
       "div",
       { cls: "kq-menu" },
-      G.UI.header("My missions · " + done.length + " of " + KQ.Sim.MISSIONS.length + " done", {
+      G.UI.header("My missions · " + done.length + " of " + all.length + " done", {
         extras: [read],
       }),
       note,
@@ -139,44 +140,9 @@
     return row;
   }
 
-  /** Full map screen. ctx: { sim, mapView() -> view for Minimap.draw, onClose } */
+  /** Full map screen (bigmap.js): the whole region, zoom and pan, places, go-here. ctx: { onClose } */
   function map(ctx) {
-    const canvas = U.el("canvas", {
-      cls: "kq-bigmap",
-      width: "640",
-      height: "640",
-      role: "img",
-      "aria-label": "Map of the neighbourhood",
-    });
-    const legend = U.el("p", {
-      cls: "kq-small kq-legend",
-      text:
-        KQ.region === "haramain"
-          ? "Blue arrow: you. Black cube: the Kaaba. Green dome: the Prophet's Mosque. Pink pin: your mission. Red N: north."
-          : "Blue arrow: you. Pink pin: your mission. Gold star: a neighbour with a mission. Green dome: the mosque. Orange bowl: hawker centre. Pink house: home. Red N: north.",
-    });
-    const box = U.el(
-      "div",
-      { cls: "kq-menu kq-mapmenu" },
-      G.UI.header("Map"),
-      U.el(
-        "div",
-        { cls: "kq-mapbody" },
-        canvas,
-        U.el(
-          "div",
-          { cls: "kq-col" },
-          U.el("h3", { cls: "kq-h3", text: "Today's prayers" }),
-          dayStrip(ctx.sim),
-          legend,
-        ),
-      ),
-    );
-    const draw = () => G.Minimap.draw(canvas.getContext("2d"), 640, ctx.mapView(), false);
-    draw();
-    const h = G.UI.openSheet({ el: box, label: "Map", onClose: ctx.onClose });
-    h.redraw = draw;
-    return h;
+    return G.BigMap.open(ctx);
   }
 
   const HOWTO = [

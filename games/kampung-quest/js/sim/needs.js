@@ -81,6 +81,8 @@
       canEat: () => N.hunger < FULL_LEVEL,
       isHungry: () => N.hunger < LOW_LEVEL,
       isTired: () => N.energy < LOW_LEVEL,
+      /** Is there anything to rest for? (A rest at full energy would be a no-op, so it is never offered.) */
+      canRest: () => N.energy < FULL_LEVEL,
       status: () => statusOf(N),
       /** 1 normally; slightly slower when hungry or tired (never a stop). */
       speedFactor: () => (statusOf(N) === "ok" ? 1 : SLOW_FACTOR),

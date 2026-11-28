@@ -1,301 +1,232 @@
 /* ============================================================================
  * FILE: vehicle-car-geo.js
- * PURPOSE: Kampung Quest — the toy car bodies (F.VehicleCars). A car is drawn from its side view (bonnet, cabin, boot,
- *          wheel arches), pushed out to its width, then dressed: glass, pillars, roof, bumpers, grille, plates, mirrors,
- *          wipers, door seams, seats, dash and lamps. Five styles: hatch, sedan, taxi (a sedan with a roof sign), suv, mpv.
- *          Everything of one car merges into four geometries (tinted body, dark trim, glass, lamps) so a car is a few
- *          draw calls; the wheels and steering wheel are separate (vehicle-meshes.js). Local frame: faces +z, left +x.
- *            F.VehicleCars.build(style) -> { body, trim, glass, lamp, axles:[front z, rear z], style }
- * BUSINESS CONTEXT: AC-R8 (realism round, features/kampung-quest-realism/requirements.md): every parked car is a drivable vehicle,
- *   in one of five styles so the streets do not look cloned; few draw calls per car (CROWD / draw budget, AC-R13).
- * DEPENDENCIES: KQ.Figures.VehicleParts (vehicle-parts.js), KQ.Figures.Geo (geometry.js).
- * HOW TO TEST: npx playwright test tests/kampung-quest-vehicles-all.spec.mjs (every vehicle builds, draw budget).
+ * PURPOSE: Kampung Quest — a car's geometry set (F.VehicleCars): the moulded tub and greenhouse
+ *          (vehicle-car-shape.js), the dress (vehicle-car-dress.js: lamps, grille, plates, handles, mirrors) and
+ *          the cabin (vehicle-car-inside.js), gathered into four layers that are each ONE draw call:
+ *            paint (the clearcoat body and pillars), trim (everything dark, bright or lit: one shader by class),
+ *            glass (tinted, see-through), roof (it fades while the hero drives).
+ *          Every piece has an owner: "body", a door ("door0".."door3": front right, front left, rear right, rear
+ *          left) or "steer" (the parked steering wheel). variant(layer, mask) merges a layer without the owners in
+ *          `mask` (bit k = door k cut out, bit 4 = the steering wheel), so a door is split out only while it opens
+ *          and the parked car stays a few calls; door(k) is that door's own paint / trim / glass about its hinge.
+ *            F.VehicleCars.build(style, lhd, low, fuel) -> { style, driverX, livery, variant(), door(k), doors,
+ *              seats, exhaust, steerAt, axles, width, length, mid }
+ *          Kampung cars wear Singapore plates (black, or white front / yellow rear), right-hand drive; a kampung
+ *          taxi wears the generic teal / white livery. Makkah and Madinah cars are left-hand drive, plain plates.
+ * BUSINESS CONTEXT: owner's realism pass; AC-P14 (models, draw budget), features/kampung-quest-playability/.
+ * DEPENDENCIES: KQ.Figures.VehicleCarShape, VehicleCarDress, VehicleCarInside, VehicleParts, VehicleMats, Geo.
+ * HOW TO TEST: npx playwright test tests/kampung-quest-vehicle-rig.spec.mjs tests/kampung-quest-vehicles-all.spec.mjs
  * ========================================================================== */
 (function (KQ) {
   "use strict";
   const F = (KQ.Figures = KQ.Figures || {});
-  const P = F.VehicleParts;
-  const G = F.Geo;
-  const WHITE = "#ffffff";
-  const DARK = "#2b2d33";
-  const BLACK = "#1b1c20";
-  const CHROME = "#c9ccd2";
-  /** The height of the wheel arches' centre and radius, and the sill (bottom of the body). */
-  const WHEEL_Y = 0.3;
-  const ARCH_R = 0.37;
-  const SILL = 0.22;
-  /** How far the driver sits from the middle of the car. */
+  const P = () => F.VehicleParts;
+  const Shape = () => F.VehicleCarShape;
   const DRIVER_X = 0.34;
-  /**
-   * Per style (z forward): body ends zf / zr, axles axF / axR, the beltline (top of the doors), the bonnet tip and
-   * leading edge, windscreen base A and top B, rear glass top C and base D, roof height, boot top, body width, rows
-   * of rear seats, and whether it has a roof sign / rails.
-   */
-  const STYLES = {
-    hatch: {
-      zf: 1.65,
-      zr: -1.55,
-      axF: 1.0,
-      axR: -0.95,
-      belt: 0.8,
-      hoodTip: 0.6,
-      hoodLead: 0.72,
-      A: 0.62,
-      B: 0.15,
-      C: -0.95,
-      D: -1.32,
-      roof: 1.42,
-      tail: 0.8,
-      w: 1.54,
-      rows: [-0.95],
-    },
-    sedan: {
-      zf: 1.9,
-      zr: -1.8,
-      axF: 1.15,
-      axR: -1.05,
-      belt: 0.8,
-      hoodTip: 0.58,
-      hoodLead: 0.72,
-      A: 0.62,
-      B: 0.12,
-      C: -0.8,
-      D: -1.1,
-      roof: 1.42,
-      tail: 0.84,
-      w: 1.58,
-      rows: [-0.95],
-    },
-    suv: {
-      zf: 1.8,
-      zr: -1.8,
-      axF: 1.1,
-      axR: -1.05,
-      belt: 0.88,
-      hoodTip: 0.68,
-      hoodLead: 0.84,
-      A: 0.6,
-      B: 0.28,
-      C: -1.5,
-      D: -1.7,
-      roof: 1.58,
-      tail: 0.92,
-      w: 1.62,
-      rows: [-0.95],
-      rails: true,
-    },
-    mpv: {
-      zf: 1.8,
-      zr: -1.9,
-      axF: 1.1,
-      axR: -1.1,
-      belt: 0.86,
-      hoodTip: 0.62,
-      hoodLead: 0.78,
-      A: 0.75,
-      B: 0.5,
-      C: -1.6,
-      D: -1.85,
-      roof: 1.62,
-      tail: 0.9,
-      w: 1.6,
-      rows: [-0.95, -1.55],
-      rails: true,
-    },
+  const ARCH_R = 0.37;
+  const WHEEL_Y = 0.3;
+  const BLACK = "#111215";
+  /** The kampung taxi's plain two-tone livery (no operator's name or colours): teal lower body, white upper. */
+  const TAXI_LIVERY = { lower: "#1f7a8c", upper: "#f4f4f0" };
+  /** Number plates: Singapore black, Singapore "Euro" (white front, yellow rear), and plain (Makkah / Madinah). */
+  const PLATES = {
+    black: { front: ["#141516", "#f2f2f0"], rear: ["#141516", "#f2f2f0"] },
+    euro: { front: ["#f4f4f0", "#141516"], rear: ["#f2c230", "#141516"] },
+    plain: { front: ["#f4f4f0", "#23252b"], rear: ["#f4f4f0", "#23252b"] },
   };
-  STYLES.taxi = Object.assign({}, STYLES.sedan, { sign: true });
+  const SG_PLATE = { hatch: "euro", sedan: "black", taxi: "black", suv: "euro", mpv: "black" };
+  /** Which styles have a glass sunroof (a dark panel in the roof). */
+  const SUNROOF = { suv: true, hatch: true };
+  const OWNER_BIT = { door0: 1, door1: 2, door2: 4, door3: 8, steer: 16 };
   const cache = {};
 
-  /** The bottom edge from rear to front, cut by a wheel arch round each axle. */
-  function bottomEdge(s) {
+  /** Recolour a whole geometry one colour and tag its class (window frames, door cards). */
+  function recolour(g, hex, cls) {
+    const c = new THREE.Color(hex).convertSRGBToLinear();
+    const col = g.attributes.color;
+    for (let i = 0; i < col.count; i += 1) col.setXYZ(i, c.r, c.g, c.b);
+    return P().tag(g, cls);
+  }
+
+  /** Darken the roof's vertices over the sunroof (the roof material multiplies its paint by them). */
+  function sunroof(g, s) {
+    const pos = g.attributes.position;
+    const col = g.attributes.color;
+    for (let i = 0; i < pos.count; i += 1) {
+      const z = pos.getZ(i);
+      if (Math.abs(pos.getX(i)) < 0.36 && z < s.B - 0.12 && z > s.B - 0.75)
+        col.setXYZ(i, 0.04, 0.045, 0.05);
+    }
+    return g;
+  }
+
+  /** The greenhouse's pieces with their layer colours: trim black and glossy, roof with its sunroof. */
+  function greenPieces(s) {
     const out = [];
-    [s.axR, s.axF].forEach(function (zc) {
-      out.push([zc - ARCH_R, SILL]);
-      out.push(...P.arch(zc, WHEEL_Y, ARCH_R, 8));
-      out.push([zc + ARCH_R, SILL]);
+    const gh = Shape().greenhouse(s, P().detail());
+    Object.keys(gh).forEach(function (key) {
+      const [layer, owner] = key.split(":");
+      let g = gh[key];
+      if (layer === "trim") g = recolour(g, BLACK, F.VehicleMats.CLS.gloss);
+      if (layer === "roof" && SUNROOF[s.name]) g = sunroof(g, s);
+      out.push({ layer, owner, g });
     });
     return out;
   }
 
-  /** The body's whole side outline: bonnet, beltline, boot, then the bottom with its arches. */
-  function tubOutline(s) {
-    const top = [
-      [s.zf, SILL],
-      [s.zf, s.hoodTip],
-      [s.zf - 0.12, s.hoodLead],
-      [s.A, s.belt],
-      [s.D, s.belt],
-      [s.zr + 0.12, s.tail],
-      [s.zr, s.tail - 0.12],
-      [s.zr, SILL],
-    ];
-    return top.concat(bottomEdge(s));
-  }
-
-  /** The cabin's side outline (windscreen, roof, rear glass). */
-  function cabinOutline(s) {
-    return [
-      [s.A, s.belt - 0.02],
-      [s.B, s.roof],
-      [s.C, s.roof],
-      [s.D, s.belt - 0.02],
-    ];
-  }
-
-  /** The roof panel on its own (the roof fades while somebody is driving so the hero shows). */
-  function roofGeo(s) {
-    const cw = s.w - 0.2;
-    return P.block(cw + 0.04, 0.06, s.B - s.C + 0.1, [0, s.roof + 0.01, (s.B + s.C) / 2], WHITE);
-  }
-
-  /** The painted (tinted) parts: the body and the pillars. */
-  function bodyParts(s) {
-    const cw = s.w - 0.2;
-    const parts = [P.sideSolid(tubOutline(s), s.w, WHITE)];
-    [-1, 1].forEach(function (k) {
-      const x = (k * cw) / 2;
-      parts.push(P.rod([x, s.belt, s.A], [x, s.roof, s.B], 0.04, WHITE));
-      parts.push(P.rod([x, s.roof, s.C], [x, s.belt, s.D], 0.06, WHITE));
-      parts.push(P.rod([x, s.belt, -0.45], [x, s.roof, -0.45], 0.035, WHITE));
-    });
-    return G.merge(parts);
-  }
-
-  /** Front and rear: bumpers, grille, intake, plates (a plate is a white board with dark characters). */
-  function endsTrim(s) {
-    const parts = [
-      P.block(s.w + 0.02, 0.12, 0.16, [0, 0.3, s.zf - 0.04], DARK),
-      P.block(s.w + 0.02, 0.12, 0.16, [0, 0.3, s.zr + 0.04], DARK),
-      P.block(0.72, 0.13, 0.06, [0, 0.5, s.zf + 0.005], BLACK),
-      P.block(0.72, 0.025, 0.065, [0, 0.5, s.zf + 0.008], CHROME),
-      P.block(0.9, 0.07, 0.06, [0, 0.28, s.zf + 0.02], BLACK),
-      P.drum("z", 0.035, 0.14, [0.5, 0.27, s.zr - 0.04], "#9aa0a8", 8),
-    ];
-    parts.push(...plate(s.zf + 0.012, 0.4, 1), ...plate(s.zr - 0.012, 0.46, -1));
-    return parts;
-  }
-
-  /** A number plate on the front (dir 1) or the rear (dir -1) face at height y. */
-  function plate(z, y, dir) {
-    const parts = [P.block(0.44, 0.1, 0.03, [0, y, z], "#f4f4f0")];
-    for (let i = -2; i <= 2; i += 1) {
-      parts.push(P.block(0.035, 0.055, 0.012, [i * 0.075, y, z + dir * 0.016], "#23252b"));
+  /** A door's inner card: its skin moved 4 cm in, turned inside out, dark (so an open door shows its inside). */
+  function doorCard(skin) {
+    const g = skin.clone();
+    const pos = g.attributes.position;
+    const nrm = g.attributes.normal;
+    for (let i = 0; i < pos.count; i += 1) {
+      pos.setXYZ(
+        i,
+        pos.getX(i) - nrm.getX(i) * 0.04,
+        pos.getY(i) - nrm.getY(i) * 0.04,
+        pos.getZ(i) - nrm.getZ(i) * 0.04,
+      );
+      nrm.setXYZ(i, -nrm.getX(i), -nrm.getY(i), -nrm.getZ(i));
     }
-    return parts;
+    const idx = g.index.array;
+    for (let i = 0; i < idx.length; i += 3) [idx[i + 1], idx[i + 2]] = [idx[i + 2], idx[i + 1]];
+    return recolour(g, Shape().COLOURS.INTERIOR, F.VehicleMats.CLS.matte);
   }
 
-  /** The sides: door seams and handles, mirrors, wipers and the wheel wells (dark boxes behind the tyres). */
-  function sidesTrim(s) {
-    const parts = [P.block(1.3, 0.1, s.zf - s.zr - 0.7, [0, 0.25, (s.zf + s.zr) / 2], BLACK)];
-    [s.axF, s.axR].forEach((zc) =>
-      parts.push(P.block(1.3, 0.44, ARCH_R * 2, [0, 0.48, zc], BLACK)),
+  /** The tub's pieces (paint), plus a card for each door skin (trim, owned by that door). */
+  function tubPieces(s, livery) {
+    const out = [];
+    const tub = Shape().tub(s, P().detail(), livery);
+    Object.keys(tub).forEach(function (key) {
+      const owner = key.split(":")[1];
+      out.push({ layer: "paint", owner, g: tub[key] });
+      if (owner !== "body") out.push({ layer: "trim", owner, g: doorCard(tub[key]) });
+      if (owner === "cabin") out[out.length - 2].owner = "body";
+    });
+    return out;
+  }
+
+  /** Every piece of a car. */
+  function allPieces(s, o) {
+    return tubPieces(s, o.livery).concat(
+      greenPieces(s),
+      F.VehicleCarDress.front(s, o),
+      F.VehicleCarDress.rear(s, o),
+      F.VehicleCarDress.sides(s, o),
+      F.VehicleCarInside.pieces(s, o.driverX, o.low),
     );
-    [-1, 1].forEach(function (k) {
-      const x = (k * s.w) / 2;
-      [s.A, -0.45].forEach((z) => parts.push(P.block(0.012, 0.46, 0.014, [x, 0.55, z], BLACK)));
-      [-0.1, -0.8].forEach((z) =>
-        parts.push(P.block(0.022, 0.03, 0.16, [x, s.belt - 0.08, z], CHROME)),
-      );
-      const mx = k * (s.w / 2 + 0.09);
-      parts.push(P.block(0.16, 0.11, 0.1, [mx, s.belt + 0.14, s.A - 0.08], DARK));
-      parts.push(
-        P.rod(
-          [k * (s.w / 2 - 0.04), s.belt + 0.05, s.A - 0.05],
-          [mx, s.belt + 0.13, s.A - 0.08],
-          0.015,
-          DARK,
-        ),
-      );
-      parts.push(
-        P.rod(
-          [k * 0.55, s.belt + 0.03, s.A - 0.04],
-          [k * 0.05, s.belt + 0.05, s.A - 0.04],
-          0.01,
-          BLACK,
-        ),
-      );
+  }
+
+  /** Where door k hinges (its front edge, at the shoulder's side) and how it moves. */
+  function hinge(s, k) {
+    const z = k < 2 ? s.doors[0] : s.doors[1];
+    const side = s.doorSides[k] === "L" ? 1 : -1;
+    const x = side * F.VehicleLoft.point(s.body, { z }, 0.2)[0];
+    return { at: [x, 0.6, z], side, kind: k >= 2 && s.slide ? "slide" : "hinge" };
+  }
+
+  /** The seat each door serves (the driver's door serves seat 0). */
+  function doorSeat(k, driverX) {
+    const driverDoor = driverX < 0 ? 0 : 1;
+    if (k < 2) return k === driverDoor ? 0 : 1;
+    return k === 2 ? 2 : 3;
+  }
+
+  /** A layer merged without the owners whose bits are set in mask (cached per layer and mask). */
+  function variant(set, layer, mask) {
+    const key = layer + ":" + mask;
+    if (set.merged[key] !== undefined) return set.merged[key];
+    const list = set.pieces.filter((p) => p.layer === layer && !((OWNER_BIT[p.owner] || 0) & mask));
+    set.merged[key] = list.length ? F.Geo.merge(list.map((p) => p.g)) : null;
+    return set.merged[key];
+  }
+
+  /** Door k's own geometries (paint, trim, glass), moved so its hinge is the origin (cached). */
+  function door(set, k) {
+    if (set.doorGeos[k]) return set.doorGeos[k];
+    const h = set.doors[k].hinge;
+    const out = {};
+    ["paint", "trim", "glass"].forEach(function (layer) {
+      const list = set.pieces.filter((p) => p.layer === layer && p.owner === "door" + k);
+      out[layer] = list.length
+        ? F.Geo.merge(list.map((p) => p.g.clone())).translate(-h[0], -h[1], -h[2])
+        : null;
     });
-    return parts;
+    set.doorGeos[k] = out;
+    return out;
   }
 
   /**
-   * The inside: a dark deck over the cabin, a dash, the passenger's seat back and headrest, low rear seat backs, and
-   * (SUV, MPV) roof rails. The driver's seat back is left out and the rear ones are low, so the hero shows from behind.
+   * A geometry set from owned pieces: `doors` [{side, seat, hinge:[x,y,z], sx, kind}], `props` copied on.
+   * Adds variant(layer, mask) and door(k). Shared by the cars and the lorry.
    */
-  function insideTrim(s, driverX) {
-    const seat = "#3a4152";
-    const cw = s.w - 0.2;
-    const top = s.belt + 0.04; // the body's top face: its bevel stands 4 cm proud of the beltline
-    const parts = [
-      P.block(cw - 0.04, 0.025, s.A - s.D - 0.1, [0, top + 0.012, (s.A + s.D) / 2], "#34373f"),
-      P.block(cw - 0.06, 0.18, 0.3, [0, top + 0.1, 0.5], "#23252b"),
-      P.block(0.42, 0.4, 0.1, [-driverX, top + 0.2, -0.34], seat),
-      P.block(0.2, 0.12, 0.08, [-driverX, top + 0.46, -0.34], seat),
-      P.block(0.42, 0.06, 0.5, [driverX, top + 0.04, -0.05], seat),
-    ];
-    s.rows.forEach((z) => parts.push(P.block(cw - 0.1, 0.24, 0.1, [0, top + 0.12, z - 0.2], seat)));
-    if (s.rails) parts.push(...roofRails(s));
-    return parts;
-  }
-
-  /** Two roof rails with their feet. */
-  function roofRails(s) {
-    const parts = [];
-    [-1, 1].forEach(function (k) {
-      const x = k * 0.5;
-      parts.push(
-        P.rod([x, s.roof + 0.09, s.B - 0.1], [x, s.roof + 0.09, s.C + 0.1], 0.02, "#9aa0a8"),
-      );
-      [s.B - 0.1, s.C + 0.1].forEach((z) =>
-        parts.push(P.rod([x, s.roof + 0.03, z], [x, s.roof + 0.09, z], 0.02, DARK)),
-      );
+  function makeSet(pieces, doors, props) {
+    const set = { pieces, merged: {}, doorGeos: {}, doors };
+    return Object.assign(set, props, {
+      variant: (layer, mask) => variant(set, layer, mask || 0),
+      door: (k) => door(set, k),
     });
-    return parts;
   }
 
-  /** All the dark, vertex-coloured trim in one geometry. */
-  function trimGeo(s, driverX) {
-    return G.merge(endsTrim(s).concat(sidesTrim(s), insideTrim(s, driverX)));
-  }
-
-  /** The lamps (drawn unlit so they glow a little at dusk): head, tail, reverse, indicators and the taxi sign. */
-  function lampGeo(s) {
-    const parts = [];
-    [-1, 1].forEach(function (k) {
-      parts.push(P.block(0.3, 0.13, 0.08, [k * 0.52, 0.66, s.zf - 0.02], "#fff6d6"));
-      parts.push(P.block(0.1, 0.06, 0.07, [k * 0.7, 0.52, s.zf - 0.02], "#f2a51c"));
-      parts.push(P.block(0.34, 0.12, 0.08, [k * 0.55, s.tail - 0.1, s.zr + 0.02], "#d62b2b"));
-      parts.push(P.block(0.1, 0.06, 0.07, [k * 0.33, s.tail - 0.1, s.zr + 0.025], "#f4f4f0"));
+  /** The geometry set of a style (see the header). */
+  function assemble(name, lhd, low, fuel) {
+    const s = Shape().style(name);
+    const driverX = lhd ? DRIVER_X : -DRIVER_X;
+    const livery = s.sign && !lhd ? TAXI_LIVERY : null;
+    const scheme = PLATES[lhd ? "plain" : SG_PLATE[s.name]];
+    const doors = [0, 1, 2, 3].map(function (k) {
+      const h = hinge(s, k);
+      return {
+        side: s.doorSides[k],
+        seat: doorSeat(k, driverX),
+        hinge: h.at,
+        sx: h.side,
+        kind: h.kind,
+      };
     });
-    if (s.sign)
-      parts.push(P.block(0.5, 0.15, 0.22, [0, s.roof + 0.14, (s.B + s.C) / 2], "#fff1b0"));
-    return G.merge(parts);
-  }
-
-  /**
-   * Build (and cache) the geometries of a style; an unknown style is a sedan. `lhd` puts the driver on the left
-   * (x > 0), else on the right (Singapore).
-   */
-  function build(style, lhd) {
-    const name = STYLES[style] ? style : "sedan";
-    const key = name + (lhd ? "-l" : "-r");
-    if (cache[key]) return cache[key];
-    const s = STYLES[name];
-    const glass = P.sideSolid(cabinOutline(s), s.w - 0.24, WHITE, 0.03);
-    cache[key] = {
-      style: name,
-      driverX: lhd ? DRIVER_X : -DRIVER_X,
-      body: bodyParts(s),
-      roof: roofGeo(s),
-      trim: trimGeo(s, lhd ? DRIVER_X : -DRIVER_X),
-      glass,
-      lamp: lampGeo(s),
+    return makeSet(allPieces(s, { driverX, livery, scheme, fuel, low }), doors, {
+      style: s.name,
+      driverX,
+      livery,
+      fuel,
+      seats: F.VehicleCarInside.seats(s, driverX),
+      exhaust: fuel === "electric" ? null : F.VehicleCarDress.exhaust(s),
+      steerAt: F.VehicleCarInside.STEER_AT,
       axles: [s.axF, s.axR],
+      archR: s.arch,
       width: s.w,
       length: s.zf - s.zr,
-    };
+      mid: (s.zf + s.zr) / 2,
+      height: s.roof,
+    });
+  }
+
+  /**
+   * Build (and cache) the geometry set of a style; an unknown style is a sedan. `lhd` puts the driver on the left
+   * (x > 0), else on the right (Singapore). `low` builds fewer segments; `fuel` "electric" closes the grille and
+   * drops the tail pipe.
+   */
+  function build(style, lhd, low, fuel) {
+    const name = Shape().STYLES.indexOf(style) >= 0 ? style : "sedan";
+    const f = fuel === "electric" ? "electric" : "petrol";
+    const key = [name, lhd ? "l" : "r", low ? "low" : "hi", f].join("-");
+    if (cache[key]) return cache[key];
+    cache[key] = P().withDetail(low, function () {
+      const set = assemble(name, lhd, low, f);
+      variant(set, "paint", 0);
+      return set;
+    });
     return cache[key];
   }
 
-  F.VehicleCars = { build, STYLES: Object.keys(STYLES), ARCH_R, WHEEL_Y };
+  F.VehicleCars = {
+    build,
+    makeSet,
+    recolour,
+    PLATES,
+    STYLES: ["hatch", "sedan", "taxi", "suv", "mpv"],
+    ARCH_R,
+    WHEEL_Y,
+    OWNER_BIT,
+  };
 })((window.KQ = window.KQ || {}));

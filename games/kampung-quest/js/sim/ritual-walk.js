@@ -78,6 +78,12 @@
   function createTawaf(opts) {
     const T = { armed: false, last: null, total: 0, rounds: 0, back: false, onRing: false };
     const max = opts.rounds || 7;
+    /**
+     * Feed one walker position; counts a lap each time the ring is closed.
+     * @param {number} x world x
+     * @param {number} z world z
+     * @returns {number} the rounds counted so far
+     */
     function feed(x, z) {
       const r = Math.hypot(x - opts.cx, z - opts.cz);
       T.onRing = r >= opts.rMin && r <= opts.rMax;
@@ -178,6 +184,11 @@
    */
   function saiRoute(opts) {
     const len = Math.hypot(opts.b.x - opts.a.x, opts.b.z - opts.a.z);
+    /**
+     * The walker position at a distance along the route.
+     * @param {number} d metres walked so far (legs alternate direction)
+     * @returns {{x: number, z: number, heading: number, leg: number}} the point and facing
+     */
     function at(d) {
       const leg = Math.floor(d / len);
       const t = (d - leg * len) / len;

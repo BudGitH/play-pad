@@ -29,6 +29,13 @@
     if (on) puff(7, ["✨", "🤍"]);
   }
 
+  /** What the ihram is, said the way the hero wears it (AC-P10: the girl's is modest everyday clothes). */
+  function ihramLine() {
+    return G.Hero.isGirl()
+      ? "Ihram is on: plain white clothes and a white hijab. Your face and hands stay uncovered."
+      : "Ihram is on: two white cloths. No cap, simple sandals.";
+  }
+
   /** A few clippings flying down the middle of the screen (skipped when the player asked for less motion). */
   function puff(count, marks) {
     if (G.Settings.reduced() || !S().hudHost) return;
@@ -74,8 +81,9 @@
    * the hair gets shorter, then the hero stands up. Calls `done()` at the end. Always finishes, even
    * if the card is closed meanwhile: the cut is recorded at once, only the picture is staged.
    */
-  function haircut(kind, done) {
+  function haircut(asked, done) {
     const umrah = S().sim.umrah;
+    const kind = KQ.Sim.Umrah.cutFor(asked, G.Hero.isGirl()); // a girl only ever snips a lock
     umrah.setCut(kind);
     const token = (scene.token += 1);
     scene.active = true;
@@ -88,7 +96,8 @@
   function frame(kind, n, done) {
     if (n < 4) {
       snip();
-      KQ.Figures.setHeadPiece(S().player.rig, stage(kind, n + 1));
+      // the girl snips one small lock: her hijab / hair stays as it is (no boy's trim on her head)
+      if (!G.Hero.isGirl()) KQ.Figures.setHeadPiece(S().player.rig, stage(kind, n + 1));
       return;
     }
     scene.active = false;
@@ -106,5 +115,5 @@
     sync();
   }
 
-  G.RitualLook = { sync, wear, haircut, cancel, isCutting: () => scene.active };
+  G.RitualLook = { sync, wear, haircut, cancel, ihramLine, isCutting: () => scene.active };
 })((window.KQ = window.KQ || {}));

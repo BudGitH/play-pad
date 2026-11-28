@@ -19,6 +19,8 @@
     <link rel="stylesheet" href="../../styles/tokens.css" />
     <link rel="stylesheet" href="../../styles/base.css" />
     <link rel="stylesheet" href="styles.css" />
+    <!-- The biggest script, fetched first while the HTML and styles are still being read (AC-P22). -->
+    <link rel="preload" href="three.min.js" as="script" />
 
     <!--
     Kampung Quest — a 3D third-person open-neighbourhood life game (PlayPad game, PLAY-013).
@@ -64,10 +66,9 @@
           >
             <i id="kqBar"></i>
           </div>
-          <p id="kqLoadStatus" class="kq-load-status" role="status">
-            Building the neighbourhood... 0%
-          </p>
+          <p id="kqLoadStatus" class="kq-load-status" role="status">Building the town... 0%</p>
           <ol id="kqLoadSteps" class="kq-load-steps"></ol>
+          <div id="kqHeroPick" class="kq-hero-pick" hidden></div>
           <div class="kq-title-actions">
             <button id="kqStart" class="kq-btn primary kq-big" type="button" disabled>
               <span>Start</span>
@@ -106,6 +107,20 @@
           </div>
         </div>
       </section>
+
+      <!-- Shown when the device takes the 3D view away (iPad Safari does this to save memory). -->
+      <section id="kqLost" class="kq-title kq-error" role="alert" hidden>
+        <div class="kq-title-card">
+          <h2>The 3D view is having a rest</h2>
+          <p>
+            Your device paused the picture to save memory. Your game is saved. It may come back by
+            itself in a moment, or tap Reload to carry on.
+          </p>
+          <div class="kq-title-actions">
+            <button id="kqLostReload" class="kq-btn primary kq-big" type="button">Reload</button>
+          </div>
+        </div>
+      </section>
     </div>
 
     <noscript>
@@ -126,6 +141,7 @@
     <script src="js/data/prayer-times-makkah.js"></script>
     <script src="js/data/azan.js"></script>
     <script src="js/data/holy-sites.js"></script>
+    <script src="js/data/places.js"></script>
     <script src="js/data/ritual-text.js"></script>
     <!-- sim -->
     <script src="js/sim/ids.js"></script>
@@ -135,7 +151,9 @@
     <script src="js/sim/hints.js"></script>
     <script src="js/sim/economy.js"></script>
     <script src="js/sim/wardrobe.js"></script>
+    <script src="js/sim/hero.js"></script>
     <script src="js/sim/missions-data.js"></script>
+    <script src="js/sim/missions-more.js"></script>
     <script src="js/sim/missions.js"></script>
     <script src="js/sim/schedule.js"></script>
     <script src="js/sim/crowd.js"></script>
@@ -143,7 +161,15 @@
     <script src="js/sim/crowd-pilgrim.js"></script>
     <script src="js/sim/jump.js"></script>
     <script src="js/sim/vehicle.js"></script>
+    <script src="js/sim/vehicle-life.js"></script>
+    <script src="js/sim/traffic.js"></script>
+    <script src="js/sim/vehicle-mix.js"></script>
+    <script src="js/sim/mount.js"></script>
+    <script src="js/sim/map-view.js"></script>
     <script src="js/sim/greet.js"></script>
+    <script src="js/sim/hi.js"></script>
+    <script src="js/sim/actions.js"></script>
+    <script src="js/sim/events.js"></script>
     <script src="js/sim/ambience-mix.js"></script>
     <script src="js/sim/recite.js"></script>
     <script src="js/sim/ritual-walk.js"></script>
@@ -156,27 +182,47 @@
     <script src="js/figures/geometry.js"></script>
     <script src="js/figures/parts.js"></script>
     <script src="js/figures/headpieces.js"></script>
+    <script src="js/figures/headpieces-hair.js"></script>
     <script src="js/figures/build.js"></script>
+    <script src="js/figures/rig-merge.js"></script>
     <script src="js/figures/ihram.js"></script>
     <script src="js/figures/dress.js"></script>
     <script src="js/figures/cast.js"></script>
+    <script src="js/figures/life-cast.js"></script>
     <script src="js/figures/poses.js"></script>
     <script src="js/figures/prayer-poses.js"></script>
     <script src="js/figures/crowd-poses.js"></script>
     <script src="js/figures/crowd-pilgrim-poses.js"></script>
     <script src="js/figures/crowd-pilgrim-props.js"></script>
     <script src="js/figures/vehicle-poses.js"></script>
+    <script src="js/figures/ride-poses.js"></script>
     <script src="js/figures/animator.js"></script>
     <script src="js/figures/crowd-geo.js"></script>
     <script src="js/figures/crowd-kit.js"></script>
     <script src="js/figures/vehicle-parts.js"></script>
+    <script src="js/figures/vehicle-mats.js"></script>
+    <script src="js/figures/vehicle-loft.js"></script>
+    <script src="js/figures/vehicle-car-shape.js"></script>
+    <script src="js/figures/vehicle-car-dress.js"></script>
+    <script src="js/figures/vehicle-car-inside.js"></script>
     <script src="js/figures/vehicle-car-geo.js"></script>
     <script src="js/figures/vehicle-two-wheel-geo.js"></script>
+    <script src="js/figures/vehicle-two-wheel-dress.js"></script>
+    <script src="js/figures/vehicle-big-geo.js"></script>
+    <script src="js/figures/vehicle-bus-geo.js"></script>
+    <script src="js/figures/vehicle-rig.js"></script>
     <script src="js/figures/vehicle-meshes.js"></script>
+    <script src="js/figures/animal-rig.js"></script>
+    <script src="js/figures/animal-loft.js"></script>
+    <script src="js/figures/camel-face.js"></script>
+    <script src="js/figures/camel-mesh.js"></script>
+    <script src="js/figures/horse-mesh.js"></script>
+    <script src="js/figures/horse-head.js"></script>
     <!-- world (prayer-times.js above is loaded first so the sun follows Syuruk / Maghrib) -->
     <script src="js/world/geo.js"></script>
     <script src="js/world/textures.js"></script>
     <script src="js/world/canvas.js"></script>
+    <script src="js/world/sg-signs.js"></script>
     <script src="js/world/patterns.js"></script>
     <script src="js/world/patterns2.js"></script>
     <script src="js/world/patterns3.js"></script>
@@ -186,7 +232,9 @@
     <script src="js/world/lighting.js"></script>
     <script src="js/world/roads.js"></script>
     <script src="js/world/hdb.js"></script>
+    <script src="js/world/hdb-deck.js"></script>
     <script src="js/world/hawker.js"></script>
+    <script src="js/world/hawker-dress.js"></script>
     <script src="js/world/mosque.js"></script>
     <script src="js/world/mosque-shell.js"></script>
     <script src="js/world/mosque-yard.js"></script>
@@ -199,6 +247,7 @@
     <script src="js/world/trees.js"></script>
     <script src="js/world/props.js"></script>
     <script src="js/world/town.js"></script>
+    <script src="js/world/estate.js"></script>
     <script src="js/world/detail.js"></script>
     <script src="js/world/clutter.js"></script>
     <script src="js/world/life.js"></script>
@@ -218,6 +267,7 @@
     <script src="js/world/holy-camel-mesh.js"></script>
     <script src="js/world/holy-camels.js"></script>
     <script src="js/world/holy-camel-herd.js"></script>
+    <script src="js/world/stables.js"></script>
     <script src="js/world/holy-kit.js"></script>
     <script src="js/world/holy-haram.js"></script>
     <script src="js/world/holy-makkah.js"></script>
@@ -252,18 +302,42 @@
     <script src="js/game/crowd-holy.js"></script>
     <script src="js/game/crowd.js"></script>
     <script src="js/game/greetings.js"></script>
+    <script src="js/game/say-hi.js"></script>
     <script src="js/game/audio.js"></script>
     <script src="js/game/ambience.js"></script>
+    <script src="js/game/vehicle-rig.js"></script>
+    <script src="js/game/vehicle-enter.js"></script>
+    <script src="js/game/vehicle-lights.js"></script>
+    <script src="js/game/exhaust.js"></script>
     <script src="js/game/vehicle-sound.js"></script>
+    <script src="js/game/vehicle-occupants.js"></script>
+    <script src="js/game/traffic-routes.js"></script>
+    <script src="js/game/traffic-park.js"></script>
+    <script src="js/game/traffic.js"></script>
+    <script src="js/game/bus-people.js"></script>
     <script src="js/game/vehicle-spots.js"></script>
     <script src="js/game/vehicles.js"></script>
+    <script src="js/game/mount-sound.js"></script>
+    <script src="js/game/mount-rigs.js"></script>
+    <script src="js/game/mount-ride.js"></script>
+    <script src="js/game/mounts.js"></script>
+    <script src="js/game/bus.js"></script>
     <script src="js/game/voice.js"></script>
     <script src="js/game/speech.js"></script>
     <script src="js/game/pictures.js"></script>
+    <script src="js/game/map-icons.js"></script>
     <script src="js/game/names.js"></script>
     <script src="js/game/ui-core.js"></script>
     <script src="js/game/minimap.js"></script>
+    <script src="js/game/map-places.js"></script>
+    <script src="js/game/map-target.js"></script>
     <script src="js/game/map-markers.js"></script>
+    <script src="js/game/map-base.js"></script>
+    <script src="js/game/bigmap-draw.js"></script>
+    <script src="js/game/bigmap.js"></script>
+    <script src="js/game/say.js"></script>
+    <script src="js/game/action-words.js"></script>
+    <script src="js/game/action-bar.js"></script>
     <script src="js/game/hud.js"></script>
     <script src="js/game/hud-layout.js"></script>
     <script src="js/game/hud-view.js"></script>
@@ -272,6 +346,7 @@
     <script src="js/game/ui-screens.js"></script>
     <script src="js/game/collectibles.js"></script>
     <script src="js/game/markers.js"></script>
+    <script src="js/game/ritual-min.js"></script>
     <script src="js/game/ritual-ui.js"></script>
     <script src="js/game/prayer-text.js"></script>
     <script src="js/game/prayer-ui.js"></script>
@@ -282,8 +357,16 @@
     <script src="js/game/ritual-flow.js"></script>
     <script src="js/game/eat-flow.js"></script>
     <script src="js/game/mission-flow.js"></script>
+    <script src="js/game/life-chip.js"></script>
+    <script src="js/game/mission-steps.js"></script>
+    <script src="js/game/event-actors.js"></script>
+    <script src="js/game/world-events.js"></script>
+    <script src="js/game/world-events-kampung.js"></script>
+    <script src="js/game/world-events-town.js"></script>
+    <script src="js/game/world-events-holy.js"></script>
     <script src="js/game/services.js"></script>
     <script src="js/game/wardrobe.js"></script>
+    <script src="js/game/hero.js"></script>
     <script src="js/game/nudge.js"></script>
     <script src="js/game/interact.js"></script>
     <script src="js/game/loop.js"></script>
@@ -291,6 +374,8 @@
     <script src="js/game/region.js"></script>
     <script src="js/game/holy-travel.js"></script>
     <script src="js/game/boot-ui.js"></script>
+    <script src="js/game/defer.js"></script>
+    <script src="js/game/boot-perf.js"></script>
     <script src="js/game/hooks.js"></script>
     <script src="js/game/boot.js"></script>
     <script>

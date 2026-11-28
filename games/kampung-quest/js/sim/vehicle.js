@@ -19,19 +19,22 @@
   KQ.Sim = KQ.Sim || {};
 
   /**
-   * What each kind of vehicle can do ("car" covers every car style, "moto" is a scooter). Speeds in m/s
-   * (the hero walks 2.3 and runs 4.4: the bicycle is faster than a run, the scooter and the car faster still), turn in rad/s at full lock, halfLen / halfWid the
-   * body, ring the two circles (centre offset along the body, radius) used against the walls.
+   * What each kind of vehicle can do ("car" covers every car style, "moto" is a scooter). Speeds in m/s.
+   * The hero walks 2.3 and runs 4.4 (RUN): a vehicle must be clearly worth taking (AC-P13), so the bicycle
+   * tops out above 1.5x a run, the scooter above 2x and the car above 2.5x. Turn in rad/s at full lock,
+   * halfLen / halfWid the body (also its solid box when parked), ring the two circles (centre offset along
+   * the body, radius) used against the walls while it moves, camFar how much further back the camera
+   * sits at top speed.
    */
   const SPECS = {
     car: {
       label: "Drive",
-      maxFwd: 7.5,
-      maxRev: 2.4,
-      accel: 4.2,
-      brake: 10,
-      coast: 2.6,
-      turn: 1.9,
+      maxFwd: 12.5,
+      maxRev: 3,
+      accel: 5.2,
+      brake: 12,
+      coast: 3,
+      turn: 1.75,
       turnSpeed: 1.3,
       minGrip: 0,
       halfLen: 1.9,
@@ -39,14 +42,15 @@
       ring: { off: 1.08, r: 0.8 },
       camDist: 5.6,
       camPitch: 0.34,
+      camFar: 1.6,
     },
     bike: {
       label: "Ride",
-      maxFwd: 5.8,
-      maxRev: 1.2,
-      accel: 3.2,
-      brake: 8,
-      coast: 1.6,
+      maxFwd: 7.4,
+      maxRev: 1.4,
+      accel: 3.8,
+      brake: 9,
+      coast: 1.8,
       turn: 2.6,
       turnSpeed: 0.9,
       minGrip: 0.3,
@@ -55,14 +59,15 @@
       ring: { off: 0.2, r: 0.34 },
       camDist: 4.2,
       camPitch: 0.3,
+      camFar: 0.8,
     },
     moto: {
       label: "Ride",
-      maxFwd: 6.8,
-      maxRev: 1.4,
-      accel: 4.4,
-      brake: 9,
-      coast: 2,
+      maxFwd: 10,
+      maxRev: 1.6,
+      accel: 5,
+      brake: 11,
+      coast: 2.4,
       turn: 2.3,
       turnSpeed: 0.9,
       minGrip: 0.3,
@@ -71,8 +76,47 @@
       ring: { off: 0.5, r: 0.4 },
       camDist: 4.6,
       camPitch: 0.3,
+      camFar: 1.2,
+    },
+    /** The delivery lorry: driven like a car, a little slower (2.2x a run, still faster than a bicycle). */
+    lorry: {
+      label: "Drive",
+      maxFwd: 9.6,
+      maxRev: 2.4,
+      accel: 3.8,
+      brake: 10,
+      coast: 2.6,
+      turn: 1.45,
+      turnSpeed: 1.6,
+      minGrip: 0,
+      halfLen: 2.62,
+      halfWid: 0.97,
+      ring: { off: 1.65, r: 0.98 },
+      camDist: 7.2,
+      camPitch: 0.38,
+      camFar: 1.6,
+    },
+    /** The town bus: never driven by the hero (it runs its own loop, bus.js); these numbers drive its braking. */
+    bus: {
+      label: "",
+      maxFwd: 7,
+      maxRev: 0,
+      accel: 1.6,
+      brake: 6,
+      coast: 2,
+      turn: 0,
+      turnSpeed: 1,
+      minGrip: 0,
+      halfLen: 5.05,
+      halfWid: 1.2,
+      ring: { off: 3.85, r: 1.2 },
+      camDist: 9,
+      camPitch: 0.4,
+      camFar: 0,
     },
   };
+  /** The hero's running speed (m/s, Player RUN), the yardstick for the vehicles' top speeds. */
+  const RUN = 4.4;
   /** The stick must pass this before it counts (a resting thumb does not creep). */
   const DEAD = 0.12;
   /** Comfortable stopping rate used to work out how fast is "slow enough" near a person. */
@@ -80,7 +124,7 @@
   /** Clear space kept between a bumper and a person, and the body radius of a person. */
   const GAP = 0.55;
   const PERSON_R = 0.4;
-  /** How far ahead a person matters (m). */
+  /** How far ahead a person matters (m) at the least; a fast vehicle looks further (lookAhead). */
   const LOOK = 14;
 
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
@@ -168,12 +212,25 @@
     return { fwd: dx * fx + dz * fz, lat: dx * fz - dz * fx };
   }
 
+  /**
+   * How far ahead a person matters for this kind: at least LOOK, and always more than the vehicle needs to
+   * ease down from its top speed at the comfortable rate (so a faster car never meets anyone unawares).
+   */
+  function lookAhead(spec) {
+    const top = Number.isFinite(spec.maxFwd) ? spec.maxFwd : spec.top; // animals have a `top` speed, not maxFwd
+    return Math.max(LOOK, (top * top) / (2 * COMFORT) + (spec.halfLen || 0) + 3);
+  }
+
   /** The speed a person ahead (in the travel direction `dir`, +1 / -1) allows, or Infinity. */
   function allowedBy(v, p, dir) {
     const s = v.spec;
     const at = local(v, p.x, p.z);
     const ahead = at.fwd * dir;
-    if (Math.abs(at.lat) > s.halfWid + PERSON_R + 0.25 || ahead < -s.halfLen || ahead > LOOK)
+    if (
+      Math.abs(at.lat) > s.halfWid + PERSON_R + 0.25 ||
+      ahead < -s.halfLen ||
+      ahead > lookAhead(s)
+    )
       return Infinity;
     const gap = ahead - s.halfLen - PERSON_R - GAP;
     if (ahead <= s.halfLen) return 0; // already alongside / overlapping: hold still
@@ -202,6 +259,79 @@
     const next = Math.max(cap, m - 2 * COMFORT * dt);
     v.speed = Math.sign(v.speed) * next;
     return true;
+  }
+
+  /* ------------------------------ body and ground ------------------------------ */
+
+  /**
+   * The vehicle's solid footprint as an oriented box: centre, half sizes along (hz) and across (hx) the body
+   * grown by `pad`, and the cos / sin of its heading. Used as its collider while parked (AC-P12).
+   */
+  function box(v, pad) {
+    const p = pad || 0;
+    return {
+      x: v.x,
+      z: v.z,
+      hx: v.spec.halfWid + p,
+      hz: v.spec.halfLen + p,
+      c: Math.cos(v.heading),
+      s: Math.sin(v.heading),
+    };
+  }
+
+  /** Mean and spread of one coordinate of the contacts: [mean, sum of squared offsets]. */
+  function spread(list, k) {
+    const m = list.reduce((a, p) => a + p[k], 0) / list.length;
+    return [m, list.reduce((a, p) => a + (p[k] - m) * (p[k] - m), 0)];
+  }
+
+  /** Least-squares slope of the heights along one coordinate (0 when the contacts do not spread along it). */
+  function slope(list, heights, k) {
+    const [m, ss] = spread(list, k);
+    if (ss < 1e-6) return 0;
+    const hm = heights.reduce((a, h) => a + h, 0) / heights.length;
+    return list.reduce((a, p, i) => a + (p[k] - m) * (heights[i] - hm), 0) / ss;
+  }
+
+  /** Half the size of a tyre's footprint on the ground (m). */
+  const PATCH = 0.08;
+
+  /**
+   * The ground under a tyre touching (x, z): the highest ground anywhere in its footprint (a tyre resting on the
+   * edge of a kerb is held up by the kerb, it does not hang over the road below).
+   */
+  function groundUnder(heightAt, x, z) {
+    const d = PATCH;
+    return Math.max(
+      heightAt(x, z),
+      heightAt(x + d, z),
+      heightAt(x - d, z),
+      heightAt(x, z + d),
+      heightAt(x, z - d),
+    );
+  }
+
+  /**
+   * Sit the vehicle on the ground under its wheels (AC-P11). `contacts` are where the tyres touch, in the
+   * vehicle's frame ({fwd, lat}); `heightAt(x, z)` the world's ground. Fits a plane through the contact
+   * heights: returns the height under the vehicle's origin, the nose-up pitch and the left-up roll (radians),
+   * so on a kerb or a slope every wheel rests on the ground instead of one point under the middle, plus `off`,
+   * how far each contact's ground lies off that plane (the wheels' suspension takes it up).
+   */
+  function groundPose(v, contacts, heightAt) {
+    const fx = Math.sin(v.heading);
+    const fz = Math.cos(v.heading);
+    const hs = contacts.map((p) =>
+      groundUnder(heightAt, v.x + fx * p.fwd + fz * p.lat, v.z + fz * p.fwd - fx * p.lat),
+    );
+    const ok = hs.every(Number.isFinite);
+    const h = ok ? hs : contacts.map(() => 0);
+    const bf = slope(contacts, h, "fwd");
+    const bl = contacts.length > 2 ? slope(contacts, h, "lat") : 0; // two tyres in a line: no roll
+    const mean = h.reduce((a, x) => a + x, 0) / h.length;
+    const y = mean - bf * spread(contacts, "fwd")[0] - bl * spread(contacts, "lat")[0];
+    const off = contacts.map((p, i) => h[i] - (y + bf * p.fwd + bl * p.lat));
+    return { y, pitch: Math.atan(bf), roll: Math.atan(bl), off };
   }
 
   /* ------------------------------ no-drive zones ------------------------------ */
@@ -280,6 +410,11 @@
     local,
     speedCap,
     brakeFor,
+    lookAhead,
+    box,
+    groundPose,
+    groundUnder,
+    RUN,
     normalizeZones,
     zoneAt,
     blockedMove,

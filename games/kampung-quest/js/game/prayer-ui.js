@@ -95,7 +95,6 @@
       else clearTimeout(host.collapseTimer);
       wasShown = shown;
       G.HudLayout.measure();
-      G.HudLayout.fitTalk();
     }).observe(host.el, { attributes: true, attributeFilter: ["hidden", "class"] });
   }
 
@@ -107,10 +106,10 @@
       cls: "kq-small kq-azan-sub",
       text: "Your mission waits (paused) until you have prayed.",
     });
-    host.go = G.UI.btn("Show me the way", {
+    host.go = G.UI.btn("Pray", {
       cls: "primary kq-big",
       icon: "mosque",
-      label: "Show me the way",
+      label: "Pray",
       onClick: on,
     });
     host.body = U.el("div", { cls: "kq-azan-cues" }, captionLines(host));
@@ -169,6 +168,11 @@
       how: wuduHow(step),
       texts: T().wuduTexts(step.id),
       next: { label: word + count, cls: "kq-wudu-act" },
+      chip: {
+        name: "Wudu",
+        count: Math.min(v.index + 1, v.total) + "/" + v.total,
+        cue: step.label,
+      },
       extras: [VIEW_BUTTON],
     };
     if (step.count > 1)
@@ -208,6 +212,7 @@
       how: [T().howFor(type)],
       texts: T().cardTexts(type, v.rakaat),
       next: { label: "Next", cls: "kq-pray-next" },
+      chip: { name: "Rakaat", count: v.rakaat + "/" + v.total, cue: "Now: " + tile[0] },
       extras: (v.want.length > 1 ? [{ id: "skip", label: "Skip this" }] : []).concat(VIEW_BUTTON),
     };
     ui.ctl.show(card);
@@ -237,33 +242,29 @@
   }
 
   /**
-   * Build the day card's buttons: 'Show me the way' or the qada prayer when there is something to
-   * do, else Close.
+   * Build the day card's buttons: one "Pray" (a little extra when nothing is owed) that always does
+   * the next right thing, and a way out.
    */
   function dayButtons(ps, o) {
     const acts = U.el("div", { cls: "kq-bubble-actions" });
-    const go = (fn) => () => (G.UI.closeSheet("choice"), fn());
-    const D = KQ.Sim.Prayer.DISPLAY;
+    const owed = ps.flow || ps.due || ps.qada.length;
     acts.appendChild(
-      G.UI.btn("Wudu and pray right here", {
+      G.UI.btn(owed ? "Pray" : "Pray a little extra", {
         cls: "primary kq-pray-here",
-        icon: "drop",
-        onClick: go(o.onHere),
+        icon: "mosque",
+        onClick: () => (G.UI.closeSheet("choice"), o.onPray()),
       }),
     );
-    if (ps.flow || ps.due) {
-      acts.appendChild(G.UI.btn("Show me the way", { icon: "mosque", onClick: go(o.onWay) }));
-    } else if (ps.qada.length) {
-      const name = ps.qada[0].name;
-      const label = "Pray " + D[name] + " (qada) now";
-      acts.appendChild(G.UI.btn(label, { icon: "mosque", onClick: go(() => o.onQada(name)) }));
-    }
-    const later = ps.due || ps.qada.length ? "Later" : "Close";
-    acts.appendChild(G.UI.btn(later, { icon: "close", onClick: () => G.UI.closeSheet("button") }));
+    acts.appendChild(
+      G.UI.btn(owed ? "Later" : "Close", {
+        icon: "close",
+        onClick: () => G.UI.closeSheet("button"),
+      }),
+    );
     return acts;
   }
 
-  /** The prayer day card (dock Pray). o: { sim, onWay, onQada(name), onClose } */
+  /** The prayer day card (dock Pray). o: { sim, onPray, onClose } */
   function dayCard(o) {
     const ps = o.sim.prayer.state();
     const msg = dayMessage(ps);

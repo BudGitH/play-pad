@@ -181,6 +181,12 @@
     };
   }
 
+  /** The lights the game's tier code toggles (sun, sky, street lamps, the hall light). */
+  function lightsOf(s) {
+    const street = s.lamps.map((p) => ({ pos: p }));
+    return { sun: s.rig.sun, hemi: s.rig.hemi, street, hall: s.hall[0], roaming: [] };
+  }
+
   /** The contract object the game uses (same shape as KQ.World.build's result). */
   function runtime(s) {
     const api = {
@@ -190,13 +196,7 @@
       colliders: s.colliders,
       walkGraph: s.nav.graph,
       interactables: s.interactables,
-      lights: {
-        sun: s.rig.sun,
-        hemi: s.rig.hemi,
-        street: s.lamps.map((p) => ({ pos: p })),
-        hall: s.hall[0],
-        roaming: [],
-      },
+      lights: lightsOf(s),
       heightAt: s.heightAt,
       qualityHints: (tier) => KQ.World.HINTS[tier || s.tier],
       update(dt, clock) {
@@ -220,7 +220,11 @@
       pigeons: s.pigeons.count,
       camels: () => P.CamelHerd.describe(s.herd),
     };
-    return Object.assign(api, sunApi(s));
+    // poisOf: either city's POI table (the full map shows both cities); burstPigeons: the pigeon-flock event
+    return Object.assign(api, sunApi(s), {
+      poisOf: (c) => s.nav.pois[c],
+      burstPigeons: (x, z, r) => s.pigeons.burst(x, z, r),
+    });
   }
 
   /** The internal state object the runtime closes over. */
@@ -248,8 +252,9 @@
 
   /** The sky / sun / shadow rig with the night-glow materials (including the hotel windows and clock). */
   function makeRig(scene, opts, mats) {
-    // The marble and plaster are bright white: a lower exposure keeps them from washing out in the sun.
-    if (opts.renderer) opts.renderer.toneMappingExposure = 0.72;
+    // The marble and plaster are bright white: a lower exposure keeps them from washing out in the
+    // sun (0.78 with the warm-cream marble tint of AC-P20; measured: no clipped white).
+    if (opts.renderer) opts.renderer.toneMappingExposure = 0.78;
     const rig = P.Lighting.create(scene, opts.renderer, opts.quality || "high");
     const table = P.HolyKit.glowTable();
     rig.glow = Object.keys(table)
@@ -282,6 +287,7 @@
     P.Sky.fromPrayerTimes();
     const rig = makeRig(scene, opts, kit.mats);
     const nav = P.HolyNav.build();
+    if (P.Stables) P.Stables.makkah.addPois(nav.pois.makkah, nav.graph); // camel_yard, horse_stable, camel_oasis
     const s = makeState({
       scene,
       group,

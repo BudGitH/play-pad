@@ -6,7 +6,8 @@
 // `npm run smoke` runs both (everything except @slow); see package.json for the per-project scripts.
 import { defineConfig, devices } from "@playwright/test";
 
-const PORT = 5599;
+// PW_PORT lets parallel checkouts (git worktrees) each run their own server instead of reusing another tree's.
+const PORT = Number(process.env.PW_PORT) || 5599;
 const KQ_SPECS = /kampung-quest-.*\.spec\.mjs$/;
 
 export default defineConfig({

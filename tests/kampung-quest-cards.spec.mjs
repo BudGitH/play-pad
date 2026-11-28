@@ -343,10 +343,15 @@ test("a card the child hid by hand stays hidden when the walk ends, and the chip
   await page.locator(".kq-min-chip").click();
   await hideButton(page).click();
   expect((await card(page)).by).toBe("child");
-  await ev(page, () => window.KQ.Game.RitualTrek.stopAuto());
-  await step(page, 200);
-  expect((await card(page)).minimised, "stays minimised").toBe(true);
-  expect((await card(page)).pulsing, "the chip pulses to say it is your turn").toBe(true);
+  // The pulse lasts 2.6 s of REAL time: read the card in the same task as the frames that raise it, as a
+  // drawn step() on a slow runner can outlast it before the next call reaches the page.
+  const after = await ev(page, () => {
+    window.KQ.Game.RitualTrek.stopAuto();
+    for (let i = 0; i < 6; i += 1) window.KQ.Game.Loop.frame(1 / 30, true);
+    return window.__kq.card();
+  });
+  expect(after.minimised, "stays minimised").toBe(true);
+  expect(after.pulsing, "the chip pulses to say it is your turn").toBe(true);
   await page.locator(".kq-min-chip").click();
 });
 

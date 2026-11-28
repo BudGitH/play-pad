@@ -373,9 +373,22 @@ test("AC-P4: the target clears itself when the hero arrives (within 4 m)", async
   await step(page, 300);
   expect(await target(page)).not.toBeNull();
   await kq(page, (p) => window.__kq.place(p.x, p.z + 2, 0), lib);
+  // The cheer is a real-time toast (3.6 s), so look for it in the same task as the frame that
+  // raises it: a rendered step() on a slow runner can outlast the toast before the page is asked.
+  const cheer = await kq(page, () => {
+    const G = window.KQ.Game;
+    for (let i = 0; i < 30 && G.MapTarget.active(); i += 1) G.Loop.frame(1 / 30, true);
+    const shown = (n) => {
+      const cs = getComputedStyle(n);
+      return cs.display !== "none" && cs.visibility !== "hidden" && n.getClientRects().length > 0;
+    };
+    const t = Array.from(document.querySelectorAll(".kq-toast")).filter(shown);
+    return { cleared: !G.MapTarget.active(), texts: t.map((n) => n.textContent) };
+  });
+  expect(cheer.cleared, "the target clears itself on arrival").toBe(true);
+  expect(cheer.texts.join("|")).toMatch(/You are here: Library/);
   await step(page, 300);
   expect(await target(page)).toBeNull();
-  await expect(page.locator(".kq-toast", { hasText: /You are here: Library/ })).toBeVisible();
   expect(errors, errors.join("\n")).toEqual([]);
 });
 

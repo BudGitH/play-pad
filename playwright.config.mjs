@@ -14,10 +14,15 @@ export default defineConfig({
   testDir: "tests",
   timeout: 30_000,
   retries: process.env.CI ? 1 : 0,
+  // One worker on CI: the 2-core runners cannot share software-GL 3D between two browsers (PLAY-015).
+  workers: process.env.CI ? 1 : undefined,
   reporter: process.env.CI ? "github" : "list",
   use: {
     baseURL: `http://localhost:${PORT}`,
     ...devices["Desktop Chrome"],
+    // Evidence for a red CI run: kept only for failures, uploaded as an artifact by the workflows (PLAY-015).
+    trace: "retain-on-failure",
+    screenshot: "only-on-failure",
     // Optional: point at a pre-installed Chromium (e.g. cloud dev boxes) instead
     // of the one `npx playwright install` downloads.
     // `--disable-dev-shm-usage`: CI runners give a container a small /dev/shm, and software-GL
@@ -31,7 +36,14 @@ export default defineConfig({
   },
   projects: [
     { name: "core", testIgnore: KQ_SPECS },
-    { name: "kampung-quest", testMatch: KQ_SPECS },
+    // Kampung Quest (PLAY-015):
+    // - timeout: every test drives a software-GL 3D world, and one `evaluate` of 20-40 s of sim (a teleport
+    //   plus a scenario) is normal on a 2-core runner. The 30 s default turned that into "Target page ...
+    //   closed" (Playwright closes the page at the timeout), which read like a crash. 120 s is the floor;
+    //   files that need more still set their own.
+    // - trace off: its specs share one heavy page per file, and starting a trace on it timed out the
+    //   "trace recording" fixture on 2 CPUs. Failure screenshots are still kept.
+    { name: "kampung-quest", testMatch: KQ_SPECS, timeout: 120_000, use: { trace: "off" } },
   ],
   webServer: {
     command: `node tools/serve.mjs ${PORT}`,

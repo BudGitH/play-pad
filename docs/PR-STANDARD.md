@@ -217,6 +217,21 @@ Take the id from the auth context instead.
 | Timing               | Not before going offline / end of week, unless flagged off                                                          |
 | Post-merge           | Author watches deploy/dashboards for the change's failure modes; broken main → revert is the default, within 30 min |
 
+### 4.1 Merge & release checklist (PLAY-015)
+
+Cloudflare Pages deploys every commit on `main`, so **merging is releasing**. Before you press merge:
+
+1. **Every check is finished and green on the PR head**, including **`Probes gate`**. "Still running" is not green: PR #28 was merged while 4 probe legs were red or still running, and `main` stayed red.
+2. **Required checks** (set once in GitHub → Settings → Rules → Rulesets for `main`; owner action): `check`, `smoke`, `Kampung Quest (AC)`, `Kampung Quest (Phone)`, `PR title`, `Probes gate`. Also tick: require a PR, require branches to be up to date, and no bypass. Do **not** require individual probe legs, because they are skipped when nothing they exercise changed. Until the ruleset exists these checks are advisory, and this checklist is the gate.
+3. **A red check is a stop sign, not noise.** If a leg fails, open its `test-results` artifact (trace + screenshot) before calling it flaky. A spec may change only if it asserts outdated behaviour or waits on a timer instead of a condition; never skip or loosen it to get green (`features/ci-reliability/notes-specs.md` has worked examples).
+4. **After merge:** check that the `CI` and `Probes` runs on the `main` push are green, and that Cloudflare Pages shows the deploy for the merge commit (dashboard → the project → Deployments). Then hard-refresh the live site and open the games you changed.
+
+**Rollback** (broken `main` or a bad deploy, within 30 min):
+
+- **Fastest (site only):** Cloudflare dashboard → Pages project → Deployments → pick the last good deployment → **Rollback to this deployment**. This restores the site in seconds; `main` is still broken, so follow up with the revert below.
+- **Source of truth:** `git revert <squash-commit-sha>` on a branch, open a PR titled `revert(<scope>): <original title>`, let checks go green and merge. Cloudflare deploys the reverted `main`.
+- Record what happened in `docs/LEARNINGS.md` and bump `docs/findings-ledger.md`.
+
 ## Part 5 — Emergency / break-glass lane
 
 _The reason this section exists: every undocumented bypass becomes the informal norm. A sanctioned lane keeps the log._

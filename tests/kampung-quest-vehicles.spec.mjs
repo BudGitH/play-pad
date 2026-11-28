@@ -222,13 +222,22 @@ test("a no-drive zone stops the car (and the bicycle) with a friendly line", asy
   await standAt(page, -22, 4.1, Math.PI);
   await kq(page, () => window.__kq.interact());
   await input(page, "up", true);
-  await step(page, 4500); // the car is faster now (AC-P13): its "let's walk" toast (2.8 s) must still be up
+  // The car is faster now (AC-P13): drive 4.5 s of game time. The "let's walk" toast lasts 2.8 s of REAL
+  // time, so a slow runner can outlast it inside one step(): watch for it after every frame instead.
+  const toasted = await kq(page, () => {
+    let seen = false;
+    for (let i = 0; i < 135; i += 1) {
+      window.KQ.Game.Loop.frame(1 / 30, i < 134);
+      seen = seen || document.getElementById("kqToasts").textContent.includes("Let's walk inside");
+    }
+    return seen;
+  });
   const d = await veh(page);
   const car = d.list.find((v) => v.id === "car1");
   expect(d.blocked).toBeGreaterThan(0);
   expect(car.x, "stopped before the zone (x 5 .. 15 plus the body)").toBeLessThan(4.5);
   expect(Math.abs(car.speed)).toBeLessThan(0.5);
-  await expect(page.locator("#kqToasts")).toContainText("Let's walk inside the masjid");
+  expect(toasted, "the friendly 'Let's walk inside the masjid' toast was shown").toBe(true);
   // and it can reverse out
   await input(page, "up", false);
   await input(page, "down", true);

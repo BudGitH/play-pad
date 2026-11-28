@@ -11,6 +11,7 @@
 //   signal       one line naming what "in round" means (shown in the test annotations)
 //   waitForRound async (page) => void — resolves once the round is really under way (past any
 //                3-2-1), and throws (an expect timeout) if it never gets there
+//   testTimeoutMs optional whole-test budget for a slow-booting game (smoke.spec.mjs applies it)
 //   heartbeat    optional async (page) => number that must keep increasing while the round
 //                runs — proves the game loop is alive, not just that a screen is showing
 //
@@ -20,6 +21,11 @@ import { expect } from "@playwright/test";
 
 /** Longest we wait for a round to begin (covers the slowest 3-2-1 plus a slow CI runner). */
 export const ROUND_TIMEOUT_MS = 15_000;
+
+/** Kampung Quest builds a 3D world in software GL on CI: longest we wait for it to finish loading. */
+const KQ_BOOT_TIMEOUT_MS = 90_000;
+/** ...and for its loop to start after Start is pressed. */
+const KQ_START_TIMEOUT_MS = 45_000;
 
 export const ROUND_DRIVERS = {
   "colour-rush": {
@@ -118,18 +124,21 @@ export const ROUND_DRIVERS = {
 
   "kampung-quest": {
     start: "Start",
+    // The 3D boot is ~13-16 s here on 2 CPUs and ~3x that on a shared CI runner, so this game has its own
+    // test budget (the generic 45 s covered the whole test, boot included, and flaked on PRs #27 / #28).
+    testTimeoutMs: 180_000,
     // Start is disabled until the world, the figures and the azan have loaded (design D, loading
-    // state), which takes ~10-15 s in software GL, so wait for the game's `loaded` flag first.
+    // state), so wait for the game's `loaded` flag first (the other KQ specs allow 90-150 s).
     async prepare(page) {
       await expect
-        .poll(() => page.evaluate(() => window.__kq?.loaded), { timeout: 40_000 })
+        .poll(() => page.evaluate(() => window.__kq?.loaded), { timeout: KQ_BOOT_TIMEOUT_MS })
         .toBe(true);
     },
-    // The hook flips `ready` once the game loop is running.
+    // The hook flips `ready` once the game loop is running (Start builds the first frame in software GL).
     signal: "__kq.ready, frame counter advancing",
     async waitForRound(page) {
       await expect
-        .poll(() => page.evaluate(() => window.__kq?.ready), { timeout: ROUND_TIMEOUT_MS })
+        .poll(() => page.evaluate(() => window.__kq?.ready), { timeout: KQ_START_TIMEOUT_MS })
         .toBe(true);
     },
     heartbeat: (page) => page.evaluate(() => window.__kq.stats().frames),

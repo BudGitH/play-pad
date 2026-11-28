@@ -189,7 +189,8 @@
       return started();
     },
     get loaded() {
-      return G.Boot.ready;
+      // hooks.js loads before boot.js: a poll that lands between the two must read false, not throw.
+      return Boolean(G.Boot && G.Boot.ready);
     },
     state,
     stats,
@@ -213,13 +214,14 @@
     steps: () => G.MissionSteps.debug(),
     actors: () => ({ onStage: G.Actors.count(), built: G.Actors.built() }),
     crowdPeople: () => (S() && S().crowd ? G.Crowd.positions(S().crowd) : []),
-    step: (ms) => (started() ? G.Loop.step(ms) : 0),
+    step: (ms, quiet) => (started() ? G.Loop.step(ms, quiet) : 0),
     setMinute: (m) => (started() ? setMinute(m) : undefined),
     teleport,
-    place(x, z, heading) {
+    /** Put the hero down facing `heading` and settle for 3 steps; `quiet` skips the frame draw (see Loop.step). */
+    place(x, z, heading, quiet) {
       G.Player.place(S().player, x, z, heading || 0, S().world.heightAt);
       G.Camera.snapBehind(heading || 0);
-      G.Loop.step(100);
+      G.Loop.step(100, quiet);
     },
     interact: () => G.Actions.handle("interact"),
     action: (name) => G.Actions.handle(name),

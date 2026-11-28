@@ -1,5 +1,5 @@
 # PlayPad deep AC probes (PLAY-012) — the slow, per-game acceptance probes that `ci.yml` does not run
-# (Kampung Quest's AC and phone specs run in ci.yml; its @slow frame-time probe and the realism-round specs are here).
+# (Kampung Quest's AC and phone specs run in ci.yml; its @slow frame-time probe and the realism- and playability-round specs are here).
 #
 # Why a separate workflow: a workflow-level `paths:` filter applies to EVERY job in the file, and the
 # fast checks in ci.yml (secrets, lint, smoke) must run on every PR. The probes take ~2-3 minutes each, so
@@ -56,7 +56,7 @@ jobs:
     # One matrix job per game so a red check names the game: "Probes / Sparkle Salon".
     name: ${{ matrix.name }}
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: ${{ matrix.timeout || 20 }}
     strategy:
       fail-fast: false # a Stride failure must not hide a Salon / Buddies result
       matrix:
@@ -80,6 +80,11 @@ jobs:
             # the crowd and its draw budget): several minutes of software-GL 3D, so they run here, path-filtered,
             # not on every PR. Playwright's webServer starts tools/serve.mjs on :5599 itself.
             run: npm run smoke:kq:realism
+          - name: Kampung Quest (playability)
+            # The playability round's browser specs (map, mounts, hero choice, cards, town life, looks, iPad,
+            # vehicle ground / rig / life, figures, the Action control): long software-GL runs, so here, path-filtered.
+            run: npm run smoke:kq:playability
+            timeout: 45
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:

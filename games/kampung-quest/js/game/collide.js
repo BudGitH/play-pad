@@ -6,7 +6,10 @@
  *          camera's spring arm may reach. Pure maths on plain {x, z} objects (unit-tested in
  *          tests/kampung-quest/collide.test.mjs).
  * BUSINESS CONTEXT: AC-2 (stopped by building/prop colliders, camera never clips buildings).
- * DEPENDENCIES: KQ.World colliders: [{minX,maxX,minZ,maxZ,kind}].
+ * DEPENDENCIES: KQ.World colliders: [{minX,maxX,minZ,maxZ,kind}]. A collider may also carry `obb`
+ *   {x, z, hx, hz, c, s} (an oriented box: centre, half sizes across / along, cos / sin of its heading;
+ *   vehicles.js uses it for parked cars and bicycles, AC-P12); its minX..maxZ is then the box's bounds,
+ *   so the broad-phase filters (nearColliders, armLength) keep working unchanged.
  * ========================================================================== */
 (function (KQ) {
   "use strict";
@@ -40,8 +43,30 @@
   /** Metres between the points tested along the camera arm. */
   const ARM_STEP = 0.1;
 
+  /** A point in an oriented box's own frame: x across (its left), z along its heading. */
+  function toBox(o, x, z) {
+    const dx = x - o.x;
+    const dz = z - o.z;
+    return { x: dx * o.c - dz * o.s, z: dx * o.s + dz * o.c };
+  }
+
+  /** Push the circle out of an oriented box: do it in the box's frame against an AABB, then turn back. */
+  function pushOutObb(pos, r, o) {
+    const p = toBox(o, pos.x, pos.z);
+    if (!pushOutAabb(p, r, { minX: -o.hx, maxX: o.hx, minZ: -o.hz, maxZ: o.hz })) return false;
+    pos.x = o.x + p.x * o.c + p.z * o.s;
+    pos.z = o.z - p.x * o.s + p.z * o.c;
+    return true;
+  }
+
   /** Push the circle (pos.x, pos.z, r) out of one box. Returns true when it moved. */
   function pushOut(pos, r, c) {
+    if (c.obb) return hits(c, pos.x, pos.z, r) && pushOutObb(pos, r, c.obb);
+    return pushOutAabb(pos, r, c);
+  }
+
+  /** Push the circle out of an axis-aligned box {minX, maxX, minZ, maxZ}. Returns true when it moved. */
+  function pushOutAabb(pos, r, c) {
     const cx = Math.max(c.minX, Math.min(pos.x, c.maxX));
     const cz = Math.max(c.minZ, Math.min(pos.z, c.maxZ));
     const dx = pos.x - cx;
@@ -79,9 +104,21 @@
     return moved;
   }
 
-  /** Does a circle of radius r at x,z overlap the collider box c? */
+  /** Does a circle of radius r at x,z overlap the collider box c (its true shape when it is oriented)? */
   function hits(c, x, z, r) {
-    return x > c.minX - r && x < c.maxX + r && z > c.minZ - r && z < c.maxZ + r;
+    if (!(x > c.minX - r && x < c.maxX + r && z > c.minZ - r && z < c.maxZ + r)) return false;
+    if (!c.obb) return true;
+    const p = toBox(c.obb, x, z);
+    const dx = Math.max(0, Math.abs(p.x) - c.obb.hx);
+    const dz = Math.max(0, Math.abs(p.z) - c.obb.hz);
+    return dx * dx + dz * dz < r * r;
+  }
+
+  /** A collider for an oriented box {x, z, hx, hz, c, s}: its bounds plus the box itself. */
+  function orientedBox(o, kind) {
+    const ex = Math.abs(o.hx * o.c) + Math.abs(o.hz * o.s);
+    const ez = Math.abs(o.hx * o.s) + Math.abs(o.hz * o.c);
+    return { minX: o.x - ex, maxX: o.x + ex, minZ: o.z - ez, maxZ: o.z + ez, kind, obb: o };
   }
 
   /** First collider overlapping the point (with radius r), or null. */
@@ -195,6 +232,8 @@
     resolve,
     settle,
     pushOut,
+    hits,
+    orientedBox,
     blockedAt,
     camBlocked,
     freeSpot,

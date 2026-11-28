@@ -220,7 +220,8 @@
       pigeons: s.pigeons.count,
       camels: () => P.CamelHerd.describe(s.herd),
     };
-    return Object.assign(api, sunApi(s));
+    // poisOf: either city's POI table (the full map shows both cities)
+    return Object.assign(api, sunApi(s), { poisOf: (c) => s.nav.pois[c] });
   }
 
   /** The internal state object the runtime closes over. */

@@ -17,14 +17,15 @@
     return Object.assign({ sim: S().sim, onClose: () => (S().hudDirty = true) }, extra || {});
   }
 
-  /** Open the map screen (north-up, with word labels) with a live map view from the loop. */
+  /** Open the full map (bigmap.js): the whole region, zoom and pan, places, go-here. */
   function openMap() {
-    const h = G.Screens.map(
-      ctxFor({
-        mapView: () => G.Loop.mapView(G.Minimap.fullSpan(), G.Minimap.fullOpts()),
-      }),
-    );
-    return h;
+    return G.Screens.map(ctxFor());
+  }
+
+  /** Is the full map the open sheet? (M closes it again.) */
+  function mapOpen() {
+    const h = G.UI.current();
+    return Boolean(h && h.opts.label === "Map");
   }
 
   /** Open the bag screen showing what the hero is carrying and the current outfit name. */
@@ -173,6 +174,7 @@
     if (name === "pause") return dock("pause");
     if (name.indexOf("tile") === 0) return tileKey(Number(name.slice(4)) - 1);
     if (name === "camLeft" || name === "camRight") return nudgeCamera(name === "camLeft" ? -1 : 1);
+    if (name === "map" && mapOpen()) return G.UI.closeSheet("map-key");
     if (G.UI.modalOpen() && name !== "mute") return;
     if (name === "interact") return G.Interact.activate(S().target);
     if (name === "mute") return setMuted(!G.Audio.isMuted());

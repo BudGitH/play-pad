@@ -200,5 +200,5 @@
     return { palms: palmSpots(), hills: hillsList(), free };
   }
 
-  P.HolyMadinah = { build, BOUNDS, ROADS };
+  P.HolyMadinah = { build, BOUNDS, ROADS, HOTELS };
 })((window.KQ = window.KQ || {}));

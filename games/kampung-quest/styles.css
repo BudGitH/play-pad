@@ -2864,3 +2864,165 @@ kbd {
     display: none;
   }
 }
+
+/* ============================================================================
+   Playability round, area A: the full map (js/game/bigmap.js).
+   A near-full-screen sheet: header, the map (canvas) with zoom / centre buttons and a name card, and a
+   Places panel (also the legend). All controls >= 48 px; on a phone the Places panel floats over the map.
+   ========================================================================== */
+.kq-sheet-full {
+  padding: max(6px, env(safe-area-inset-top, 0px)) max(6px, env(safe-area-inset-right, 0px))
+    max(6px, env(safe-area-inset-bottom, 0px)) max(6px, env(safe-area-inset-left, 0px));
+}
+.kq-sheet-full .kq-sheet-box {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  overflow: hidden;
+  padding: 10px 12px 12px;
+}
+.kq-bm {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.kq-sheet-full .kq-bm > .kq-sheet-head {
+  position: static;
+  margin: 0;
+  padding: 0;
+}
+.kq-bm-body {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  gap: 10px;
+}
+.kq-bm-stage {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #16211a;
+}
+.kq-bm-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  cursor: grab;
+}
+.kq-bm-canvas:active {
+  cursor: grabbing;
+}
+.kq-bm-canvas:focus-visible {
+  outline: 3px solid var(--kq-gold);
+  outline-offset: -3px;
+}
+.kq-bm-ctl {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.kq-bm-btn {
+  width: 52px;
+  min-height: 52px;
+  background: var(--kq-hud-strong);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+.kq-bm-btn .kq-ic {
+  width: 26px;
+  height: 26px;
+}
+.kq-bm-card {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: min(340px, calc(100% - 92px));
+  padding: 10px 12px 12px;
+  border-radius: 18px;
+  background: var(--kq-hud-strong);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.55);
+}
+.kq-bm-card[hidden] {
+  display: none;
+}
+.kq-bm-cardhead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.kq-bm-cardhead .kq-h3 {
+  flex: 1 1 auto;
+  margin: 0;
+  font-size: 18px;
+}
+.kq-bm-dist {
+  margin: 0;
+}
+.kq-bm-chip {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid #101014;
+  color: #fff;
+}
+.kq-bm-chip .kq-ic {
+  width: 22px;
+  height: 22px;
+  fill: currentColor;
+}
+.kq-bm-list {
+  display: none;
+  flex: none;
+  flex-direction: column;
+  gap: 6px;
+  width: 260px;
+  overflow: auto;
+  padding: 4px 2px 4px 0;
+}
+.kq-bm-list.is-open {
+  display: flex;
+}
+.kq-bm-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 4px 12px 4px 6px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface);
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+}
+.kq-bm-item:hover {
+  background: var(--md-sys-color-surface-container-highest);
+}
+@media (max-width: 760px), (max-height: 520px) {
+  .kq-bm-list.is-open {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    bottom: 8px;
+    z-index: 3;
+    width: min(300px, calc(100% - 80px));
+    padding: 10px;
+    border-radius: 18px;
+    background: var(--kq-hud-strong);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.55);
+  }
+}

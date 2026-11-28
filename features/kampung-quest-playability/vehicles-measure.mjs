@@ -8,7 +8,8 @@ const PORT = process.env.PW_PORT || 5601;
 const region = process.argv.includes("haramain") ? "haramain" : "kampung";
 const shots = process.argv.includes("shots");
 const flag = region === "haramain" ? "&region=haramain" : "";
-const url = `http://localhost:${PORT}/games/kampung-quest/index.html?still=1&autoq=0&q=low${flag}`;
+const Q = process.env.Q || "low";
+const url = `http://localhost:${PORT}/games/kampung-quest/index.html?still=1&autoq=0&q=${Q}${flag}`;
 
 /** Browser-side: wheel bottoms vs the drawn ground for every visible vehicle. */
 function measure() {

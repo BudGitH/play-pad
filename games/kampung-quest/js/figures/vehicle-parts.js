@@ -17,7 +17,7 @@
   const G = F.Geo;
   const PI = Math.PI;
   const UP = new THREE.Vector3(0, 1, 0);
-  const TYRE = "#26272c";
+  const TYRE = "#17181b";
   /**
    * Level of detail for the geometry built next (1 = full; the low quality tier builds its vehicles at about
    * 0.55, fewer segments on every curve, so a car stays near 8k triangles). Set with setDetail, read by seg().
@@ -37,7 +37,7 @@
   /** Paint a geometry one flat colour as it is (no sRGB conversion, to match the world's materials). */
   function paint(g, hex) {
     G.paint(g, "#ffffff");
-    const c = new THREE.Color(hex);
+    const c = new THREE.Color(hex).convertSRGBToLinear();
     const col = g.attributes.color;
     for (let i = 0; i < col.count; i += 1) col.setXYZ(i, c.r, c.g, c.b);
     return g;
@@ -46,7 +46,8 @@
   /** A painted rounded box of size w, h, d centred on p, optionally turned (rx, ry, rz). */
   function block(w, h, d, p, hex, rot) {
     const r = Math.min(0.04, w / 3, h / 3, d / 3);
-    return G.place(paint(G.roundedBox(w, h, d, r, 1), hex), p, rot || [0, 0, 0]);
+    const g = LOD.k < 0.7 ? new THREE.BoxGeometry(w, h, d) : G.roundedBox(w, h, d, r, 1);
+    return G.place(paint(g, hex), p, rot || [0, 0, 0]);
   }
 
   /** A plain painted box (12 triangles) for tiny details where rounding would not show: plate letters, seams. */
@@ -232,28 +233,80 @@
     return out;
   }
 
-  /** The pieces of one car wheel centred on x: a fat tyre with a sidewall, a pale alloy rim, five spokes, a hub. */
-  function carWheelParts(r, width, x) {
-    const tube = 0.1;
-    const tyre = new THREE.TorusGeometry(r - tube, tube, seg(6, 4), seg(20, 12)).rotateY(PI / 2);
-    const parts = [G.place(paint(tyre, TYRE), [x, 0, 0], [0, 0, 0], [width / (2 * tube), 1, 1])];
-    parts.push(drum("x", r * 0.66, width * 0.8, [x, 0, 0], "#c9ccd2", 16));
-    parts.push(drum("x", r * 0.5, width * 0.84, [x, 0, 0], "#3b3e45", 16));
-    parts.push(drum("x", r * 0.16, width * 0.9, [x, 0, 0], "#a7abb2", 8));
-    [-1, 1].forEach((s) =>
-      parts.push(...crossBars(5, r * 1.12, 0.05, x + s * width * 0.42, "#d4d7dc")),
-    );
-    return parts;
+  /**
+   * Tag a geometry's material class (the aSkin attribute every painted piece carries; the vehicles' trim shader,
+   * vehicle-mats.js, reads it): 0 matte plastic, 1 satin, 2 gloss black, 3 chrome / alloy, 4 rubber, 5 clear
+   * lens; 10+ lamps that light up (see F.VehicleMats.CLS).
+   */
+  function tag(g, cls) {
+    const a = g.attributes.aSkin;
+    for (let i = 0; i < a.count; i += 1) a.setX(i, cls);
+    return g;
   }
 
-  /** A car wheel. */
-  function carWheel(r, width) {
-    return G.merge(carWheelParts(r, width, 0));
+  /** A lathe about the x axis from [radius, x] pairs, painted and tagged. */
+  function latheX(pairs, segs, hex, cls) {
+    const g = G.lathe(pairs, seg(segs, 8)).rotateZ(-PI / 2);
+    return tag(paint(g, hex), cls);
+  }
+
+  /** A tyre: tread, rounded shoulders and bulging sidewalls (a lathe), centred on x 0. */
+  function tyre(r, w) {
+    const h = w / 2;
+    const prof = [0.7, -h * 0.78, 0.8, -h * 0.98, 0.93, -h * 0.97, 0.985, -h * 0.82, 1, -h * 0.55];
+    const pairs = [];
+    for (let i = 0; i < prof.length; i += 2) pairs.push(prof[i] * r, prof[i + 1]);
+    for (let i = prof.length - 2; i >= 0; i -= 2) pairs.push(prof[i] * r, -prof[i + 1]);
+    return latheX(pairs, 26, TYRE, 4);
+  }
+
+  /** Five twin spokes on the face toward side `s` (+1 / -1), dished from the hub out to the rim lip. */
+  function spokes(r, w, s) {
+    const out = [];
+    const n = LOD.k < 0.7 ? 1 : 2;
+    for (let i = 0; i < 5; i += 1) {
+      for (let k = 0; k < n; k += 1) {
+        const a = (i * 2 * PI) / 5 + (n > 1 ? (k - 0.5) * 0.2 : 0);
+        const g = paint(new THREE.BoxGeometry(0.03, r * 0.5, 0.022), "#c9cdd3");
+        G.taper(g, n > 1 ? 1 : 1.6, n > 1 ? 0.7 : 1.1, 1, 1, r * 0.5);
+        g.translate(0, r * 0.42, 0);
+        g.applyMatrix4(new THREE.Matrix4().makeShear(0, 0, s * 0.14, 0, 0, 0));
+        out.push(tag(g.rotateX(a).translate(s * (w * 0.38 - r * 0.04), 0, 0), 1));
+      }
+    }
+    return out;
+  }
+
+  /**
+   * The pieces of one car wheel centred on x, its show face toward side `s`: a tyre with sidewalls, a dark rim
+   * well, a bright alloy lip, five twin spokes and a centre cap (no badge).
+   */
+  function carWheelParts(r, width, x, s) {
+    const h = width / 2;
+    const rim = r * 0.7;
+    const parts = [
+      tyre(r, width),
+      tag(drum("x", rim, width * 0.86, [0, 0, 0], "#30333a", 22), 1),
+      latheX(
+        [rim * 1.01, s * h * 0.8, rim * 0.95, s * h * 0.86, rim * 0.9, s * h * 0.8],
+        22,
+        "#dfe2e6",
+        3,
+      ),
+      tag(drum("x", r * 0.15, width * 0.92, [0, 0, 0], "#c9ccd2", 10), 3),
+      tag(drum("x", r * 0.07, width * 0.95, [0, 0, 0], "#26282d", 8), 2),
+    ].concat(spokes(r, width, s));
+    return parts.map((g) => g.translate(x, 0, 0));
+  }
+
+  /** A car wheel with its show face toward side s (+1 left, -1 right). */
+  function carWheel(r, width, s) {
+    return G.merge(carWheelParts(r, width, 0, s || 1));
   }
 
   /** Both wheels of an axle as one mesh (they roll together; the rear pair of a car is one draw call). */
   function carAxle(r, width, x) {
-    return G.merge(carWheelParts(r, width, -x).concat(carWheelParts(r, width, x)));
+    return G.merge(carWheelParts(r, width, -x, -1).concat(carWheelParts(r, width, x, 1)));
   }
 
   /**
@@ -261,10 +314,17 @@
    * to alternate points of the rim (so they cross like a real wheel's).
    */
   function spokedWheel(r, thick, width) {
-    const tyre = new THREE.TorusGeometry(r - thick, thick, 6, 28).rotateY(PI / 2);
-    const parts = [G.place(paint(tyre, TYRE), [0, 0, 0], [0, 0, 0], [width / (2 * thick), 1, 1])];
+    const tyre = new THREE.TorusGeometry(r - thick, thick, seg(6, 4), seg(28, 14)).rotateY(PI / 2);
+    const parts = [
+      tag(G.place(paint(tyre, TYRE), [0, 0, 0], [0, 0, 0], [width / (2 * thick), 1, 1]), 4),
+    ];
     const rimR = r - thick * 2;
-    parts.push(paint(new THREE.TorusGeometry(rimR, 0.012, 4, 28).rotateY(PI / 2), "#c4c8ce"));
+    parts.push(
+      tag(
+        paint(new THREE.TorusGeometry(rimR, 0.012, 4, seg(28, 14)).rotateY(PI / 2), "#c4c8ce"),
+        3,
+      ),
+    );
     parts.push(drum("x", 0.018, width * 1.6, [0, 0, 0], "#9aa0a8", 8));
     [-1, 1].forEach((s) => parts.push(drum("x", 0.03, 0.008, [s * 0.03, 0, 0], "#b8bdc4", 10)));
     for (let i = 0; i < 16; i += 1) {
@@ -290,7 +350,7 @@
 
   /** The steering wheel: a thin ring, three spokes and a hub, facing the driver. */
   function steering() {
-    const ring = new THREE.TorusGeometry(0.13, 0.018, 6, 16);
+    const ring = new THREE.TorusGeometry(0.13, 0.018, seg(6, 4), seg(16, 10));
     const parts = [paint(ring, "#1f2024"), drum("z", 0.035, 0.03, [0, 0, 0], "#c9ccd2", 8)];
     [0, (2 * PI) / 3, (4 * PI) / 3].forEach((a) =>
       parts.push(rod([0, 0, 0], [Math.sin(a) * 0.12, -Math.cos(a) * 0.12, 0], 0.012, "#1f2024")),
@@ -339,6 +399,8 @@
     setDetail,
     detail: () => LOD.k,
     paint,
+    tag,
+    latheX,
     block,
     box,
     rod,

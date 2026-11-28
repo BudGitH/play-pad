@@ -7,7 +7,8 @@
  *   two or more actions in reach the child sees up to three picture tiles instead of a silent
  *   winner (a neighbour's Talk used to hide the ice-cream cart, Say hi and shop counters).
  *   The nearest action is first (highlighted, runs on E) except that mission business and a
- *   prayer that is owed come before everything else; Say hi and the "I am tired" Rest come last.
+ *   prayer that is owed come before everything else; a crowd Say hi and the "I am tired" Rest come last.
+ *   A cast neighbour's own Say hi (AC-P17) sits right after that neighbour's Talk (`hiRank`).
  * DEPENDENCIES: none (no THREE, no DOM).
  * HOW TO TEST: npm run test:kq (tests/kampung-quest/action-order.test.mjs)
  * ========================================================================== */
@@ -26,6 +27,14 @@
     if (t.kind === "step") return RANK.business;
     if (t.kind === "hi") return RANK.hi;
     return RANK.near;
+  }
+
+  /**
+   * The rank of a cast neighbour's "Say hi": just after the Talk it belongs to, so Talk stays the
+   * big button (mission business 0, else the nearest 2) and Say hi is the second tile.
+   */
+  function hiRank(talkRank) {
+    return (Number.isFinite(talkRank) ? talkRank : RANK.near) + 0.5;
   }
 
   /** What makes two candidates "the same action": the same picture and word (`key`), else kind + label. */
@@ -69,7 +78,7 @@
     return collapse(list || []).slice(0, max);
   }
 
-  KQ.Sim.Actions = { arrange, order, collapse, rankOf, RANK, MAX_TILES };
+  KQ.Sim.Actions = { arrange, order, collapse, rankOf, hiRank, RANK, MAX_TILES };
 })(
   ((typeof window !== "undefined" ? window : globalThis).KQ =
     (typeof window !== "undefined" ? window : globalThis).KQ || {}),

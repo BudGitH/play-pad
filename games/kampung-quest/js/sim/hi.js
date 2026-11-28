@@ -55,6 +55,23 @@
     return age === "teen" || age === "elder" ? age : "adult";
   }
 
+  /** Cast neighbours who answer as elders (the grandparents). */
+  const ELDERS = { nenek: true, atuk: true };
+
+  /**
+   * A cast neighbour as the `person` that `say` takes: a child when the profile is not an adult,
+   * an elder for the grandparents, and Muslim from the profile (so the salaam only goes between
+   * Muslim people).
+   */
+  function castPerson(id, profile) {
+    const p = profile || {};
+    return {
+      kid: p.adult === false,
+      age: ELDERS[id] ? "elder" : "adult",
+      muslim: Boolean(p.muslim),
+    };
+  }
+
   /** Pick one entry from a list by a roll in [0, 1). */
   function pick(list, rand) {
     return list[Math.floor(rand() * list.length) % list.length];
@@ -116,7 +133,7 @@
     };
   }
 
-  KQ.Sim.Hi = { say, kidFirst, createTally, bandOf, TALLY, SALAAM, REPLY };
+  KQ.Sim.Hi = { say, kidFirst, castPerson, createTally, bandOf, TALLY, SALAAM, REPLY };
 })(
   ((typeof window !== "undefined" ? window : globalThis).KQ =
     (typeof window !== "undefined" ? window : globalThis).KQ || {}),

@@ -100,6 +100,51 @@ export function waveLockScenario() {
   return out;
 }
 
+/** Bring cast neighbour `id` next to the hero, standing free in daylight, and report the chooser. */
+export function castStage(id) {
+  const k = window.__kq;
+  const G = window.KQ.Game;
+  k.greetChance(0); // only the hello under test shows a bubble
+  G.UI.closeSheet("test");
+  k.setMinute(600);
+  k.teleport("playground");
+  run(2);
+  const A = G.S.npcs.byId[id];
+  const hero = G.S.player.pos;
+  A.hidden = false;
+  A.show = 1;
+  A.group.visible = true;
+  A.path = [];
+  A.idleT = 999; // a free neighbour who stays put
+  A.goal = { kind: "wander", x: hero.x + 1.3, z: hero.z };
+  A.x = A.goal.x;
+  A.z = A.goal.z;
+  k.place(hero.x, hero.z, Math.PI / 2);
+  run(0.3);
+  return {
+    labels: k.state().targets.map((t) => t.label),
+    kinds: k.state().targets.map((t) => t.kind),
+  };
+}
+
+/** What a cast hello left behind after `secs` of game time: bubbles, the pose, the dialogue, the tally. */
+export function castAfter([id, secs]) {
+  const k = window.__kq;
+  const G = window.KQ.Game;
+  run(0.5);
+  const heroPose = G.S.player.forcedPose; // the hero's own wave is short (1.3 s)
+  run(secs - 0.5);
+  return {
+    showing: k.greetings().showing,
+    pose: k.npc(id).pose,
+    talking: G.S.npcs.byId[id].talking,
+    modal: G.UI.modalOpen(),
+    dialogue: document.querySelectorAll(".kq-bubble").length,
+    hi: k.hi(),
+    heroPose,
+  };
+}
+
 /** Greet one person of each kind at the hawker centre and report what the hero said and heard. */
 export function salaamRuleScenario() {
   const k = window.__kq;

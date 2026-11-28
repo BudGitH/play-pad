@@ -352,5 +352,10 @@
     wave(A, seconds) {
       A.greetT = seconds;
     },
+    /** Stop, face the hero and wave for a few seconds (Say hi); the walk then carries on. */
+    hold(A, seconds) {
+      A.holdT = seconds;
+      A.greetT = seconds;
+    },
   };
 })((window.KQ = window.KQ || {}));

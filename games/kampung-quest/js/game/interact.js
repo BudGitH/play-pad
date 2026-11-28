@@ -257,8 +257,10 @@
 
   /** Every candidate in reach, before they are ordered. */
   function candidates(hero) {
+    const near = neighbour(hero);
     return placeTargets(hero).concat([
-      neighbour(hero),
+      near,
+      G.Hi.castTarget(near), // "Say hi" beside that neighbour's Talk
       G.MissionSteps.stepTarget(hero), // a mission's "Photo"
       G.WorldEvents.target(hero), // an event's prompt (the ice-cream cart)
       G.Hi.target(hero), // a person to say hi to
@@ -294,7 +296,7 @@
   function activate(t) {
     if (!t || !t.enabled) return false;
     if (t.kind === "npc") talkTo(t);
-    else if (t.kind === "hi") G.Hi.sayHi(t.member);
+    else if (t.kind === "hi") G.Hi.press(t);
     else if (t.kind === "event") G.WorldEvents.press(t);
     else if (t.kind === "step") G.MissionFlow.pressStep(t);
     else if (t.kind === "item") G.MissionFlow.pickup(t.item);

@@ -62,8 +62,8 @@
 - [x] **AC-P11:** every car, bicycle and scooter rests its wheels on the ground (wheel bottom within 3 cm of ground height) parked and while driven; nothing hovers.
 - [x] **AC-P12:** the hero cannot walk into or through a vehicle (parked or moving); NPCs and the crowd route around parked vehicles; a driven vehicle stops at other vehicles.
   - Note: crowd slots a vehicle covers are pruned on the first reconcile and the NPCs' near-collider cache is cleared on parking; there is no dedicated browser test of an NPC re-routing around a car.
-- [x] **AC-P13:** top speeds: car >= 2.5x hero run speed, scooter >= 2x, bicycle >= 1.5x, with smooth acceleration; camera keeps up.
-- [x] **AC-P14:** improved models: cars with proper body curvature, wheel arches, windows, lights, mirrors; bicycle with a real frame (diamond frame, spokes, chain, handlebars); scooter recognisable; draw-call budget kept.
+- [x] **AC-P13:** top speeds: car >= 2.5x hero run speed, scooter >= 2x, bicycle >= 1.5x, the delivery lorry >= 2x (it is a little slower than the car), with smooth acceleration; camera keeps up. The town bus is ambient (never driven) and runs its own loop, so it has no hero speed target; it brakes for people and vehicles instead (AC-P26).
+- [x] **AC-P14:** improved models: cars with proper body curvature, wheel arches, windows, lights, mirrors; bicycle with a real frame (diamond frame, spokes, chain, handlebars); scooter recognisable; the delivery lorry (cab, tray, canopy, dual rear wheels) and the town bus (low-floor single-deck, two doors, mirrors, wheel arches, destination sign) recognisable and unbranded; draw-call budget kept.
 
 ### E. Kid UX: instruction cards
 
@@ -73,9 +73,8 @@
 
 ### F. Life and missions
 
-- [ ] **AC-P17:** kampung kids and neighbours greet the hero and can be greeted (a "Say hi" on any nearby cast or crowd kid/neighbour gives a reply bubble + wave), like the Haramain greeting.
-  - Status (QA round 1): met for crowd extras (tested); the cast neighbours keep Talk by design (a deliberate deviation, deferred to the owner's call). Left unticked until then.
-  - Note: NOT ticked. Crowd extras (kids and neighbours) get **Say hi**, and kids call out first, but the cast neighbours keep **Talk** (their dialogue opens with the greeting) and have no separate Say hi button.
+- [x] **AC-P17:** kampung kids and neighbours greet the hero and can be greeted (a "Say hi" on any nearby cast or crowd kid/neighbour gives a reply bubble + wave), like the Haramain greeting.
+  - Done (option a, the owner's brief): a free cast neighbour in reach (not in a scene, praying, hidden indoors, seated or in dialogue) offers **Talk** and **Say hi**; Talk stays the big button (Say hi is the second tile), and Say hi is a one-tap exchange (reply bubble, a wave on her full rig, a hero wave, a voice line, the tally); the salaam only when the cast member is Muslim. Tested in `tests/kampung-quest-life.spec.mjs` and `tests/kampung-quest/{action-order,hi}.test.mjs`.
 - [x] **AC-P18:** small scripted world events happen during play in both regions (e.g. kids' football match, an ice-cream cart arrival, a cat chase, a wedding procession (kompang), rain shower, a lost-balloon, pigeons scattering); each has a short bubble/sound and optional tiny reward; at most one at a time, child-safe.
   - Note: all nine events are built (one at a time, child-safe); the balloon and the wedding procession were checked by hand only, the rest by spec.
 - [x] **AC-P19:** at least 8 new missions with varied verbs (deliver, find, escort, ride-to, photograph/spot, help-a-kid, race-the-clock-without-failing, collect), spread over both regions, using the new mounts/map where it fits; no fail state.
@@ -111,3 +110,10 @@
   - Covered by `tests/kampung-quest-vehicle-life.spec.mjs` (traffic and bus legs, incl. a scripted-event actor in a car's lane), `tests/kampung-quest/traffic.test.mjs`, `tests/kampung-quest/vehicle.test.mjs` (look-ahead, braking).
 - [x] **AC-P27:** vehicle life: getting in and out plays a short door scene (walk to the door, it opens, climb, it shuts; a bicycle or scooter gets a step and a swing; input locked, skippable); brake, head, reverse and indicator lights follow what the vehicle does (and go off when the hero gets out); exhaust only from petrol and diesel (never electric or bicycles), pooled into one draw call; subtle synthesised sounds (engine, bicycle tick, doors, horn) that obey mute, pause, a hidden tab and the azan.
   - Covered by `tests/kampung-quest-vehicle-life.spec.mjs`, `tests/kampung-quest-vehicle-rig.spec.mjs` (the model's doors and lamps), `tests/kampung-quest/vehicle-life.test.mjs` (timeline, lights, puff rates) and `tests/kampung-quest/vehicle-mix.test.mjs` (the sound mix numbers).
+
+### K. Singapore estate realism and clean figures (added for traceability; shipped with the looks and vehicle workstreams)
+
+- [x] **AC-P28:** the estate reads as a real Singapore HDB town: repainted HDB blocks (white floor lines, accent bands, a stair / lift core with the big block number), a void deck (columns, tiled floor, stone tables with chess boards, drain gratings) and a hawker centre (numbered stall signs, light boxes, menu boards), following `sg-reference.md`; every sign is generic (no brand names, no certification logos); no draw-call regression (AC-14 budget kept, measured in `notes-sg.md`).
+  - Covered by the AC-14 draw-call sweep in `tests/kampung-quest-ac.spec.mjs` (every POI by day and night, including the void deck and the hawker centre); `tests/kampung-quest-crowd.spec.mjs` and `tests/kampung-quest-collision.spec.mjs` for the seats and colliders the dressing added (no one inside a wall or prop, extras never take a cast seat). The look itself was reviewed against `sg-reference.md` and the screenshots in `shots/` (by eye; no pixel assertion).
+- [x] **AC-P29:** clean figures: no head-piece clipping, floating or z-fighting for any hero, cast, crowd or pilgrim head style; nothing goes through the floor in the prayer postures (ruku, sujud, julus); speech bubbles never overlap (at most three show at once).
+  - Covered by `tests/kampung-quest-figures.spec.mjs` (every hero head style; every neighbour, guide, event actor and crowd hat; the prayer postures; the bubbles) and `features/kampung-quest-playability/figures/audit.mjs` (the dev audit); `tests/kampung-quest/crowd-pilgrim.test.mjs` (men in ihram bare-headed).

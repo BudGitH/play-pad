@@ -2,7 +2,7 @@
 
 > One owner brief (2026-11-28) covering eight areas. This file defines "done"; `test-plan.md` maps each AC to a spec. Per-area build notes from each workstream are in `notes-<area>.md` and are folded into the brain docs at CAPTURE.
 
-**Status:** IMPLEMENTED (QA and product gate pending)
+**Status:** IMPLEMENTED; QA PASS (`qa-report.md`); product gate PASS on the Senior PM review, persona panel waived by the owner (`product-validation.md`)
 **Owner:** @BudGitH
 **Ticket:** PLAY-014 (Kampung Quest follow-up)
 **Created:** 2026-11-28

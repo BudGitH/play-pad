@@ -8,17 +8,17 @@
 
 ## Coverage map (AC → test)
 
-| AC | Test(s) | Type |
-| --- | --- | --- |
-| AC-1 | `taskset -c 0,1 npx playwright test <the 5 specs> --project=kampung-quest --repeat-each 3` | e2e (local) |
-| AC-2 | each `npm run smoke:kq:*` leg once on 2 CPUs locally, then the PR's Probes run on GitHub | e2e (local + CI) |
-| AC-3 | inspect workflow: `upload-artifact` step, `if: failure()`, `retention-days`; forced failure check (optional) | config review |
-| AC-4 | `taskset -c 0,1 npx playwright test tests/smoke.spec.mjs -g "Kampung Quest" --repeat-each 5` | e2e (local) |
-| AC-5 | actionlint; on GitHub, a docs-only PR state (gate green, legs skipped) vs this PR (touches `playwright.config.mjs` → legs run, gate reflects them) | CI |
-| AC-6 | inspect `concurrency.cancel-in-progress` expressions in both workflows | config review |
-| AC-7 | `npm run ci:local` passes; `git config core.hooksPath` = `.githooks` after `npm install`; `prepare` with `GIT_DIR=/nonexistent` / outside a repo exits 0 | script |
-| AC-8 | doc review by the QA COMPLIANCE lens | review |
-| AC-9 | `npm run check`, `npm run secrets`, actionlint | lint |
+| AC   | Test(s)                                                                                                                                                  | Type             |
+| ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
+| AC-1 | `taskset -c 0,1 npx playwright test <the 5 specs> --project=kampung-quest --repeat-each 3`                                                               | e2e (local)      |
+| AC-2 | each `npm run smoke:kq:*` leg once on 2 CPUs locally, then the PR's Probes run on GitHub                                                                 | e2e (local + CI) |
+| AC-3 | inspect workflow: `upload-artifact` step, `if: failure()`, `retention-days`; forced failure check (optional)                                             | config review    |
+| AC-4 | `taskset -c 0,1 npx playwright test tests/smoke.spec.mjs -g "Kampung Quest" --repeat-each 5`                                                             | e2e (local)      |
+| AC-5 | actionlint; on GitHub, a docs-only PR state (gate green, legs skipped) vs this PR (touches `playwright.config.mjs` → legs run, gate reflects them)       | CI               |
+| AC-6 | inspect `concurrency.cancel-in-progress` expressions in both workflows                                                                                   | config review    |
+| AC-7 | `npm run ci:local` passes; `git config core.hooksPath` = `.githooks` after `npm install`; `prepare` with `GIT_DIR=/nonexistent` / outside a repo exits 0 | script           |
+| AC-8 | doc review by the QA COMPLIANCE lens                                                                                                                     | review           |
+| AC-9 | `npm run check`, `npm run secrets`, actionlint                                                                                                           | lint             |
 
 ## Test cases
 

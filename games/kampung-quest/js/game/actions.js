@@ -138,6 +138,8 @@
    * screen.
    */
   function dock(id) {
+    const tucked = G.RitualUI.active && G.RitualUI.active.minimised;
+    if (tucked && (id === "pray" || id === "rites")) return G.RitualUI.active.restore(); // show the steps in hand
     if (G.UI.modalOpen() && id !== "pause") {
       G.UI.closeSheet("replaced-by-dock");
     }
@@ -175,6 +177,7 @@
     if (name.indexOf("tile") === 0) return tileKey(Number(name.slice(4)) - 1);
     if (name === "camLeft" || name === "camRight") return nudgeCamera(name === "camLeft" ? -1 : 1);
     if (name === "map" && mapOpen()) return G.UI.closeSheet("map-key");
+    if (name === "hide") return void G.RitualUI.toggleMin(); // H or -: tuck the steps card away / bring it back
     if (G.UI.modalOpen() && name !== "mute") return;
     if (name === "interact") return G.Interact.activate(S().target);
     if (name === "mute") return setMuted(!G.Audio.isMuted());

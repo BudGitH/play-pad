@@ -38,6 +38,7 @@ test.afterAll(async () => {
 async function reset() {
   await ev(() => {
     const G = window.KQ.Game;
+    if (G.RitualUI.active) G.RitualUI.active.close("test"); // a minimised card has no sheet to close
     G.UI.closeSheet("test");
     G.RitualTrek.stop();
     G.RitualLook.cancel();
@@ -349,14 +350,14 @@ test("Go there moves the hero (KQ.Holy.goTo) and the button hides when the regio
   await ev(() => (window.KQ.Holy.goTo = window.__goTo));
 });
 
-test("I'll walk myself: the card folds into a chip, the mission card shows the step, and it reopens when the count is full", async () => {
+test("I'll walk myself: the card folds into a chip (Minimise), the mission card shows the step, and it reopens when the count is full", async () => {
   await reset();
   await openFromDock("umrah");
   await advanceTo("sai");
   await page.getByRole("button", { name: "I'll walk myself" }).click();
   await expect(page.getByRole("dialog", { name: "Umrah steps" })).toHaveCount(0);
   await step(300);
-  await expect(page.locator(".kq-ritual-chip")).toContainText("Umrah: Sa'i: 7 legs (0 of 7)");
+  await expect(page.locator(".kq-min-chip")).toContainText("Sa'i 0/7");
   await expect(page.locator(".kq-ritual-line")).toContainText("Umrah: Sa'i: 7 legs");
   const to = (z) => ev((z) => window.__kq.place(42, z, 0), z);
   await to(-39);
@@ -365,7 +366,7 @@ test("I'll walk myself: the card folds into a chip, the mission card shows the s
   }
   await expect(page.getByRole("dialog", { name: "Umrah steps" })).toBeVisible();
   expect(await ritual()).toMatchObject({ count: 7, open: true });
-  await expect(page.locator(".kq-ritual-chip")).toHaveCount(0);
+  await expect(page.locator(".kq-min-chip")).toHaveCount(0);
 });
 
 test("Hajj highlights and Ziarah reach done by Next alone", async () => {

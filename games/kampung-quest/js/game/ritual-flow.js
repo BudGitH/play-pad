@@ -15,7 +15,7 @@
   const G = (KQ.Game = KQ.Game || {});
   const S = () => G.S;
   const U = () => KQ.Sim.Umrah;
-  const RF = { rite: null, ctl: null, chip: null, step: null, chooser: null, hint: "" };
+  const RF = { rite: null, ctl: null, chip: null, chipHost: { chip: null }, step: null, hint: "" };
 
   const umrah = () => S().sim.umrah;
   /** Can "Go there" work? Only when the region provides KQ.Holy.goTo. */
@@ -78,6 +78,39 @@
 
   const cap = (t) => t.charAt(0).toUpperCase() + t.slice(1);
 
+  /** Short chip cues for the walking hints (the full sentence stays on the card), six words at most. */
+  const CUES = [
+    [/^All \d+ (rounds|legs) done/, "All done! Tap to continue"],
+    [/^Walking for you/, "Walking for you. Watch!"],
+    [/^Walk to the gold line/, "Go to the gold line"],
+    [/^Come back to the dots/, "Back to the dots, please"],
+    [/^Other way/, "Other way, please"],
+    [/^Nearly round/, "Nearly there! Gold line"],
+    [/^Off we go/, "Off we go! Follow the dots"],
+    [/^Round \d+ of \d+/, "Kaaba on your left"],
+    [/^Walk to Safa to begin/, "Go to Safa to begin"],
+    [/^Nearly at (\w+)/, "Nearly at $1! Touch the line"],
+    [/^Follow the dots to (\w+)/, "Follow the dots to $1"],
+  ];
+
+  /** The chip's cue for a walking step: a short form of the hint, else a plain one. */
+  function walkCue(v) {
+    if (G.RitualTrek.isAuto()) return "Walking for you. Watch!";
+    const hint = G.RitualTrek.hint();
+    const hit = CUES.find((c) => c[0].test(hint));
+    if (hit) return hit[1].replace("$1", hint.match(hit[0])[1] || "");
+    if (v.full) return "All done! Tap to continue";
+    return v.step.walk === "sai" ? "Walk Safa to Marwa" : "Walk round the Kaaba";
+  }
+
+  /** What the minimised chip says: the step's short name, its counter, and what to do next. */
+  function chipFor(v) {
+    const st = v.step;
+    const chip = { name: st.walk === "sai" ? "Sa'i" : st.title.split(":")[0] };
+    if (st.walk) chip.cue = walkCue(v);
+    return chip;
+  }
+
   /** The card for the rite's current step. */
   function card(rite) {
     const v = umrah().view(rite);
@@ -96,6 +129,7 @@
       go: Boolean(st.site) && canGo(),
       extras: extrasFor(v),
       note: noteFor(v),
+      chip: chipFor(v),
     };
     if (v.target)
       c.counter = {
@@ -128,6 +162,7 @@
     else if (before !== v.count)
       G.UI.toast(cap(unit) + " " + v.count + " of " + v.target + ".", "good", 1800);
     if (v.full && !RF.ctl) reopen();
+    else if (v.full) RF.ctl.needsTap(); // a tucked-away card returns (or its chip pulses) at the step that needs a tap
   }
 
   /** The tracker (or auto-walk) says n rounds / legs are walked: raise the counter and cheer. */
@@ -218,14 +253,10 @@
     refresh();
   }
 
-  /** "I'll walk myself": close the card so the hero can walk; the chip brings it back. */
+  /** "I'll walk myself": tuck the card into its chip so the hero can walk; it returns when the count is full. */
   function walkMyself() {
-    G.UI.toast(
-      "Walk it yourself. Tap the button at the bottom to open the steps again.",
-      "hint",
-      4200,
-    );
-    RF.ctl.close("self");
+    G.UI.toast("Walk it yourself. Tap the chip at the top to open the steps again.", "hint", 4200);
+    RF.ctl.minimise("game");
   }
 
   /** Trim or shave at the salon: the hero sits and the haircut scene plays. */
@@ -287,23 +318,22 @@
 
   /* ------------------------------ chip + chooser ------------------------------ */
 
-  /** Remove the minimised chip. */
+  /** Remove the closed-rite chip. */
   function removeChip() {
-    if (RF.chip) RF.chip.remove();
+    G.RitualMin.remove(RF.chipHost);
     RF.chip = null;
   }
 
-  /** Show the chip (a button with the current step) while a rite is under way and its card is closed. */
+  /**
+   * Show the chip (the same one a minimised card turns into: step, counter, a short cue) while a rite is
+   * under way and its card is closed ("Not now"). Tap or Enter brings the card back.
+   */
   function syncChip() {
-    const summary = umrah().summary();
-    if (RF.ctl || !RF.rite || !summary) return removeChip();
-    const hint = G.RitualTrek.hint();
-    const text = hint ? summary + ". " + hint : summary;
-    if (!RF.chip) {
-      RF.chip = G.UI.btn(text, { cls: "primary kq-ritual-chip", icon: "mosque", onClick: reopen });
-      S().hudHost.appendChild(RF.chip);
-    }
-    RF.chip.lastChild.textContent = text;
+    if (RF.ctl || !RF.rite || !umrah().summary()) return removeChip();
+    const chip = G.RitualMin.show(RF.chipHost, reopen);
+    G.RitualMin.paint(chip, card(RF.rite));
+    RF.chip = chip.el;
+    G.HudLayout.measure();
   }
 
   /** One big chooser button: the rite's name and where it is up to. */
@@ -325,7 +355,10 @@
 
   /** The dock's "Umrah, Hajj, Ziarah" chooser. */
   function openMenu() {
-    if (RF.ctl) return RF.ctl.handle;
+    if (RF.ctl) {
+      RF.ctl.restore(); // a tucked-away card comes back instead of a second chooser
+      return RF.ctl.handle;
+    }
     const acts = G.U.el("div", { cls: "kq-rite-list" }, U().RITES.map(riteButton));
     const box = G.U.el(
       "div",
@@ -343,6 +376,7 @@
   /** Per frame: the walking counter / auto-walk, then the word-by-word auto-advance. */
   function update(dt) {
     G.RitualTrek.update(dt);
+    G.RitualUI.setBusy(Boolean(RF.rite) && (G.RitualTrek.isAuto() || G.RitualLook.isCutting()));
     G.RitualUI.tick(dt);
     const hint = G.RitualTrek.hint();
     if (hint !== RF.hint) {
@@ -358,6 +392,7 @@
     return {
       rite: RF.rite,
       open: Boolean(RF.ctl),
+      minimised: Boolean(RF.ctl && RF.ctl.minimised),
       chip: Boolean(RF.chip),
       step: v ? v.step.id : null,
       index: v ? v.index : null,

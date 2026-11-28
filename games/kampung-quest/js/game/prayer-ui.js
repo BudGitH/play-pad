@@ -169,6 +169,11 @@
       how: wuduHow(step),
       texts: T().wuduTexts(step.id),
       next: { label: word + count, cls: "kq-wudu-act" },
+      chip: {
+        name: "Wudu",
+        count: Math.min(v.index + 1, v.total) + "/" + v.total,
+        cue: step.label,
+      },
       extras: [VIEW_BUTTON],
     };
     if (step.count > 1)
@@ -208,6 +213,7 @@
       how: [T().howFor(type)],
       texts: T().cardTexts(type, v.rakaat),
       next: { label: "Next", cls: "kq-pray-next" },
+      chip: { name: "Rakaat", count: v.rakaat + "/" + v.total, cue: "Now: " + tile[0] },
       extras: (v.want.length > 1 ? [{ id: "skip", label: "Skip this" }] : []).concat(VIEW_BUTTON),
     };
     ui.ctl.show(card);

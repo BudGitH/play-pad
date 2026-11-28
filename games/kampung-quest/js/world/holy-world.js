@@ -248,8 +248,9 @@
 
   /** The sky / sun / shadow rig with the night-glow materials (including the hotel windows and clock). */
   function makeRig(scene, opts, mats) {
-    // The marble and plaster are bright white: a lower exposure keeps them from washing out in the sun.
-    if (opts.renderer) opts.renderer.toneMappingExposure = 0.72;
+    // The marble and plaster are bright white: a lower exposure keeps them from washing out in the
+    // sun (0.78 with the warm-cream marble tint of AC-P20; measured: no clipped white).
+    if (opts.renderer) opts.renderer.toneMappingExposure = 0.78;
     const rig = P.Lighting.create(scene, opts.renderer, opts.quality || "high");
     const table = P.HolyKit.glowTable();
     rig.glow = Object.keys(table)

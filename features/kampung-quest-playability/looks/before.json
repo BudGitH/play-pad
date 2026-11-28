@@ -1,0 +1,42 @@
+{
+  "kampung-spawn": {
+    "lum": 108.9,
+    "sat": 0.3,
+    "clip": 0
+  },
+  "kampung-street": {
+    "lum": 129.5,
+    "sat": 0.204,
+    "clip": 0
+  },
+  "kampung-wide": {
+    "lum": 135.8,
+    "sat": 0.311,
+    "clip": 0
+  },
+  "kampung-night": {
+    "lum": 48.1,
+    "sat": 0.391,
+    "clip": 0.0022
+  },
+  "haramain-spawn": {
+    "lum": 183.1,
+    "sat": 0.084,
+    "clip": 0
+  },
+  "haramain-plaza": {
+    "lum": 159.9,
+    "sat": 0.122,
+    "clip": 0
+  },
+  "haramain-wide": {
+    "lum": 193.5,
+    "sat": 0.135,
+    "clip": 0
+  },
+  "haramain-night": {
+    "lum": 10.8,
+    "sat": 0.747,
+    "clip": 0
+  }
+}

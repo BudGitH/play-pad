@@ -111,6 +111,12 @@
       polygonOffsetFactor: -1,
       polygonOffsetUnits: -1,
     });
+    // Warm desert tones (AC-P20): golden sand, honey sandstone, warm limestone (linear multipliers).
+    out.sand.color.setRGB(1.08, 0.98, 0.8);
+    out.dirt.color.setRGB(1.06, 0.96, 0.82);
+    out.rock.color.setRGB(1.08, 0.96, 0.84);
+    out.limestone.color.setRGB(1.04, 0.97, 0.86);
+    out.sandstone.color.setRGB(1.1, 0.96, 0.78);
     out.dust.userData.cast = false;
     out.sand.userData.cast = false;
     out.dirt.userData.cast = false;

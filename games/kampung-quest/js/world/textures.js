@@ -28,7 +28,8 @@
     terrazzo: {
       n: true,
       r: true,
-      fb: { base: [178, 172, 162], amp: 26, speck: 0.35, grid: [2, 2], grout: [96, 92, 86] },
+      // Softer grout so the file:// stand-in matches the light photo terrazzo of the void deck.
+      fb: { base: [188, 182, 170], amp: 26, speck: 0.35, grid: [2, 2], grout: [146, 140, 128] },
     },
     hedge: { fb: { base: [52, 84, 38], amp: 50, speck: 0.5, blades: true } },
     leaves: { a: true, fb: null }, // alpha leaf-cluster atlas (2 cells); canvas cards on file://

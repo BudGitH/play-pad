@@ -1188,8 +1188,19 @@ async function expectBarberTwoColumns(page) {
   await kq(page, () => window.__kq.interact());
   const tiles = page.locator(".kq-grid-looks .kq-tile");
   await expect(tiles).toHaveCount(7);
-  const first = await tiles.nth(0).boundingBox();
-  const second = await tiles.nth(1).boundingBox();
+  // the sheet slides in by 10 px; measure once it has settled, both tiles in one read
+  await page.waitForFunction(() =>
+    document
+      .querySelector(".kq-sheet-box")
+      .getAnimations()
+      .every((a) => a.playState === "finished"),
+  );
+  const [first, second] = await tiles.evaluateAll((els) =>
+    els.slice(0, 2).map((el) => {
+      const r = el.getBoundingClientRect();
+      return { x: r.x, y: r.y, width: r.width };
+    }),
+  );
   expect(Math.abs(first.y - second.y), "two tiles on the first row").toBeLessThan(2);
   expect(second.x).toBeGreaterThan(first.x + first.width - 2);
   expect(first.width, "larger previews").toBeGreaterThan(200);

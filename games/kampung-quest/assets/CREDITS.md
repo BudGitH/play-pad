@@ -4,7 +4,7 @@ All assets are bundled locally so the game runs fully offline (no CDN, CSP-safe)
 
 ## Textures
 
-Photographic PBR materials from **ambientCG** (ambientcg.com), **CC0 1.0** (`textures/LICENSE.txt`). Downloaded as the 1K-JPG sets and resized to JPEG (1024 px for large surfaces, 512 px for minor ones). Colour maps are sRGB; `_n` are OpenGL normal maps, `_r` roughness, `_a` alpha (opacity) masks. Total ≈ 3.1 MB.
+Photographic PBR materials from **ambientCG** (ambientcg.com), **CC0 1.0** (`textures/LICENSE.txt`). Downloaded as the 1K-JPG sets and resized to JPEG (1024 px for large surfaces, 512 px for minor ones). Colour maps are sRGB; `_n` are OpenGL normal maps, `_r` roughness, `_a` alpha (opacity) masks. Total ≈ 3.1 MB. `textures/half/` holds half-size copies (same CC0 files, Lanczos-resized to 512 px) of the nine 1024 px maps, used on the low quality tier (phones, iPads) to save memory (≈ 0.5 MB).
 
 | File(s)                                            | ambientCG asset                    | URL                                                                                                                            | Used for                                                                                                                                       | Licence |
 | -------------------------------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- | ------- |

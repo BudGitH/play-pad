@@ -20,6 +20,7 @@ export const SIM_FILES = [
   "hints",
   "economy",
   "wardrobe",
+  "hero",
   "missions-data",
   "missions-more",
   "missions",

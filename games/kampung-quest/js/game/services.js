@@ -159,6 +159,7 @@
    * applies the outfit.
    */
   function barber() {
+    if (G.Hero.isGirl()) return girlAtBarber();
     G.Menus.barber({
       price: KQ.Sim.SERVICES.barber.price,
       current: () => sim().outfit,
@@ -178,6 +179,18 @@
         S().hudDirty = true;
         return { ok: true, hint: "Handsome! Looking sharp." };
       },
+    });
+  }
+
+  /** The barber's cuts are boys' cuts: the girl hero is sent (kindly) to the tailor for her hair or hijab, free. */
+  function girlAtBarber() {
+    G.Menus.card({
+      title: "Barber",
+      paragraphs: [
+        "Assalamualaikum! My chair is for short boys' haircuts.",
+        "For a ponytail, braids, a bun, a bob or a pretty hijab, visit the tailor's Butik by the park. It's free!",
+      ],
+      buttons: [{ label: "OK", primary: true, icon: "check" }],
     });
   }
 

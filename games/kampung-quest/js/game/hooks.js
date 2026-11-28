@@ -97,6 +97,7 @@
       hints: Object.assign(sim.hints.snapshot(), { foodMarker: Boolean(G.Nudge.markerPos()) }),
       outfit: sim.outfit,
       wardrobe: sim.wardrobe,
+      hero: sim.hero,
       muted: G.Audio.isMuted(),
       quality: s.quality,
       target: targetInfo(s.target),
@@ -233,6 +234,8 @@
     start(fresh) {
       const b = G.BootUI.refs;
       (fresh ? b.newGame : b.start).click();
+      if (fresh && !started()) b.newGame.click(); // the first press only put up "Who are you?"
     },
+    hero: () => G.Hero.debug(),
   };
 })((window.KQ = window.KQ || {}));

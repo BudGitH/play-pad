@@ -71,7 +71,7 @@
 
   /** When no fard prayer is owed, the Pray prompt offers the voluntary prayer and says so plainly. */
   function withPrayerLabel(target) {
-    if (target && target.id === "prayer_spot" && G.PrayerFlow.isVoluntary()) {
+    if (target && target.id.indexOf("prayer_spot") === 0 && G.PrayerFlow.isVoluntary()) {
       target.label = G.PrayerText.SUNAT_NAME;
       target.aria = G.PrayerText.SUNAT_LABEL;
     }
@@ -100,8 +100,9 @@
   /** The nearest interactable or pick-up within reach, or null. */
   function nearestObject(hero) {
     let best = null;
+    const other = G.Hero.isGirl() ? "prayer_spot" : "prayer_spot_women"; // each hero has one row
     S().world.interactables.forEach(function (it) {
-      if (it.id === "prayer_spot_women") return;
+      if (it.id === other) return;
       const d = U.dist(hero.x, hero.z, it.pos.x, it.pos.z);
       if (d <= OBJ_RANGE && (!best || d < best.dist)) {
         const l = labelFor(it.id);
@@ -247,6 +248,7 @@
     if (id.indexOf("wudu_tap_") === 0) return G.PrayerFlow.atTaps();
     const table = {
       prayer_spot: G.PrayerFlow.atHall,
+      prayer_spot_women: G.PrayerFlow.atHall,
       minimart_till: V.minimart,
       barber_chair: V.barber,
       wardrobe_stall: G.Wardrobe.open,

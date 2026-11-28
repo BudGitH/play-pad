@@ -324,85 +324,88 @@
   /** The hero as shipped: the classic jacket in royal blue. */
   const DEFAULT = Object.freeze({ wear: "classic", tone: "royal" });
 
+  /*
+   * The rules below take a `set` ({ OUTFITS, DEFAULT }) so the boy's wardrobe (this file) and the
+   * girl's (js/sim/hero.js, through `make`) share one tested implementation.
+   */
+
   /** An outfit by id, or null. */
-  function find(id) {
-    return OUTFITS.find((o) => o.id === id) || null;
+  function find(set, id) {
+    return set.OUTFITS.find((o) => o.id === id) || null;
   }
 
-  /** The outfit a choice names (the classic one for anything unknown). */
-  function outfitOf(w) {
-    return (w && find(w.wear)) || OUTFITS[0];
+  /** The outfit a choice names (the set's first outfit for anything unknown). */
+  function outfitOf(set, w) {
+    return (w && find(set, w.wear)) || set.OUTFITS[0];
   }
 
   /** The colour a choice names inside its outfit's palette (the first swatch for an unknown tone). */
-  function swatchOf(w) {
-    const o = outfitOf(w);
+  function swatchOf(set, w) {
+    const o = outfitOf(set, w);
     return o.palette.find((c) => w && c.id === w.tone) || o.palette[0];
   }
 
-  /** Is this choice the hero's own look (so nothing needs repainting)? */
-  function isDefault(w) {
-    return outfitOf(w).id === DEFAULT.wear && swatchOf(w).id === DEFAULT.tone;
+  /** Is this choice the set's own default look (for the boy: nothing needs repainting)? */
+  function isDefault(set, w) {
+    return outfitOf(set, w).id === set.DEFAULT.wear && swatchOf(set, w).id === set.DEFAULT.tone;
   }
 
   /**
    * Clean a saved choice. TRUST_BOUNDARY: the save is untrusted; only known outfit and colour ids
-   * survive, anything else falls back to the hero's own look.
+   * survive, anything else falls back to the set's default look.
    */
-  function sanitize(raw) {
+  function sanitize(set, raw) {
     const ok = raw !== null && typeof raw === "object" && !Array.isArray(raw);
-    const o = ok && typeof raw.wear === "string" ? find(raw.wear) : null;
-    if (!o) return { wear: DEFAULT.wear, tone: DEFAULT.tone };
+    const o = ok && typeof raw.wear === "string" ? find(set, raw.wear) : null;
+    if (!o) return { wear: set.DEFAULT.wear, tone: set.DEFAULT.tone };
     const tone = typeof raw.tone === "string" ? raw.tone : "";
     const c = o.palette.find((p) => p.id === tone) || o.palette[0];
     return { wear: o.id, tone: c.id };
   }
 
   /** Switch outfit but keep the colour when the new outfit comes in it (so a favourite colour follows). */
-  function choose(w, wearId) {
-    const o = find(wearId) || outfitOf(w);
+  function choose(set, w, wearId) {
+    const o = find(set, wearId) || outfitOf(set, w);
     const keep = w && o.palette.find((c) => c.id === w.tone);
     return { wear: o.id, tone: (keep || o.palette[0]).id };
   }
 
   /** Same outfit, another colour (unknown ids keep the current one). */
-  function recolour(w, toneId) {
-    const o = outfitOf(w);
-    const c = o.palette.find((p) => p.id === toneId) || swatchOf(w);
+  function recolour(set, w, toneId) {
+    const o = outfitOf(set, w);
+    const c = o.palette.find((p) => p.id === toneId) || swatchOf(set, w);
     return { wear: o.id, tone: c.id };
   }
 
-  /** The plain overrides to paint on the hero for a choice (the figure layer merges them over the hero spec). */
-  function specFor(w) {
-    return outfitOf(w).dress(swatchOf(w));
-  }
-
-  /** The head piece that goes with the outfit (used when the barber's look is "classic", no hat). */
-  function headFor(w) {
-    return outfitOf(w).head(swatchOf(w));
-  }
-
   /** "Teal Baju Melayu": what the bag and the screen reader say. */
-  function nameOf(w) {
-    return swatchOf(w).name + " " + outfitOf(w).name;
+  function nameOf(set, w) {
+    return swatchOf(set, w).name + " " + outfitOf(set, w).name;
   }
 
-  KQ.Sim.Wardrobe = {
-    OUTFITS,
-    DEFAULT,
-    find,
-    outfitOf,
-    swatchOf,
-    isDefault,
-    sanitize,
-    choose,
-    recolour,
-    specFor,
-    headFor,
-    nameOf,
-    shade,
-    ink,
-  };
+  /**
+   * A wardrobe rule set over a list of outfits: the same API for the boy's clothes (KQ.Sim.Wardrobe)
+   * and the girl's (KQ.Sim.Hero.GIRL). specFor hands out the plain overrides the figure layer
+   * merges over the hero spec; headFor the head piece that goes with the outfit.
+   */
+  function make(outfits, def) {
+    const set = { OUTFITS: outfits, DEFAULT: def };
+    return {
+      OUTFITS: outfits,
+      DEFAULT: def,
+      find: (id) => find(set, id),
+      outfitOf: (w) => outfitOf(set, w),
+      swatchOf: (w) => swatchOf(set, w),
+      isDefault: (w) => isDefault(set, w),
+      sanitize: (raw) => sanitize(set, raw),
+      choose: (w, id) => choose(set, w, id),
+      recolour: (w, id) => recolour(set, w, id),
+      specFor: (w) => outfitOf(set, w).dress(swatchOf(set, w)),
+      headFor: (w) => outfitOf(set, w).head(swatchOf(set, w)),
+      nameOf: (w) => nameOf(set, w),
+    };
+  }
+
+  KQ.Sim.Wardrobe = Object.assign(make(OUTFITS, DEFAULT), { make, sw, shade, ink });
 })(
   ((typeof window !== "undefined" ? window : globalThis).KQ =
     (typeof window !== "undefined" ? window : globalThis).KQ || {}),

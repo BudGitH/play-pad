@@ -33,8 +33,10 @@
     const look = G.Menus.LOOKS.find(
       (l) => l.hair === S().sim.outfit.hair && l.hat === S().sim.outfit.hat,
     );
-    const clothes = KQ.Sim.Wardrobe.nameOf(S().sim.wardrobe);
-    const hair = look && look.id !== "classic" ? look.name + ", " : "";
+    const clothes = G.Hero.rules().nameOf(S().sim.wardrobe);
+    const girl = G.Hero.isGirl();
+    const head = girl ? KQ.Sim.Hero.styleName(S().sim.hero) + ", " : "";
+    const hair = !girl && look && look.id !== "classic" ? look.name + ", " : head;
     G.Screens.bag(ctxFor({ carrying: G.MissionFlow.carrying(), outfitName: hair + clothes }));
   }
 

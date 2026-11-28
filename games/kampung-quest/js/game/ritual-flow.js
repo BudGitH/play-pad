@@ -56,11 +56,19 @@
       });
       out.push({ id: "self", label: "I'll walk myself", icon: "run" });
     }
-    if (st.haircut) {
-      out.push({ id: "trim", label: "Trim", icon: "scissors", on: umrah().cut === "trim" });
-      out.push({ id: "shave", label: "Shave", icon: "scissors", on: umrah().cut === "shave" });
-    }
+    if (st.haircut) out.push(...cutButtons());
     return out;
+  }
+
+  /** The haircut choices: Trim / Shave for the boy, "Snip a lock" for the girl (women snip a fingertip's length). */
+  function cutButtons() {
+    const cut = umrah().cut;
+    if (G.Hero.isGirl())
+      return [{ id: "lock", label: "Snip a lock", icon: "scissors", on: cut === "lock" }];
+    return [
+      { id: "trim", label: "Trim", icon: "scissors", on: cut === "trim" },
+      { id: "shave", label: "Shave", icon: "scissors", on: cut === "shave" },
+    ];
   }
 
   /** Where the walking rites say to go and what they mean, plus the gentle "what next" hint, as a calm extra line under the card. */
@@ -191,6 +199,7 @@
   function onNext() {
     const rite = RF.rite;
     const res = umrah().next(rite);
+    if (G.Hero.isGirl() && umrah().cut === "trim") umrah().setCut("lock"); // the sim's default cut is a boy's
     if (res.done) return finish(rite);
     if (res.counted) counted(res.view.count - 1, res.view);
     if (res.moved) {
@@ -226,14 +235,14 @@
     if (id === "wear") return wearIhram();
     if (id === "auto") return toggleAuto();
     if (id === "self") return walkMyself();
-    if (id === "trim" || id === "shave") return cutHair(id);
+    if (id === "trim" || id === "shave" || id === "lock") return cutHair(id);
   }
 
   /** Put the ihram clothes on (Next does it too). */
   function wearIhram() {
     G.RitualLook.wear(true);
     G.Audio.play("pose");
-    G.UI.toast("Ihram is on: two white cloths. No cap, simple sandals.", "good", 3600);
+    G.UI.toast(G.RitualLook.ihramLine(), "good", 3600);
     refresh();
   }
 

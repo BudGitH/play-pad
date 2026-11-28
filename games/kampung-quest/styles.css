@@ -2814,7 +2814,8 @@ kbd {
   justify-content: space-between;
   gap: 8px;
 }
-.kq-wd-swatch {
+.kq-wd-swatch,
+.kq-wd-scarf {
   display: grid;
   place-items: center;
   width: 48px;
@@ -2825,7 +2826,8 @@ kbd {
   background: var(--sw);
   color: #111;
 }
-.kq-wd-swatch.is-on {
+.kq-wd-swatch.is-on,
+.kq-wd-scarf.is-on {
   border-color: var(--md-sys-color-primary);
   box-shadow:
     0 0 0 2px var(--kq-hud-strong),
@@ -3176,4 +3178,92 @@ kbd {
 /* beside a side panel the toast lane ends at the panel, so a toast never lands on the card's title */
 .kq-modal-side .kq-toasts {
   right: calc(min(440px, 42vw) + 12px + 8px);
+}
+
+/* "Who are you?" on the title card (AC-P8): two big picture cards, Boy and Girl (>= 48 px) */
+.kq-hero-pick {
+  margin: 6px 0 2px;
+}
+.kq-hero-pick[hidden] {
+  display: none;
+}
+.kq-hero-h {
+  margin: 0 0 6px;
+  font-size: 18px;
+}
+.kq-hero-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.kq-hero-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 112px;
+  padding: 8px;
+  border: 3px solid var(--md-sys-color-outline-variant);
+  border-radius: 18px;
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface);
+  font: inherit;
+  cursor: pointer;
+}
+.kq-hero-card b {
+  font-size: 18px;
+}
+.kq-hero-card.is-on {
+  border-color: var(--md-sys-color-primary);
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+  box-shadow: 0 0 0 2px var(--md-sys-color-primary);
+}
+.kq-hero-card:focus-visible {
+  outline: 3px solid var(--md-sys-color-tertiary);
+  outline-offset: 3px;
+}
+.kq-hero-pic {
+  width: 72px;
+  height: 72px;
+}
+@media (max-height: 520px) {
+  .kq-hero-card {
+    min-height: 64px;
+    flex-direction: row;
+  }
+  .kq-hero-pic {
+    width: 44px;
+    height: 44px;
+  }
+}
+/* the tailor's Boy / Girl switch and the girl's hair / hijab styles */
+.kq-wd-who {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.kq-wd-who .kq-hero-card {
+  min-height: 56px;
+  flex-direction: row;
+}
+.kq-wd-who .kq-hero-pic {
+  width: 36px;
+  height: 36px;
+}
+.kq-wd-styles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+.kq-wd-style {
+  min-height: 48px;
+  padding: 4px;
+  font-size: 13px;
+  line-height: 1.15;
+}
+/* the girl's wardrobe is taller than the side panel: start at the top so Boy / Girl is never pushed above it */
+.kq-sheet-side .kq-sheet-box:has(.kq-wd) {
+  justify-content: flex-start;
 }

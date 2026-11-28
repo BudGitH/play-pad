@@ -14,8 +14,43 @@
     return F.printHelpers;
   }
 
+  /**
+   * The heroes' finer eye (boy and girl, `face.hero`): a dark-brown eye with a warm brown lower
+   * iris ring, two catch-lights and a thin upper lid line; the girl adds three little lashes at the
+   * outer corner. Still dark-brown eyes (never green), two separate eyes (no joined patch).
+   */
+  function heroEye(c, x, s, f) {
+    c.beginPath();
+    c.ellipse(x, EYE_Y, 11, 15, 0, 0, Math.PI * 2);
+    c.fillStyle = F.EYE_COLOUR;
+    c.fill();
+    c.beginPath();
+    c.ellipse(x, EYE_Y + 4, 7.5, 8.5, 0, 0.15 * Math.PI, 0.85 * Math.PI);
+    c.strokeStyle = "rgba(150,92,52,0.85)";
+    c.lineWidth = 3;
+    c.stroke();
+    h().dot(c, x - 3.5, EYE_Y - 6, 4.2, "#ffffff");
+    h().dot(c, x + 3.5, EYE_Y + 5, 1.8, "rgba(255,255,255,0.85)");
+    c.beginPath();
+    c.ellipse(x, EYE_Y + 1, 13, 17, 0, 1.12 * Math.PI, 1.88 * Math.PI);
+    c.strokeStyle = F.INK;
+    c.lineWidth = f.lashes ? 4 : 2.6;
+    c.stroke();
+    if (!f.lashes) return;
+    for (let k = 0; k < 3; k += 1) {
+      const a = -0.5 - k * 0.32;
+      const ex = x + s * (10 + k * 1.5);
+      const ey = EYE_Y - 12 + k * 3;
+      h().stroke(c, [ex, ey, ex + s * 8 * Math.cos(a + 0.2), ey + 8 * Math.sin(a)], F.INK, 2.6);
+    }
+  }
+
   /** Draw both eyes with highlights; kids get larger eyes, and optional lashes. */
   function eyes(c, f) {
+    if (f.hero) {
+      for (let s = -1; s <= 1; s += 2) heroEye(c, CX + s * 46, s, f);
+      return;
+    }
     const big = f.kid ? 1.22 : 1;
     const gap = f.kid ? 44 : 46;
     for (let s = -1; s <= 1; s += 2) {
@@ -43,8 +78,26 @@
     }
   }
 
+  /** The heroes' brows: soft tapered strokes (filled, thick in the middle), gentler for the girl. */
+  function heroBrows(c, f) {
+    const col = f.browColour || "#3a2416";
+    const up = f.lashes ? -3 : 0;
+    for (let s = -1; s <= 1; s += 2) {
+      const x = CX + s * 46;
+      const inner = EYE_Y - 27 + up + (f.focused ? -1 : 2);
+      c.beginPath();
+      c.moveTo(x - s * 17, inner);
+      c.quadraticCurveTo(x, EYE_Y - 41 + up, x + s * 17, EYE_Y - 30 + up);
+      c.quadraticCurveTo(x, EYE_Y - 35 + up, x - s * 17, inner + 4);
+      c.closePath();
+      c.fillStyle = col;
+      c.fill();
+    }
+  }
+
   /** Draw both eyebrows, thicker or lifted by the face's settings. */
   function brows(c, f) {
+    if (f.hero) return heroBrows(c, f);
     const col = f.browColour || F.INK;
     const w = f.thickBrows ? 7 : 4.5;
     const lift = f.kid ? -4 : 0;
@@ -78,6 +131,7 @@
       );
       return;
     }
+    if (f.hero) return heroSmile(c);
     const w = kind === "calm" ? 16 : 24;
     const dip = kind === "calm" ? 6 : 13;
     c.beginPath();
@@ -86,6 +140,29 @@
     c.strokeStyle = "#5b2a1e";
     c.lineWidth = 4.5;
     c.stroke();
+  }
+
+  /** The heroes' smile: a small open smile with a rosy lower lip and soft corner dimples. */
+  function heroSmile(c) {
+    c.beginPath();
+    c.moveTo(CX - 24, MOUTH_Y - 6);
+    c.quadraticCurveTo(CX, MOUTH_Y + 20, CX + 24, MOUTH_Y - 6);
+    c.quadraticCurveTo(CX, MOUTH_Y + 2, CX - 24, MOUTH_Y - 6);
+    c.fillStyle = "#6a2420";
+    c.fill();
+    c.beginPath();
+    c.moveTo(CX - 10, MOUTH_Y + 7);
+    c.quadraticCurveTo(CX, MOUTH_Y + 12, CX + 10, MOUTH_Y + 7);
+    c.strokeStyle = "rgba(232,110,110,0.9)";
+    c.lineWidth = 3;
+    c.stroke();
+    for (let s = -1; s <= 1; s += 2)
+      h().stroke(
+        c,
+        [CX + s * 27, MOUTH_Y - 10, CX + s * 30, MOUTH_Y - 3],
+        "rgba(110,60,40,0.5)",
+        2.4,
+      );
   }
 
   /** Draw the small nose line. */

@@ -3,62 +3,20 @@
  * PURPOSE: A rideable animal as ONE rigidly skinned mesh (KQ.Figures.AnimalRig): every part
  *          (body, neck, head, tail, the upper and lower half of each leg, saddle, bridle) is a
  *          vertex-coloured piece weighted 100 % to one bone, merged into a single geometry, so a
- *          whole animal with a moving gait costs one draw call (plus its shadow). Also the small
- *          geometry kit the horse and camel builders share (ellipsoid, limb, box, cone).
+ *          whole animal with a moving gait costs one draw call (plus its shadow). With leg data
+ *          on the spec, pose() drops the body so the lowest hoof / pad stays on the ground in
+ *          every stride (groundDrop). The shapes come from animal-loft.js.
  * BUSINESS CONTEXT: AC-P5..P7 (ridden camels and horses walk / trot with moving legs) within the
  *   low-tier draw-call budget (< 400): a rig per part would cost ~12 calls an animal.
  * CONVENTIONS: model space has its origin on the ground under the body, +z forward, +y up. A leg
  *   bone's +rotation.x swings the hoof backward; a neck's +rotation.x lowers the head.
- * DEPENDENCIES: three.js (SkinnedMesh, Skeleton, Bone). Used by js/game/mount-rigs.js.
+ * DEPENDENCIES: three.js (SkinnedMesh, Skeleton, Bone). Used by camel-mesh.js, horse-mesh.js and
+ *   js/game/mount-rigs.js.
  * ========================================================================== */
 (function (KQ) {
   "use strict";
   const F = (KQ.Figures = KQ.Figures || {});
-  const UP = new THREE.Vector3(0, 1, 0);
   const LEGS = ["FL", "FR", "HL", "HR"];
-
-  /* ------------------------------ geometry kit ------------------------------ */
-
-  /** Paint a geometry one colour (a "color" attribute). */
-  function paint(g, hex) {
-    const c = new THREE.Color(hex);
-    const n = g.attributes.position.count;
-    const a = new Float32Array(n * 3);
-    for (let i = 0; i < n; i += 1) a.set([c.r, c.g, c.b], i * 3);
-    g.setAttribute("color", new THREE.BufferAttribute(a, 3));
-    return g;
-  }
-
-  /** An ellipsoid with radii r at p, optionally pitched about X (segments kept low: toy style). */
-  function ell(r, p, hex, pitch) {
-    const g = new THREE.SphereGeometry(1, 12, 8).scale(r[0], r[1], r[2]);
-    if (pitch) g.rotateX(pitch);
-    return paint(g.translate(p[0], p[1], p[2]), hex);
-  }
-
-  /** A tapered cylinder from a to b (radius ra at a, rb at b). */
-  function limb(a, b, ra, rb, hex, seg) {
-    const va = new THREE.Vector3(a[0], a[1], a[2]);
-    const vb = new THREE.Vector3(b[0], b[1], b[2]);
-    const g = new THREE.CylinderGeometry(rb, ra, va.distanceTo(vb), seg || 8, 1);
-    g.applyQuaternion(
-      new THREE.Quaternion().setFromUnitVectors(UP, vb.clone().sub(va).normalize()),
-    );
-    const mid = va.add(vb).multiplyScalar(0.5);
-    return paint(g.translate(mid.x, mid.y, mid.z), hex);
-  }
-
-  /** A box of size s centred at p. */
-  function box(s, p, hex) {
-    return paint(new THREE.BoxGeometry(s[0], s[1], s[2]).translate(p[0], p[1], p[2]), hex);
-  }
-
-  /** An upright cone (an ear) of radius r and height h with its base centre at p, tipped by `tilt` about X. */
-  function cone(r, h, p, hex, tilt) {
-    const g = new THREE.ConeGeometry(r, h, 6).translate(0, h / 2, 0);
-    if (tilt) g.rotateX(tilt);
-    return paint(g.translate(p[0], p[1], p[2]), hex);
-  }
 
   /* ------------------------------ the rig ------------------------------ */
 
@@ -124,16 +82,79 @@
     mesh.updateMatrixWorld(true);
     mesh.bind(new THREE.Skeleton(bones.list));
     mesh.receiveShadow = true;
-    return { mesh, bones: bones.byName };
+    return { mesh, bones: bones.byName, seat: spec.seat, legLen: spec.legLen };
+  }
+
+  /** Rotate (y, z) about the x axis by t (three.js rotation.x). */
+  function rotYZ(y, z, t) {
+    const c = Math.cos(t);
+    const s = Math.sin(t);
+    return [y * c - z * s, y * s + z * c];
+  }
+
+  /**
+   * How far a foot's lowest point rises above the ground (negative = it would dig in) for a leg
+   * pose l = {hip, knee} and a body tilt t = {y (body pivot height), pitch, roll}:
+   * n = { x, hip: [y, z], knee: [y, z], pts: [[y, z], ...] } in model space, pts outlining the
+   * hoof / pad at rest (on the ground).
+   */
+  function footRise(n, l, t) {
+    const a = -l.hip;
+    const b = a + l.knee;
+    const k = rotYZ(n.knee[0] - n.hip[0], n.knee[1] - n.hip[1], a);
+    const by = t ? t.y : 0;
+    const cr = Math.cos((t && t.roll) || 0);
+    const sr = Math.sin((t && t.roll) || 0);
+    const p = (t && t.pitch) || 0;
+    let low = Infinity;
+    n.pts.forEach(function (pt) {
+      const q = rotYZ(pt[0] - n.knee[0], pt[1] - n.knee[1], b);
+      const y = n.hip[0] + k[0] + q[0] - by;
+      const z = n.hip[1] + k[1] + q[1];
+      const y1 = n.x * sr + y * cr;
+      low = Math.min(low, by + y1 * Math.cos(p) - z * Math.sin(p));
+    });
+    return low;
+  }
+
+  /**
+   * The outline points of a foot for footRise: an ellipse (centre y, z, half height, half length)
+   * sampled round its lower half, plus any extra [y, z] points (toes).
+   */
+  function footOutline(y, z, ry, rz, extra) {
+    const pts = [];
+    for (let i = 0; i <= 8; i += 1) {
+      const t = Math.PI + (i / 8) * Math.PI;
+      pts.push([y + ry * Math.sin(t), z + rz * Math.cos(t)]);
+    }
+    return pts.concat(extra || []);
+  }
+
+  /** Leg data for footRise from a hip pivot, a knee pivot and a foot outline (model space). */
+  function legData(hip, knee, pts) {
+    return { x: hip[0], hip: [hip[1], hip[2]], knee: [knee[1], knee[2]], pts };
+  }
+
+  /**
+   * The body drop that keeps the lowest foot of a pose on the ground (0 without leg data);
+   * t = {y: body pivot height, pitch, roll}.
+   */
+  function groundDrop(legLen, legs, t) {
+    if (!legLen) return 0;
+    let low = Infinity;
+    legs.forEach((l, i) => (low = Math.min(low, footRise(legLen[i], l, t))));
+    return -low;
   }
 
   /**
    * Pose a rig: p = { y, pitch, roll, neckP, neckY, headP, tail, legs: [{hip, knee}] x4 }
-   * (hip + = swing forward, knee + = fold). Missing bones are skipped.
+   * (hip + = swing forward, knee + = fold). Missing bones are skipped. With leg lengths on the rig
+   * the root drops so the lowest foot stays on the ground; returns the root's height.
    */
   function pose(rig, p) {
     const b = rig.bones;
-    b.root.position.y = p.y || 0;
+    const tilt = { y: b.body.position.y, pitch: p.pitch || 0, roll: p.roll || 0 };
+    b.root.position.y = (p.y || 0) + groundDrop(rig.legLen, p.legs, tilt);
     b.body.rotation.set(p.pitch || 0, 0, p.roll || 0);
     b.neck.rotation.set(p.neckP || 0, p.neckY || 0, 0);
     if (b.head) b.head.rotation.set(p.headP || 0, 0, p.headR || 0);
@@ -143,6 +164,7 @@
       b["hip" + k].rotation.x = -l.hip;
       b["knee" + k].rotation.x = l.knee;
     });
+    return b.root.position.y;
   }
 
   /** The bone list every quadruped shares, from its pivots: body, neck, head?, tail, 4 hips + 4 knees. */
@@ -161,5 +183,14 @@
     return list;
   }
 
-  F.AnimalRig = { build, pose, quadBones, LEGS, geo: { paint, ell, limb, box, cone } };
+  F.AnimalRig = {
+    build,
+    pose,
+    quadBones,
+    footRise,
+    footOutline,
+    legData,
+    groundDrop,
+    LEGS,
+  };
 })((window.KQ = window.KQ || {}));

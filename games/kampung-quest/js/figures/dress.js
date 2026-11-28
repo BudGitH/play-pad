@@ -131,6 +131,7 @@
     const id = rig.dressId === IDS[0] ? IDS[1] : IDS[0];
     const spec = Object.assign({}, base || F.CAST.hero, over, { id });
     const parts = F.partsFor(spec, rig.dims);
+    F.fitLegs(rig.dims, spec);
     const mat = dressMaterial(F.makeAtlas(spec));
     SLOTS.forEach((s) => (rig[s[0]].geometry = parts[s[1]]));
     swapMaterial(rig, rig.material, mat);
@@ -144,6 +145,7 @@
     if (!rig.ownParts || !rig.dressId) return;
     SLOTS.forEach((s) => (rig[s[0]].geometry = rig.ownParts[s[0]]));
     swapMaterial(rig, rig.dressMat, rig.material);
+    F.fitLegs(rig.dims, rig.spec);
     drop(rig.dressId);
     rig.dressId = null;
   };

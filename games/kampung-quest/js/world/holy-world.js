@@ -220,7 +220,7 @@
       pigeons: s.pigeons.count,
       camels: () => P.CamelHerd.describe(s.herd),
     };
-    return Object.assign(api, sunApi(s));
+    return Object.assign(api, sunApi(s), { burstPigeons: (x, z, r) => s.pigeons.burst(x, z, r) });
   }
 
   /** The internal state object the runtime closes over. */

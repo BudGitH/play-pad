@@ -25,6 +25,31 @@
     [24, 22],
   ];
 
+  const RAMBUTAN_SPOTS = [
+    [36.5, 21],
+    [47.5, 22],
+    [54, 26.5],
+    [39.5, 31.5],
+    [46.5, 31],
+    [34.5, 27.5],
+  ];
+
+  /** A rambutan: a small red fuzzy ball with a green stem (its "hair" is a few tiny cones). */
+  function rambutanMesh(i) {
+    const g = new THREE.Group();
+    const fruit = new THREE.Mesh(
+      new THREE.SphereGeometry(0.075, 12, 9),
+      new THREE.MeshStandardMaterial({ color: i % 2 ? 0xd7263d : 0xe8413a, roughness: 0.7 }),
+    );
+    const hair = new THREE.Mesh(
+      new THREE.SphereGeometry(0.095, 7, 5),
+      new THREE.MeshStandardMaterial({ color: 0x8fd14f, roughness: 0.9, wireframe: true }),
+    );
+    fruit.position.y = hair.position.y = 0.08;
+    g.add(fruit, hair);
+    return g;
+  }
+
   /** A small drink can lying on its side (silver body, red band). */
   function canMesh() {
     const g = new THREE.Group();
@@ -114,6 +139,7 @@
       world,
       cans: holy ? [] : spawn(scene, world, CAN_SPOTS, canMesh, "can"),
       litter: holy ? [] : spawn(scene, world, LITTER_SPOTS, litterMesh, "litter"),
+      rambutans: holy ? [] : spawn(scene, world, RAMBUTAN_SPOTS, rambutanMesh, "rambutan"),
       cat: catMesh(),
       catFollow: false,
     };
@@ -125,8 +151,12 @@
   /** Show only what the active mission step needs. `prog` = missions.progress() or null. */
   function sync(C, prog, paused) {
     const want = prog && prog.type === "collect" && !paused ? prog.target : null;
-    C.cans.forEach((c) => (c.mesh.visible = !c.taken && want === "park"));
+    const item = prog ? prog.item : null;
+    C.cans.forEach((c) => (c.mesh.visible = !c.taken && want === "park" && item !== "rambutan"));
     C.litter.forEach((c) => (c.mesh.visible = !c.taken && want === "playground"));
+    C.rambutans.forEach(
+      (c) => (c.mesh.visible = !c.taken && want === "park" && item === "rambutan"),
+    );
     const catOut = Boolean(prog && prog.id === "lost_cat" && prog.stepIndex >= 2);
     C.catFollow = catOut;
     C.cat.visible = catOut;
@@ -134,7 +164,7 @@
 
   /** Items the hero can pick up right now (visible and not yet taken). */
   function available(C) {
-    return C.cans.concat(C.litter).filter((c) => c.mesh.visible && !c.taken);
+    return C.cans.concat(C.litter, C.rambutans).filter((c) => c.mesh.visible && !c.taken);
   }
 
   /** Mark a collectible as picked up and hide it. */
@@ -145,7 +175,7 @@
 
   /** Make every can and litter piece collectable again (a new day). */
   function resetAll(C) {
-    C.cans.concat(C.litter).forEach((c) => (c.taken = false));
+    C.cans.concat(C.litter, C.rambutans).forEach((c) => (c.taken = false));
   }
 
   /** Mimi trots behind the hero; her tail swishes. */
@@ -167,5 +197,5 @@
     C.cat.userData.tail.rotation.z = Math.sin(t * 5) * 0.4;
   }
 
-  G.Collectibles = { create, sync, available, take, resetAll, updateCat };
+  G.Collectibles = { catMesh, create, sync, available, take, resetAll, updateCat };
 })((window.KQ = window.KQ || {}));

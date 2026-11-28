@@ -18,11 +18,23 @@
   const MISSIONS = KQ.Sim.MISSIONS;
   const STICKERS = KQ.Sim.STICKERS;
   const PAUSED_HINT = "It's prayer time - let's pray first, then carry on, InsyaAllah!";
+  /** Steps whose target is a neighbour or guide (everything else points at a place). */
   const NPC_STEP_TYPES = ["talk", "deliver"];
 
   /** Find a mission definition by id, or null for an unknown id. */
   function missionById(id) {
     return MISSIONS.find((m) => m.id === id) || null;
+  }
+
+  /**
+   * The missions this tracker can offer: those of its region (default the kampung) whose places
+   * exist in this world (a mission may list `needs`, e.g. a camel yard another build adds).
+   */
+  function offered(M) {
+    const has = typeof M.hasPoi === "function" ? M.hasPoi : () => true;
+    return MISSIONS.filter(
+      (m) => (m.region || "kampung") === M.region && (m.needs || []).every((id) => has(id)),
+    );
   }
 
   /** Is this a real sticker id? Unknown ids are never stored (untrusted save input). */
@@ -45,11 +57,12 @@
   function accept(M, id) {
     if (isPaused(M)) return { ok: false, hint: PAUSED_HINT };
     const mission = missionById(id);
-    if (!mission) return { ok: false, hint: "I don't know that mission." };
+    if (!mission || offered(M).indexOf(mission) === -1)
+      return { ok: false, hint: "I don't know that mission." };
     if (M.completed.indexOf(id) !== -1)
       return { ok: false, hint: "You already did this one - well done!" };
     if (M.active) return { ok: false, hint: "Let's finish your current mission first." };
-    M.active = { id, step: 0, count: 0 };
+    M.active = { id, step: 0, count: 0, clock: 0 };
     return { ok: true, mission, lines: mission.intro.slice() };
   }
 
@@ -86,17 +99,36 @@
 
   /** Finish the active mission: record it, grant the reward stickers and describe the result for the UI. */
   function complete(M, mission) {
+    const fast = Boolean(mission.beat) && M.active.clock <= mission.beat.secs;
     M.active = null;
     M.completed.push(mission.id);
     const newStickers = grantStickers(M, mission.reward.stickers);
+    const bonus = fast ? mission.beat.coins : 0;
     return {
       changed: true,
       stepDone: true,
       completed: true,
       mission,
-      reward: { coins: mission.reward.coins, stickers: newStickers },
+      reward: { coins: mission.reward.coins + bonus, stickers: newStickers, bonus },
       lines: mission.thanks.slice(),
     };
+  }
+
+  /**
+   * Count free-play seconds on the active mission (only a mission with a "beat the bubble" time
+   * uses it). Paused time never counts, and being slow costs nothing: it only misses the bonus.
+   */
+  function tick(M, dt) {
+    const mission = M.active ? missionById(M.active.id) : null;
+    if (!mission || !mission.beat || isPaused(M) || !(dt > 0)) return;
+    M.active.clock += dt;
+  }
+
+  /** Seconds left of the bubble bonus for the active mission, or null when it has none. */
+  function bubbleLeft(M) {
+    const mission = M.active ? missionById(M.active.id) : null;
+    if (!mission || !mission.beat) return null;
+    return Math.max(0, mission.beat.secs - M.active.clock);
   }
 
   /** Feed a world event to the active mission; advances a step (counting collects) and completes it on the last one. */
@@ -130,6 +162,10 @@
       type: step.type,
       target: step.target,
       label: step.label,
+      item: step.item || null,
+      verb: step.verb || null,
+      quick: Boolean(step.quick),
+      who: step.who || null,
       markerKind: NPC_STEP_TYPES.indexOf(step.type) === -1 ? "poi" : "npc",
       paused: isPaused(M),
     };
@@ -141,7 +177,7 @@
    */
   function wantsTalk(M, npcId) {
     if (!M.active) {
-      return MISSIONS.some((m) => m.giver === npcId && M.completed.indexOf(m.id) === -1);
+      return offered(M).some((m) => m.giver === npcId && M.completed.indexOf(m.id) === -1);
     }
     const step = currentStep(M);
     return Boolean(step && NPC_STEP_TYPES.indexOf(step.type) !== -1 && step.target === npcId);
@@ -196,30 +232,51 @@
   /** Load a saved mission snapshot into the tracker after cleaning it. */
   function restore(M, raw) {
     const clean = sanitizeSnapshot(raw);
-    M.active = clean.active;
+    M.active = clean.active ? Object.assign({ clock: 0 }, clean.active) : null;
     M.completed = clean.completed;
     M.stickers = clean.stickers;
   }
 
-  /**
-   * Create the mission tracker.
-   * @param {{paused?:boolean, isPaused?:Function}} [options] isPaused is polled on every call
-   *   (typically () => prayer.isBlockingMissions()).
-   */
-  function create(options) {
-    const opts = options || {};
-    const M = {
+  /** The raw tracker state for the options given. */
+  function newTracker(opts) {
+    return {
       active: null,
       completed: [],
       stickers: [],
       paused: Boolean(opts.paused),
       isPaused: opts.isPaused,
+      region: opts.region || (typeof KQ.region === "string" ? KQ.region : "kampung"),
+      hasPoi: opts.hasPoi,
     };
+  }
+
+  /** The saved shape of the tracker (the bubble clock is not saved). */
+  function snapshot(M) {
+    const a = M.active;
+    return {
+      active: a ? { id: a.id, step: a.step, count: a.count } : null,
+      completed: M.completed.slice(),
+      stickers: M.stickers.slice(),
+    };
+  }
+
+  /**
+   * Create the mission tracker.
+   * @param {{paused?:boolean, isPaused?:Function, region?:string, hasPoi?:Function}} [options]
+   *   isPaused is polled on every call (typically () => prayer.isBlockingMissions()); region picks
+   *   the missions offered (default KQ.region); hasPoi(id) says whether the world has a place.
+   */
+  function create(options) {
+    const M = newTracker(options || {});
     return {
       available: () =>
-        MISSIONS.filter(
+        offered(M).filter(
           (m) => m.id !== (M.active && M.active.id) && M.completed.indexOf(m.id) === -1,
         ),
+      /** Every mission this region offers (done or not), for the board. */
+      offered: () => offered(M),
+      tick: (dt) => tick(M, dt),
+      bubbleLeft: () => bubbleLeft(M),
       accept: (id) => accept(M, id),
       active: () => (M.active ? missionById(M.active.id) : null),
       notify: (event) => notify(M, event),
@@ -238,11 +295,7 @@
       stickers: () => M.stickers.slice(),
       grantSticker: (id) => grantStickers(M, [id]).length === 1,
       awardPrayer: (name) => awardPrayer(M, name),
-      snapshot: () => ({
-        active: M.active ? Object.assign({}, M.active) : null,
-        completed: M.completed.slice(),
-        stickers: M.stickers.slice(),
-      }),
+      snapshot: () => snapshot(M),
       restore: (raw) => restore(M, raw),
     };
   }

@@ -20,6 +20,7 @@
     home: "#f4a8b8",
     kaaba: "#1c1c22",
     nabawi: "#2f9e6e",
+    event: "#b66bff",
   };
 
   /** Make one marker of a kind at a position; `extra` overrides (big, arrow, label, ink). */
@@ -86,6 +87,8 @@
     if (t) out.push(mark("objective", "pin", t, { big: true, arrow: true, label: "Mission" }));
     if (KQ.region === "haramain" && KQ.HOLY) haramain(s, out);
     else kampung(s, out);
+    const ev = G.WorldEvents.blip();
+    if (ev) out.push(mark("event", "star", ev, { label: ev.label, ink: "#ffffff" }));
     return out.concat(givers(s));
   }
 

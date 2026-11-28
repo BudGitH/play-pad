@@ -4,7 +4,25 @@ import assert from "node:assert/strict";
 import { loadSim, FIXTURE_TIMES, plain, mins } from "./load-sim.mjs";
 
 const KQ = loadSim();
-const { Missions, MISSIONS, STICKERS, CHAT, POI_IDS, NPC_IDS, Prayer, SALAM } = { ...KQ.Sim };
+const NEW_IDS = [
+  "walk_wei_home",
+  "prata_dash",
+  "friendly_five",
+  "kampung_photos",
+  "bike_to_library",
+  "visit_the_ponies",
+];
+const { Missions, STICKERS, CHAT, POI_IDS, NPC_IDS, Prayer, SALAM } = { ...KQ.Sim };
+/** The original kampung missions; the playability round's batch is tested in missions-more.test.mjs. */
+const MISSIONS = KQ.Sim.MISSIONS.filter(
+  (m) =>
+    !m.region &&
+    !m.needs &&
+    !m.beat &&
+    m.id !== "push_the_car" &&
+    m.id !== "rambutan_basket" &&
+    !NEW_IDS.includes(m.id),
+);
 const POI_STEPS = ["goto", "buy", "collect"];
 const NPC_STEPS = ["talk", "deliver"];
 
@@ -131,7 +149,7 @@ test("every NPC has chat lines; Muslim neighbours greet with salam, others are f
 
 test("a fresh tracker offers every mission and nothing is active", () => {
   const missions = Missions.create();
-  assert.equal(missions.available().length, MISSIONS.length);
+  assert.equal(missions.available().length, KQ.Sim.MISSIONS.filter((m) => !m.region).length);
   assert.equal(missions.active(), null);
   assert.equal(missions.progress(), null);
   assert.equal(missions.available()[0].id, "prata_for_nenek", "the coach-line mission comes first");
@@ -170,11 +188,12 @@ test("every mission is completable from its own step list", () => {
 
 test("all missions can be completed in one playthrough; stickers collect without duplicates", () => {
   const missions = Missions.create();
-  for (const mission of MISSIONS) {
+  const all = missions.offered();
+  for (const mission of all) {
     assert.equal(missions.accept(mission.id).ok, true, mission.id);
     runAll(missions, mission);
   }
-  assert.equal(missions.completed().length, MISSIONS.length);
+  assert.equal(missions.completed().length, all.length);
   assert.equal(missions.available().length, 0);
   assert.equal(new Set(missions.stickers()).size, missions.stickers().length);
 });
@@ -382,7 +401,7 @@ test("ACC-1: pickTarget handles every empty / disabled combination", () => {
 
 test("ACC-1: wantsTalk is true for every giver with a mission available, and for step targets", () => {
   const m = Missions.create();
-  const givers = [...new Set(KQ.Sim.MISSIONS.map((x) => x.giver))];
+  const givers = [...new Set(m.offered().map((x) => x.giver))];
   for (const id of givers) assert.equal(m.wantsTalk(id), true, id);
   assert.equal(m.wantsTalk("nobody"), false);
   const mission = KQ.Sim.MISSIONS.find((x) => x.giver === "hawker_aminah");

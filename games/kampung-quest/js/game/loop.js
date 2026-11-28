@@ -86,6 +86,9 @@
     });
     G.Crowd.update(s.crowd, dt, { x: P.pos.x, z: P.pos.z }, crowdContext(s));
     G.Greetings.update(s, dt, P);
+    G.Hi.update(dt, P.pos);
+    G.WorldEvents.update(dt);
+    G.MissionSteps.update(dt);
     G.Voice.update(dt);
     return move;
   }

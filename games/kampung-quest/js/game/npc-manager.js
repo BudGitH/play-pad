@@ -49,13 +49,24 @@
       lastMinute: -1,
       dirty: true,
     };
-    (holy ? [] : KQ.Sim.NPC_IDS).forEach(function (id) {
+    (holy ? Object.keys(KQ.Sim.GUIDES) : KQ.Sim.NPC_IDS).forEach(function (id) {
       const A = G.NpcAgent.create(scene, id, KQ.Sim.NPC_PROFILE[id].name);
       A.group.visible = false;
       M.agents.push(A);
       M.byId[id] = A;
+      if (holy) placeGuide(M, A);
     });
     return M;
+  }
+
+  /** A Makkah / Madinah guide stands at its place all day, facing the way people come from (never on a routine). */
+  function placeGuide(M, A) {
+    const poi = M.world.pois[KQ.Sim.GUIDES[A.id].poi];
+    if (!poi) return;
+    A.guide = true;
+    A.hidden = false;
+    A.show = 1;
+    placeAt(A, poi.pos.x + 2.2, poi.pos.z + 1.5, Math.PI, M.world);
   }
 
   /**
@@ -186,6 +197,7 @@
     const minute = M.sim.clock.minute;
     const state = M.sim.prayer.state();
     M.agents.forEach(function (A) {
+      if (A.guide || A.escort) return; // a guide stands still; an escorted kid follows the hero
       const r = KQ.Sim.Schedule.routineFor(A.id, minute, state);
       const key = r.poi + ":" + r.activity + ":" + r.indoors;
       if (key === A.routineKey && !instant) return;

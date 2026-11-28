@@ -35,6 +35,11 @@
     return step.type === "deliver" ? G.Names.itemName(step.item) : null;
   }
 
+  /** The profile (name, muslim) of a neighbour or guide agent. */
+  function profileOf(A) {
+    return KQ.Sim.NPC_PROFILE[A.id];
+  }
+
   /** The 'Mission done! +N coins and a sticker' message for a completion result. */
   function rewardText(res) {
     const names = res.reward.stickers
@@ -44,6 +49,7 @@
       "Mission done! +" +
       res.reward.coins +
       " coins" +
+      (res.reward.bonus > 0 ? " (" + res.reward.bonus + " bonus for being quick!)" : "") +
       (names.length ? " and a sticker: " + names.join(", ") : "")
     );
   }
@@ -84,7 +90,7 @@
     G.Dialogue.open({
       id: A.id,
       name: A.name,
-      muslim: KQ.Sim.NPC_PROFILE[A.id].muslim,
+      muslim: profileOf(A).muslim,
       lines: m.intro,
       choices: [
         { label: "Waalaikumsalam! Yes", primary: true, onPick: () => accept(m) },
@@ -107,6 +113,7 @@
     G.Audio.play("good");
     G.UI.dismissToast("nenek");
     G.UI.toast("New mission: " + m.title, "gold", 4200);
+    if (m.beat) G.UI.toast("Beat the bubble for a bonus. No rush, though!", "hint", 4200);
     S().hudDirty = true;
   }
 
@@ -115,7 +122,7 @@
     G.Dialogue.open({
       id: A.id,
       name: A.name,
-      muslim: KQ.Sim.NPC_PROFILE[A.id].muslim,
+      muslim: profileOf(A).muslim,
       lines,
       onClose: () => G.Npcs.endTalk(A),
     });
@@ -124,6 +131,7 @@
   /** Say the NPC's next small-talk line, cycling through their lines on repeat visits. */
   function smallTalk(A) {
     chat[A.id] = (chat[A.id] || 0) + 1;
+    G.Hi.noteTalk(); // small talk is a friendly hello too
     const line = KQ.Sim.Missions.chatLine(A.id, chat[A.id] - 1);
     const lines = Array.isArray(line) ? line : [line];
     say(A, lines);
@@ -140,11 +148,24 @@
     say(A, lines.length ? lines : ["Terima kasih!"]);
   }
 
+  /** A quick step (Push!): no dialogue page, the neighbour calls out and the count goes up. */
+  function quickStep(A, prog) {
+    const calls = ["Heave!", "Heave-ho!", "Almost there!", "Yes! It moves!"];
+    const res = notify({ type: prog.type, target: A.id });
+    G.Greetings.say(A.id, calls[Math.min(prog.count, calls.length - 1)], 0, 1.6);
+    G.Npcs.wave(A, 1.2);
+    G.Audio.play("tap");
+    if (res.stepDone) G.Greetings.say(A.id, "Hooray! It's moving!", 1.2, 2.4);
+  }
+
   /** Start a conversation with an NPC agent. */
   function talk(A) {
     const m = sim().missions;
     const prog = m.progress();
     const paused = m.isPausedNow();
+    if (prog && prog.quick && prog.target === A.id && prog.type === "talk" && !paused) {
+      return quickStep(A, prog);
+    }
     G.Npcs.startTalk(A);
     const P = S().player;
     P.heading = Math.atan2(A.x - P.pos.x, A.z - P.pos.z);
@@ -163,7 +184,7 @@
     smallTalk(A);
   }
 
-  /** Proximity "goto" steps. */
+  /** Proximity "goto" steps (and the world-bound verbs: ride and escort are checked by MissionSteps). */
   function checkGoto() {
     const prog = sim().missions.progress();
     if (!prog || prog.paused || prog.type !== "goto") return;
@@ -177,9 +198,9 @@
   /** The hero picked up a collectible (can or litter): remove it and notify the collect step. */
   function pickup(item) {
     G.Collectibles.take(S().collect, item);
-    const isCan = item.kind === "can";
+    const target = item.kind === "litter" ? "playground" : "park";
     G.Audio.play("tap");
-    notify({ type: "collect", target: isCan ? "park" : "playground", item: item.kind });
+    notify({ type: "collect", target, item: item.kind });
   }
 
   /** Stars over the heads of neighbours who have a mission to give. */
@@ -227,5 +248,7 @@
     carrying,
     applyResult,
     activeStep,
+    stepTarget: (hero) => G.MissionSteps.stepTarget(hero),
+    pressStep: (t) => G.MissionSteps.pressStep(t),
   };
 })((window.KQ = window.KQ || {}));

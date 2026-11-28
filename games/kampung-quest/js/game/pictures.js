@@ -51,6 +51,8 @@
     hand: "M8 11V4.5a1.5 1.5 0 0 1 3 0V10h1V3.5a1.5 1.5 0 0 1 3 0V10h1V5.5a1.5 1.5 0 0 1 3 0V15a7 7 0 0 1-7 7h-1a7 7 0 0 1-5.6-2.8L2.6 14a1.6 1.6 0 0 1 2.5-2z",
     car: "M5 10 6.6 5.6A2 2 0 0 1 8.5 4h7a2 2 0 0 1 1.9 1.6L19 10a2.5 2.5 0 0 1 2 2.4V17h-2.2a2.6 2.6 0 0 1-5.2 0h-3.2a2.6 2.6 0 0 1-5.2 0H3v-4.6A2.5 2.5 0 0 1 5 10zm2.2 0h9.6l-1-3.4H8.2zM7.5 12a1.1 1.1 0 1 0 0 2.2 1.1 1.1 0 0 0 0-2.2zm9 0a1.1 1.1 0 1 0 0 2.2 1.1 1.1 0 0 0 0-2.2z",
     bike: "M5.5 9a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm0 2a3 3 0 1 1 0 6 3 3 0 0 1 0-6zm13-2a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm0 2a3 3 0 1 1 0 6 3 3 0 0 1 0-6zM9 6h4l2.4 5H17l-1.2-2.6-2.5 0L12 14h-1.8l1.6-6H9z",
+    camera:
+      "M4 7h3l1.5-2h7L17 7h3a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1zm8 3a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z",
     exit: "M4 3h9v2H6v14h7v2H4zm11 4 5 5-5 5-1.4-1.4 2.6-2.6H9v-2h7.2l-2.6-2.6z",
     refresh:
       "M12 4a8 8 0 1 0 7.7 10h-2.1A6 6 0 1 1 12 6c1.7 0 3.2.7 4.2 1.8L13 11h7V4l-2.7 2.7A8 8 0 0 0 12 4z",
@@ -291,8 +293,31 @@
     parcel_run: "bag",
     teh_tarik_for_uncle: "bowl",
     fun_day_flyers: "sticker",
+    push_the_car: "car",
+    rambutan_basket: "bag",
+    walk_wei_home: "home",
+    prata_dash: "bowl",
+    friendly_five: "hand",
+    kampung_photos: "camera",
+    bike_to_library: "bike",
+    visit_the_ponies: "heart",
+    h_new_friends: "hand",
+    h_zamzam_walk: "drop",
+    h_visit_camels: "camera",
+    h_madinah_photos: "camera",
+    h_ride_to_quba: "bike",
   };
-  const STEP_ICON = { talk: "talk", buy: "bag", deliver: "home", goto: "pin", collect: "recycle" };
+  const STEP_ICON = {
+    talk: "talk",
+    buy: "bag",
+    deliver: "home",
+    goto: "pin",
+    collect: "recycle",
+    greet: "hand",
+    photo: "camera",
+    ride: "bike",
+    escort: "home",
+  };
 
   G.Pictures = {
     icon,

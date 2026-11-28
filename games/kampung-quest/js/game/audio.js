@@ -190,6 +190,12 @@
       tone(c, t, { f: 520, to: 300, d: 0.18, g: 0.05 });
     },
     hint: (c, t) => tone(c, t, { f: 330, d: 0.18, g: 0.07 }),
+    // world events: a soft kompang beat and the patter of a rain shower
+    drum: (c, t) => {
+      tone(c, t, { f: 170, to: 95, d: 0.16, g: 0.12 });
+      noise(c, t, { type: "bandpass", f: 700, d: 0.05, g: 0.05 });
+    },
+    patter: (c, t) => noise(c, t, { type: "bandpass", f: 3200, d: 0.9, g: 0.05 }),
     bell: (c, t) => {
       [784, 988, 1175].forEach(function (f, i) {
         tone(c, t + i * 0.55, { f, d: 1.6, g: 0.1 });

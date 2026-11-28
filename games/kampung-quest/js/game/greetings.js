@@ -54,6 +54,7 @@
       accT: 0,
       bubbles: [],
       pool: [],
+      actors: {},
     };
     return s.greet;
   }
@@ -151,8 +152,10 @@
     const A = s.npcs.byId[who];
     if (A) return A.hidden ? null : { x: A.x, y: A.y, z: A.z, head: HEAD.cast };
     const m = s.crowd.byId.get(who);
-    if (!m || m.leaving) return null;
-    return { x: m.x, y: m.y, z: m.z, head: m.kid ? HEAD.kid : HEAD.adult };
+    if (m)
+      return m.leaving ? null : { x: m.x, y: m.y, z: m.z, head: m.kid ? HEAD.kid : HEAD.adult };
+    const ext = s.greet && s.greet.actors[who];
+    return ext ? ext() : null;
   }
 
   /** The first time a bubble shows over a standing cast neighbour, they raise a hand. */
@@ -225,6 +228,28 @@
     placeAll(s, st);
   }
 
+  /**
+   * Show one free-standing bubble (the "Say hi" reply, an event actor's line) over a person known
+   * to the game: the hero ("hero"), a cast neighbour, a crowd extra or a registered actor.
+   * @param {string} who an id; text the words; delay seconds until it shows; secs how long it stays.
+   * @returns {boolean} false when the pool is full (the line is simply not shown).
+   */
+  function say(who, text, delay, secs) {
+    if (!G.S) return false;
+    const st = ensure(G.S);
+    const before = st.bubbles.length;
+    queue(st, who, text, st.now + (delay || 0), secs || KQ.Sim.Greet.CONFIG.bubbleSeconds);
+    return st.bubbles.length > before;
+  }
+
+  /** Register (or with null remove) a place getter for an actor that is not a neighbour or a crowd extra. */
+  function setActor(id, where) {
+    if (!G.S) return;
+    const st = ensure(G.S);
+    if (where) st.actors[id] = where;
+    else delete st.actors[id];
+  }
+
   /** Counts and the visible bubbles, for tests (greeting total, who says what right now). */
   function debug() {
     const st = G.S && G.S.greet;
@@ -247,5 +272,5 @@
     return true;
   }
 
-  G.Greetings = { update, debug, setChance, TICK };
+  G.Greetings = { update, debug, setChance, say, setActor, TICK };
 })((window.KQ = window.KQ || {}));

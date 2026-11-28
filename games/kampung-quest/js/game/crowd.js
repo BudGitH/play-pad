@@ -258,7 +258,9 @@
     const vis = C.vis;
     vis.length = 0;
     C.members.forEach(function (m) {
-      if (m.walker) G.CrowdWalkers.update(C, m, dt);
+      if (m.waveT > 0)
+        G.Hi.hold(C, m, dt); // greeted: stands still and waves (say-hi.js)
+      else if (m.walker) G.CrowdWalkers.update(C, m, dt);
       else G.CrowdMembers.update(m, dt, C);
       if (m.show < 0.03 || !canSee(C, m.x, m.z)) return;
       m.d2 = U.dist2(m.x, m.z, C.view.x, C.view.z);

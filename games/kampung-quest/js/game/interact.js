@@ -135,6 +135,12 @@
     return best;
   }
 
+  /** The button word for a quick mission step with this neighbour ("Push"), or null. */
+  function quickVerb(A) {
+    const p = S().sim.missions.progress();
+    return p && p.quick && !p.paused && p.target === A.id && p.verb ? p.verb : null;
+  }
+
   /**
    * The nearest visible NPC as a target: 'Talk' when close, 'Walk closer' when further; none if
    * busy or praying.
@@ -146,7 +152,7 @@
     return {
       kind: "npc",
       id: hit.A.id,
-      label: near ? "Talk" : "Walk closer",
+      label: near ? quickVerb(hit.A) || "Talk" : "Walk closer",
       aria: (near ? "Talk to " : "Walk closer to ") + hit.A.name,
       x: hit.A.x,
       z: hit.A.z,
@@ -193,7 +199,12 @@
     const obj = objectTarget(hero);
     const npc = npcTarget(hero);
     const pick = KQ.Sim.Missions.pickTarget(npc, obj, wantsNpc(npc));
-    return pick === "npc" ? npc : pick === "obj" ? obj : null;
+    const chosen = pick === "npc" ? npc : pick === "obj" ? obj : null;
+    const step = G.MissionSteps.stepTarget(hero); // a mission's "Photo" beats a nearby object
+    if (step && !(chosen && chosen.kind === "npc" && wantsNpc(chosen))) return step;
+    const evt = G.WorldEvents.target(hero); // so does an event's prompt (the ice-cream cart)
+    if (evt && (!chosen || !chosen.enabled || chosen.kind === "obj")) return evt;
+    return chosen && chosen.enabled ? chosen : G.Hi.target(hero) || chosen;
   }
 
   /**
@@ -203,6 +214,9 @@
   function activate(t) {
     if (!t || !t.enabled) return false;
     if (t.kind === "npc") talkTo(t);
+    else if (t.kind === "hi") G.Hi.sayHi(t.member);
+    else if (t.kind === "event") G.WorldEvents.press(t);
+    else if (t.kind === "step") G.MissionFlow.pressStep(t);
     else if (t.kind === "item") G.MissionFlow.pickup(t.item);
     else dispatchObject(t.id);
     return true;
@@ -257,6 +271,12 @@
     Play: "star",
     Sit: "pin",
     "Pick up": "hand",
+    "Say hi": "hand",
+    Push: "hand",
+    Photo: "camera",
+    Catch: "hand",
+    Buy: "bowl",
+    Dates: "bowl",
     "Walk closer": "pin",
     Drive: "car",
     Ride: "bike",

@@ -61,6 +61,7 @@
     P.Town.plazas(B);
     P.Town.carpark(B, L.carpark);
     P.Town.park(B, L.park, ctx);
+    if (P.Stables) P.Stables.kampung.build(B, ctx); // the pony ride (AC-P6)
     P.Town.treeBeds(B);
     P.Detail.roadWear(B, L);
     ctx.potSpots = [];

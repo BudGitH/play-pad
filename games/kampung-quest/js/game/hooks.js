@@ -196,6 +196,8 @@
     holy: () => (KQ.Holy && KQ.Holy.debug ? KQ.Holy.debug() : null),
     greetings: () => G.Greetings.debug(),
     vehicles: () => G.Vehicles.debug(),
+    mounts: () => G.Mounts.debug(),
+    mountAct: (id) => G.Mounts.press(id),
     voice: () => G.Voice.debug(),
     greetChance: (p) => G.Greetings.setChance(p),
     crowdPeople: () => (S() && S().crowd ? G.Crowd.positions(S().crowd) : []),

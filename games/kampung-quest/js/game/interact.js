@@ -84,7 +84,10 @@
    */
   function objectTarget(hero) {
     return withPrayerLabel(
-      closer(nearestObject(hero) || mosqueTarget(hero), G.Vehicles.target(hero)),
+      closer(
+        closer(nearestObject(hero) || mosqueTarget(hero), G.Vehicles.target(hero)),
+        G.Mounts.target(hero),
+      ),
     );
   }
 
@@ -189,6 +192,7 @@
     if (P.locked || G.UI.modalOpen() || S().paused) return null;
     const hero = P.pos;
     if (G.Vehicles.mounted()) return G.Vehicles.target(hero); // in a vehicle the only prompt is Exit
+    if (G.Mounts.riding()) return G.Mounts.target(hero); // on an animal, likewise
     forgetFar(hero);
     const obj = objectTarget(hero);
     const npc = npcTarget(hero);
@@ -224,6 +228,7 @@
   function dispatchObject(id) {
     const V = G.Services;
     if (id.indexOf("vehicle:") === 0) return G.Vehicles.press(id);
+    if (id.indexOf("mount:") === 0) return G.Mounts.press(id);
     if (id.indexOf("counter_") === 0) return V.stall(id);
     if (id.indexOf("wudu_tap_") === 0) return G.PrayerFlow.atTaps();
     const table = {
@@ -261,6 +266,9 @@
     Drive: "car",
     Ride: "bike",
     Exit: "exit",
+    Camel: "hand",
+    Horse: "hand",
+    Pony: "hand",
   };
   const tmp = new THREE.Vector3();
 

@@ -95,8 +95,9 @@
     );
   }
 
-  /** Merge nav POIs with the contract ids, adding radii for the big areas. */
-  function finishPois(pois) {
+  /** Merge nav POIs with the contract ids, adding radii for the big areas (and the pony_ride POI, AC-P6). */
+  function finishPois(pois, graph) {
+    if (P.Stables) P.Stables.kampung.addPois(pois, graph);
     const r = {
       hawker: 9,
       mosque_hall: 8,

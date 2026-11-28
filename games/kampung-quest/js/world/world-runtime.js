@@ -140,7 +140,7 @@
     const s = Object.assign(st, { fanAngle: 0, minute: 420 });
     [s.pools, s.halos] = ["lampPools", "lampHalos"].map((n) => s.group.getObjectByName(n));
     s.roam = makeRoam(s.group, s.ctx);
-    const pois = W.helpers.finishPois(st.nav.pois);
+    const pois = W.helpers.finishPois(st.nav.pois, st.nav.graph);
     const api = {
       group: s.group,
       pois,

@@ -50,7 +50,7 @@ export const FIXTURE_TIMES = {
 function runAll(sandbox, dir, files) {
   for (const name of files) {
     const source = fs.readFileSync(path.join(dir, name + ".js"), "utf8");
-    vm.runInContext(source, sandbox, { filename: name + ".js" });
+    vm.runInContext(source, sandbox, { filename: path.join(dir, name + ".js") });
   }
 }
 

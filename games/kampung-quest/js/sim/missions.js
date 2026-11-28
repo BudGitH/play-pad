@@ -198,6 +198,11 @@
     return Boolean(step && NPC_STEP_TYPES.indexOf(step.type) !== -1 && step.target === npcId);
   }
 
+  /**
+   * Clean a mission-tracker snapshot read from storage: unknown ids and bad counts are dropped.
+   * @param {*} raw untrusted value parsed from localStorage
+   * @returns {object} a snapshot that is safe to hand to the tracker
+   */
   // TRUST_BOUNDARY: localStorage -> mission tracker (untrusted; unknown ids and counts are dropped)
   function sanitizeSnapshot(raw) {
     const src = raw && typeof raw === "object" ? raw : {};

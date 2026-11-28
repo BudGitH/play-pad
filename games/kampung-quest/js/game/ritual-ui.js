@@ -111,6 +111,7 @@
     const meaning = el("p", { cls: "kq-en kq-meaning", role: "status", text: "" });
     const full = fullPanel(item);
     full.hidden = !rs.full;
+    /** Repaint the highlighted word and its English meaning from the recite cursor. */
     function paint() {
       markWords(row, rs.cursor.index);
       meaning.textContent = words.length ? words[rs.cursor.index].en : "";

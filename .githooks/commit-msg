@@ -1,0 +1,14 @@
+#!/bin/sh
+# PlayPad commit-msg hook: WARNS (never blocks) when a commit subject is not `type(scope): summary`.
+# The enforced check is the PR title in CI (.github/workflows/pr-title.yml): the repo squash-merges, so only the
+# title lands on main, and WIP commits on a branch do not need to follow the format. Enable once per clone:
+#   git config core.hooksPath .githooks
+subject=$(head -n 1 "$1")
+case "$subject" in
+  Merge\ *|Revert\ *|fixup!*|squash!*) exit 0 ;;
+esac
+node tools/check-pr-title.mjs "$subject" >/dev/null 2>&1 || {
+  echo "note: commit subject is not 'type(scope): summary' (see docs/PR-STANDARD.md 1.2)." >&2
+  echo "      Fine for a WIP commit; the PR title must follow it (CI checks that)." >&2
+}
+exit 0

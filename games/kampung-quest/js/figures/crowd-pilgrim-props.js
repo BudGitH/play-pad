@@ -42,6 +42,7 @@
     ]);
   }
 
+  /** A baby carried in arms: just the small round head, tinted by the caller. */
   function babyHead() {
     return G.merge([blob([0.052, 0.052, 0.052], [0, 0.135, 0.012], WHITE)]);
   }
@@ -73,6 +74,7 @@
     ]);
   }
 
+  /** The top box of a luggage cart (the load a porter pushes). */
   function cartTop() {
     return G.merge([box(0.42, 0.22, 0.52, WHITE, [0, 0.33, 0.05])]);
   }
@@ -101,6 +103,7 @@
     ]);
   }
 
+  /** The head of the person sitting in the wheelchair. */
   function wcHead() {
     return G.merge([blob([0.085, 0.095, 0.085], [0, 0.7, -0.04], WHITE)]);
   }

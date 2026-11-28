@@ -1,10 +1,33 @@
 {
+  "games/brick-buddies/index.html": {
+    "jsdoc/require-jsdoc": 364
+  },
   "games/claw-catch/index.html": {
+    "jsdoc/require-jsdoc": 160,
     "max-lines-per-function": 8
   },
+  "games/colour-rush/index.html": {
+    "jsdoc/require-jsdoc": 65
+  },
+  "games/snap/index.html": {
+    "jsdoc/require-jsdoc": 81
+  },
+  "games/sparkle-salon/index.html": {
+    "jsdoc/require-jsdoc": 106
+  },
   "games/sunset-stride/index.html": {
+    "jsdoc/require-jsdoc": 151,
     "max-lines-per-function": 27,
     "max-depth": 3
+  },
+  "games/super-decoder/index.html": {
+    "jsdoc/require-jsdoc": 73
+  },
+  "index.html": {
+    "jsdoc/require-jsdoc": 39
+  },
+  "scripts/viewport.js": {
+    "jsdoc/require-jsdoc": 4
   },
   "tests/probes/stride-probe.mjs": {
     "max-lines-per-function": 2,

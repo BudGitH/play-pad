@@ -13,6 +13,7 @@
    * extra pass, no per-frame cost); unlit HUD markers and the sky shader are untouched.
    */
   const GRADE = 1.22;
+  /** Patch three.js's shared tone-mapping chunk once so every lit material gets the grade. */
   function patchGrade() {
     const chunk = THREE.ShaderChunk.tonemapping_fragment;
     if (chunk.indexOf("kqGrade") !== -1) return;

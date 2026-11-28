@@ -438,10 +438,16 @@ test("AC-P4: go here to the camel yard: the beacon shows; arriving near the big 
   expect((await map(page)).target).toBe("camel_yard");
   await page.keyboard.press("Escape");
   await step(page, 300);
+  // The target is the camel_yard place (the rides-lot gate once the animals are in, else the herd yard).
   const goto = await kq(page, () => window.KQ.Game.S.markerView.goto);
-  expect(goto).toMatchObject({ x: -225, z: -140 });
-  const yard = await kq(page, () => window.KQ.WorldParts.HolyCamels.YARD);
-  await kq(page, (y) => window.__kq.place((y.x0 + y.x1) / 2, y.z1 + 6, 0), yard);
+  const want = await kq(page, () => {
+    const poi = window.KQ.Game.S.world.pois.camel_yard;
+    const y = window.KQ.WorldParts.HolyCamels.YARD;
+    return poi ? { x: poi.pos.x, z: poi.pos.z } : { x: (y.x0 + y.x1) / 2, z: (y.z0 + y.z1) / 2 };
+  });
+  expect(goto.x).toBeCloseTo(want.x, 0);
+  expect(goto.z).toBeCloseTo(want.z, 0);
+  await kq(page, (w) => window.__kq.place(w.x + 2, w.z + 2, 0), want);
   await step(page, 300);
   expect(await target(page)).toBeNull();
   expect(errors, errors.join("\n")).toEqual([]);

@@ -86,8 +86,9 @@ async function pressToEnd() {
 test("Umrah: the dock button opens the rites; Next alone reaches done, in order, in ihram and out of it", async () => {
   await reset();
   await expect(page.locator("#kqDock-rites")).toBeVisible();
-  // no cast of neighbours here: no Missions button, and the mission card says how to begin a rite
-  await expect(page.locator("#kqDock-missions")).toHaveCount(0);
+  // the two Makkah guides give missions now (playability round), so the dock has Missions beside Umrah;
+  // with no mission under way the mission card still says how to begin a rite
+  await expect(page.locator("#kqDock-missions")).toBeVisible();
   await expect(page.getByText("Tap Umrah below to begin: Umrah, Hajj or Ziarah.")).toBeVisible();
   await openFromDock("umrah");
   expect((await ritual()).step).toBe("ihram");

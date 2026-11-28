@@ -1,20 +1,19 @@
 /* ============================================================================
  * FILE: holy-camel-mesh.js
- * PURPOSE: The low-poly camel and its handler as separate rigid geometries
- *          (KQ.WorldParts.CamelMesh): body (torso, hump, haunch, chest), neck + head, one leg
- *          (hip pivot), tail, a saddle blanket, and a robed handler. Each part is one merged,
- *          vertex-coloured geometry so the whole herd draws as a handful of InstancedMeshes
- *          whose per-camel matrices are driven by holy-camels.js.
+ * PURPOSE: The herd camel and its handler as separate rigid geometries
+ *          (KQ.WorldParts.CamelMesh): body (with the hump), neck + head, one leg (hip pivot),
+ *          tail, the Bedouin blanket, and a robed handler. The camel parts are the shared toy
+ *          camel (KQ.Figures.CamelToy, low detail) so the herd looks like the rideable camels.
+ *          Each part is one merged, vertex-coloured geometry so the whole herd draws as a
+ *          handful of InstancedMeshes whose per-camel matrices are driven by holy-camel-herd.js.
  * BUSINESS CONTEXT: owner feedback "show camels in the Makkah region"; the toy style is kept:
  *   soft ellipsoid volumes, simple colours, a long S-curved neck and a hump so it reads at once.
- * DEPENDENCIES: three.js only (plain geometry maths; no world state).
+ * DEPENDENCIES: three.js, js/figures/camel-mesh.js (KQ.Figures.CamelToy).
  * ========================================================================== */
 (function (KQ) {
   "use strict";
   const P = (KQ.WorldParts = KQ.WorldParts || {});
   const UP = new THREE.Vector3(0, 1, 0);
-  /** Hip height above the ground: the legs hang this far. */
-  const HIP_Y = 1.12;
 
   /** Paint a geometry one colour. */
   function paint(g, hex) {
@@ -45,86 +44,45 @@
     return paint(g.translate(mid.x, mid.y, mid.z), hex);
   }
 
-  /** Merge coloured, indexed or non-indexed geometries into one non-indexed geometry with normals. */
+  /**
+   * Merge coloured geometries into one non-indexed geometry, keeping each part's own (smooth)
+   * normals: recomputing them on a non-indexed merge would make every face flat and faceted.
+   */
   function merge(list) {
     const pos = [];
     const col = [];
+    const nor = [];
     const uv = [];
     list.forEach((g0) => {
       const g = g0.index ? g0.toNonIndexed() : g0;
       pos.push(...g.attributes.position.array);
       col.push(...g.attributes.color.array);
+      nor.push(...g.attributes.normal.array);
       uv.push(...g.attributes.uv.array);
     });
     const m = new THREE.BufferGeometry();
     m.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
     m.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
+    m.setAttribute("normal", new THREE.Float32BufferAttribute(nor, 3));
     m.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
-    m.computeVertexNormals();
+    list.forEach((g) => g.dispose());
     return m;
   }
 
-  const COAT = 0xcfa86e;
-  const COAT_DARK = 0xa98350;
-  const BELLY = 0xe3cfa2;
-  const HOOF = 0x6a5238;
+  /** Move a list of model-space parts so `pivot` is their origin. */
+  const at = (list, pv) => list.map((g) => g.translate(-pv[0], -pv[1], -pv[2]));
 
-  /** Torso, hump, haunch and chest (origin on the ground below the body centre; +z forward). */
-  function bodyGeo() {
-    return merge([
-      ell([0.52, 0.56, 1.18], [0, 1.38, 0], COAT),
-      ell([0.46, 0.34, 0.98], [0, 1.1, 0.02], BELLY),
-      ell([0.44, 0.5, 0.52], [0, 1.9, -0.12], COAT_DARK),
-      ell([0.5, 0.56, 0.55], [0, 1.4, -0.72], COAT),
-      ell([0.46, 0.58, 0.55], [0, 1.4, 0.8], COAT),
-      ell([0.3, 0.3, 0.3], [0, 1.1, 1.18], BELLY),
-    ]);
-  }
-
-  /** Neck and head, pivot at the neck base (0, 0, 0): a thick S-curve forward and up, a long face, small ears. */
-  function neckGeo() {
-    return merge([
-      limb([0, 0, 0], [0, 0.26, 0.4], 0.27, 0.2, COAT),
-      limb([0, 0.26, 0.4], [0, 0.62, 0.62], 0.2, 0.15, COAT),
-      limb([0, 0.62, 0.62], [0, 0.86, 0.7], 0.15, 0.14, COAT),
-      ell([0.16, 0.19, 0.32], [0, 0.92, 0.9], COAT, 0.7),
-      ell([0.12, 0.12, 0.2], [0, 0.78, 1.18], BELLY, 0.5),
-      ell([0.1, 0.05, 0.1], [0, 0.66, 1.26], 0xd9b88a, 0.5),
-      ell([0.05, 0.1, 0.06], [-0.14, 1.1, 0.78], COAT_DARK, -0.3),
-      ell([0.05, 0.1, 0.06], [0.14, 1.1, 0.78], COAT_DARK, -0.3),
-      ell([0.04, 0.04, 0.04], [-0.16, 0.99, 0.98], 0x1f1812),
-      ell([0.04, 0.04, 0.04], [0.16, 0.99, 0.98], 0x1f1812),
-    ]);
-  }
-
-  /** One leg hanging from the hip (0, 0, 0) down to -HIP_Y: thigh, knee, shin, foot pad. */
-  function legGeo() {
-    return merge([
-      limb([0, 0, 0], [0, -0.52, 0.02], 0.2, 0.13, COAT),
-      ell([0.14, 0.14, 0.14], [0, -0.56, 0.04], COAT_DARK),
-      limb([0, -0.56, 0.04], [0, -1.02, 0], 0.11, 0.09, COAT),
-      ell([0.17, 0.08, 0.22], [0, -HIP_Y + 0.08, 0.06], HOOF),
-    ]);
-  }
-
-  /** Tail, pivot at its root: a thin cord with a dark tuft. */
-  function tailGeo() {
-    return merge([
-      limb([0, 0, 0], [0, -0.62, -0.1], 0.05, 0.035, COAT_DARK),
-      ell([0.06, 0.12, 0.06], [0, -0.7, -0.11], 0x4a3a2a),
-    ]);
-  }
-
-  /** A woven saddle blanket with a coloured stripe and a rolled seat on the back (instance colour tints it). */
-  function saddleGeo() {
-    const box = (s, p, hex) =>
-      paint(new THREE.BoxGeometry(s[0], s[1], s[2]).translate(p[0], p[1], p[2]), hex);
-    return merge([
-      box([1.0, 0.07, 0.95], [0, 1.86, 0.34], 0xffffff),
-      box([1.04, 0.075, 0.2], [0, 1.865, 0.34], 0xb83a2e),
-      box([1.04, 0.075, 0.08], [0, 1.866, 0.66], 0x2a6a58),
-      box([0.5, 0.18, 0.4], [0, 1.99, 0.34], 0x8a5a38),
-    ]);
+  /** The herd's camel parts from the shared toy camel (KQ.Figures.CamelToy, low detail, untinted). */
+  function camelGeos() {
+    const T = KQ.Figures.CamelToy;
+    const p = T.parts("lo", 0xffffff);
+    return {
+      body: merge(p.body),
+      neck: merge(at(p.neck.concat(p.head), T.PIVOT.neck)),
+      leg: merge(at(p.legs[0], T.PIVOT.hips[0])),
+      tail: merge(at(p.tail, T.PIVOT.tail)),
+      saddle: merge(p.saddle),
+    };
   }
 
   /** A robed handler (about 1.4 m): white robe, head cloth with a dark band, arms, a staff. */
@@ -144,27 +102,15 @@
 
   /** All the parts, built once. */
   function parts() {
-    return P.cached("holyCamelParts", () => ({
-      body: bodyGeo(),
-      neck: neckGeo(),
-      leg: legGeo(),
-      tail: tailGeo(),
-      saddle: saddleGeo(),
-      handler: handlerGeo(),
-    }));
+    return P.cached("holyCamelParts", () => Object.assign(camelGeos(), { handler: handlerGeo() }));
   }
 
   /** Where each part pivots, relative to the camel's ground point: neck base, tail root, the four hips. */
-  const PIVOT = {
-    neck: [0, 1.58, 1.05],
-    tail: [0, 1.66, -1.26],
-    hips: [
-      [-0.3, HIP_Y, 0.8],
-      [0.3, HIP_Y, 0.8],
-      [-0.3, HIP_Y, -0.76],
-      [0.3, HIP_Y, -0.76],
-    ],
-  };
+  const PIVOT = (function () {
+    const T = KQ.Figures.CamelToy.PIVOT;
+    return { neck: T.neck, tail: T.tail, hips: T.hips };
+  })();
+  const HIP_Y = PIVOT.hips[0][1];
 
   P.CamelMesh = { parts, PIVOT, HIP_Y };
 })((window.KQ = window.KQ || {}));

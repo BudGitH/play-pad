@@ -2,7 +2,8 @@
 // features/kampung-quest-playability/requirements.md). Say hi (reaction + sound), mount a camel in Makkah,
 // it moves faster than running with moving legs and stays on the ground, Exit sets the hero down on free
 // ground, it will not enter the Haram, horses at the Makkah stable and ponies at the kampung pony ride can be
-// ridden, the POIs are on the map, and the low-tier draw calls stay under 400. The pure rules are unit-tested
+// ridden, the POIs are on the map, the low-tier draw calls stay under 400, and the models fit: hooves / pads
+// touch the ground (3 cm) standing and moving, the rider sits on the saddle (no gap over 5 cm). The pure rules are unit-tested
 // in tests/kampung-quest/mount.test.mjs. Pages run with `?still=1` (time moves only through __kq.step).
 // Run: npx playwright test tests/kampung-quest-mounts.spec.mjs --project=kampung-quest
 import { test, expect } from "@playwright/test";
@@ -69,6 +70,80 @@ async function rideFrom(page, id, [x, z, heading], ms) {
     },
     [id, x, z, heading, ms],
   );
+}
+
+/**
+ * Install two in-page measures on an animal `a` (window.__fit): `feet(a)` = the lowest skinned vertex
+ * of its mesh above its ground (hooves / pads), `gap(a)` = the rider's pelvis bottom above the saddle top
+ * straight under it (a ray down onto the animal's mesh).
+ */
+function installFit(page) {
+  return kq(page, () => {
+    const v = new THREE.Vector3();
+    const feet = (a) => {
+      const m = a.rig.mesh;
+      const pos = m.geometry.attributes.position;
+      m.updateMatrixWorld(true);
+      let low = Infinity;
+      for (let i = 0; i < pos.count; i += 1) {
+        m.boneTransform(i, v.fromBufferAttribute(pos, i));
+        low = Math.min(low, v.applyMatrix4(m.matrixWorld).y);
+      }
+      return low - a.y;
+    };
+    const gap = (a) => {
+      const P = window.KQ.Game.S.player;
+      P.group.updateMatrixWorld(true);
+      const box = new THREE.Box3().setFromBufferAttribute(P.rig.hips.geometry.attributes.position);
+      box.applyMatrix4(P.rig.hips.matrixWorld);
+      const c = P.rig.hips.getWorldPosition(new THREE.Vector3());
+      const ray = new THREE.Raycaster(c.clone().setY(c.y + 2), new THREE.Vector3(0, -1, 0));
+      const hit = ray.intersectObject(a.rig.mesh, false)[0];
+      return hit ? box.min.y - hit.point.y : 99;
+    };
+    window.__fit = { feet, gap };
+  });
+}
+
+/**
+ * Ride `id` from (x, z, heading) with the stick forward for 3 s, then let go, sampling feet and gap
+ * every 100 ms; `stand` = the feet before mounting. Model checks for "touches the ground" and "sits
+ * on the saddle, not floating or sunk in".
+ */
+async function fitWhileRiding(page, id, [x, z, heading]) {
+  await installFit(page);
+  return kq(
+    page,
+    ([who, px, pz, h]) => {
+      const K = window.__kq;
+      const G = window.KQ.Game;
+      const a = G.Mounts.byId(who);
+      const out = { stand: window.__fit.feet(a), feet: [], gap: [], gaits: [] };
+      K.mountAct("mount:ride:" + who);
+      K.step(200);
+      Object.assign(a.sim, { x: px, z: pz, heading: h, speed: 0 });
+      K.step(100);
+      G.Camera.state.yaw = h;
+      for (let i = 0; i < 40; i += 1) {
+        K.input("up", i < 30);
+        K.step(100);
+        out.feet.push(window.__fit.feet(a));
+        out.gap.push(window.__fit.gap(a));
+        out.gaits.push(a.sim.gait);
+      }
+      K.input("up", false);
+      return out;
+    },
+    [id, x, z, heading],
+  );
+}
+
+/** Expect the feet within 3 cm of the ground and the rider seated (no gap over 5 cm, not sunk in). */
+function expectFit(r) {
+  expect(Math.abs(r.stand)).toBeLessThan(0.03);
+  expect(Math.max(...r.feet.map(Math.abs))).toBeLessThan(0.03);
+  expect(Math.max(...r.gap)).toBeLessThan(0.05);
+  expect(Math.min(...r.gap)).toBeGreaterThan(-0.03);
 }
 
 /** Press Exit and let the animal stop; returns where the hero stands and whether that ground is free. */
@@ -232,6 +307,21 @@ test("ride a horse at the stable: about twice a run, trotting / cantering", asyn
   expect((await getDown(page)).free).toBe(true);
 });
 
+test("camel and horse: hooves / pads on the ground and the rider on the saddle, standing and moving", async ({
+  browser,
+}) => {
+  const page = await holy(browser);
+  test.setTimeout(120_000);
+  const camel = await fitWhileRiding(page, "camel_dune", [-276, -118, 0]);
+  expect(camel.gaits).toContain("pace");
+  expectFit(camel);
+  expect((await getDown(page)).free).toBe(true);
+  const horse = await fitWhileRiding(page, "horse_layla", [-276, -118, 0]);
+  expect(horse.gaits).toContain("canter");
+  expectFit(horse);
+  expect((await getDown(page)).free).toBe(true);
+});
+
 test("animals near the stable keep the low-tier draw calls under 400; far ones are not drawn", async ({
   browser,
 }) => {
@@ -288,6 +378,14 @@ test("greet and ride a pony, faster than running, and get down on free ground", 
   const r = await rideFrom(page, "pony_kiwi", [54, 36, -Math.PI / 2], 3000);
   expect(r.speed).toBeGreaterThan(RUN * 1.3);
   expect(r.legSpread).toBeGreaterThan(0.3);
+  expect((await getDown(page)).free).toBe(true);
+});
+
+test("pony: hooves on the ground and the rider on the saddle while riding", async ({ browser }) => {
+  const page = await kampung(browser);
+  await kq(page, () => window.__kq.place(60.8, 41.2, Math.PI / 2));
+  await step(page, 200);
+  expectFit(await fitWhileRiding(page, "pony_bintang", [54, 36, -Math.PI / 2]));
   expect((await getDown(page)).free).toBe(true);
 });
 

@@ -1,80 +1,45 @@
 /* ============================================================================
  * FILE: mount-rigs.js
- * PURPOSE: Makes and poses the rideable animals' meshes (KQ.Game.MountRigs): a camel rig built
- *          from the herd's own part geometry (holy-camel-mesh.js, so a ridden camel looks like
- *          the others) and a horse / pony rig from KQ.Figures.HorseMesh, each one skinned mesh
+ * PURPOSE: Makes and poses the rideable animals' meshes (KQ.Game.MountRigs): a camel rig from
+ *          KQ.Figures.CamelToy (the same toy camel the herd is instanced from, at full detail)
+ *          and a horse / pony rig from KQ.Figures.HorseMesh, each one skinned mesh
  *          (KQ.Figures.AnimalRig: one draw call). Poses: standing (breathing, head sway, tail
  *          swish), the "say hi" reaction (the head turns to the hero and nods), and the stride
  *          from KQ.Sim.Mount.stance while it moves (legs, body bob, head nod).
  * BUSINESS CONTEXT: AC-P5..P7 (a ridden animal walks / trots with moving legs; greeting gives a
  *   little reaction). Toy style, matching the herd and the cast.
- * DEPENDENCIES: KQ.Figures.AnimalRig, KQ.Figures.HorseMesh, KQ.WorldParts.CamelMesh / HolyCamels
- *   (fur material, coats), KQ.Sim.Mount.
+ * DEPENDENCIES: KQ.Figures.AnimalRig, CamelToy, HorseMesh, KQ.WorldParts.HolyCamels (coat
+ *   tints), KQ.Sim.Mount. The rig keeps the lowest foot on the ground (AnimalRig.groundDrop).
  * ========================================================================== */
 (function (KQ) {
   "use strict";
   const G = (KQ.Game = KQ.Game || {});
   const F = () => KQ.Figures;
   const W = () => KQ.WorldParts;
-  /** The rider's hip point on each kind (model space, before the rig's scale). */
-  const CAMEL_SEAT = { y: 2.16, z: 0.46 };
   const PONY_SCALE = 0.78;
   /** Where the hero's toy head looks from (the reaction turns the animal's head toward him). */
   const mats = {};
 
-  /** The camel's bone pivots from the herd's mesh (knees 0.56 m under the hips). */
-  function camelPivots() {
-    const pv = W().CamelMesh.PIVOT;
-    return {
-      body: [0, 1.2, 0],
-      neck: pv.neck,
-      tail: pv.tail,
-      hips: pv.hips,
-      knees: pv.hips.map((h) => [h[0], h[1] - 0.56, h[2] + 0.04]),
-    };
-  }
-
-  /** A camel as an AnimalRig spec: the herd's body, saddle, neck + head, tail and legs, in model space. */
-  function camelSpec() {
-    const parts = W().CamelMesh.parts();
-    const pv = camelPivots();
-    const at = (g, p) => g.clone().translate(p[0], p[1], p[2]);
-    const list = [
-      { geo: parts.body.clone(), bone: "body" },
-      { geo: parts.saddle.clone(), bone: "body" },
-      { geo: at(parts.neck, pv.neck), bone: "neck" },
-      { geo: at(parts.tail, pv.tail), bone: "tail" },
-    ];
-    F().AnimalRig.LEGS.forEach(function (k, i) {
-      const split = { y: pv.knees[i][1] + 0.02, bone: "knee" + k };
-      list.push({ geo: at(parts.leg, pv.hips[i]), bone: "hip" + k, split });
-    });
-    return { bones: F().AnimalRig.quadBones(pv), parts: list };
-  }
-
-  /** The material for a kind and coat, made once (camels share the herd's fur look, tinted). */
-  function material(kind, coat) {
-    const key = kind + ":" + coat;
-    if (mats[key]) return mats[key];
-    if (kind === "camel") {
-      const m = W().HolyCamels.furMaterial();
-      m.color.setHex(W().HolyCamels.COATS[coat] || 0xffffff);
-      mats[key] = m;
-    } else {
-      mats[key] = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.78 });
-    }
-    return mats[key];
+  /** The material for a kind, made once (vertex-coloured toy plastic with a soft sheen). */
+  function material(kind) {
+    if (!mats[kind])
+      mats[kind] = new THREE.MeshStandardMaterial({
+        vertexColors: true,
+        roughness: kind === "camel" ? 0.9 : 0.72,
+        envMapIntensity: 0.4,
+      });
+    return mats[kind];
   }
 
   /** Build the rig for a mount definition {kind, coat}: { mesh, bones, kind, scale, seat }. */
   function build(def) {
     const camel = def.kind === "camel";
-    const spec = camel ? camelSpec() : F().HorseMesh.spec(def.coat);
-    const rig = F().AnimalRig.build(spec, material(def.kind, def.coat));
+    const tint = camel ? W().HolyCamels.COATS[def.coat] : 0;
+    const spec = camel ? F().CamelToy.spec(tint) : F().HorseMesh.spec(def.coat, def.kind);
+    const rig = F().AnimalRig.build(spec, material(def.kind));
     rig.kind = def.kind;
     rig.scale = def.kind === "pony" ? PONY_SCALE : 1;
     rig.mesh.scale.setScalar(rig.scale);
-    rig.seat = camel ? CAMEL_SEAT : F().HorseMesh.SEAT;
     rig.mesh.name = "mount:" + def.id;
     rig.mesh.castShadow = true;
     return rig;
@@ -85,7 +50,7 @@
     const ph = t + a.seed;
     const camel = a.kind === "camel";
     return {
-      y: 0.01 * Math.sin(ph * 1.6),
+      y: 0.006 * Math.sin(ph * 1.6),
       pitch: 0,
       roll: 0,
       neckP: (camel ? 0.12 : 0.05) + 0.05 * Math.sin(ph * 0.7),
@@ -112,7 +77,7 @@
     const st = KQ.Sim.Mount.stance(a.sim);
     const camel = a.kind === "camel";
     return {
-      y: st.bob,
+      y: 0, // AnimalRig.pose keeps the lowest foot on the ground: the body rises and falls with the legs
       pitch: st.nod * 0.12,
       roll: camel ? 0.04 * Math.sin(a.sim.phase * Math.PI * 2) : 0,
       neckP: (camel ? 0.18 : 0.1) + st.nod,
@@ -129,8 +94,7 @@
     const moving = a.sim.speed > 0.15;
     let p = moving ? stridePose(a) : idlePose(a, t);
     if (a.hi > 0 && !moving) p = hiPose(p, a);
-    F().AnimalRig.pose(a.rig, p);
-    a.bob = p.y * a.rig.scale;
+    a.bob = F().AnimalRig.pose(a.rig, p) * a.rig.scale;
     const g = a.rig.mesh;
     g.position.set(a.sim.x, a.y, a.sim.z);
     g.rotation.y = a.sim.heading;

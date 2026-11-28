@@ -169,8 +169,7 @@
   function buildDock(on) {
     R.dockBtns = {};
     R.badge = U.el("i", { cls: "kq-badge", hidden: true, text: "" });
-    const haramain = KQ.region === "haramain";
-    const mis = haramain ? null : dockButton("missions", "Missions", "missions", on);
+    const mis = dockButton("missions", "Missions", "missions", on);
     if (mis) mis.appendChild(R.badge);
     // Umrah, Hajj and Ziarah live in one dock button, only in Makkah and Madinah
     const rites = KQ.region === "haramain" ? [dockButton("rites", "Umrah", "hand", on)] : [];

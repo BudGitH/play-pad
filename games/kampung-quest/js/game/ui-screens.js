@@ -48,11 +48,12 @@
     const activeId = sim.missions.active() && sim.missions.active().id;
     const paused = sim.missions.isPausedNow();
     const grid = U.el("div", { cls: "kq-grid kq-grid-missions" });
-    KQ.Sim.MISSIONS.forEach(function (m) {
+    const all = sim.missions.offered();
+    all.forEach(function (m) {
       const status = done.indexOf(m.id) !== -1 ? "done" : m.id === activeId ? "active" : "new";
       grid.appendChild(missionTile(m, status, paused));
     });
-    const left = KQ.Sim.MISSIONS.length - done.length;
+    const left = all.length - done.length;
     const msg =
       left === 0
         ? "All " + done.length + " missions done. Masya-Allah! New missions come tomorrow at 07:00."
@@ -64,7 +65,7 @@
     const box = U.el(
       "div",
       { cls: "kq-menu" },
-      G.UI.header("My missions · " + done.length + " of " + KQ.Sim.MISSIONS.length + " done", {
+      G.UI.header("My missions · " + done.length + " of " + all.length + " done", {
         extras: [read],
       }),
       note,

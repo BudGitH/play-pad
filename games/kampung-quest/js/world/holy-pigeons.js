@@ -102,6 +102,25 @@
     return birds;
   }
 
+  /** Every pigeon within `r` m of (x, z) takes off and flutters away (a world event); how many did. */
+  function burstBirds(birds, x, z, r) {
+    let n = 0;
+    birds.forEach(function (b, i) {
+      if (b.fly > 0 || Math.hypot(b.hx - x, b.hz - z) > r) return;
+      const a = (i * 2.399) % 6.283;
+      const away = {
+        fly: FLY_S,
+        fx: b.hx,
+        fz: b.hz,
+        tx: b.hx + Math.cos(a) * 6,
+        tz: b.hz + Math.sin(a) * 6,
+      };
+      Object.assign(b, away);
+      n += 1;
+    });
+    return n;
+  }
+
   /** Build the flocks: returns { mesh, update(dt, hero) }. */
   function build(group, mats) {
     const birds = makeBirds();
@@ -120,6 +139,7 @@
     return {
       mesh,
       count: birds.length,
+      burst: (x, z, r) => burstBirds(birds, x, z, r),
       update(dt, hero) {
         t += dt;
         birds.forEach(function (b, i) {

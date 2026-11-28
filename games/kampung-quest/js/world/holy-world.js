@@ -181,6 +181,12 @@
     };
   }
 
+  /** The lights the game's tier code toggles (sun, sky, street lamps, the hall light). */
+  function lightsOf(s) {
+    const street = s.lamps.map((p) => ({ pos: p }));
+    return { sun: s.rig.sun, hemi: s.rig.hemi, street, hall: s.hall[0], roaming: [] };
+  }
+
   /** The contract object the game uses (same shape as KQ.World.build's result). */
   function runtime(s) {
     const api = {
@@ -190,13 +196,7 @@
       colliders: s.colliders,
       walkGraph: s.nav.graph,
       interactables: s.interactables,
-      lights: {
-        sun: s.rig.sun,
-        hemi: s.rig.hemi,
-        street: s.lamps.map((p) => ({ pos: p })),
-        hall: s.hall[0],
-        roaming: [],
-      },
+      lights: lightsOf(s),
       heightAt: s.heightAt,
       qualityHints: (tier) => KQ.World.HINTS[tier || s.tier],
       update(dt, clock) {
@@ -220,8 +220,11 @@
       pigeons: s.pigeons.count,
       camels: () => P.CamelHerd.describe(s.herd),
     };
-    // poisOf: either city's POI table (the full map shows both cities)
-    return Object.assign(api, sunApi(s), { poisOf: (c) => s.nav.pois[c] });
+    // poisOf: either city's POI table (the full map shows both cities); burstPigeons: the pigeon-flock event
+    return Object.assign(api, sunApi(s), {
+      poisOf: (c) => s.nav.pois[c],
+      burstPigeons: (x, z, r) => s.pigeons.burst(x, z, r),
+    });
   }
 
   /** The internal state object the runtime closes over. */

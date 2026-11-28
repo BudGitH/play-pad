@@ -143,7 +143,14 @@
     U.clear(R.chipIc).appendChild(iconEl);
   }
 
-  const CHIP_VERB = { talk: "Talk to ", goto: "Go to " };
+  const CHIP_VERB = {
+    talk: "Talk to ",
+    goto: "Go to ",
+    ride: "",
+    photo: "",
+    greet: "",
+    escort: "",
+  };
 
   /** Set the phone's one-line mission chip to the current step (or 'Waiting while we pray'). */
   function chipFor(mission, prog) {
@@ -215,7 +222,7 @@
 
   /** Redraw the mission card only when its signature (mission, step, count, paused) changes; peek only when the mission or step changes. */
   function renderMission(sim) {
-    if (KQ.region === "haramain") return renderRites(sim);
+    if (KQ.region === "haramain" && !sim.missions.active()) return renderRites(sim);
     const R = H().refs;
     const prog = sim.missions.progress();
     const mission = sim.missions.active();

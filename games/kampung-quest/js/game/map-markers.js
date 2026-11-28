@@ -15,7 +15,7 @@
   "use strict";
   const G = (KQ.Game = KQ.Game || {});
   const COLORS = Object.assign(
-    { objective: "#ff6b85", giver: "#f4c26b", goto: "#38bdf8" },
+    { objective: "#ff6b85", giver: "#f4c26b", goto: "#38bdf8", event: "#b66bff" },
     Object.keys(KQ.PLACES.KINDS).reduce(function (o, k) {
       o[k] = KQ.PLACES.KINDS[k].color;
       return o;
@@ -86,6 +86,8 @@
     const t = G.MissionFlow.targetPos();
     if (t)
       out.push(mark("objective", "pin", t, { big: true, arrow: true, prio: 0, label: "Mission" }));
+    const ev = G.WorldEvents && G.WorldEvents.blip();
+    if (ev) out.push(mark("event", "star", ev, { prio: 1, label: ev.label, ink: "#ffffff" }));
     return out.concat(places(s), givers(s), target(s));
   }
 

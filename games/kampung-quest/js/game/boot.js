@@ -123,6 +123,7 @@
     s.crowd = G.Crowd.create(s.scene, s.world, s.npcs, s.renderer, s.camera);
     s.markers = G.Markers.create(s.scene);
     s.collect = G.Collectibles.create(s.scene, s.world);
+    G.Vehicles.prepare(G.Defer); // queued, drained behind the loading bar (before the crowd's first prune)
     G.Loop.studioShine(s);
     BU().setStep(1, "done");
     BU().setProgress(0.5);

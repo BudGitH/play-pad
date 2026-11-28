@@ -107,7 +107,7 @@ function busShot() {
   window.__kq.place(b.x - 7.6, 4.4, Math.PI / 2);
   G.Camera.shot({
     target: { x: b.x - 2, y: 0, z: b.z },
-    yaw: 2.1,
+    yaw: 1.85,
     pitch: 0.1,
     dist: 13,
     lift: 1.4,
@@ -203,6 +203,28 @@ if (shots) {
     await page.evaluate(() => window.KQ.Game.Vehicles.press("vehicle:exit"));
     await page.evaluate(() => window.__kq.step(1500));
   }
+}
+if (process.argv.includes("street")) {
+  await page.evaluate(() => {
+    const G = window.KQ.Game;
+    G.Camera.clearShot();
+    G.Vehicles.returnAll();
+    window.__kq.place(-14, 27, 0);
+    window.__kq.step(300);
+    G.Camera.shot({
+      target: { x: -14, y: 0, z: 34 },
+      yaw: 2.6,
+      pitch: 0.42,
+      dist: 15,
+      lift: 0.5,
+      rate: 60,
+    });
+    window.__kq.step(900);
+  });
+  await page.screenshot({
+    path: "features/kampung-quest-playability/shots/vehicles-sg-street.png",
+  });
+  console.log("shot street");
 }
 if (process.argv.includes("bus")) {
   const at = await page.evaluate(busShot);

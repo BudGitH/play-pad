@@ -81,7 +81,7 @@
   /** The pair of wheels of an axle as one mesh (cached per radius, width and track). */
   function axleGeo(x, r, width) {
     const w = wheelGeos();
-    const key = [x, r, width].map((n) => n.toFixed(3)).join();
+    const key = [x, r, width, F.VehicleParts.detail()].map((n) => n.toFixed(3)).join();
     if (!w.axles[key]) w.axles[key] = F.VehicleParts.carAxle(r, width, x);
     return w.axles[key];
   }
@@ -89,7 +89,7 @@
   /** One wheel of a four-wheeler (cached per radius and width). */
   function wheelGeo(r, width) {
     const w = wheelGeos();
-    const key = "w" + r.toFixed(3) + width.toFixed(3);
+    const key = "w" + [r, width, F.VehicleParts.detail()].map((n) => n.toFixed(3)).join();
     if (!w.axles[key]) w.axles[key] = F.VehicleParts.carWheel(r, width);
     return w.axles[key];
   }
@@ -134,24 +134,41 @@
 
   /** Build a car (one of the five styles). */
   function buildCar(hex, opts) {
-    return buildFourWheel("car", hex, Cars().build(opts.style, opts.lhd));
+    const low = Boolean(opts.low);
+    const old = F.VehicleParts.setDetail(low ? 0.55 : 1);
+    const v = buildFourWheel("car", hex, Cars().build(opts.style, opts.lhd, low), low);
+    F.VehicleParts.setDetail(old);
+    return v;
+  }
+
+  /** The body's material: the paint colour, or white over the baked two-tone livery of a taxi. */
+  function bodyMat(hex, geo) {
+    if (!geo.livery) return paintMat(hex);
+    return new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      vertexColors: true,
+      roughness: 0.3,
+      metalness: 0.2,
+    });
   }
 
   /**
    * Build a four-wheeler from its geometry set: body (painted), trim, glass, lamps, an optional roof (it fades
    * while the hero drives), the steering wheel when it has a driver's seat, and the wheels.
    */
-  function buildFourWheel(kind, hex, geo) {
+  function buildFourWheel(kind, hex, geo, low) {
     const m = mats();
     const group = new THREE.Group();
     group.name = "vehicle-" + kind;
-    group.add(mesh(geo.body, paintMat(hex), "body"), mesh(geo.trim, m.trim, "trim", !geo.lean));
+    // on the low tier only the body casts a shadow (the trim's would cost a shadow-pass call per car)
+    group.add(mesh(geo.body, bodyMat(hex, geo), "body"));
+    group.add(mesh(geo.trim, m.trim, "trim", !geo.lean && !low));
     if (geo.glass) group.add(mesh(geo.glass, m.glass, "glass", false));
     if (geo.lamp) group.add(mesh(geo.lamp, m.lamp, "lamps", false));
     const v = record(kind, group, geo.style || kind);
     if (geo.roof) {
-      v.roofMat = paintMat(hex);
-      group.add(mesh(geo.roof, v.roofMat, "roof"));
+      v.roofMat = paintMat(geo.livery ? geo.livery.upper : hex);
+      group.add(mesh(geo.roof, v.roofMat, "roof", !low));
     }
     if (geo.driverX !== undefined) {
       v.seatX = geo.driverX;
@@ -188,7 +205,7 @@
     x.fillStyle = "#111";
     x.fillRect(0, 0, 256, 48);
     x.fillStyle = "#ffb627";
-    x.font = "bold 28px sans-serif";
+    x.font = "bold 25px sans-serif";
     x.textAlign = "center";
     x.textBaseline = "middle";
     x.fillText("Kampung 21", 128, 25);
@@ -221,11 +238,11 @@
   }
 
   /** Build a two-wheeler from its geometry set: frame, trim, (lamps), the rear wheel and a turning front end. */
-  function buildTwoWheel(kind, hex, geo) {
+  function buildTwoWheel(kind, hex, geo, low) {
     const m = mats();
     const group = new THREE.Group();
     group.name = "vehicle-" + kind;
-    group.add(mesh(geo.frame, paintMat(hex), "frame"), mesh(geo.trim, m.trim, "trim"));
+    group.add(mesh(geo.frame, paintMat(hex), "frame"), mesh(geo.trim, m.trim, "trim", !low));
     if (geo.lamp) group.add(mesh(geo.lamp, m.lamp, "lamps", false));
     const v = record(kind, group, kind);
     addWheel(v, group, geo.wheel, [0, geo.wheelY, geo.rearZ], false);
@@ -266,12 +283,12 @@
     const o = opts || {};
     if (kind === "car") return buildCar(hex === undefined ? 0xd0453a : hex, o);
     if (kind === "lorry")
-      return buildFourWheel(kind, hex === undefined ? 0x2f5fa8 : hex, Big().lorry(o.lhd));
+      return buildFourWheel(kind, hex === undefined ? 0x2f5fa8 : hex, Big().lorry(o.lhd), o.low);
     if (kind === "bus") return buildBus(hex === undefined ? 0xf2f4f0 : hex);
     if (kind === "bike")
-      return buildTwoWheel(kind, hex === undefined ? 0x2f8f5b : hex, TW().bike());
+      return buildTwoWheel(kind, hex === undefined ? 0x2f8f5b : hex, TW().bike(), o.low);
     if (kind === "moto")
-      return buildTwoWheel(kind, hex === undefined ? 0xd0453a : hex, TW().moto());
+      return buildTwoWheel(kind, hex === undefined ? 0xd0453a : hex, TW().moto(), o.low);
     return null;
   }
 

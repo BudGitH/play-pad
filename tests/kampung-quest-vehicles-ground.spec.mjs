@@ -14,9 +14,13 @@ import { test, expect } from "@playwright/test";
 const BASE = "/games/kampung-quest/index.html?still=1&autoq=0&q=low";
 const kq = (page, fn, arg) => page.evaluate(fn, arg);
 
+/** How many vehicles were already placed when the loading screen finished (before Start), per region. */
+const placedAtLoad = {};
+
 async function boot(page, region) {
   await page.goto(BASE + (region === "haramain" ? "&region=haramain" : ""));
   await expect.poll(() => kq(page, () => window.__kq?.loaded), { timeout: 90_000 }).toBe(true);
+  placedAtLoad[region] = await kq(page, () => window.__kq.vehicles().list.length);
   await page.locator("#kq button.primary").first().click();
   await expect.poll(() => kq(page, () => window.__kq.ready), { timeout: 30_000 }).toBe(true);
   await kq(page, () => window.__kq.step(300));
@@ -218,8 +222,49 @@ function camCheck(G, me, out) {
   out.camDist = Math.max(out.camDist, d);
 }
 
+/**
+ * Browser-side: every parked car's roof is drawn, solid and as long as the cabin top; mounting one car fades only
+ * that car's roof, getting out makes it solid again. Returns the counts.
+ */
+function roofCheck() {
+  const G = window.KQ.Game;
+  const roofs = () => {
+    const out = [];
+    G.S.scene.traverse((m) => m.name === "roof" && out.push(m));
+    return out;
+  };
+  const solid = (m) => m.visible && m.material.opacity === 1 && !m.material.transparent;
+  const length = (m) => {
+    m.geometry.computeBoundingBox();
+    return m.geometry.boundingBox.max.z - m.geometry.boundingBox.min.z;
+  };
+  G.Vehicles.returnAll();
+  const all = roofs();
+  const parked = { roofs: all.length, solid: all.filter(solid).length };
+  parked.shortest = Math.min(...all.map(length));
+  const car = G.Vehicles.debug().list.find((v) => v.kind === "car");
+  G.Vehicles.press("vehicle:" + car.id);
+  window.__vg.frames(3);
+  const driving = { faded: roofs().filter((m) => !solid(m)).length };
+  G.Vehicles.press("vehicle:exit");
+  window.__vg.frames(60);
+  const after = { solid: roofs().filter(solid).length };
+  return { parked, driving, after };
+}
+
 /** AC-P11 in the kampung: parked and driven vehicles stand on the ground. */
 function groundTests(getPage) {
+  test("vehicles are placed while loading (before Start), and every parked car has a solid roof", async () => {
+    expect(placedAtLoad.kampung, "placed behind the loading bar").toBeGreaterThan(20);
+    const r = await kq(getPage(), roofCheck);
+    const why = JSON.stringify(r);
+    expect(r.parked.roofs, why).toBeGreaterThanOrEqual(10);
+    expect(r.parked.solid, "every parked roof is solid: " + why).toBe(r.parked.roofs);
+    expect(r.parked.shortest, "each roof covers the cabin top: " + why).toBeGreaterThan(0.9);
+    expect(r.driving.faded, "only the driven car's roof fades: " + why).toBe(1);
+    expect(r.after.solid, "solid again once parked: " + why).toBe(r.parked.roofs);
+  });
+
   test("AC-P11: every parked vehicle rests its wheels on the ground (within 3 cm)", async () => {
     const rows = await kq(getPage(), parkedGaps);
     expect(rows.length).toBeGreaterThan(20);

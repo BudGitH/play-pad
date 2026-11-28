@@ -110,6 +110,20 @@
     },
   };
   STYLES.taxi = Object.assign({}, STYLES.sedan, { sign: true });
+  /** The kampung taxi's plain two-tone livery (no operator's name or colours): teal lower body, white upper. */
+  const TAXI_LIVERY = { lower: "#1f7a8c", upper: "#f4f4f0" };
+  /**
+   * Number plates. Singapore (LTA): white characters on black front and rear, or the "Euro" option of black on
+   * white at the front and black on yellow at the rear, in the pattern S + 2 letters, a number, a check letter
+   * (features/kampung-quest-playability/sg-cars-reference.md). Makkah / Madinah cars get a plain white plate.
+   */
+  const PLATES = {
+    black: { front: ["#141516", "#f2f2f0"], rear: ["#141516", "#f2f2f0"] },
+    euro: { front: ["#f4f4f0", "#141516"], rear: ["#f2c230", "#141516"] },
+    plain: { front: ["#f4f4f0", "#23252b"], rear: ["#f4f4f0", "#23252b"] },
+  };
+  /** Which Singapore plate each style wears (both are common; a fixed choice keeps the geometry shared). */
+  const SG_PLATE = { hatch: "euro", sedan: "black", taxi: "black", suv: "euro", mpv: "black" };
   const cache = {};
   const lerp = (a, b, t) => a + (b - a) * t;
 
@@ -122,21 +136,28 @@
     });
   }
 
-  /** The body's side view: rounded nose, crowned bonnet, beltline, sloping boot, rounded tail, arches. */
+  /**
+   * The body's side view: a bumper with a lip, an upright nose with a small radius, a flat bonnet rising
+   * gently to the windscreen, the beltline, a straight boot deck, a squared-off tail, and the wheel arches.
+   */
   function tubShape(s) {
     const p = new THREE.Shape();
-    p.moveTo(s.zf - 0.14, SILL);
-    p.quadraticCurveTo(s.zf + 0.01, SILL, s.zf + 0.01, SILL + 0.16);
-    p.lineTo(s.zf, s.hoodTip - 0.08);
-    p.quadraticCurveTo(s.zf - 0.01, s.hoodLead, s.zf - 0.26, s.hoodLead + 0.02);
-    p.quadraticCurveTo(lerp(s.zf, s.A, 0.5), s.belt + 0.06, s.A, s.belt);
+    p.moveTo(s.zf - 0.1, SILL);
+    p.quadraticCurveTo(s.zf + 0.03, SILL, s.zf + 0.03, SILL + 0.1);
+    p.lineTo(s.zf + 0.03, SILL + 0.2);
+    p.lineTo(s.zf - 0.005, SILL + 0.23);
+    p.lineTo(s.zf, s.hoodTip - 0.05);
+    p.quadraticCurveTo(s.zf, s.hoodLead, s.zf - 0.12, s.hoodLead + 0.005);
+    p.lineTo(s.A, s.belt);
     p.lineTo(s.D, s.belt);
-    p.quadraticCurveTo(lerp(s.D, s.zr, 0.6), s.tail + 0.03, s.zr + 0.16, s.tail);
-    p.quadraticCurveTo(s.zr - 0.01, s.tail - 0.01, s.zr - 0.01, s.tail - 0.16);
-    p.lineTo(s.zr - 0.01, SILL + 0.14);
-    p.quadraticCurveTo(s.zr - 0.01, SILL, s.zr + 0.13, SILL);
+    p.lineTo(s.zr + 0.12, s.tail);
+    p.quadraticCurveTo(s.zr, s.tail, s.zr, s.tail - 0.1);
+    p.lineTo(s.zr, SILL + 0.23);
+    p.lineTo(s.zr - 0.03, SILL + 0.2);
+    p.lineTo(s.zr - 0.03, SILL + 0.1);
+    p.quadraticCurveTo(s.zr - 0.03, SILL, s.zr + 0.1, SILL);
     bottomEdge(p, s);
-    p.lineTo(s.zf - 0.14, SILL);
+    p.lineTo(s.zf - 0.1, SILL);
     return p;
   }
 
@@ -145,10 +166,10 @@
     const p = new THREE.Shape();
     const y0 = s.belt - 0.02;
     p.moveTo(s.A, y0);
-    p.lineTo(lerp(s.A, s.B, 0.7), lerp(y0, s.roof, 0.7));
-    p.quadraticCurveTo(s.B, s.roof, s.B - 0.26, s.roof + 0.01);
-    p.quadraticCurveTo((s.B + s.C) / 2, s.roof + 0.05, s.C + 0.26, s.roof + 0.01);
-    p.quadraticCurveTo(s.C, s.roof, lerp(s.C, s.D, 0.3), lerp(s.roof, y0, 0.3));
+    p.lineTo(lerp(s.A, s.B, 0.86), lerp(y0, s.roof, 0.86));
+    p.quadraticCurveTo(s.B, s.roof, s.B - 0.14, s.roof + 0.005);
+    p.quadraticCurveTo((s.B + s.C) / 2, s.roof + 0.03, s.C + 0.14, s.roof + 0.005);
+    p.quadraticCurveTo(s.C, s.roof, lerp(s.C, s.D, 0.15), lerp(s.roof, y0, 0.15));
     p.lineTo(s.D, y0);
     p.lineTo(s.A, y0);
     return p;
@@ -162,61 +183,95 @@
     const mid = (s.zf + s.zr) / 2;
     const half = (s.zf - s.zr) / 2;
     return (y, z) =>
-      (1 - 0.08 * P.smooth(half - 0.6, half, Math.abs(z - mid))) *
-      (1 - 0.05 * P.smooth(s.belt - 0.18, s.belt + 0.04, y));
+      (1 - 0.05 * P.smooth(half - 0.45, half, Math.abs(z - mid))) *
+      (1 - 0.035 * P.smooth(s.belt - 0.1, s.belt + 0.03, y));
   }
 
-  /** The roof panel on its own (the roof fades while somebody is driving so the hero shows). */
+  /**
+   * The roof panel on its own (it fades while somebody drives so the hero shows; parked it is solid): the cabin's
+   * own outline a touch larger, cut flat 8 cm under the roof line, so it caps the glass exactly.
+   */
   function roofGeo(s) {
-    const cw = (s.w - 0.2) * 0.86;
-    const p = new THREE.Shape();
-    const [zf, zr] = [s.B - 0.2, s.C + 0.2];
-    p.moveTo(zf, s.roof + 0.0);
-    p.quadraticCurveTo((zf + zr) / 2, s.roof + 0.08, zr, s.roof);
-    p.lineTo(zr, s.roof + 0.03);
-    p.quadraticCurveTo((zf + zr) / 2, s.roof + 0.11, zf, s.roof + 0.03);
-    p.lineTo(zf, s.roof);
-    return P.smoothed(P.sideShape(p, cw + 0.06, WHITE, 0.025, 8, 3), 50);
+    const g = P.squeeze(P.sideShape(cabinShape(s), s.w - 0.2, WHITE, 0.05, 8, 2), cabinK(s));
+    const pos = g.attributes.position;
+    const cut = s.roof - 0.08;
+    const [zr, zf] = cutSpan(s, cut);
+    for (let i = 0; i < pos.count; i += 1) {
+      if (pos.getY(i) >= cut) continue;
+      pos.setY(i, cut);
+      pos.setZ(i, Math.max(zr, Math.min(zf, pos.getZ(i))));
+    }
+    return P.smoothed(g, 40);
+  }
+
+  /**
+   * Where the cabin's outline crosses height y (rear z, front z), on its windscreen and rear-glass lines,
+   * plus the bevel: the roof cap is the cabin above y, so points below are pulled onto that line, not ahead of it.
+   */
+  function cutSpan(s, y) {
+    const y0 = s.belt - 0.02;
+    const at = (z0, z1, ya, yb) => z0 + (z1 - z0) * ((y - ya) / (yb - ya));
+    const front = at(s.A, lerp(s.A, s.B, 0.86), y0, lerp(y0, s.roof, 0.86));
+    const rear = at(s.D, lerp(s.C, s.D, 0.15), y0, lerp(s.roof, y0, 0.15));
+    return [rear - 0.05, front + 0.05];
   }
 
   /** The painted (tinted) parts: the curved body, its pillars (A, B, C) leaning in with the glass. */
-  function bodyParts(s) {
+  function bodyParts(s, livery) {
     const cw = s.w - 0.2;
     const top = (cw / 2) * 0.87;
-    const tub = P.squeeze(P.sideShape(tubShape(s), s.w, WHITE, 0.06, 8, 3), bodyK(s));
-    const parts = [P.smoothed(tub, 42)];
+    const tub = P.squeeze(P.sideShape(tubShape(s), s.w, WHITE, 0.035, 8, 2), bodyK(s));
+    const parts = [P.smoothed(tub, 34)];
     [-1, 1].forEach(function (k) {
       const x = (k * cw) / 2;
       parts.push(P.rod([x, s.belt, s.A], [k * top, s.roof - 0.03, s.B - 0.06], 0.045, WHITE));
       parts.push(P.rod([k * top, s.roof - 0.03, s.C + 0.08], [x, s.belt, s.D], 0.07, WHITE));
       parts.push(P.rod([x, s.belt, -0.45], [k * top, s.roof - 0.02, -0.45], 0.04, WHITE));
     });
-    return G.merge(parts);
+    const g = G.merge(parts);
+    return livery ? twoTone(g, s.belt - 0.06, livery) : g;
+  }
+
+  /** Bake a two-tone livery into the body's vertex colours: `lower` under height y, `upper` above it. */
+  function twoTone(g, y, livery) {
+    const lo = new THREE.Color(livery.lower);
+    const hi = new THREE.Color(livery.upper);
+    const pos = g.attributes.position;
+    const col = g.attributes.color;
+    for (let i = 0; i < pos.count; i += 1) {
+      const c = pos.getY(i) < y ? lo : hi;
+      col.setXYZ(i, c.r, c.g, c.b);
+    }
+    return g;
   }
 
   /** Front and rear: bumpers with a dark lower lip, grille with a chrome bar, intake, fog lamps' bezels, plates. */
-  function endsTrim(s) {
+  function endsTrim(s, scheme) {
     const parts = [
-      P.block(s.w * 0.92, 0.07, 0.14, [0, 0.25, s.zf - 0.06], BLACK),
-      P.block(s.w * 0.92, 0.07, 0.14, [0, 0.25, s.zr + 0.06], BLACK),
+      P.block(s.w * 0.9, 0.05, 0.1, [0, SILL + 0.015, s.zf + 0.0], BLACK),
+      P.block(s.w * 0.9, 0.05, 0.1, [0, SILL + 0.015, s.zr - 0.0], BLACK),
       P.block(s.w * 0.36, 0.12, 0.06, [0, lampY(s), s.zf + 0.01], BLACK),
       P.block(s.w * 0.36, 0.02, 0.065, [0, lampY(s) + 0.03, s.zf + 0.014], CHROME),
       P.block(s.w * 0.36, 0.02, 0.065, [0, lampY(s) - 0.03, s.zf + 0.014], CHROME),
       P.drum("z", 0.035, 0.14, [0.5, 0.27, s.zr - 0.04], "#9aa0a8", 8),
     ];
-    parts.push(...plate(s.zf + 0.03, 0.31, 1), ...plate(s.zr - 0.02, 0.46, -1));
+    parts.push(...plate(s.zf + 0.045, SILL + 0.15, 1, scheme.front));
+    parts.push(...plate(s.zr - 0.045, SILL + 0.15, -1, scheme.rear));
     return parts;
   }
 
   /** The headlamps' and grille's height: on the upright part of the nose, below its rounded top. */
   const lampY = (s) => s.hoodTip - 0.13;
 
-  /** A number plate on the front (dir 1) or the rear (dir -1) face at height y. */
-  function plate(z, y, dir) {
-    const parts = [P.block(0.44, 0.1, 0.03, [0, y, z], "#f4f4f0")];
-    for (let i = -2; i <= 2; i += 1) {
-      parts.push(P.box(0.035, 0.055, 0.012, [i * 0.075, y, z + dir * 0.016], "#23252b"));
-    }
+  /**
+   * A number plate on the front (dir 1) or the rear (dir -1) face at height y, in [background, characters]:
+   * Singapore's pattern, three letters, a gap, four digits, a gap, a check letter (made-up, as bars).
+   */
+  function plate(z, y, dir, colours) {
+    const parts = [P.block(0.5, 0.11, 0.03, [0, y, z], colours[0])];
+    [-0.2, -0.165, -0.13, -0.06, -0.025, 0.01, 0.045, 0.12].forEach((x) =>
+      parts.push(P.box(0.024, 0.06, 0.008, [x * dir, y, z + dir * 0.017], colours[1])),
+    );
     return parts;
   }
 
@@ -313,9 +368,9 @@
   }
 
   /** All the dark, vertex-coloured trim in one geometry. */
-  function trimGeo(s, driverX) {
-    const parts = endsTrim(s).concat(archTrim(s), sideTrim(s, -1), sideTrim(s, 1));
-    return G.merge(parts.concat(insideTrim(s, driverX)));
+  function trimGeo(s, driverX, scheme, extra) {
+    const parts = endsTrim(s, scheme).concat(archTrim(s), sideTrim(s, -1), sideTrim(s, 1));
+    return G.merge(parts.concat(insideTrim(s, driverX), extra || []));
   }
 
   /** One side's lamps: a wrap-round headlamp in a chrome bezel, an indicator, a wrap-round tail lamp, a fog lamp. */
@@ -335,41 +390,87 @@
     ];
   }
 
-  /** The lamps (drawn unlit so they glow a little at dusk) and the taxi sign. */
-  function lampGeo(s) {
+  /** The lamps' pieces (drawn unlit so they glow a little at dusk) and the taxi's roof sign. */
+  function lampParts(s) {
     const parts = sideLamps(s, -1).concat(sideLamps(s, 1));
-    if (s.sign)
-      parts.push(P.block(0.5, 0.15, 0.22, [0, s.roof + 0.14, (s.B + s.C) / 2], "#fff1b0"));
-    return G.merge(parts);
+    if (!s.sign) return parts;
+    const z = (s.B + s.C) / 2;
+    const y = s.roof + 0.16;
+    parts.push(P.block(0.5, 0.15, 0.2, [0, y, z], "#fff1b0"));
+    parts.push(...word([0, y, z + 0.102], 1), ...word([0, y, z - 0.102], -1));
+    return parts;
+  }
+
+  /** Strokes of each letter of "TAXI": [x, y, width, height, tilt] in a letter's own frame (metres). */
+  const LETTERS = [
+    [
+      [0, 0.04, 0.075, 0.016, 0],
+      [0, 0, 0.016, 0.095, 0],
+    ],
+    [
+      [-0.019, 0, 0.015, 0.1, -0.36],
+      [0.019, 0, 0.015, 0.1, 0.36],
+      [0, -0.012, 0.04, 0.013, 0],
+    ],
+    [
+      [0, 0, 0.015, 0.105, 0.6],
+      [0, 0, 0.015, 0.105, -0.6],
+    ],
+    [[0, 0, 0.016, 0.095, 0]],
+  ];
+
+  /** The word "TAXI" in dark strokes on a face of the sign (dir 1 front, -1 back, read the right way round). */
+  function word(at, dir) {
+    const out = [];
+    LETTERS.forEach(function (strokes, i) {
+      const cx = at[0] + dir * (i - 1.5) * 0.1;
+      strokes.forEach(function (st) {
+        const g = P.paint(new THREE.BoxGeometry(st[2], st[3], 0.008), "#1b1c20");
+        out.push(G.place(g, [cx + dir * st[0], at[1] + st[1], at[2]], [0, 0, dir * st[4]]));
+      });
+    });
+    return out;
   }
 
   /**
    * Build (and cache) the geometries of a style; an unknown style is a sedan. `lhd` puts the driver on the left
    * (x > 0), else on the right (Singapore).
    */
-  function build(style, lhd) {
+  function build(style, lhd, low) {
     const name = STYLES[style] ? style : "sedan";
-    const key = name + (lhd ? "-l" : "-r");
+    const key = name + (lhd ? "-l" : "-r") + (low ? "-low" : "");
     if (cache[key]) return cache[key];
+    const old = P.setDetail(low ? 0.55 : 1);
+    cache[key] = assemble(name, lhd, low);
+    P.setDetail(old);
+    return cache[key];
+  }
+
+  /**
+   * The geometry set of a style. Low tier: fewer segments everywhere and the lamps merged into the trim (one
+   * draw call less per car). Singapore cars wear Singapore plates; a kampung taxi wears the two-tone livery.
+   */
+  function assemble(name, lhd, low) {
     const s = STYLES[name];
     const driverX = lhd ? DRIVER_X : -DRIVER_X;
-    cache[key] = {
+    const livery = s.sign && !lhd ? TAXI_LIVERY : null;
+    const scheme = PLATES[lhd ? "plain" : SG_PLATE[name]];
+    const lamps = lampParts(s);
+    const glass = P.squeeze(P.sideShape(cabinShape(s), s.w - 0.24, WHITE, 0.04, 8, 2), cabinK(s));
+    return {
       style: name,
       driverX,
-      body: bodyParts(s),
+      livery,
+      body: bodyParts(s, livery),
       roof: roofGeo(s),
-      trim: trimGeo(s, driverX),
-      glass: P.smoothed(
-        P.squeeze(P.sideShape(cabinShape(s), s.w - 0.24, WHITE, 0.04, 8, 3), cabinK(s)),
-        45,
-      ),
-      lamp: lampGeo(s),
+      trim: trimGeo(s, driverX, scheme, low ? lamps : null),
+      glass: P.smoothed(glass, 45),
+      lamp: low ? null : G.merge(lamps),
       axles: [s.axF, s.axR],
       width: s.w,
       length: s.zf - s.zr,
       mid: (s.zf + s.zr) / 2,
     };
-    return cache[key];
   }
 
   F.VehicleCars = { build, STYLES: Object.keys(STYLES), ARCH_R, WHEEL_Y };

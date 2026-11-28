@@ -33,6 +33,8 @@
   /** Held this long (s) by someone beside its path, the bus creeps past at CREEP m/s (see creepCap). */
   const CREEP_AFTER = 6;
   const CREEP = 0.8;
+  /** Held this long (s), the bus stops holding back for the crossing's people for the next 12 s (loiterers). */
+  const CROSSING_PATIENCE = 3;
   /** The middle door and the front door (z in the bus frame) and how far out the pavement spot is (lateral). */
   const DOOR_MID = 0.35;
   const DOOR_FRONT = 3.95;
@@ -64,6 +66,7 @@
     runs: 0,
     clock: 0,
     heldT: 0,
+    noHoldUntil: 0,
     elapsed: 0,
     plan: [],
     pending: 0,
@@ -157,7 +160,7 @@
    */
   function crossingHolds(people) {
     const L = KQ.WorldParts && KQ.WorldParts.LAYOUT;
-    if (!L) return [];
+    if (!L || B.clock < B.noHoldUntil) return []; // someone loitering at the crossing must not hold it for good
     const sim = B.sim;
     const nose = sim.x + B.dir * sim.spec.halfLen;
     const out = [];
@@ -211,6 +214,7 @@
     const sim = B.sim;
     const want = wanted();
     B.heldT = sim.speed < 0.2 && want < 0.5 ? B.heldT + dt : 0;
+    if (B.heldT > CROSSING_PATIENCE) B.noHoldUntil = B.clock + 12;
     if (sim.speed > want) SV().brakeFor(sim, want, dt);
     else sim.speed = Math.min(want, sim.speed + sim.spec.accel * dt);
     const nx = sim.x + B.dir * sim.speed * dt;

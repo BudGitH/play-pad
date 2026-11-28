@@ -76,67 +76,40 @@ function busShot() {
   T.frames(30 * 60, () => !(T.veh().bus.pending > 0 && T.veh().bus.doors > 0.9 && walking()));
 }
 
-/** Browser-side: a diesel car waiting for the hero, then pulling away (the camera stays where it was framed). */
+/** Browser-side: a diesel car just pulling away from the hero standing behind it (the ordinary chase camera). */
 function exhaustShot() {
   const G = window.KQ.Game;
   const T = window.__vl;
   window.__kq.setMinute(11 * 60);
   G.Traffic.setHold(true);
   G.Traffic.clear();
-  T.stand(0.95, 3, 0);
-  const id = G.Traffic.force({ dir: 1, u: -14, speed: 4, passengers: 1 });
-  (G.Traffic.byId(id).mesh.rig || G.Traffic.byId(id).mesh).exhaust = {
-    pos: { x: 0.45, y: 0.3, z: -1.95 },
-    fuel: "diesel",
-  };
-  T.frames(30 * 6, () => {
-    window.__kq.place(0.95, 3, 0);
-    return !(T.tcar().speed < 0.2);
-  });
-  const c = T.tcar();
-  const frame = {
-    target: { x: c.x, y: 0.5, z: c.z - 2.4 },
-    yaw: -0.5,
-    pitch: 0.14,
-    dist: 5.4,
-    lift: 0.4,
-    rate: 60,
-  };
-  G.Camera.shot(frame);
-  for (let i = 0; i < 20; i += 1) {
-    window.__kq.place(0.95, 3, 0);
-    window.__kq.step(60);
-  }
-  window.__kq.place(9, 8, 0); // he steps aside: the car pulls away with a puff or two
-  T.frames(22);
+  T.stand(0.95, -20, 0);
+  const id = G.Traffic.force({ dir: 1, u: -14, speed: 0.2, passengers: 1 });
+  const rig = G.Traffic.byId(id).mesh.rig;
+  if (rig && rig.exhaust && rig.exhaust.fuel === "petrol") rig.exhaust.fuel = "diesel"; // greyer, more at pull-away
+  T.frames(26);
+  window.__kq.step(60);
   return G.Exhaust.debug();
 }
 
-/** Browser-side: dusk (19:00), a traffic car braking to a stop for the hero standing in its lane, seen from behind. */
+/** Browser-side: dusk (18:52), the hero's car braking after a short drive, seen from the chase camera (head and brake lamps). */
 function duskShot() {
   const G = window.KQ.Game;
   const T = window.__vl;
   G.Traffic.setHold(true);
   G.Traffic.clear();
-  window.__kq.setMinute(19 * 60);
-  T.stand(0.95, 4, 0);
-  G.Traffic.force({ dir: 1, u: -30, speed: 6, passengers: 1 });
-  T.frames(30 * 8, () => {
-    window.__kq.place(0.95, 4, 0);
-    return !(T.tcar().speed < 0.3);
-  });
-  const c = T.tcar();
-  G.Camera.shot({
-    target: { x: c.x, y: 0.7, z: c.z },
-    yaw: 0.45,
-    pitch: 0.12,
-    dist: 5.5,
-    lift: 0.6,
-    rate: 60,
-  });
-  window.__kq.step(60);
+  window.__kq.setMinute(1132);
+  T.stand(-22, 4.1, Math.PI);
+  G.Vehicles.press("vehicle:car1");
+  G.Vehicles.finishScene();
+  T.frames(4);
+  window.__kq.input("up", true);
+  T.frames(45);
+  window.__kq.input("up", false);
+  T.frames(10);
+  window.__kq.step(150);
   const card = document.getElementById("kqAzan");
-  if (card) card.style.display = "none"; // the Maghrib card is up at 19:00; the picture is about the car
+  if (card) card.style.display = "none"; // jumping the clock fired Asar's card; the picture is about the lamps
 }
 
 const shots = {

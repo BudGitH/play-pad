@@ -139,7 +139,7 @@ test("a puff grows, fades and dies", () => {
   const c = VL.puffAt(VL.PUFF_LIFE + 0.1, 0.1);
   assert.ok(b.size > a.size);
   assert.ok(b.rise > a.rise);
-  assert.ok(a.alpha > 0 && b.alpha < 0.6);
+  assert.ok(a.alpha > 0 && b.alpha < 0.85);
   assert.equal(c.alive, false);
   assert.equal(c.alpha, 0);
 });

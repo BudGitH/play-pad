@@ -252,8 +252,8 @@
    * pull-away), how pale the smoke is (1 white, 0 black), and the size of a fresh puff (m). Electric: nothing.
    */
   const FUELS = {
-    petrol: { idle: 1.1, perAccel: 1.2, pale: 0.92, size: 0.14 },
-    diesel: { idle: 1.5, perAccel: 2.4, pale: 0.68, size: 0.18 },
+    petrol: { idle: 1.1, perAccel: 1.2, pale: 1, size: 0.17 },
+    diesel: { idle: 1.5, perAccel: 2.4, pale: 0.78, size: 0.21 },
   };
   const MAX_PUFF_RATE = 9;
 
@@ -285,7 +285,7 @@
     const k = clamp(age / PUFF_LIFE, 0, 1);
     return {
       size: size * (1 + 2 * Math.sqrt(k)),
-      alpha: 0.6 * (1 - k) * Math.min(1, age / 0.08),
+      alpha: 0.85 * (1 - k) * Math.min(1, age / 0.08),
       rise: PUFF_RISE * age,
       alive: age < PUFF_LIFE,
     };

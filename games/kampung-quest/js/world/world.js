@@ -3,11 +3,13 @@
    { pois, colliders, walkGraph, interactables, lights, update(dt, clock), setQuality(tier),
      setShadowTarget(v), heightAt(x, z), group, qualityHints(tier), dispose() }.
    Script order (js/data/prayer-times.js first, so the sun follows Syuruk / Maghrib): geo,
-   textures, canvas, patterns, patterns2, patterns3, materials, layout, sky, lighting, roads,
-   hdb, hawker, mosque, mosque-shell, mosque-yard, mosque-inside, ornament, shops, services,
-   foliage, trees, props, town, detail, clutter, life, nav, grunge, aofield, surface, world,
-   world-runtime, world-build. The realism-pass files (patterns3, ornament, foliage, life,
-   grunge, aofield, surface) are optional: without them the world builds the earlier look. */
+   textures, canvas, sg-signs, patterns, patterns2, patterns3, materials, layout, sky, lighting,
+   roads, hdb, hdb-deck, hawker, hawker-dress, mosque, mosque-shell, mosque-yard, mosque-inside,
+   ornament, shops, services, foliage, trees, props, town, estate, detail, clutter, life, nav,
+   grunge, aofield, surface, world, world-runtime, world-build. The realism-pass files
+   (patterns3, ornament, foliage, life, grunge, aofield, surface) and the Singapore-estate
+   dressing (sg-signs, hdb-deck, hawker-dress, estate) are optional: without them the world
+   builds the earlier look. */
 (function (KQ) {
   "use strict";
   const P = KQ.WorldParts;
@@ -61,6 +63,7 @@
     P.Town.plazas(B);
     P.Town.carpark(B, L.carpark);
     P.Town.park(B, L.park, ctx);
+    if (P.Estate) P.Estate.build(B, ctx); // fitness corner, monsoon drain, bicycle rack
     if (P.Stables) P.Stables.kampung.build(B, ctx); // the pony ride (AC-P6)
     P.Town.treeBeds(B);
     P.Detail.roadWear(B, L);

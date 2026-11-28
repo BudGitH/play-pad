@@ -18,6 +18,7 @@
     lessMotion: "follow",
     autoQuality: true,
     ambience: true,
+    seen: {},
   };
   const CHOICES = {
     captionSize: ["normal", "large"],
@@ -25,7 +26,7 @@
   };
   /** A real prefs blob is ~100 characters; refuse anything absurd before parsing it. */
   const MAX_PREF_CHARS = 2000;
-  const prefs = Object.assign({}, DEFAULTS);
+  const prefs = Object.assign({}, DEFAULTS, { seen: {} });
 
   /** localStorage if it really works (private modes and blocked storage throw), else null. */
   function getStorage() {
@@ -37,6 +38,18 @@
     } catch (err) {
       return null;
     }
+  }
+
+  /** The action hints already spoken (G.Say): at most 60 keys of lower-case letters and dashes, each `true`. */
+  function cleanSeen(raw) {
+    const out = {};
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return out;
+    Object.keys(raw)
+      .slice(0, 60)
+      .forEach(function (key) {
+        if (/^[a-z-]{1,24}$/.test(key) && raw[key] === true) out[key] = true;
+      });
+    return out;
   }
 
   /** Validate untrusted parsed prefs: enum whitelist and boolean checks, never a raw copy. */
@@ -51,6 +64,7 @@
     if (typeof raw.autoQuality === "boolean") out.autoQuality = raw.autoQuality;
     if (typeof raw.ambience === "boolean") out.ambience = raw.ambience;
     if (typeof raw.voices === "boolean") out.voices = raw.voices;
+    out.seen = cleanSeen(raw.seen);
     return out;
   }
 

@@ -1122,7 +1122,7 @@ async function checkNenekToast(page) {
 async function checkWayFocus(page) {
   await kq(page, () => window.__kq.forcePrayer("zohor"));
   await step(page, 500);
-  const way = page.getByRole("button", { name: "Show me the way" });
+  const way = page.locator("#kqAzan").getByRole("button", { name: "Pray", exact: true });
   await expect(way).toBeVisible();
   await expectNoUnnamedButtons(page);
   // the spoken sentence has one full stop, not two ("pray.. Call to prayer")
@@ -1231,7 +1231,7 @@ test.describe.serial("persona polish (one shared page at 1180 x 820)", () => {
   });
   test("the first-step toast names Nenek and is retired once her mission is accepted", () =>
     checkNenekToast(shared.page));
-  test("Show me the way moves focus to Pray; Esc from a dock sheet returns to its button", () =>
+  test("the azan card's Pray button moves focus to Pray; Esc from a dock sheet returns to its button", () =>
     checkWayFocus(shared.page));
   test("Sound keeps a fixed name, announces, and live text does not go stale", () =>
     checkSoundAnnounce(shared.page));

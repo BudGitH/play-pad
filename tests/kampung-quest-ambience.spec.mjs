@@ -194,7 +194,8 @@ test("AMB-6 nothing during a prayer flow, and it fades back in after", async () 
   await expect.poll(async () => (await audio(page)).ambience.quiet).toBe("");
   await kq(page, () => {
     window.__kq.forcePrayer("zohor");
-    window.KQ.Game.PrayerFlow.atTaps(); // starts the flow and ends the azan
+    window.__kq.teleport("mosque_wudu");
+    window.KQ.Game.PrayerFlow.next(); // starts the flow (wudu first) and ends the azan
   });
   expect(await kq(page, () => Boolean(window.KQ.Game.S.sim.prayer.state().flow))).toBe(true);
   await step(page, 2000);

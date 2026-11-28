@@ -209,21 +209,20 @@ test("camels and horses stand at the yard, oasis and stable, with map POIs", asy
   expect(meshes.length).toBe(d.list.length); // one skinned mesh (one draw call) per animal
 });
 
-test("Say hi: the prompt opens a menu; the camel turns its head and calls", async ({ browser }) => {
+test("Say hi: the camel offers Ride and Say hi as two tiles; the camel turns its head and calls", async ({
+  browser,
+}) => {
   const page = await holy(browser);
   await kq(page, () => window.__kq.place(-193.3, -146, -Math.PI / 2));
   await step(page, 200);
-  const target = await kq(page, () => window.__kq.state().target);
-  expect(target.label).toBe("Camel");
-  await kq(page, () => window.__kq.interact());
-  const buttons = await page.locator(".kq-sheet .kq-btn").allTextContents();
-  expect(buttons.join("|")).toContain("Say hi");
-  expect(buttons.join("|")).toContain("Ride");
+  const targets = await kq(page, () => window.__kq.state().targets);
+  expect(targets.map((t) => t.label)).toEqual(["Ride", "Say hi"]); // no "Say hi or Ride" menu card
+  await expect(page.locator("#kqTalk")).toContainText("Ride");
   const head0 = await kq(
     page,
     () => window.KQ.Game.Mounts.byId("camel_sandy").rig.bones.neck.rotation.y,
   );
-  await page.locator(".kq-sheet .kq-btn", { hasText: "Say hi" }).click();
+  await page.locator(".kq-talk-more", { hasText: "Say hi" }).click();
   await step(page, 500);
   const d = await mounts(page);
   expect(d.hi).toBe(1);
@@ -369,7 +368,7 @@ test("greet and ride a pony, faster than running, and get down on free ground", 
   const page = await kampung(browser);
   await kq(page, () => window.__kq.place(60.8, 41.2, Math.PI / 2));
   await step(page, 200);
-  expect((await kq(page, () => window.__kq.state().target)).label).toBe("Pony");
+  expect((await kq(page, () => window.__kq.state().target)).label).toBe("Ride");
   await kq(page, () => window.__kq.mountAct("mount:hi:pony_kiwi"));
   expect((await mounts(page)).hi).toBe(1);
   await kq(page, () => window.__kq.mountAct("mount:ride:pony_kiwi"));

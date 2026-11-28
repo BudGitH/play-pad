@@ -125,7 +125,7 @@
     s.collect = G.Collectibles.create(s.scene, s.world);
     G.Loop.studioShine(s);
     BU().setStep(1, "done");
-    BU().setProgress(0.5);
+    BU().setProgress(0.5, "Waking up the neighbours...");
     G.BootPerf.mark("actors");
   }
 
@@ -158,7 +158,7 @@
    * screen keeps painting; the start tier goes last so it is the state the game begins in.
    */
   async function precompile(s) {
-    BU().setProgress(0.86, "Getting the shaders ready...");
+    BU().setProgress(0.86, "Making everything shiny...");
     await nextFrame();
     const start = s.quality;
     const heroShown = s.player.group.visible;
@@ -221,7 +221,7 @@
   async function loadTextures(s) {
     await fetchTextures();
     await G.BootPerf.uploadTextures(s.renderer, s.scene, (f) =>
-      BU().setProgress(0.66 + 0.2 * f, "Getting the textures ready..."),
+      BU().setProgress(0.66 + 0.2 * f, "Painting the town..."),
     );
   }
 
@@ -237,7 +237,7 @@
     BU().setStep(2, "now");
     const mgr = THREE.DefaultLoadingManager;
     mgr.onProgress = (url, loaded, total) =>
-      BU().setProgress(0.5 + 0.16 * (loaded / Math.max(1, total)), "Loading photo textures...");
+      BU().setProgress(0.5 + 0.16 * (loaded / Math.max(1, total)), "Painting the town...");
     await waitUntil(() => !mgr.isLoading, 20000);
     G.BootPerf.mark("textures-loaded");
     BU().setStep(2, "done");
@@ -331,7 +331,6 @@
         7000,
         "nenek",
       );
-    document.getElementById("kqTalk").focus({ preventScroll: true });
     if (!s.loopStarted) {
       s.loopStarted = true;
       G.Loop.start();

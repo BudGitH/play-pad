@@ -539,8 +539,7 @@ test("wudu and Subuh complete by Next alone, right where the hero stands, with t
   await ev(() => window.__kq.forcePrayer("subuh"));
   await step(300);
   const before = await state();
-  await page.evaluate(() => window.__kq.action("pray"));
-  await page.locator(".kq-pray-here").click();
+  await page.evaluate(() => window.__kq.action("pray")); // one tap: wudu starts right here
   await expect(page.getByRole("dialog", { name: "Wudu steps" })).toBeVisible();
   await expect(page.locator(".kq-stepper .kq-sheet-title")).toHaveText(
     "Wudu at the mosque taps · step 1 of 12",
@@ -631,8 +630,7 @@ test("Change view cycles the camera through three angles with smooth transitions
   await reset();
   await ev(() => window.__kq.forcePrayer("zohor"));
   await step(300);
-  await page.evaluate(() => window.__kq.action("pray"));
-  await page.locator(".kq-pray-here").click();
+  await page.evaluate(() => window.__kq.action("pray")); // one tap: wudu starts right here
   await expect(page.getByRole("dialog", { name: "Wudu steps" })).toBeVisible();
   await step(2600);
   const a = await cam();
@@ -661,8 +659,7 @@ test("the prayer card reads word by word, with the full Al-Fatihah and the short
     window.__kq.forcePrayer("asar");
     window.__kq.place(0, -95, 0);
   });
-  await page.evaluate(() => window.__kq.action("pray"));
-  await page.locator(".kq-pray-here").click();
+  await page.evaluate(() => window.__kq.action("pray")); // one tap: wudu starts right here
   while ((await state()).prayer.flow?.phase === "wudu") await page.locator(".kq-wudu-act").click();
   await next(); // takbir -> qiyam
   await expect(page.locator(".kq-stepper .kq-step-title")).toHaveText("Qiyam (stand)");

@@ -9,6 +9,9 @@
  * HOW IT FITS: Loop.stepActors calls update(dt, move, free) before the hero's own movement and
  *   skips Player.update when it returns true (the hero is mounted: this file moves, poses and
  *   syncs the hero). Interact.find asks target(hero) for the Drive / Ride / Exit button.
+ *   Getting in and out is a short scene (vehicle-enter.js: walk to the door, open it, climb in, shut it;
+ *   pressing the button again skips it). The lived-in extras: lights (vehicle-lights.js), exhaust (exhaust.js),
+ *   the ambient traffic and the bus with their people (traffic.js, bus.js, vehicle-occupants.js).
  *   The pure rules (speeds, turning, braking, zones) are KQ.Sim.Vehicle; the meshes are
  *   KQ.Figures.Vehicles; spots and zones are vehicle-spots.js; the hum and horn vehicle-sound.js.
  * RULES: all movement ends in Collide.settle (two circles per vehicle); a parked vehicle is ONE
@@ -53,6 +56,9 @@
     zonesT: -99,
     noteAt: -99,
     exiting: false,
+    entering: null,
+    leaving: false,
+    away: null,
     posed: false,
     cam: null,
     seat: null,
@@ -235,10 +241,12 @@
     const spots = G.VehicleSpots.spots();
     if (!defer) {
       spots.forEach(spawn);
+      G.Traffic.prepare(null);
       return;
     }
     spots.forEach((spot) => defer.add(() => void spawn(spot), "vehicle " + spot.kind));
     if (G.Bus) defer.add(() => G.Bus.update(0), "bus");
+    G.Traffic.prepare(defer);
   }
 
   /* ------------------------------ who is around ------------------------------ */
@@ -293,7 +301,7 @@
     const out = { pushed: 0, vehicle: false, px: 0, pz: 0 };
     rings(v).forEach(function (c) {
       const hit = G.Collide.blockedAt(cols, c.x, c.z, r.r);
-      if (hit && hit.vehicle) out.vehicle = true;
+      if (hit && (hit.vehicle || hit.traffic)) out.vehicle = true;
       const before = { x: c.x, z: c.z };
       G.Collide.settle(cols, c, r.r);
       v.sim.x += c.x - before.x;
@@ -347,7 +355,8 @@
     else SV().stepSpeed(sv, SV().throttleOf(out), dt);
     SV().stepHeading(sv, SV().steerOf(out), dt);
     const cap = SV().speedCap(sv, peopleNear(sv.x, sv.z));
-    if (SV().brakeFor(sv, cap, dt)) V.braked += 1;
+    v.braking = SV().brakeFor(sv, cap, dt);
+    if (v.braking) V.braked += 1;
   }
 
   /**
@@ -426,15 +435,22 @@
     if (span) span.textContent = word;
   }
 
+  /** Is the get-in / get-out scene switched on (`?enter=0` skips it: tests and quick play)? */
+  function sceneOn() {
+    return G.VehicleEnter.enabled();
+  }
+
   /** Get in: the hero takes the seat, the vehicle stops being a collider, the camera eases back. */
   function mount(v) {
     const s = S();
     unpark(v);
     V.mounted = v;
     V.exiting = false;
+    V.entering = null;
     V.posed = false;
     KQ.Figures.Vehicles.setOccupied(v.mesh, true);
-    V.cam = { eased: false, extra: 0, dist: G.Camera.state.dist, pitch: G.Camera.state.pitch };
+    if (!V.cam)
+      V.cam = { eased: false, extra: 0, dist: G.Camera.state.dist, pitch: G.Camera.state.pitch };
     s.player.group.visible = true;
     v.sim.speed = 0;
     V.seat = seatOf(v);
@@ -442,22 +458,35 @@
     G.Player.place(s.player, V.seat.x, V.seat.z, v.sim.heading, groundAt);
     labelHorn(v.kind);
     G.Audio.play("pose");
+    G.VehicleSound.cue("start");
     s.hudDirty = true;
     G.Camera.state.idle = 0;
   }
 
-  /** Candidate places beside a vehicle for the hero to step out to: left, right, behind, ahead (x, z). */
+  /** The seat side of a car or lorry: its driver's side comes first when looking for a place to step out. */
+  function driverLat(v) {
+    return KQ.Sim.VehicleLife.hasDoor(v.kind) ? Math.sign(v.mesh.seatX || -1) : 1;
+  }
+
+  /** Candidate places beside a vehicle for the hero to step out to (x, z): the driver's side first, then the other, behind, ahead. */
   function exitSpots(v) {
     const side = v.kind === "bike" || v.kind === "moto" ? 0.85 : v.sim.spec.halfWid + 0.75;
     const end = v.sim.spec.halfLen + 0.9;
     const h = v.sim.heading;
     const fx = Math.sin(h);
     const fz = Math.cos(h);
+    const first = driverLat(v);
     const at = (fwd, lat) => ({
       x: v.sim.x + fx * fwd + fz * lat,
       z: v.sim.z + fz * fwd - fx * lat,
     });
-    return [at(0, side), at(0, -side), at(-end, 0), at(end, 0), at(0, side + 1)];
+    return [
+      at(0, first * side),
+      at(0, -first * side),
+      at(-end, 0),
+      at(end, 0),
+      at(0, first * (side + 1)),
+    ];
   }
 
   /** The first exit spot that is clear of walls and no-drive-free enough to stand in; else the nearest free one. */
@@ -468,23 +497,26 @@
     return ok || G.Collide.freeSpot(cols, list[0].x, list[0].z, G.Player.RADIUS);
   }
 
-  /** Leave the seat: hero to a free spot beside it, vehicle parked where it stands, camera back. */
-  function finishExit(placeHero) {
+  /** Leave the seat: hero to a free spot beside it (the one the scene walked him to), vehicle parked, camera back. */
+  function finishExit(placeHero, spot) {
     const v = V.mounted;
     const s = S();
     V.mounted = null;
     V.exiting = false;
+    V.leaving = false;
+    V.away = null;
     v.sim.speed = 0;
     v.lean = v.kind === "bike" ? STAND_LEAN : 0;
     syncMesh(v);
     KQ.Figures.Vehicles.setOccupied(v.mesh, false);
     if (placeHero) {
-      const p = pickExit(v);
+      const p = spot || pickExit(v);
       G.Player.place(s.player, p.x, p.z, v.sim.heading, groundAt);
       G.Camera.snapBehind(s.player.heading);
     }
     park(v);
     G.VehicleSound.stop();
+    G.VehicleLights.allOff(v);
     labelHorn(null);
     restoreCamera();
     s.hudDirty = true;
@@ -499,17 +531,102 @@
     V.cam = null;
   }
 
-  /** The button asked to get out: brake to a stop first (update finishes the exit). */
-  function leave() {
-    V.exiting = true;
-    if (Math.abs(V.mounted.sim.speed) < 0.3) finishExit(true);
+  /** The seat as the scene wants it: the hero's seat point and the model's seat side. */
+  function sceneOf(v, dir) {
+    return {
+      kind: v.kind,
+      dir,
+      sim: v.sim,
+      mesh: v.mesh,
+      from: { x: S().player.pos.x, z: S().player.pos.z },
+      seatPt: seatOf(v),
+      seatX: v.mesh.seatX || 0,
+      away: V.away,
+    };
   }
 
-  /** Press the Drive / Ride / Exit button for a prompt id ("vehicle:<id>" or "vehicle:exit"). */
+  /** Start walking to the vehicle: the hero heads for the door, the camera eases back, input is locked. */
+  function beginEnter(v) {
+    unpark(v);
+    V.entering = v;
+    V.cam = { eased: false, extra: 0, dist: G.Camera.state.dist, pitch: G.Camera.state.pitch };
+    G.VehicleEnter.start(sceneOf(v, "in"));
+    S().player.group.visible = true;
+    S().hudDirty = true;
+  }
+
+  /** Something else moved the hero during a scene (a teleport, a flow): drop the scene, shut the door. */
+  function abortScene() {
+    const v = V.entering || V.mounted;
+    G.VehicleEnter.abort();
+    if (V.entering) {
+      V.entering = null;
+      park(v);
+      restoreCamera();
+    } else {
+      V.leaving = false;
+      finishExit(false);
+    }
+  }
+
+  /** One frame of the get-in scene. Returns true (the hero is held by it). */
+  function stepEnter(dt) {
+    const v = V.entering;
+    const P = S().player;
+    if (P.locked || G.VehicleEnter.displaced(P)) {
+      abortScene();
+      return false;
+    }
+    const playing = G.VehicleEnter.step(dt, P);
+    steerCamera(v, dt);
+    G.VehicleLights.update(v, dt, { engine: false, t: V.t });
+    if (!playing) mount(v);
+    return true;
+  }
+
+  /** The vehicle has stopped: the hero steps out (the scene), or at once when the scene is off. */
+  function beginExit() {
+    const v = V.mounted;
+    if (!sceneOn()) return finishExit(true);
+    V.away = pickExit(v);
+    V.leaving = true;
+    G.VehicleSound.stop();
+    G.VehicleEnter.start(sceneOf(v, "out"));
+    return undefined;
+  }
+
+  /** One frame of the get-out scene. Returns true (the hero is held by it). */
+  function stepExit(dt) {
+    const v = V.mounted;
+    const P = S().player;
+    if (P.locked || G.VehicleEnter.displaced(P)) {
+      abortScene();
+      return false;
+    }
+    const playing = G.VehicleEnter.step(dt, P);
+    steerCamera(v, dt);
+    G.VehicleLights.update(v, dt, { engine: false, t: V.t });
+    if (!playing) finishExit(true, V.away);
+    return true;
+  }
+
+  /** The button asked to get out: brake to a stop first (update starts the scene). */
+  function leave() {
+    if (V.leaving) return G.VehicleEnter.skip();
+    V.exiting = true;
+    if (Math.abs(V.mounted.sim.speed) < 0.3) beginExit();
+    return undefined;
+  }
+
+  /** Press the Drive / Ride / Exit button for a prompt id ("vehicle:<id>" or "vehicle:exit"); again to skip the scene. */
   function press(id) {
     if (V.mounted) return leave();
+    if (V.entering) return G.VehicleEnter.skip();
     const v = V.list.find((x) => "vehicle:" + x.id === id);
-    if (v) mount(v);
+    if (!v) return undefined;
+    if (sceneOn()) beginEnter(v);
+    else mount(v);
+    return undefined;
   }
 
   /* ------------------------------ the prompt ------------------------------ */
@@ -523,6 +640,8 @@
   /** The Talk-button target: "Get out" while mounted, else Drive / Ride for the nearest parked vehicle in reach. */
   function target(hero) {
     if (V.mounted) return exitTarget(V.mounted);
+    if (V.entering)
+      return promptFor(V.entering, "vehicle:" + V.entering.id, V.entering.sim.spec.label, 0);
     let best = null;
     V.list.forEach(function (v) {
       const d = gapTo(v, hero);
@@ -597,6 +716,24 @@
     return V.seat && U.dist(P.pos.x, P.pos.z, V.seat.x, V.seat.z) > 0.6;
   }
 
+  /** Pedal, wheel and steer details of a two-wheeler's rig when it has them (the looks branch). */
+  function animateTwoWheeler(v, dt) {
+    if (v.kind !== "bike" && v.kind !== "moto") return;
+    v.crank = (v.crank || 0) + (Math.abs(v.sim.speed) * dt * 2.4) / (2 * Math.PI * 0.3);
+    G.Rig.animateBike(v.mesh, v.crank * 2 * Math.PI, v.mesh.rolled, v.sim.steer);
+  }
+
+  /** The sound at the wheel: the hum for its fuel (a bicycle's chain whirr and ticks). */
+  function soundAtWheel(v, dt, move) {
+    const ex = G.Rig.exhaustOf(v);
+    const speed = Math.abs(v.sim.speed);
+    const pedalling = v.kind === "bike" && SV().throttleOf(move) > 0;
+    G.VehicleSound.update(dt, v.kind, speed, v.sim.spec.maxFwd, {
+      fuel: ex ? ex.fuel : "petrol",
+      pedalling,
+    });
+  }
+
   /** One frame of a mounted ride. */
   function ride(dt, move) {
     const v = V.mounted;
@@ -605,10 +742,31 @@
     follow(v, dt);
     syncMesh(v);
     KQ.Figures.Vehicles.animate(v.mesh, dt, v.sim.speed, v.sim.steer);
+    animateTwoWheeler(v, dt);
     seatHero(v, dt);
     steerCamera(v, dt);
-    G.VehicleSound.update(dt, v.kind, Math.abs(v.sim.speed), v.sim.spec.maxFwd);
-    if (V.exiting && Math.abs(v.sim.speed) < 0.3) finishExit(true);
+    soundAtWheel(v, dt, move);
+    G.VehicleLights.update(v, dt, { engine: true, braking: v.braking, t: V.t });
+    if (V.exiting && Math.abs(v.sim.speed) < 0.3) beginExit();
+  }
+
+  /** Everything that puffs exhaust now: the hero's vehicle, the traffic and the bus. */
+  function emitters() {
+    const list = G.Traffic.emitters();
+    const bus = G.Bus ? G.Bus.emitter() : null;
+    if (bus) list.push(bus);
+    const m = V.mounted;
+    if (m && !V.leaving) list.push({ v: m, accel: m.life ? m.life.acc : 0, engine: true });
+    return list;
+  }
+
+  /** The life around the vehicles: traffic, exhaust and the faint hum of the nearest other vehicle. */
+  function lifeStep(dt, hero) {
+    G.Traffic.update(dt);
+    G.Exhaust.update(dt, emitters(), hero);
+    const src = G.Traffic.sources(hero);
+    const bus = G.Bus ? G.Bus.sourceFor(hero) : null;
+    G.VehicleSound.others(bus ? src.concat(bus) : src, dt);
   }
 
   /**
@@ -626,7 +784,10 @@
     sendHome(P.pos, dt);
     cull(P.pos, dt);
     if (G.Bus) G.Bus.update(dt);
+    lifeStep(dt, P.pos);
+    if (V.entering) return stepEnter(dt);
     if (!V.mounted) return false;
+    if (V.leaving) return stepExit(dt);
     if (displaced(P)) {
       finishExit(false);
       return false;
@@ -653,6 +814,12 @@
       mounted: V.mounted ? V.mounted.id : null,
       kind: V.mounted ? V.mounted.kind : null,
       exiting: V.exiting,
+      entering: Boolean(V.entering),
+      scene: G.VehicleEnter.debug(),
+      lights: V.mounted ? G.VehicleLights.state(V.mounted) : null,
+      traffic: G.Traffic.debug(),
+      exhaust: G.Exhaust.debug(),
+      occupants: G.Occupants.debug(),
       zones: V.zones.length,
       blocked: V.blocked,
       braked: V.braked,
@@ -668,6 +835,7 @@
         heading: Number(v.sim.heading.toFixed(2)),
         speed: Number(v.sim.speed.toFixed(2)),
         parked: v !== V.mounted,
+        lights: G.VehicleLights.state(v),
       })),
     };
   }
@@ -704,8 +872,13 @@
     spawn,
     debug,
     mounted: () => Boolean(V.mounted),
+    /** Skip the get-in / get-out scene that is playing (tests, the button pressed again). */
+    finishScene: () => G.VehicleEnter.skip(),
+    entering: () => Boolean(V.entering),
     /** Where every drivable vehicle is (their sim states: x, z, heading, speed); the bus brakes for them. */
     sims: () => V.list.map((v) => v.sim),
     exiting: () => V.exiting,
+    /** The record of a vehicle by id (tests). */
+    byId: (id) => V.list.find((v) => v.id === id) || null,
   };
 })((window.KQ = window.KQ || {}));

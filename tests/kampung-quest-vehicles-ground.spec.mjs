@@ -11,7 +11,7 @@
 // Run: PW_PORT=5601 npx playwright test tests/kampung-quest-vehicles-ground.spec.mjs --project=kampung-quest
 import { test, expect } from "@playwright/test";
 
-const BASE = "/games/kampung-quest/index.html?still=1&autoq=0&q=low";
+const BASE = "/games/kampung-quest/index.html?still=1&autoq=0&q=low&enter=0";
 const kq = (page, fn, arg) => page.evaluate(fn, arg);
 
 /** How many vehicles were already placed when the loading screen finished (before Start), per region. */

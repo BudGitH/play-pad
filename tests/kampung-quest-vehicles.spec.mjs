@@ -6,7 +6,7 @@
 // Run: npx playwright test tests/kampung-quest-vehicles.spec.mjs
 import { test, expect, devices } from "@playwright/test";
 
-const GAME = "/games/kampung-quest/index.html?still=1&autoq=0&q=low";
+const GAME = "/games/kampung-quest/index.html?still=1&autoq=0&q=low&enter=0";
 const SHOTS = process.env.KQ_SHOTS ? "features/kampung-quest-haramain/shots/" : null;
 /** A device descriptor without `defaultBrowserType` (only Chromium is installed; the engine is the same). */
 function device(name) {
@@ -378,8 +378,8 @@ test("phone landscape (touch): Drive, Exit and Honk fit, and the joystick drives
   await expect(talk).toBeInViewport({ ratio: 1 });
   expect((await talk.boundingBox()).height).toBeGreaterThanOrEqual(48);
   await talk.tap();
+  await step(ph, 2000); // the get-in scene (vehicle-enter.js) plays first
   expect((await veh(ph)).mounted).toBe("car1");
-  await step(ph, 300);
   await expect(talk).toContainText("Exit");
   await expect(talk).toBeInViewport({ ratio: 1 });
   const jump = ph.locator("#kqJump");

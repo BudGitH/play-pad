@@ -7,7 +7,7 @@
 // Run: npx playwright test tests/kampung-quest-vehicles-all.spec.mjs
 import { test, expect } from "@playwright/test";
 
-const BASE = "/games/kampung-quest/index.html?still=1&autoq=0&q=low";
+const BASE = "/games/kampung-quest/index.html?still=1&autoq=0&q=low&enter=0";
 const SHOTS = process.env.KQ_SHOTS ? "features/kampung-quest-haramain/shots/" : null;
 const kq = (page, fn, arg) => page.evaluate(fn, arg);
 const POSE = { car: "drive", bike: "pedal", moto: "drive", lorry: "drive" };

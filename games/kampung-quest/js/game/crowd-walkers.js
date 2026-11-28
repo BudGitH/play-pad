@@ -14,6 +14,8 @@
   const G = (KQ.Game = KQ.Game || {});
   const U = G.U;
   const SC = () => KQ.Sim.Crowd;
+  /** A stroller held up this long (s) by something in the way leaves even in view (a stopped bus must not wait for them for ever). */
+  const STUCK_GIVE_UP = 4;
   const SPAWN_MIN = 28;
   const SPAWN_MAX = 54;
   const LANE = 0.5;
@@ -185,6 +187,14 @@
 
   /** Reached the end of a route: linger a while, or head somewhere else; leave if no route. */
   function arrived(C, m) {
+    if (m.onArrive) {
+      const done = m.onArrive; // a person walking to a vehicle door (vehicle-occupants.js): hand over
+      m.onArrive = null;
+      done(m);
+      if (!m.gone)
+        Object.assign(m, { linger: 2, lingerPose: "wait", next: pickDestination(C, -1) });
+      return;
+    }
     const here = { x: m.x, z: m.z };
     if (m.draw() < 0.3 && m.wtype !== "cyclist" && m.wtype !== "jogger") {
       m.linger = 4 + m.draw() * 6;
@@ -220,7 +230,8 @@
     m.x = from.x;
     m.z = from.z;
     m.stuck = (m.stuck || 0) + dt;
-    if (m.stuck > 1 && !C.visibleNear(m.x, m.z)) m.leaving = true;
+    // unseen, they just go; but someone held up for good (the bus waits for them while they wait for the bus) gives way too
+    if (m.stuck > 1 && (!C.visibleNear(m.x, m.z) || m.stuck > STUCK_GIVE_UP)) m.leaving = true;
   }
 
   /** Step a stroller along its path by dt; make way for the hero as it passes. */
@@ -257,5 +268,50 @@
     });
   }
 
-  G.CrowdWalkers = { spawn, update, SPAWN_MIN, SPAWN_MAX };
+  /**
+   * Hand a person who just got off a vehicle (or the bus) to the crowd: a stroller of their own outfit starting at
+   * (x, z), at once fully shown, heading for a place. Returns the new member, or null when there is no room or
+   * no route.
+   */
+  function adopt(C, outfit, x, z) {
+    if (C.members.length >= C.kit.people - 12) return null;
+    const id = "walker:" + C.serial++;
+    const type = outfit.kid ? "kid" : outfit.age === "elder" ? "elder" : "commuter";
+    const m = makeWalker(C, type, id, C.rng() < 0.5 ? LANE : -LANE, 0);
+    Object.assign(m, { outfit, kid: outfit.kid, scale: outfit.scale, prop: null });
+    if (!launch(C, m, { x, z }, pickDestination(C, -1))) return null;
+    m.x = x;
+    m.z = z;
+    m.show = 1;
+    C.members.push(m);
+    C.byId.set(m.id, m);
+    return m;
+  }
+
+  /**
+   * Turn a person already in the crowd (a waiting passenger, a walker) into one who walks the given points and then
+   * calls onArrive(m). Their old spot is held empty for a minute (C.cool) so the same face does not pop back.
+   */
+  function redirect(C, m, pts, onArrive) {
+    const T = SC().WALKERS.commuter;
+    Object.assign(m, {
+      walker: true,
+      wtype: "commuter",
+      mode: "walk",
+      path: pts,
+      wp: 0,
+      linger: 0,
+      speed: 1.5,
+      rate: 1.5 * T.cycles,
+      pose: T.pose,
+      lane: 0,
+      prop: null,
+      onArrive,
+      leaving: false,
+    });
+    C.cool = C.cool || {};
+    if (m.slot && m.slot.id) C.cool[m.slot.id] = C.clock + 75;
+  }
+
+  G.CrowdWalkers = { spawn, update, adopt, redirect, SPAWN_MIN, SPAWN_MAX };
 })((window.KQ = window.KQ || {}));

@@ -157,6 +157,7 @@
       if (d > SPAWN_R || !SC().slotActive(s.id, occ[s.kind], minute)) return;
       const seat = seatOf(C, s);
       if (seat && seat.taken && seat.taken !== CROWD_SEAT) return;
+      if (C.cool && C.cool[s.id] > C.clock) return; // someone just left this spot for a bus or a car
       list.push({ s, d });
     });
     list.sort((a, b) => a.d - b.d);
@@ -270,6 +271,7 @@
     if (vis.length > cap) vis.sort((a, b) => a.d2 - b.d2);
     KQ.Figures.CrowdKit.begin(C.kit);
     for (let i = 0; i < vis.length && i < cap; i += 1) drawMember(C.kit, vis[i]);
+    if (G.Occupants) G.Occupants.draw(C.kit, C, dt); // people in cars and the bus (vehicle-occupants.js)
     KQ.Figures.CrowdKit.end(C.kit);
     return hero;
   }

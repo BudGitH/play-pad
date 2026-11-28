@@ -282,6 +282,7 @@
     P.Sky.fromPrayerTimes();
     const rig = makeRig(scene, opts, kit.mats);
     const nav = P.HolyNav.build();
+    if (P.Stables) P.Stables.makkah.addPois(nav.pois.makkah, nav.graph); // camel_yard, horse_stable, camel_oasis
     const s = makeState({
       scene,
       group,

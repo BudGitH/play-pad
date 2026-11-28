@@ -64,7 +64,9 @@
     G.RitualFlow.update(dt); // auto-walk and the walked-round counter move the hero before the usual step
     const free = !G.UI.modalOpen() && !s.paused;
     const move = free ? G.Input.move() : { x: 0, y: 0, mag: 0, run: false };
-    if (!G.Vehicles.update(dt, move, free)) {
+    const driving = G.Vehicles.update(dt, move, free);
+    const riding = G.Mounts.update(dt, move, free && !driving); // camels, horses, ponies (AC-P5..P7)
+    if (!driving && !riding) {
       G.Player.update(P, dt, move, {
         yaw: G.Camera.state.yaw,
         speedFactor: s.sim.needs.speedFactor(),

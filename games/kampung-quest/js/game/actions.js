@@ -179,7 +179,9 @@
     if (name === "jump")
       return G.Vehicles.mounted()
         ? G.Vehicles.horn()
-        : canJump() && G.Player.jump(S().player, G.Audio);
+        : G.Mounts.riding()
+          ? G.MountRide.pat()
+          : canJump() && G.Player.jump(S().player, G.Audio);
     if (["missions", "map", "pray", "bag", "rites"].indexOf(name) !== -1) dock(name);
   }
 
